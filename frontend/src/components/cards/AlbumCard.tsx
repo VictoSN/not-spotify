@@ -1,0 +1,40 @@
+import { Link } from 'react-router-dom'
+import { PlayIcon } from '@heroicons/react/24/solid'
+import type { Album } from '@/types/album'
+import type { Track } from '@/types/track'
+import { usePlayerStore } from '@/stores/playerStore'
+
+interface AlbumCardProps {
+  album: Album
+  tracks?: Track[]
+}
+
+export function AlbumCard({ album, tracks }: AlbumCardProps) {
+  const play = usePlayerStore((s) => s.play)
+
+  const handlePlay = (e: React.MouseEvent) => {
+    e.preventDefault()
+    if (tracks && tracks.length > 0) play(tracks[0], tracks)
+  }
+
+  return (
+    <Link to={`/album/${album.id}`} className="group flex-shrink-0 w-40 sm:w-44">
+      <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3">
+        <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
+        {tracks && (
+          <button
+            onClick={handlePlay}
+            className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
+            aria-label={`Play ${album.title}`}
+          >
+            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+          </button>
+        )}
+      </div>
+      <p className="text-sm font-semibold text-primary truncate">{album.title}</p>
+      <p className="text-xs text-secondary mt-0.5 truncate">
+        {album.releaseDate.slice(0, 4)} · {album.artist.name}
+      </p>
+    </Link>
+  )
+}

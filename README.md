@@ -2,6 +2,8 @@
 Definitely not Spotify, developed using Cloud Computing.
 
 Run Project:
-cd .\frontend\
+```bash
+cd ./frontend
 npm install
-npm run dev 
+npm run dev
+```

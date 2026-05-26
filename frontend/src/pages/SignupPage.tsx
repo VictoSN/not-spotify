@@ -61,9 +61,9 @@ export function SignupPage() {
             <label className="block text-sm font-semibold text-primary mb-1">Password</label>
             <input
               type="password"
-              {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'Min 6 characters' } })}
+              {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
               className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder="Password (min 6 characters)"
+              placeholder="Password (min 8 characters)"
             />
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
           </div>

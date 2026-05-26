@@ -1,0 +1,11 @@
+# Visual Studio local workspace cache
+.vs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local

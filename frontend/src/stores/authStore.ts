@@ -31,7 +31,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       ;(window as { __authToken?: string }).__authToken = accessToken
       set({ user, accessToken, isAuthenticated: true, isLoading: false })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Login failed'
+      const data = (err as { response?: { data?: { errors?: string[]; message?: string } } })?.response?.data
+      const msg = data?.errors?.join(' ') ?? data?.message ?? (err instanceof Error ? err.message : 'Login failed')
       set({ error: msg, isLoading: false })
       throw err
     }
@@ -44,7 +45,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       ;(window as { __authToken?: string }).__authToken = accessToken
       set({ user, accessToken, isAuthenticated: true, isLoading: false })
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Signup failed'
+      const data = (err as { response?: { data?: { errors?: string[]; message?: string } } })?.response?.data
+      const msg = data?.errors?.join(' ') ?? data?.message ?? (err instanceof Error ? err.message : 'Signup failed')
       set({ error: msg, isLoading: false })
       throw err
     }

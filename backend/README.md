@@ -1,0 +1,192 @@
+# not-spotify Backend
+
+ASP.NET Core 8 Web API for the not-spotify music streaming app.
+
+- **Framework:** .NET 8 LTS, ASP.NET Core Web API (Controllers)
+- **Database:** PostgreSQL via EF Core (Npgsql)
+- **Auth:** ASP.NET Core Identity + JWT bearer + refresh-token cookies
+
+## Prerequisites
+
+Install once per machine:
+
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [PostgreSQL](https://www.postgresql.org/download/) (any recent version; tested with 16)
+- [pgAdmin](https://www.pgadmin.org/) (optional but handy for managing the DB)
+
+## First-time setup
+
+### 1. Create the dev database and app user
+
+In **pgAdmin** (connect as `postgres` superuser):
+
+1. **Login/Group Roles → Create → Login/Group Role**
+   - General → Name: `notspotify_app`
+   - Definition → Password: pick anything (e.g. `notspotify` for ease)
+   - Privileges → Can login: ✅
+2. **Databases → Create → Database**
+   - Name: `notspotify`
+   - Owner: `notspotify_app`
+
+Or equivalent SQL:
+
+```sql
+CREATE USER notspotify_app WITH PASSWORD 'notspotify';
+CREATE DATABASE notspotify OWNER notspotify_app;
+```
+
+> **Never use the `postgres` superuser** in your connection string. The dedicated app user can only touch the `notspotify` database, which limits blast radius.
+
+### 2. Store your local secrets
+
+Secrets stay on **your machine only** — they are written to `%APPDATA%\Microsoft\UserSecrets\<id>\secrets.json` and never touch the repo.
+
+```powershell
+cd backend/src/NotSpotify.Api
+
+dotnet user-secrets set "ConnectionStrings:Postgres" "Host=localhost;Port=5432;Database=notspotify;Username=notspotify_app;Password=<the-password-you-picked>"
+
+dotnet user-secrets set "Jwt:SigningKey" "<any-random-string-32+-chars>"
+```
+
+You can generate a JWT signing key with PowerShell:
+
+```powershell
+[Convert]::ToBase64String((1..48 | % { Get-Random -Max 256 }))
+```
+
+### 3. Apply the database schema
+
+```powershell
+cd backend/src/NotSpotify.Api
+dotnet ef database update
+```
+
+This runs the EF Core migrations and creates all the tables. If `dotnet ef` is not found, install it once globally:
+
+```powershell
+dotnet tool install --global dotnet-ef --version 8.*
+```
+
+### 4. Run the API
+
+```powershell
+cd backend/src/NotSpotify.Api
+dotnet run
+```
+
+The API listens on `https://localhost:7080` (and `http://localhost:5080`).
+
+On first boot the seeder populates the database with the same demo data the frontend uses in mock mode (12 tracks, 5 artists, 5 albums, 3 playlists, 18 genres, and a demo user).
+
+### 5. Try it
+
+- **Swagger UI:** <https://localhost:7080/swagger>
+- **Seed user:** `alex@example.com` / `Password123!`
+- **Sample endpoints:**
+  - `GET /genres`
+  - `GET /tracks/featured`
+  - `GET /artists`
+  - `POST /auth/login` → returns `{ accessToken, user }`
+
+## Pointing the frontend at the local API
+
+Edit `frontend/.env.development`:
+
+```
+VITE_USE_MOCK=false
+VITE_API_URL=https://localhost:7080
+```
+
+Then `npm run dev` in the `frontend/` directory.
+
+> Because the refresh-token cookie is `Secure`, you must use the **HTTPS** URL, not HTTP. If your browser complains about the dev cert, run `dotnet dev-certs https --trust` once.
+
+## Project layout
+
+```
+backend/
+└── src/NotSpotify.Api/
+    ├── Controllers/   AuthController + resource controllers (Tracks, Artists, Albums, Playlists, Genres, Search)
+    ├── Data/          AppDbContext, DbSeeder
+    ├── Dtos/          Request/response shapes (camelCase JSON matches frontend types)
+    ├── Models/        EF entities (ApplicationUser, Artist, Album, Track, Genre, Playlist, RefreshToken, join tables)
+    ├── Services/      TokenService, JwtOptions, Mapper
+    ├── Migrations/    EF Core migrations (committed, applied on startup)
+    └── Program.cs     DI + middleware wiring
+```
+
+## Common tasks
+
+| Task | Command |
+|---|---|
+| Add a new migration | `dotnet ef migrations add <Name>` |
+| Apply pending migrations | `dotnet ef database update` |
+| Roll back last migration | `dotnet ef database update <PreviousMigrationName>` |
+| List saved secrets | `dotnet user-secrets list` |
+| Remove a saved secret | `dotnet user-secrets remove "Key:Path"` |
+
+## Configuration reference
+
+| Key | Where | Notes |
+|---|---|---|
+| `ConnectionStrings:Postgres` | user-secrets (local) / env var (prod) | Standard Npgsql conn string |
+| `Jwt:SigningKey` | user-secrets (local) / Secrets Manager (prod) | Must be 32+ chars |
+| `Jwt:Issuer`, `Jwt:Audience` | `appsettings.json` | Safe to commit |
+| `Jwt:AccessTokenMinutes` | `appsettings.json` | Default 15 |
+| `Jwt:RefreshTokenDays` | `appsettings.json` | Default 30 |
+| `Cors:AllowedOrigins` | `appsettings.json` | Defaults to Vite's `http://localhost:5173` |
+
+## Media storage
+
+The app has a storage abstraction (`IStorageService`) so media (audio, cover art, avatars) is served the same way locally and on AWS — only the backing implementation changes.
+
+### Local dev (today)
+
+`LocalStorageService` serves files out of `backend/src/NotSpotify.Api/wwwroot/uploads/`:
+
+```
+wwwroot/uploads/
+├── audio/         # mp3 files,  e.g. audio/track-1.mp3
+├── covers/        # album/playlist covers
+├── avatars/       # user profile pictures
+└── headers/       # artist banner images
+```
+
+The folder structure is checked into git via `.gitkeep` markers, but the **actual media files are gitignored** — every developer drops their own copies on their machine. The seed data still uses external URLs (`soundhelix.com` for audio, `picsum.photos` for images) for zero-config local development — you don't have to provide any files to run the app.
+
+### Storage keys vs. URLs
+
+Every media-bearing entity has two columns:
+
+- `*Url` (legacy) — full external URL, e.g. `https://www.soundhelix.com/.../Song-1.mp3`
+- `*Key` (preferred) — a storage key, e.g. `audio/track-1.mp3`
+
+If `*Key` is set, the API resolves it via `IStorageService`. Otherwise it falls back to `*Url`. This lets us migrate to S3 incrementally without breaking existing data.
+
+### Trying it locally
+
+1. Drop an mp3 at `backend/src/NotSpotify.Api/wwwroot/uploads/audio/my-song.mp3`.
+2. Set a track's `AudioKey` to `audio/my-song.mp3` (via pgAdmin or `psql`):
+   ```sql
+   UPDATE "Tracks" SET "AudioKey" = 'audio/my-song.mp3', "AudioUrl" = NULL
+   WHERE "Title" = 'Tidal Drift';
+   ```
+3. `GET /tracks/{id}` now returns `audioUrl = https://localhost:7080/uploads/audio/my-song.mp3`.
+
+### Production (AWS S3 — not yet implemented)
+
+The plan is to ship an `S3StorageService` that uses the same interface:
+
+- **Audio bucket** — private, accessed via short-lived presigned URLs
+- **Public bucket** — fronted by CloudFront for covers/avatars/headers
+
+Switching is one DI registration line in `Program.cs`. No controller or DB schema changes.
+
+## What's not built yet
+
+- **`S3StorageService`** — comes with the AWS deployment milestone (needs an AWS account, IAM, bucket).
+- **Upload endpoints** — `IStorageService.UploadAsync` exists but no controller calls it yet. Admin upload UI is a future feature.
+- **Dockerfile + ECS deployment**
+- **RDS deployment** — schema works as-is; just point the connection string at the RDS endpoint.
+- **CI/CD pipeline**

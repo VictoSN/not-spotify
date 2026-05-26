@@ -58,5 +58,3 @@ api.interceptors.response.use(
   },
 )
 
-export const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
-export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'

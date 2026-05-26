@@ -1,0 +1,125 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using NotSpotify.Api.Data;
+using NotSpotify.Api.Dtos;
+using NotSpotify.Api.Models;
+using NotSpotify.Api.Services;
+
+namespace NotSpotify.Api.Controllers.Admin;
+
+[ApiController]
+[Route("admin/artists")]
+[Authorize(Roles = "Admin")]
+public class AdminArtistsController : ControllerBase
+{
+    private static readonly HashSet<string> AllowedImageExts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp",
+    };
+
+    private readonly AppDbContext _db;
+    private readonly MediaMapper _mapper;
+    private readonly IStorageService _storage;
+
+    public AdminArtistsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
+    {
+        _db = db;
+        _mapper = mapper;
+        _storage = storage;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ArtistDto>> Create([FromBody] CreateArtistRequest req, CancellationToken ct = default)
+    {
+        var artist = new Artist
+        {
+            Id = Guid.NewGuid(),
+            Name = req.Name,
+            Bio = req.Bio,
+            Instagram = req.Instagram,
+            Twitter = req.Twitter,
+            Website = req.Website,
+            Verified = req.Verified,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.Artists.Add(artist);
+        await _db.SaveChangesAsync(ct);
+        return CreatedAtAction(nameof(Get), new { id = artist.Id }, _mapper.ToDto(artist));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ArtistDto>> Get(Guid id, CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        return a is null ? NotFound() : Ok(_mapper.ToDto(a));
+    }
+
+    [HttpPatch("{id:guid}")]
+    public async Task<ActionResult<ArtistDto>> Update(Guid id, [FromBody] UpdateArtistRequest req, CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (a is null) return NotFound();
+
+        if (req.Name is not null) a.Name = req.Name;
+        if (req.Bio is not null) a.Bio = req.Bio;
+        if (req.Instagram is not null) a.Instagram = req.Instagram;
+        if (req.Twitter is not null) a.Twitter = req.Twitter;
+        if (req.Website is not null) a.Website = req.Website;
+        if (req.Verified is not null) a.Verified = req.Verified.Value;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(a));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (a is null) return NotFound();
+
+        var hasAlbums = await _db.Albums.AnyAsync(al => al.ArtistId == id, ct);
+        var hasTracks = await _db.Tracks.AnyAsync(t => t.ArtistId == id, ct);
+        if (hasAlbums || hasTracks)
+            return Conflict(new { message = "Artist has albums or tracks. Delete them first." });
+
+        _db.Artists.Remove(a);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id:guid}/image")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<ArtistDto>> UploadImage(Guid id, [FromForm] IFormFile file, [FromQuery] string type = "profile", CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (a is null) return NotFound();
+
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExts.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'. Allowed: {string.Join(", ", AllowedImageExts)}" });
+
+        var folder = type == "header" ? "headers" : "images/artists";
+        var key = $"{folder}/{Guid.NewGuid()}{ext}";
+
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        if (type == "header")
+        {
+            a.HeaderImageKey = key;
+            a.HeaderImageUrl = null;
+        }
+        else
+        {
+            a.ImageKey = key;
+            a.ImageUrl = null;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(a));
+    }
+}

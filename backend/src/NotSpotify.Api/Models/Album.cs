@@ -1,0 +1,21 @@
+namespace NotSpotify.Api.Models;
+
+public class Album
+{
+    public Guid Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Type { get; set; } = "album";
+    public string CoverUrl { get; set; } = string.Empty;
+    public string? CoverKey { get; set; }
+    public DateOnly ReleaseDate { get; set; }
+    public int TotalTracks { get; set; }
+    public long DurationMs { get; set; }
+    public string? Label { get; set; }
+    public string? Copyright { get; set; }
+    public int Popularity { get; set; }
+
+    public Guid ArtistId { get; set; }
+    public Artist Artist { get; set; } = null!;
+
+    public ICollection<Track> Tracks { get; set; } = new List<Track>();
+}

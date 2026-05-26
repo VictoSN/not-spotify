@@ -6,6 +6,7 @@ export interface User {
   plan: 'free' | 'premium'
   country: string
   createdAt: string
+  roles: string[]
 }
 
 export interface UserRef {

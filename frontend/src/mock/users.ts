@@ -8,6 +8,7 @@ export const mockUser: User = {
   plan: 'premium',
   country: 'US',
   createdAt: '2022-01-10T00:00:00Z',
+  roles: ['Admin'],
 }
 
 export const mockUserRef: UserRef = {

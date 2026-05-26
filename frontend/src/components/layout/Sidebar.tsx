@@ -5,12 +5,15 @@ import {
   BookmarkSquareIcon,
   PlusCircleIcon,
   MusicalNoteIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline'
 import {
   HomeIcon as HomeSolid,
   MagnifyingGlassIcon as SearchSolid,
+  Cog6ToothIcon as CogSolid,
 } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
 
 interface SidebarProps {
@@ -19,6 +22,8 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
   const { savedPlaylists, createPlaylist } = useLibraryStore()
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.roles?.includes('Admin') ?? false
 
   const handleCreatePlaylist = async () => {
     const name = `My Playlist #${savedPlaylists.length + 1}`
@@ -63,6 +68,12 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         {navItem('/', 'Home', HomeIcon, HomeSolid)}
         {navItem('/search', 'Search', MagnifyingGlassIcon, SearchSolid)}
         {navItem('/library', 'Library', BookmarkSquareIcon, BookmarkSquareIcon)}
+        {isAdmin && (
+          <>
+            <div className="my-1 border-t border-elevated/30" />
+            {navItem('/admin', 'Admin', Cog6ToothIcon, CogSolid)}
+          </>
+        )}
       </nav>
 
       {/* Library */}

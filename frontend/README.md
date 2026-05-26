@@ -1,73 +1,74 @@
-# React + TypeScript + Vite
+# 🎨 not-spotify Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite user interface for the not-spotify music streaming application.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 Getting Started
 
-## React Compiler
+### 1. Prerequisites
+Ensure you have the following installed locally:
+* [Node.js (LTS)](https://nodejs.org/)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+### 2. Setup and Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2. Install the package dependencies:
+   ```bash
+   npm install
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Environment Configurations
+
+Open [frontend/.env.development](file:///c:/Main/Project/Cloud/not-spotify/frontend/.env.development) to configure how the frontend interacts with data:
+
+#### Running with Mock Data (No Backend Required)
+If you want to run the frontend independently using mock service workers:
+```env
+VITE_USE_MOCK=true
+VITE_API_URL=http://localhost:5000
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+#### Running with the Local Backend API (C# PostgreSQL)
+If you are running the actual database and .NET Web API:
+```env
+VITE_USE_MOCK=false
+VITE_API_URL=https://localhost:7045
 ```
+*(Note: Because authentication cookies are `Secure`, you must use the HTTPS backend URL).*
+
+---
+
+### 4. Running the Client
+
+Start the development server:
+```bash
+npm run dev
+```
+*The local development client will be available at **`http://localhost:5173`**.*
+
+---
+
+### 🛠️ Available Scripts
+
+In the frontend directory, you can run:
+
+* `npm run dev` — Starts the Vite development server with Hot Module Replacement (HMR).
+* `npm run build` — Compiles the TypeScript code and bundles the asset files for production.
+* `npm run lint` — Runs ESLint to check for code issues.
+* `npm run preview` — Locally previews the built production bundle.
+
+---
+
+### 🔑 Seed Login Credentials (When VITE_USE_MOCK=false)
+Log in with the default development user:
+* **Email:** `alex@example.com`
+* **Password:** `Password123!`

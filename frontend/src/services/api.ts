@@ -22,7 +22,11 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config
-    if (error.response?.status !== 401 || original._retry) throw error
+    const isAuthEndpoint = original.url?.includes('/auth/refresh') ||
+                           original.url?.includes('/auth/login') ||
+                           original.url?.includes('/auth/signup')
+
+    if (error.response?.status !== 401 || original._retry || isAuthEndpoint) throw error
 
     if (isRefreshing) {
       return new Promise((resolve) => {

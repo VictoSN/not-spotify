@@ -90,11 +90,12 @@ public class AdminArtistsController : ControllerBase
 
     [HttpPost("{id:guid}/image")]
     [RequestSizeLimit(5_000_000)]
-    public async Task<ActionResult<ArtistDto>> UploadImage(Guid id, [FromForm] IFormFile file, [FromQuery] string type = "profile", CancellationToken ct = default)
+    public async Task<ActionResult<ArtistDto>> UploadImage(Guid id, [FromForm] ArtistImageUploadRequest req, [FromQuery] string type = "profile", CancellationToken ct = default)
     {
         var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound();
 
+        var file = req.File;
         if (file is null || file.Length == 0)
             return BadRequest(new { message = "No file provided." });
 

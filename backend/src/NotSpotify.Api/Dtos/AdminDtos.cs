@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
 
 namespace NotSpotify.Api.Dtos;
 
@@ -19,3 +20,10 @@ public record UpdateArtistRequest(
     string? Website,
     bool? Verified
 );
+
+public class ArtistImageUploadRequest
+{
+    [Required]
+    public IFormFile File { get; set; } = null!;
+}
+

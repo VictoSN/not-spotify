@@ -75,13 +75,13 @@ cd backend/src/NotSpotify.Api
 dotnet run
 ```
 
-The API listens on `https://localhost:7080` (and `http://localhost:5080`).
+The API listens on `https://localhost:7045` (and `http://localhost:5166`).
 
 On first boot the seeder populates the database with the same demo data the frontend uses in mock mode (12 tracks, 5 artists, 5 albums, 3 playlists, 18 genres, and a demo user).
 
 ### 5. Try it
 
-- **Swagger UI:** <https://localhost:7080/swagger>
+- **Swagger UI:** <https://localhost:7045/swagger>
 - **Seed user:** `alex@example.com` / `Password123!`
 - **Sample endpoints:**
   - `GET /genres`
@@ -95,7 +95,7 @@ Edit `frontend/.env.development`:
 
 ```
 VITE_USE_MOCK=false
-VITE_API_URL=https://localhost:7080
+VITE_API_URL=https://localhost:7045
 ```
 
 Then `npm run dev` in the `frontend/` directory.

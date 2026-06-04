@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatMs } from '@/utils/formatTime'
+import { useDominantColor } from '@/hooks/useDominantColor'
 
 export function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -30,6 +31,8 @@ export function AlbumDetailPage() {
     })
   }, [id])
 
+  const heroColor = useDominantColor(album?.coverUrl)
+
   if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
   if (!album) return <div className="p-8 text-secondary">Album not found.</div>
 
@@ -38,7 +41,10 @@ export function AlbumDetailPage() {
 
   return (
     <div>
-      <div className="flex items-end gap-6 p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent">
+      <div
+        className="flex items-end gap-6 p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
+        style={{ background: heroColor ? `linear-gradient(to bottom, ${heroColor}b3 0%, ${heroColor}33 60%, transparent 100%)` : undefined }}
+      >
         <img src={album.coverUrl} alt={album.title} className="w-44 h-44 sm:w-56 sm:h-56 rounded-md shadow-2xl flex-shrink-0 object-cover" />
         <div className="min-w-0 pb-2">
           <div className="flex items-center gap-2 mb-1">

@@ -9,7 +9,7 @@ export function ShuffleRepeatControls() {
     <div className="flex items-center gap-4">
       <button
         onClick={toggleShuffle}
-        className={cn('transition-colors relative', shuffleEnabled ? 'text-accent' : 'text-secondary hover:text-primary')}
+        className={cn('transition-all relative hover:scale-110 active:scale-90', shuffleEnabled ? 'text-accent' : 'text-secondary hover:text-primary')}
         aria-label="Toggle shuffle"
         aria-pressed={shuffleEnabled}
       >
@@ -19,7 +19,7 @@ export function ShuffleRepeatControls() {
 
       <button
         onClick={cycleRepeat}
-        className={cn('transition-colors relative', repeatMode !== 'off' ? 'text-accent' : 'text-secondary hover:text-primary')}
+        className={cn('transition-all relative hover:scale-110 active:scale-90', repeatMode !== 'off' ? 'text-accent' : 'text-secondary hover:text-primary')}
         aria-label={`Repeat: ${repeatMode}`}
       >
         <ArrowPathIcon className="w-4 h-4" />

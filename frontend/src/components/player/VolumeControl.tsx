@@ -7,7 +7,7 @@ export function VolumeControl() {
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={toggleMute} className="text-secondary hover:text-primary transition-colors" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+      <button onClick={toggleMute} className="text-secondary hover:text-primary transition-all hover:scale-110 active:scale-90" aria-label={isMuted ? 'Unmute' : 'Mute'}>
         {isMuted || volume === 0 ? (
           <SpeakerXMarkIcon className="w-4 h-4" />
         ) : (

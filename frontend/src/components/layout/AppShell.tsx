@@ -14,7 +14,7 @@ export function AppShell() {
     <div className="flex flex-col h-screen bg-base text-primary">
       <TopBar />
 
-      {/* Middle row: 3 floating cards on the base gutter */}
+      {/* Middle row: floating cards on the base gutter */}
       <div className="flex flex-1 gap-2 px-2 pb-2 min-h-0 overflow-hidden">
         {!isMobile && <Sidebar />}
 

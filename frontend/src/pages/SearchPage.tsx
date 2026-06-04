@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect, useReducer } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
+import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { genreService } from '@/services/genreService'
 import type { Genre } from '@/types/genre'
 import { useDebounce } from '@/hooks/useDebounce'
+import { useAuthStore } from '@/stores/authStore'
+import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from '@/utils/recentSearches'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -20,10 +22,19 @@ export function SearchPage() {
   const query = searchParams.get('q') ?? ''
   const debouncedQuery = useDebounce(query, 300)
 
-  const [results, setResults] = useState<SearchResults | null>(null)
+  const [resultsState, setResultsState] = useState<{ query: string; data: SearchResults } | null>(null)
   const [genres, setGenres] = useState<Genre[]>([])
-  const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('all')
+
+  const navigate = useNavigate()
+  const userId = useAuthStore((s) => s.user?.id)
+  const [, bumpRecents] = useReducer((x: number) => x + 1, 0)
+  const recents = getRecentSearches(userId)
+
+  // Derive results/loading from state so the effect never calls setState synchronously.
+  const trimmed = query.trim()
+  const results = resultsState && resultsState.query === trimmed ? resultsState.data : null
+  const loading = trimmed.length > 0 && !results
 
   // Load genres on first render
   useEffect(() => {
@@ -32,25 +43,67 @@ export function SearchPage() {
 
   // Search when query changes
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setResults(null)
-      return
-    }
-    setLoading(true)
-    searchService.search(debouncedQuery).then((r) => {
-      setResults(r)
-      setLoading(false)
+    const q = debouncedQuery.trim()
+    if (!q) return
+    let cancelled = false
+    searchService.search(q).then((r) => {
+      if (cancelled) return
+      setResultsState({ query: q, data: r })
+      const hasResults =
+        r.tracks.length > 0 || r.artists.length > 0 || r.albums.length > 0 || r.playlists.length > 0
+      if (hasResults) {
+        addRecentSearch(userId, q)
+        bumpRecents()
+      }
     })
-  }, [debouncedQuery])
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedQuery, userId])
 
   const tabs: Tab[] = ['all', 'songs', 'artists', 'albums', 'playlists']
 
   return (
     <div className="px-6 py-6">
-      {!query && !results ? (
-        /* Browse genres */
+      {!query.trim() ? (
+        /* Recent searches + browse */
         <>
-          <h2 className="text-2xl font-bold text-primary mb-6">Browse genres</h2>
+          {recents.length > 0 && (
+            <section className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-primary">Recent searches</h2>
+                <button
+                  onClick={() => { clearRecentSearches(userId); bumpRecents() }}
+                  className="text-xs font-semibold text-secondary hover:text-primary uppercase tracking-wider transition-colors"
+                >
+                  Clear all
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {recents.map((term) => (
+                  <div
+                    key={term}
+                    className="flex items-center gap-1 bg-elevated hover:bg-surface rounded-full pl-4 pr-1.5 py-1.5 transition-colors"
+                  >
+                    <button
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(term)}`)}
+                      className="text-sm font-medium text-primary"
+                    >
+                      {term}
+                    </button>
+                    <button
+                      onClick={() => { removeRecentSearch(userId, term); bumpRecents() }}
+                      aria-label={`Remove ${term}`}
+                      className="text-secondary hover:text-primary p-0.5 rounded-full hover:bg-elevated transition-colors"
+                    >
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          <h2 className="text-2xl font-bold text-primary mb-6">Browse all</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {genres.map((genre) => (
               <Link

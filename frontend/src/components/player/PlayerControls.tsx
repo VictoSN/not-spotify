@@ -10,11 +10,11 @@ export function PlayerControls() {
   const { isPlaying, currentTrack, togglePlayPause, skipNext, skipPrevious } = usePlayerStore()
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-5">
       <button
         onClick={skipPrevious}
         disabled={!currentTrack}
-        className="text-secondary hover:text-primary transition-colors disabled:opacity-30"
+        className="text-secondary hover:text-primary transition-all hover:scale-110 active:scale-90 disabled:opacity-30 disabled:hover:scale-100"
         aria-label="Previous"
       >
         <BackwardIcon className="w-5 h-5" />
@@ -23,7 +23,7 @@ export function PlayerControls() {
       <button
         onClick={togglePlayPause}
         disabled={!currentTrack}
-        className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-30"
+        className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:scale-110 active:scale-95 transition-transform disabled:opacity-30 disabled:hover:scale-100"
         aria-label={isPlaying ? 'Pause' : 'Play'}
       >
         {isPlaying ? (
@@ -36,7 +36,7 @@ export function PlayerControls() {
       <button
         onClick={skipNext}
         disabled={!currentTrack}
-        className="text-secondary hover:text-primary transition-colors disabled:opacity-30"
+        className="text-secondary hover:text-primary transition-all hover:scale-110 active:scale-90 disabled:opacity-30 disabled:hover:scale-100"
         aria-label="Next"
       >
         <ForwardIcon className="w-5 h-5" />

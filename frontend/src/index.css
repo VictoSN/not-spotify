@@ -23,7 +23,7 @@
   --color-muted: var(--c-muted);
 
   /* Fonts */
-  --font-sans: "Circular", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /* ── Dark theme (default) — Spotify green ─────────────────────── */
@@ -87,6 +87,13 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Spotify-style tighter tracking on bold display text */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 /* Smooth the theme transition on broad surfaces (not on transforms) */

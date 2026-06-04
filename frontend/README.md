@@ -23,6 +23,9 @@ Ensure you have the following installed locally:
    ```bash
    npm install
    ```
+   > **New runtime dependencies (already in `package.json`, pulled in by `npm install` — no extra steps):**
+   > - [`@fontsource-variable/montserrat`](https://www.npmjs.com/package/@fontsource-variable/montserrat) — self-hosted **Montserrat**, a free stand-in for Spotify's proprietary "Circular" typeface (no CDN, works offline).
+   > - [`node-vibrant`](https://www.npmjs.com/package/node-vibrant) — extracts the dominant colour from cover art to render Spotify-style gradient hues (home header, now-playing panel, album pages).
 
 ---
 

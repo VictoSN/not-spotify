@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -8,6 +8,12 @@ import {
   SunIcon,
   MoonIcon,
   ArrowRightOnRectangleIcon,
+  Cog6ToothIcon,
+  MusicalNoteIcon,
+  UserIcon,
+  UserCircleIcon,
+  QuestionMarkCircleIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -24,6 +30,7 @@ export function TopBar() {
 
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
+  const isAdmin = user?.roles?.includes('Admin') ?? false
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value
@@ -33,8 +40,14 @@ export function TopBar() {
 
   return (
     <header className="flex items-center gap-4 px-4 h-16 shrink-0 bg-base">
+      {/* Far left: logo */}
+      <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
+        <MusicalNoteIcon className="w-8 h-8 text-accent" />
+        <span className="hidden md:block font-bold text-lg text-primary tracking-tight">not-spotify</span>
+      </Link>
+
       {/* Left: back / forward */}
-      <div className="hidden sm:flex items-center gap-2">
+      <div className="hidden lg:flex items-center gap-2">
         <button
           onClick={() => navigate(-1)}
           className="w-8 h-8 rounded-full bg-elevated flex items-center justify-center text-secondary hover:text-primary transition-colors"
@@ -105,13 +118,43 @@ export function TopBar() {
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full mt-2 w-44 bg-elevated rounded-md shadow-xl border border-secondary/10 overflow-hidden z-50">
+            <div className="absolute right-0 top-full mt-2 w-52 bg-elevated rounded-md shadow-xl border border-secondary/10 overflow-hidden z-50 py-1">
+              {/* Display-only placeholders for now (to be wired up later) */}
+              <button type="button" className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default">
+                <UserIcon className="w-4 h-4" />
+                Account
+              </button>
+              <button type="button" className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default">
+                <UserCircleIcon className="w-4 h-4" />
+                Profile
+              </button>
+              <button type="button" className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default">
+                <QuestionMarkCircleIcon className="w-4 h-4" />
+                Support
+              </button>
+              <button type="button" className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default">
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Download
+              </button>
+
+              <div className="my-1 border-t border-secondary/10" />
+
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={() => setShowMenu(false)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                >
+                  <Cog6ToothIcon className="w-4 h-4" />
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={() => {
                   setShowMenu(false)
                   logout()
                 }}
-                className="flex items-center gap-3 w-full px-4 py-3 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
               >
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
                 Log out

@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useHueStore } from '@/stores/hueStore'
+import { getDominantColor } from '@/hooks/useDominantColor'
 
 interface PlaylistCardProps {
   playlist: Playlist
@@ -9,6 +11,7 @@ interface PlaylistCardProps {
 
 export function PlaylistCard({ playlist }: PlaylistCardProps) {
   const play = usePlayerStore((s) => s.play)
+  const setHoverColor = useHueStore((s) => s.setHoverColor)
 
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -19,6 +22,8 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
   return (
     <Link
       to={`/playlist/${playlist.id}`}
+      onMouseEnter={() => { if (playlist.coverUrl) getDominantColor(playlist.coverUrl).then((c) => c && setHoverColor(c)) }}
+      onMouseLeave={() => setHoverColor(null)}
       className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">

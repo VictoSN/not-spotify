@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -13,7 +14,10 @@ type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
 
 export function LibraryPage() {
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, isLoading, fetchLibrary, createPlaylist } = useLibraryStore()
-  const [filter, setFilter] = useState<Filter>('playlists')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') as Filter | null
+  const filter: Filter = tab && ['playlists', 'albums', 'artists', 'liked'].includes(tab) ? tab : 'playlists'
+  const setFilter = (f: Filter) => setSearchParams(f === 'playlists' ? {} : { tab: f })
 
   useEffect(() => {
     fetchLibrary()

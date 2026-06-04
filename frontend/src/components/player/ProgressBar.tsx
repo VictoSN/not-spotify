@@ -12,7 +12,7 @@ export function ProgressBar() {
   const max = duration > 0 ? duration : 1
 
   return (
-    <div className="flex items-center gap-2 w-full max-w-md">
+    <div className="flex items-center gap-2 w-full">
       <span className="text-xs text-secondary w-8 text-right tabular-nums">{formatSeconds(display)}</span>
       <Slider
         value={display}

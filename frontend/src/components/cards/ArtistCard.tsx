@@ -1,5 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PlayIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
+import { usePlayerStore } from '@/stores/playerStore'
+import { artistService } from '@/services/artistService'
 import { formatNumber } from '@/utils/formatNumber'
 
 interface ArtistCardProps {
@@ -7,6 +11,22 @@ interface ArtistCardProps {
 }
 
 export function ArtistCard({ artist }: ArtistCardProps) {
+  const play = usePlayerStore((s) => s.play)
+  const [loading, setLoading] = useState(false)
+
+  const handlePlay = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (loading) return
+    setLoading(true)
+    try {
+      const tracks = await artistService.getTopTracks(artist.id, 20)
+      if (tracks.length > 0) play(tracks[0], tracks)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <Link
       to={`/artist/${artist.id}`}
@@ -18,6 +38,14 @@ export function ArtistCard({ artist }: ArtistCardProps) {
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl">🎤</div>
         )}
+        <button
+          onClick={handlePlay}
+          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 disabled:opacity-60"
+          aria-label={`Play ${artist.name}`}
+          disabled={loading}
+        >
+          <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+        </button>
       </div>
       <p className="text-sm font-semibold text-primary truncate">{artist.name}</p>
       <p className="text-xs text-secondary mt-0.5">{formatNumber(artist.monthlyListeners)} listeners</p>

@@ -10,13 +10,15 @@ export function BottomPlayerBar() {
   const { toggleNowPlaying, isNowPlayingOpen } = usePlayerStore()
 
   return (
-    <div className="shrink-0 h-20 sm:h-24 bg-base flex items-center justify-between gap-2 px-4">
+    <div className="shrink-0 h-20 sm:h-24 bg-base grid grid-cols-3 items-center gap-2 px-4">
       {/* Left: Now Playing Info */}
-      <NowPlayingInfo />
+      <div className="min-w-0 justify-self-start">
+        <NowPlayingInfo />
+      </div>
 
-      {/* Center: Controls + Progress */}
-      <div className="flex flex-col items-center gap-2 flex-1 max-w-2xl px-4">
-        <div className="flex items-center gap-4">
+      {/* Center: Controls + Progress — equal side columns keep this perfectly centered */}
+      <div className="flex flex-col items-center gap-2 w-full max-w-[620px] justify-self-center">
+        <div className="flex items-center gap-5">
           <ShuffleRepeatControls />
           <PlayerControls />
         </div>
@@ -24,11 +26,11 @@ export function BottomPlayerBar() {
       </div>
 
       {/* Right: Volume + Now Playing panel toggle */}
-      <div className="flex items-center gap-3 w-56 justify-end">
+      <div className="flex items-center gap-3 justify-self-end">
         <VolumeControl />
         <button
           onClick={toggleNowPlaying}
-          className={`hidden lg:block transition-colors ${isNowPlayingOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+          className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${isNowPlayingOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
           aria-label="Toggle now playing panel"
           aria-pressed={isNowPlayingOpen}
         >

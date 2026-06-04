@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { XMarkIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, HeartIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
@@ -12,6 +12,31 @@ import { albumService } from '@/services/albumService'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
+import { useDominantColor } from '@/hooks/useDominantColor'
+
+const NP_KEY = 'ns-nowplaying-width'
+const NP_DEFAULT = 320
+const NP_MIN = 280
+const NP_MAX = 460
+
+function getInitialNpWidth(): number {
+  if (typeof window === 'undefined') return NP_DEFAULT
+  const stored = Number(window.localStorage.getItem(NP_KEY))
+  if (!stored || Number.isNaN(stored)) return NP_DEFAULT
+  return Math.min(Math.max(stored, NP_MIN), NP_MAX)
+}
+
+function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="group absolute top-0 left-0 h-full w-2 cursor-col-resize z-20 flex justify-center"
+      aria-hidden="true"
+    >
+      <div className="w-px h-full bg-transparent group-hover:bg-accent/50 transition-colors" />
+    </div>
+  )
+}
 
 function PanelSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -30,13 +55,46 @@ export function NowPlayingPanel() {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const queue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
-  const toggleNowPlaying = usePlayerStore((s) => s.toggleNowPlaying)
+  const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
+  const setNowPlayingCollapsed = usePlayerStore((s) => s.setNowPlayingCollapsed)
 
   const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } =
     useLibraryStore()
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
+
+  // Resizable width — drag the left edge.
+  const [width, setWidth] = useState(getInitialNpWidth)
+  const [dragging, setDragging] = useState(false)
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null)
+  useEffect(() => {
+    window.localStorage.setItem(NP_KEY, String(width))
+  }, [width])
+  const onDragStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startW: width }
+    setDragging(true)
+  }
+  useEffect(() => {
+    if (!dragging) return
+    const onMove = (e: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = dragRef.current.startX - e.clientX // dragging left widens the panel
+      setWidth(Math.min(Math.max(dragRef.current.startW + delta, NP_MIN), NP_MAX))
+    }
+    const onUp = () => setDragging(false)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [dragging])
 
   const artistId = currentTrack?.artist.id
   const albumId = currentTrack?.album.id
@@ -76,19 +134,50 @@ export function NowPlayingPanel() {
   const related = artistData && artistData.artistId === artistId ? artistData.related : []
   const loadingArtist = !!artistId && !artistReady
   const album = albumData && albumData.albumId === albumId ? albumData.album : null
+  const heroColor = useDominantColor(currentTrack?.album.coverUrl)
+
+  // Collapsed → thin sliver with an expand control (does not fully close).
+  if (isNowPlayingCollapsed) {
+    return (
+      <aside className="hidden lg:flex w-14 shrink-0 flex-col items-center rounded-lg bg-surface py-3 gap-3">
+        <button
+          onClick={() => setNowPlayingCollapsed(false)}
+          className="text-secondary hover:text-primary hover:scale-110 transition-all"
+          aria-label="Expand now playing"
+          title="Expand"
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+        </button>
+        {currentTrack && (
+          <button
+            onClick={() => setNowPlayingCollapsed(false)}
+            className="w-10 h-10 rounded overflow-hidden hover:scale-105 transition-transform"
+            title={currentTrack.title}
+            aria-label="Expand now playing"
+          >
+            <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="w-full h-full object-cover" />
+          </button>
+        )}
+      </aside>
+    )
+  }
 
   if (!currentTrack) {
     return (
-      <aside className="hidden lg:flex w-80 shrink-0 flex-col rounded-lg bg-surface">
+      <aside
+        style={{ width }}
+        className="relative hidden lg:flex shrink-0 flex-col rounded-lg bg-surface overflow-hidden"
+      >
         <div className="flex items-center justify-between p-4">
           <h2 className="text-base font-bold text-primary">Now playing</h2>
-          <button onClick={toggleNowPlaying} className="text-secondary hover:text-primary" aria-label="Close panel">
+          <button onClick={() => setNowPlayingCollapsed(true)} className="text-secondary hover:text-primary" aria-label="Collapse panel">
             <XMarkIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">
           Play a song to see what's playing, related tracks and artist info here.
         </p>
+        <NowPlayingDragHandle onMouseDown={onDragStart} />
       </aside>
     )
   }
@@ -107,13 +196,23 @@ export function NowPlayingPanel() {
   }
 
   return (
-    <aside className="hidden lg:flex w-80 shrink-0 flex-col rounded-lg bg-surface overflow-y-auto">
+    <aside
+      style={{ width }}
+      className="relative hidden lg:flex shrink-0 flex-col rounded-lg bg-surface overflow-hidden"
+    >
+      <div className="relative flex-1 overflow-y-auto">
+      {/* Dynamic colour hue from the cover */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 transition-opacity duration-700"
+        style={{ background: heroColor ? `linear-gradient(180deg, ${heroColor}b3 0%, ${heroColor}26 50%, transparent 100%)` : undefined }}
+      />
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between p-4 bg-surface/95 backdrop-blur">
+      <div className="sticky top-0 z-20 flex items-center justify-between p-4 bg-surface/80 backdrop-blur">
         <Link to={`/album/${currentTrack.album.id}`} className="text-base font-bold text-primary truncate hover:underline">
           {currentTrack.album.title}
         </Link>
-        <button onClick={toggleNowPlaying} className="text-secondary hover:text-primary shrink-0 ml-2" aria-label="Close panel">
+        <button onClick={() => setNowPlayingCollapsed(true)} className="text-secondary hover:text-primary shrink-0 ml-2" aria-label="Collapse panel">
           <XMarkIcon className="w-5 h-5" />
         </button>
       </div>
@@ -235,6 +334,8 @@ export function NowPlayingPanel() {
           <p className="text-sm text-secondary">Nothing queued up next.</p>
         )}
       </PanelSection>
+      </div>
+      <NowPlayingDragHandle onMouseDown={onDragStart} />
     </aside>
   )
 }

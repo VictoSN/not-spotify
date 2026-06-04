@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PlayIcon } from '@heroicons/react/24/solid'
+import { MusicalNoteIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import type { Playlist } from '@/types/playlist'
 import type { Album } from '@/types/album'
@@ -8,16 +10,21 @@ import { playlistService } from '@/services/playlistService'
 import { albumService } from '@/services/albumService'
 import { useAuthStore } from '@/stores/authStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useLibraryStore } from '@/stores/libraryStore'
+import { useHueStore } from '@/stores/hueStore'
+import { useDominantColor, getDominantColor } from '@/hooks/useDominantColor'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { TrackCard } from '@/components/cards/TrackCard'
+import { TrackTile } from '@/components/cards/TrackTile'
 import { Spinner } from '@/components/ui/Spinner'
 
 export function HomePage() {
   const { user } = useAuthStore()
-  const { play } = usePlayerStore()
+  const { play, currentTrack } = usePlayerStore()
+  const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const [trending, setTrending] = useState<Track[]>([])
   const [featured, setFeatured] = useState<Playlist[]>([])
   const [newReleases, setNewReleases] = useState<Album[]>([])
@@ -39,6 +46,20 @@ export function HomePage() {
     })
   }, [])
 
+  // Cover-derived hue for the top of the page (reflects what's playing, else a featured cover).
+  const heroSeed =
+    currentTrack?.album.coverUrl ??
+    recommended[0]?.album.coverUrl ??
+    savedPlaylists.find((p) => p.coverUrl)?.coverUrl ??
+    null
+  const baseColor = useDominantColor(heroSeed)
+  const hoverColor = useHueStore((s) => s.hoverColor)
+  const setHoverColor = useHueStore((s) => s.setHoverColor)
+  // Hovering a card tints the hue toward that cover; otherwise follow the playing track.
+  const heroColor = hoverColor ?? baseColor
+
+  useEffect(() => () => setHoverColor(null), [setHoverColor])
+
   const getGreeting = () => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
@@ -54,81 +75,103 @@ export function HomePage() {
     )
   }
 
+  const quickPicks = savedPlaylists.slice(0, 6)
+
   return (
-    <div className="px-6 py-6">
-      <h1 className="text-3xl font-bold text-primary mb-6">
-        {getGreeting()}{user ? `, ${user.name.split(' ')[0]}` : ''}
-      </h1>
+    <div className="relative">
+      {/* Dynamic colour hue — smoothly crossfades to the hovered card's colour */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 opacity-60 transition-colors duration-500"
+        style={{
+          backgroundColor: heroColor ?? 'transparent',
+          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
+          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
+        }}
+      />
 
-      {/* Quick access: recently played playlists in a grid */}
-      {featured.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-8">
-          {featured.slice(0, 6).map((p) => (
-            <button
-              key={p.id}
-              onClick={() => { const tracks = p.tracks.map((pt) => pt.track); if (tracks.length) play(tracks[0], tracks) }}
-              className="relative flex items-center gap-3 bg-elevated/60 hover:bg-elevated rounded-md overflow-hidden text-left group transition-colors"
-            >
-              {p.coverUrl && (
-                <img src={p.coverUrl} alt={p.name} className="w-14 h-14 object-cover flex-shrink-0" />
-              )}
-              <span className="text-sm font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
-              <span className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-lg">
-                <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="relative px-6 py-6">
+        <h1 className="text-3xl font-bold text-primary mb-6">
+          {getGreeting()}
+          {user ? `, ${user.name.split(' ')[0]}` : ''}
+        </h1>
 
-      {/* Recommended */}
-      <section className="mb-8">
-        <SectionHeader title="Recommended for you" />
-        <HorizontalScroller>
-          {recommended.map((track) => (
-            <div key={track.id} className="flex-shrink-0 w-36 sm:w-40">
-              <div
-                className="group relative aspect-square rounded-md overflow-hidden bg-elevated mb-2 cursor-pointer"
-                onClick={() => play(track, recommended)}
-              >
-                <img src={track.album.coverUrl} alt={track.album.title} className="w-full h-full object-cover" />
-              </div>
-              <p className="text-sm font-semibold text-primary truncate">{track.title}</p>
-              <p className="text-xs text-secondary truncate">{track.artist.name}</p>
-            </div>
-          ))}
-        </HorizontalScroller>
-      </section>
+        {/* Quick access — the same library shown in the sidebar */}
+        {quickPicks.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+            {quickPicks.map((p) => {
+              const tracks = p.tracks?.map((pt) => pt.track) ?? []
+              return (
+                <Link
+                  key={p.id}
+                  to={`/playlist/${p.id}`}
+                  onMouseEnter={() => { if (p.coverUrl) getDominantColor(p.coverUrl).then((c) => c && setHoverColor(c)) }}
+                  onMouseLeave={() => setHoverColor(null)}
+                  className="relative flex items-center gap-3 bg-elevated/40 hover:bg-elevated rounded-md overflow-hidden group transition-colors"
+                >
+                  <div className="w-14 h-14 shrink-0 bg-surface flex items-center justify-center overflow-hidden">
+                    {p.coverUrl ? (
+                      <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <MusicalNoteIcon className="w-6 h-6 text-secondary" />
+                    )}
+                  </div>
+                  <span className="text-sm font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
+                  {tracks.length > 0 && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); play(tracks[0], tracks) }}
+                      className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                      aria-label={`Play ${p.name}`}
+                    >
+                      <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+                    </button>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
-      {/* Trending */}
-      <section className="mb-8">
-        <SectionHeader title="Trending now" />
-        <div className="flex flex-col gap-1">
-          {trending.slice(0, 8).map((track) => (
-            <TrackCard key={track.id} track={track} queue={trending} />
-          ))}
-        </div>
-      </section>
+        {/* Recommended */}
+        <section className="mb-8">
+          <SectionHeader title="Recommended for you" />
+          <HorizontalScroller>
+            {recommended.map((track) => (
+              <TrackTile key={track.id} track={track} queue={recommended} />
+            ))}
+          </HorizontalScroller>
+        </section>
 
-      {/* Featured Playlists */}
-      <section className="mb-8">
-        <SectionHeader title="Featured playlists" href="/library" />
-        <HorizontalScroller>
-          {featured.map((playlist) => (
-            <PlaylistCard key={playlist.id} playlist={playlist} />
-          ))}
-        </HorizontalScroller>
-      </section>
+        {/* Trending */}
+        <section className="mb-8">
+          <SectionHeader title="Trending now" />
+          <div className="flex flex-col gap-1">
+            {trending.slice(0, 8).map((track) => (
+              <TrackCard key={track.id} track={track} queue={trending} />
+            ))}
+          </div>
+        </section>
 
-      {/* New Releases */}
-      <section className="mb-8">
-        <SectionHeader title="New releases" />
-        <HorizontalScroller>
-          {newReleases.map((album) => (
-            <AlbumCard key={album.id} album={album} />
-          ))}
-        </HorizontalScroller>
-      </section>
+        {/* Featured Playlists */}
+        <section className="mb-8">
+          <SectionHeader title="Featured playlists" href="/library" />
+          <HorizontalScroller>
+            {featured.map((playlist) => (
+              <PlaylistCard key={playlist.id} playlist={playlist} />
+            ))}
+          </HorizontalScroller>
+        </section>
+
+        {/* New Releases */}
+        <section className="mb-8">
+          <SectionHeader title="New releases" />
+          <HorizontalScroller>
+            {newReleases.map((album) => (
+              <AlbumCard key={album.id} album={album} />
+            ))}
+          </HorizontalScroller>
+        </section>
+      </div>
     </div>
   )
 }

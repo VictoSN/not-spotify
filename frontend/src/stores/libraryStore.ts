@@ -22,10 +22,13 @@ interface LibraryState {
   unfollowArtist: (artistId: string) => Promise<void>
   saveAlbum: (album: Album) => Promise<void>
   unsaveAlbum: (albumId: string) => Promise<void>
-  createPlaylist: (name: string, description?: string) => Promise<Playlist>
+  createPlaylist: (name: string, description?: string, isPublic?: boolean) => Promise<Playlist>
   addTrackToPlaylist: (playlistId: string, track: Track) => Promise<void>
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>
   deletePlaylist: (playlistId: string) => Promise<void>
+  savePlaylist: (playlist: Playlist) => Promise<void>
+  unsavePlaylist: (playlistId: string) => Promise<void>
+  setPlaylistVisibility: (playlistId: string, isPublic: boolean) => Promise<void>
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -109,10 +112,32 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     })
   },
 
-  createPlaylist: async (name, description) => {
-    const playlist = await playlistService.create(name, description)
+  createPlaylist: async (name, description, isPublic = true) => {
+    const playlist = await playlistService.create(name, description, isPublic)
     set((s) => ({ savedPlaylists: [playlist, ...s.savedPlaylists] }))
     return playlist
+  },
+
+  savePlaylist: async (playlist) => {
+    await playlistService.save(playlist.id)
+    set((s) => ({
+      savedPlaylists: [
+        { ...playlist, isSaved: true, isOwner: false },
+        ...s.savedPlaylists.filter((p) => p.id !== playlist.id),
+      ],
+    }))
+  },
+
+  unsavePlaylist: async (playlistId) => {
+    await playlistService.unsave(playlistId)
+    set((s) => ({ savedPlaylists: s.savedPlaylists.filter((p) => p.id !== playlistId) }))
+  },
+
+  setPlaylistVisibility: async (playlistId, isPublic) => {
+    await playlistService.updateVisibility(playlistId, isPublic)
+    set((s) => ({
+      savedPlaylists: s.savedPlaylists.map((p) => (p.id === playlistId ? { ...p, isPublic } : p)),
+    }))
   },
 
   addTrackToPlaylist: async (playlistId, track) => {

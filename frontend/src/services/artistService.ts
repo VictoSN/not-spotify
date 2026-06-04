@@ -28,4 +28,9 @@ export const artistService = {
     const res = await api.get<Artist[]>('/artists')
     return res.data.slice(0, 4)
   },
+
+  async getPopular(limit = 10): Promise<Artist[]> {
+    const res = await api.get<Artist[]>('/artists/popular', { params: { limit } })
+    return res.data
+  },
 }

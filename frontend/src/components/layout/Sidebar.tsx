@@ -117,7 +117,7 @@ export function Sidebar() {
       id: p.id,
       kind: 'playlist',
       name: p.name,
-      subtitle: `Playlist • ${p.owner?.name ?? 'You'}`,
+      subtitle: `Playlist • ${p.isOwner ? 'You' : (p.owner?.name ?? 'Unknown')}`,
       image: p.coverUrl,
       round: false,
       to: `/playlist/${p.id}`,

@@ -26,6 +26,16 @@ public class ArtistsController : ControllerBase
         return Ok(artists.Select(a => _mapper.ToDto(a)));
     }
 
+    [HttpGet("popular")]
+    public async Task<ActionResult<IEnumerable<ArtistDto>>> Popular([FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        var artists = await _db.Artists
+            .OrderByDescending(a => a.MonthlyListeners)
+            .Take(limit)
+            .ToListAsync(ct);
+        return Ok(artists.Select(a => _mapper.ToDto(a)));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArtistDto>> Get(Guid id, CancellationToken ct = default)
     {

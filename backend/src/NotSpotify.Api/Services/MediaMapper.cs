@@ -82,7 +82,7 @@ public class MediaMapper
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);
 
-    public PlaylistSummaryDto ToSummary(Playlist p) => new(
+    public PlaylistSummaryDto ToSummary(Playlist p, bool isOwner = false, bool isSaved = false) => new(
         p.Id,
         p.Name,
         p.Description,
@@ -92,10 +92,12 @@ public class MediaMapper
         p.PlaylistTracks.Count,
         p.FollowerCount,
         p.CreatedAt,
-        p.UpdatedAt
+        p.UpdatedAt,
+        isOwner,
+        isSaved
     );
 
-    public async Task<PlaylistDto> ToDtoAsync(Playlist p, CancellationToken ct = default)
+    public async Task<PlaylistDto> ToDtoAsync(Playlist p, CancellationToken ct = default, bool isOwner = false, bool isSaved = false)
     {
         var ordered = p.PlaylistTracks.OrderBy(pt => pt.Position).ToList();
         var trackDtos = new List<PlaylistTrackDto>(ordered.Count);
@@ -116,7 +118,9 @@ public class MediaMapper
             p.FollowerCount,
             p.PlaylistTracks.Sum(pt => pt.Track.DurationMs),
             p.CreatedAt,
-            p.UpdatedAt
+            p.UpdatedAt,
+            isOwner,
+            isSaved
         );
     }
 }

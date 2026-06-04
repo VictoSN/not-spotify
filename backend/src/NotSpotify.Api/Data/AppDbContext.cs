@@ -16,6 +16,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
     public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
+    public DbSet<UserSavedPlaylist> UserSavedPlaylists => Set<UserSavedPlaylist>();
+    public DbSet<PlayHistory> PlayHistories => Set<PlayHistory>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -78,6 +80,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        b.Entity<UserSavedPlaylist>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.PlaylistId });
+
+            e.HasOne(x => x.User)
+                .WithMany(u => u.SavedPlaylists)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Playlist)
+                .WithMany()
+                .HasForeignKey(x => x.PlaylistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.UserId, x.SavedAt });
+        });
+
         b.Entity<PlaylistTrack>(e =>
         {
             e.HasKey(x => new { x.PlaylistId, x.TrackId });
@@ -106,6 +125,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PlayHistory>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Most queries are "give me this user's recents, newest first" — index supports that.
+            e.HasIndex(x => new { x.UserId, x.PlayedAt });
         });
     }
 }

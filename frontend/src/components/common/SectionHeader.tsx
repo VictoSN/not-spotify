@@ -11,7 +11,7 @@ export function SectionHeader({ title, href }: SectionHeaderProps) {
       <h2 className="text-xl font-bold text-primary">{title}</h2>
       {href && (
         <Link to={href} className="text-xs font-semibold text-secondary hover:text-primary uppercase tracking-wider transition-colors">
-          See all
+          Show all
         </Link>
       )}
     </div>

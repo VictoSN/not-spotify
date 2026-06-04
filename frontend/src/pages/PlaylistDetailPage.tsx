@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { HeartIcon as HeartOutlineIcon, TrashIcon, GlobeAltIcon, LockClosedIcon } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useLibraryStore } from '@/stores/libraryStore'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -12,9 +17,17 @@ import { formatNumber } from '@/utils/formatNumber'
 
 export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
   const playWithGate = usePlaybackGate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const savePlaylist = useLibraryStore((s) => s.savePlaylist)
+  const unsavePlaylist = useLibraryStore((s) => s.unsavePlaylist)
+  const setPlaylistVisibility = useLibraryStore((s) => s.setPlaylistVisibility)
+  const deletePlaylistAction = useLibraryStore((s) => s.deletePlaylist)
 
   useEffect(() => {
     if (!id) return
@@ -38,6 +51,50 @@ export function PlaylistDetailPage() {
     if (tracks.length > 0) playWithGate(tracks[0], tracks)
   }
 
+  const handleSaveToggle = async () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Save playlists with a free account' })
+      return
+    }
+    if (!playlist) return
+    setBusy(true)
+    try {
+      if (playlist.isSaved) {
+        await unsavePlaylist(playlist.id)
+        setPlaylist({ ...playlist, isSaved: false })
+      } else {
+        await savePlaylist(playlist)
+        setPlaylist({ ...playlist, isSaved: true })
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleVisibilityToggle = async () => {
+    if (!playlist) return
+    const next = !playlist.isPublic
+    setBusy(true)
+    try {
+      await setPlaylistVisibility(playlist.id, next)
+      setPlaylist({ ...playlist, isPublic: next })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!playlist) return
+    if (!confirm(`Delete "${playlist.name}"? This cannot be undone.`)) return
+    setBusy(true)
+    try {
+      await deletePlaylistAction(playlist.id)
+      navigate('/library')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -50,7 +107,9 @@ export function PlaylistDetailPage() {
           )}
         </div>
         <div className="min-w-0 pb-2">
-          <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Playlist</p>
+          <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
+            {playlist.isPublic ? 'Public playlist' : 'Private playlist'}
+          </p>
           <h1 className="text-4xl sm:text-5xl font-black text-primary mt-1 mb-3">{playlist.name}</h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
           <p className="text-xs text-secondary">
@@ -69,6 +128,61 @@ export function PlaylistDetailPage() {
           <PlayIcon className="w-5 h-5" />
           Play
         </Button>
+
+        {/* Owner-only: visibility toggle + delete */}
+        {playlist.isOwner && (
+          <>
+            <button
+              onClick={handleVisibilityToggle}
+              disabled={busy}
+              title={playlist.isPublic ? 'Make private' : 'Make public'}
+              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {playlist.isPublic ? (
+                <>
+                  <GlobeAltIcon className="w-5 h-5" />
+                  Public
+                </>
+              ) : (
+                <>
+                  <LockClosedIcon className="w-5 h-5" />
+                  Private
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={busy}
+              title="Delete playlist"
+              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-red-400 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            >
+              <TrashIcon className="w-5 h-5" />
+              Delete
+            </button>
+          </>
+        )}
+
+        {/* Non-owner: save/unsave to library */}
+        {!playlist.isOwner && (
+          <button
+            onClick={handleSaveToggle}
+            disabled={busy}
+            title={playlist.isSaved ? 'Remove from your library' : 'Save to your library'}
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+          >
+            {playlist.isSaved ? (
+              <>
+                <HeartSolidIcon className="w-7 h-7 text-accent" />
+                In Library
+              </>
+            ) : (
+              <>
+                <HeartOutlineIcon className="w-7 h-7" />
+                Add to Library
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Track list */}

@@ -33,12 +33,23 @@ public class PlaylistsController : ControllerBase
     {
         var me = CurrentUserId();
         var playlists = await _db.Playlists
-            .Where(p => p.IsPublic || (me != null && p.OwnerId == me))
+            .Where(p => p.IsPublic)
             .Include(p => p.Owner)
             .Include(p => p.PlaylistTracks)
             .OrderByDescending(p => p.UpdatedAt)
             .ToListAsync(ct);
-        return Ok(playlists.Select(p => _mapper.ToSummary(p)));
+
+        var savedIds = me is null
+            ? new HashSet<Guid>()
+            : (await _db.UserSavedPlaylists
+                .Where(s => s.UserId == me)
+                .Select(s => s.PlaylistId)
+                .ToListAsync(ct)).ToHashSet();
+
+        return Ok(playlists.Select(p => _mapper.ToSummary(
+            p,
+            isOwner: me != null && p.OwnerId == me,
+            isSaved: savedIds.Contains(p.Id))));
     }
 
     [HttpGet("{id:guid}")]
@@ -46,8 +57,12 @@ public class PlaylistsController : ControllerBase
     {
         var p = await LoadFullPlaylist(id, ct);
         if (p is null) return NotFound();
-        if (!p.IsPublic && p.OwnerId != CurrentUserId()) return StatusCode(StatusCodes.Status403Forbidden);
-        return Ok(await _mapper.ToDtoAsync(p, ct));
+        var me = CurrentUserId();
+        if (!p.IsPublic && p.OwnerId != me) return StatusCode(StatusCodes.Status403Forbidden);
+
+        var isOwner = me != null && p.OwnerId == me;
+        var isSaved = me != null && await _db.UserSavedPlaylists.AnyAsync(s => s.UserId == me && s.PlaylistId == id, ct);
+        return Ok(await _mapper.ToDtoAsync(p, ct, isOwner, isSaved));
     }
 
     [HttpPost]
@@ -69,7 +84,7 @@ public class PlaylistsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(playlist.Id, ct);
-        return CreatedAtAction(nameof(Get), new { id = playlist.Id }, await _mapper.ToDtoAsync(loaded!, ct));
+        return CreatedAtAction(nameof(Get), new { id = playlist.Id }, await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
     [HttpPatch("{id:guid}")]
@@ -80,15 +95,25 @@ public class PlaylistsController : ControllerBase
         if (p is null) return NotFound();
         if (p.OwnerId != CurrentUserId()) return StatusCode(StatusCodes.Status403Forbidden);
 
+        var wasPublic = p.IsPublic;
         if (req.Name is not null) p.Name = req.Name;
         if (req.Description is not null) p.Description = req.Description;
         if (req.IsPublic is not null) p.IsPublic = req.IsPublic.Value;
         if (req.CoverUrl is not null) p.CoverUrl = req.CoverUrl;
         p.UpdatedAt = DateTime.UtcNow;
+
+        // When a playlist transitions from public -> private, revoke everyone else's
+        // saved reference so it disappears from their libraries on next refresh.
+        if (wasPublic && !p.IsPublic)
+        {
+            var savedRows = await _db.UserSavedPlaylists.Where(s => s.PlaylistId == id).ToListAsync(ct);
+            if (savedRows.Count > 0) _db.UserSavedPlaylists.RemoveRange(savedRows);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(id, ct);
-        return Ok(await _mapper.ToDtoAsync(loaded!, ct));
+        return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
     [HttpDelete("{id:guid}")]
@@ -130,7 +155,7 @@ public class PlaylistsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(id, ct);
-        return Ok(await _mapper.ToDtoAsync(loaded!, ct));
+        return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
     [HttpDelete("{id:guid}/tracks/{trackId:guid}")]

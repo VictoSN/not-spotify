@@ -1,5 +1,21 @@
 import { create } from 'zustand'
 import type { Track } from '@/types/track'
+import { trackService } from '@/services/trackService'
+import { useAuthStore } from './authStore'
+
+// Fire-and-forget play tracking. We dedupe within a short window so seeking/re-clicking
+// the current track doesn't spam /me/plays. Module-scoped because it's an HTTP throttle,
+// not part of the player's user-visible state.
+const RECENT_PLAY_DEDUPE_MS = 5000
+const lastRecordedAt = new Map<string, number>()
+
+function recordPlay(trackId: string) {
+  if (!useAuthStore.getState().isAuthenticated) return
+  const now = Date.now()
+  if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
+  lastRecordedAt.set(trackId, now)
+  trackService.recordPlay(trackId).catch(() => {})
+}
 
 export type RepeatMode = 'off' | 'one' | 'all'
 
@@ -67,6 +83,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       isPlaying: true,
       currentTime: 0,
     })
+    recordPlay(track.id)
   },
 
   pause: () => set({ isPlaying: false }),
@@ -98,6 +115,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const next = queue[nextIndex]
     const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
     set({ currentTrack: next, queueIndex: nextIndex, currentTime: 0, isPlaying: true, history: newHistory })
+    recordPlay(next.id)
   },
 
   skipPrevious: () => {
@@ -110,11 +128,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const prev = history[history.length - 1]
       const prevIndex = queue.findIndex((t) => t.id === prev.id)
       set({ currentTrack: prev, queueIndex: prevIndex >= 0 ? prevIndex : queueIndex - 1, currentTime: 0, isPlaying: true, history: history.slice(0, -1) })
+      recordPlay(prev.id)
       return
     }
     if (queueIndex > 0) {
       const prev = queue[queueIndex - 1]
       set({ currentTrack: prev, queueIndex: queueIndex - 1, currentTime: 0, isPlaying: true })
+      recordPlay(prev.id)
     }
   },
 
@@ -144,6 +164,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const track = tracks[startIndex]
     if (!track) return
     set({ queue: tracks, queueIndex: startIndex, currentTrack: track, isPlaying: true, currentTime: 0 })
+    recordPlay(track.id)
   },
 
   addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),

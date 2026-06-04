@@ -68,7 +68,9 @@ public record PlaylistDto(
     long FollowerCount,
     long TotalDurationMs,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    bool IsOwner,
+    bool IsSaved
 );
 
 public record PlaylistSummaryDto(
@@ -81,7 +83,9 @@ public record PlaylistSummaryDto(
     int TrackCount,
     long FollowerCount,
     DateTime CreatedAt,
-    DateTime UpdatedAt
+    DateTime UpdatedAt,
+    bool IsOwner,
+    bool IsSaved
 );
 
 public record CreatePlaylistRequest(string Name, string? Description, bool IsPublic = true);

@@ -14,6 +14,12 @@ import { AlbumDetailPage } from '@/pages/AlbumDetailPage'
 import { ArtistProfilePage } from '@/pages/ArtistProfilePage'
 import { GenreBrowsePage } from '@/pages/GenreBrowsePage'
 import { GenreDetailPage } from '@/pages/GenreDetailPage'
+import { TrendingPage } from '@/pages/browse/TrendingPage'
+import { RecommendedTracksPage } from '@/pages/browse/RecommendedTracksPage'
+import { RecentsPage } from '@/pages/browse/RecentsPage'
+import { RecommendedPlaylistsPage } from '@/pages/browse/RecommendedPlaylistsPage'
+import { PopularArtistsPage } from '@/pages/browse/PopularArtistsPage'
+import { NewReleasesPage } from '@/pages/browse/NewReleasesPage'
 import { AdminArtistsListPage } from '@/pages/admin/AdminArtistsListPage'
 import { AdminArtistFormPage } from '@/pages/admin/AdminArtistFormPage'
 import { AdminAlbumsListPage } from '@/pages/admin/AdminAlbumsListPage'
@@ -42,6 +48,12 @@ export const router = createBrowserRouter([
           { path: 'artist/:id', element: <ArtistProfilePage /> },
           { path: 'genres', element: <GenreBrowsePage /> },
           { path: 'genres/:slug', element: <GenreDetailPage /> },
+          { path: 'trending', element: <TrendingPage /> },
+          { path: 'recommended-tracks', element: <RecommendedTracksPage /> },
+          { path: 'recents', element: <RecentsPage /> },
+          { path: 'playlists', element: <RecommendedPlaylistsPage /> },
+          { path: 'popular-artists', element: <PopularArtistsPage /> },
+          { path: 'new-releases', element: <NewReleasesPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

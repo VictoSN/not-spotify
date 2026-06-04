@@ -26,4 +26,13 @@ export const trackService = {
     const res = await api.get<{ tracks: Track[] }>('/search', { params: { q: query, type: 'track' } })
     return res.data.tracks
   },
+
+  async getRecents(limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/me/recents', { params: { limit } })
+    return res.data
+  },
+
+  async recordPlay(trackId: string): Promise<void> {
+    await api.post('/me/plays', { trackId })
+  },
 }

@@ -19,4 +19,6 @@ export interface Playlist {
   totalDurationMs: number
   createdAt: string
   updatedAt: string
+  isOwner?: boolean
+  isSaved?: boolean
 }

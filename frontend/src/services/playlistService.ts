@@ -8,18 +8,27 @@ export const playlistService = {
     return res.data
   },
 
-  async getFeatured(limit = 6): Promise<Playlist[]> {
+  async getRecommended(limit = 10): Promise<Playlist[]> {
     const res = await api.get<Playlist[]>('/playlists')
     return res.data.slice(0, limit)
   },
 
+  async getFeatured(limit = 6): Promise<Playlist[]> {
+    return this.getRecommended(limit)
+  },
+
   async getUserPlaylists(): Promise<Playlist[]> {
-    const res = await api.get<Playlist[]>('/playlists')
+    const res = await api.get<Playlist[]>('/me/playlists')
     return res.data
   },
 
-  async create(name: string, description?: string): Promise<Playlist> {
-    const res = await api.post<Playlist>('/playlists', { name, description })
+  async create(name: string, description?: string, isPublic = true): Promise<Playlist> {
+    const res = await api.post<Playlist>('/playlists', { name, description, isPublic })
+    return res.data
+  },
+
+  async updateVisibility(playlistId: string, isPublic: boolean): Promise<Playlist> {
+    const res = await api.patch<Playlist>(`/playlists/${playlistId}`, { isPublic })
     return res.data
   },
 
@@ -33,6 +42,14 @@ export const playlistService = {
 
   async delete(playlistId: string): Promise<void> {
     await api.delete(`/playlists/${playlistId}`)
+  },
+
+  async save(playlistId: string): Promise<void> {
+    await api.post(`/me/saved-playlists/${playlistId}`)
+  },
+
+  async unsave(playlistId: string): Promise<void> {
+    await api.delete(`/me/saved-playlists/${playlistId}`)
   },
 
   async search(query: string): Promise<Playlist[]> {

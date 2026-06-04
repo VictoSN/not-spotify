@@ -18,8 +18,11 @@ export function AlbumCard({ album, tracks }: AlbumCardProps) {
   }
 
   return (
-    <Link to={`/album/${album.id}`} className="group flex-shrink-0 w-40 sm:w-44">
-      <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3">
+    <Link
+      to={`/album/${album.id}`}
+      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+    >
+      <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
         {tracks && (
           <button

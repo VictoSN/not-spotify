@@ -53,8 +53,8 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex flex-col bg-sidebar py-2 overflow-hidden transition-all',
-        collapsed ? 'w-16' : 'w-60',
+        'flex flex-col bg-sidebar py-2 overflow-hidden rounded-lg transition-all',
+        collapsed ? 'w-16' : 'w-64',
       )}
     >
       {/* Logo */}

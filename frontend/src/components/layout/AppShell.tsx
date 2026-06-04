@@ -1,30 +1,30 @@
 import { Outlet } from 'react-router-dom'
-import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
+import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 export function AppShell() {
   const isMobile = useIsMobile()
-  const [sidebarCollapsed] = useState(false)
+  const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
 
   return (
-    <div className="flex h-screen bg-page">
-      {/* Sidebar */}
-      {!isMobile && (
-        <Sidebar collapsed={sidebarCollapsed} />
-      )}
+    <div className="flex flex-col h-screen bg-base text-primary">
+      <TopBar />
 
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 min-w-0">
-        <TopBar />
-        <main className="flex-1 overflow-y-auto pb-24">
+      {/* Middle row: 3 floating cards on the base gutter */}
+      <div className="flex flex-1 gap-2 px-2 pb-2 min-h-0 overflow-hidden">
+        {!isMobile && <Sidebar />}
+
+        <main className="flex-1 min-w-0 rounded-lg bg-page overflow-y-auto">
           <Outlet />
         </main>
+
+        {!isMobile && isNowPlayingOpen && <NowPlayingPanel />}
       </div>
 
-      {/* Fixed bottom player */}
       <BottomPlayerBar />
     </div>
   )

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PlayIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import type { Playlist } from '@/types/playlist'
 import type { Album } from '@/types/album'
@@ -66,12 +67,15 @@ export function HomePage() {
             <button
               key={p.id}
               onClick={() => { const tracks = p.tracks.map((pt) => pt.track); if (tracks.length) play(tracks[0], tracks) }}
-              className="flex items-center gap-3 bg-elevated/60 hover:bg-elevated rounded-md overflow-hidden text-left group transition-colors"
+              className="relative flex items-center gap-3 bg-elevated/60 hover:bg-elevated rounded-md overflow-hidden text-left group transition-colors"
             >
               {p.coverUrl && (
                 <img src={p.coverUrl} alt={p.name} className="w-14 h-14 object-cover flex-shrink-0" />
               )}
-              <span className="text-sm font-semibold text-primary truncate pr-2">{p.name}</span>
+              <span className="text-sm font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
+              <span className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all shadow-lg">
+                <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+              </span>
             </button>
           ))}
         </div>

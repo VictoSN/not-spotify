@@ -15,7 +15,7 @@ interface PlayerState {
   isMuted: boolean
   shuffleEnabled: boolean
   repeatMode: RepeatMode
-  isQueueOpen: boolean
+  isNowPlayingOpen: boolean
 
   play: (track: Track, queue?: Track[]) => void
   pause: () => void
@@ -31,7 +31,7 @@ interface PlayerState {
   setQueue: (tracks: Track[], startIndex?: number) => void
   addToQueue: (track: Track) => void
   removeFromQueue: (index: number) => void
-  toggleQueue: () => void
+  toggleNowPlaying: () => void
   tick: (currentTime: number, duration: number) => void
 }
 
@@ -49,7 +49,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isMuted: false,
   shuffleEnabled: false,
   repeatMode: 'off',
-  isQueueOpen: false,
+  isNowPlayingOpen: true,
 
   play: (track, queue) => {
     const newQueue = queue ?? [track]
@@ -152,7 +152,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return { queue: newQueue, queueIndex: newIndex }
     }),
 
-  toggleQueue: () => set((s) => ({ isQueueOpen: !s.isQueueOpen })),
+  toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen })),
 
   tick: (currentTime, duration) => set({ currentTime, duration }),
 }))

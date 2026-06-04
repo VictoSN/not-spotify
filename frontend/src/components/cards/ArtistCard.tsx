@@ -8,8 +8,11 @@ interface ArtistCardProps {
 
 export function ArtistCard({ artist }: ArtistCardProps) {
   return (
-    <Link to={`/artist/${artist.id}`} className="group flex-shrink-0 w-40 sm:w-44 text-center">
-      <div className="relative aspect-square rounded-full overflow-hidden bg-elevated mb-3 mx-auto">
+    <Link
+      to={`/artist/${artist.id}`}
+      className="group flex-shrink-0 w-40 sm:w-44 text-center p-3 rounded-lg hover:bg-surface transition-colors"
+    >
+      <div className="relative aspect-square rounded-full overflow-hidden bg-elevated mb-3 mx-auto shadow-lg">
         {artist.imageUrl ? (
           <img src={artist.imageUrl} alt={artist.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
         ) : (

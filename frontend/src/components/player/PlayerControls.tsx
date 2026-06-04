@@ -23,7 +23,7 @@ export function PlayerControls() {
       <button
         onClick={togglePlayPause}
         disabled={!currentTrack}
-        className="w-9 h-9 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-30"
+        className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-30"
         aria-label={isPlaying ? 'Pause' : 'Play'}
       >
         {isPlaying ? (

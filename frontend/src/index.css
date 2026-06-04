@@ -1,24 +1,70 @@
 @import "tailwindcss";
 
-@theme {
+/*
+ * Theme tokens are mapped (inline) to runtime CSS variables (--c-*) so the
+ * whole UI re-themes by toggling `data-theme` on <html>. See themeStore.ts.
+ */
+@theme inline {
   /* Backgrounds */
-  --color-page: #121212;
-  --color-surface: #282828;
-  --color-elevated: #3e3e3e;
-  --color-sidebar: #0a0a0a;
+  --color-base: var(--c-base);
+  --color-page: var(--c-page);
+  --color-surface: var(--c-surface);
+  --color-elevated: var(--c-elevated);
+  --color-sidebar: var(--c-sidebar);
 
-  /* Accent */
-  --color-accent: #8b5cf6;
-  --color-accent-dark: #7c3aed;
-  --color-accent-dim: #4c1d95;
+  /* Accent (green in dark, purple in light) */
+  --color-accent: var(--c-accent);
+  --color-accent-dark: var(--c-accent-dark);
+  --color-accent-dim: var(--c-accent-dim);
 
   /* Text */
-  --color-primary: #ffffff;
-  --color-secondary: #a3a3a3;
-  --color-muted: #6b6b6b;
+  --color-primary: var(--c-primary);
+  --color-secondary: var(--c-secondary);
+  --color-muted: var(--c-muted);
 
   /* Fonts */
   --font-sans: "Circular", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ── Dark theme (default) — Spotify green ─────────────────────── */
+:root,
+html[data-theme="dark"] {
+  --c-base: #000000;
+  --c-page: #121212;
+  --c-surface: #181818;
+  --c-elevated: #282828;
+  --c-sidebar: #121212;
+
+  --c-accent: #1ed760;
+  --c-accent-dark: #1db954;
+  --c-accent-dim: #16341f;
+
+  --c-primary: #ffffff;
+  --c-secondary: #b3b3b3;
+  --c-muted: #6a6a6a;
+
+  color-scheme: dark;
+  background-color: var(--c-base);
+}
+
+/* ── Light theme — purple ─────────────────────────────────────── */
+html[data-theme="light"] {
+  --c-base: #e8e8e8;
+  --c-page: #ffffff;
+  --c-surface: #f6f6f6;
+  --c-elevated: #ececec;
+  --c-sidebar: #ffffff;
+
+  --c-accent: #7c3aed;
+  --c-accent-dark: #6d28d9;
+  --c-accent-dim: #ede9fe;
+
+  --c-primary: #181818;
+  --c-secondary: #5e5e5e;
+  --c-muted: #8a8a8a;
+
+  color-scheme: light;
+  background-color: var(--c-base);
 }
 
 *,
@@ -36,14 +82,23 @@ body,
 }
 
 body {
-  background-color: #121212;
-  color: #ffffff;
+  background-color: var(--c-base);
+  color: var(--c-primary);
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling */
+/* Smooth the theme transition on broad surfaces (not on transforms) */
+body,
+.theme-transition {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Scrollbar styling (theme-neutral translucent thumb) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -52,9 +107,18 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #535353;
+  background: rgba(128, 128, 128, 0.5);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #727272;
+  background: rgba(128, 128, 128, 0.8);
+}
+
+/* Hide scrollbar for horizontal rails (used by HorizontalScroller) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
 }

@@ -4,6 +4,7 @@ import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
 import { getDominantColor } from '@/hooks/useDominantColor'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 
 interface TrackTileProps {
   track: Track
@@ -12,7 +13,8 @@ interface TrackTileProps {
 
 /** Spotify-style square tile: cover with a rising hover play button + title/artist. */
 export function TrackTile({ track, queue }: TrackTileProps) {
-  const { currentTrack, isPlaying, play, pause, resume } = usePlayerStore()
+  const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const playWithGate = usePlaybackGate()
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const isCurrent = currentTrack?.id === track.id
 
@@ -23,7 +25,7 @@ export function TrackTile({ track, queue }: TrackTileProps) {
       if (isPlaying) pause()
       else resume()
     } else {
-      play(track, queue ?? [track])
+      playWithGate(track, queue ?? [track])
     }
   }
 

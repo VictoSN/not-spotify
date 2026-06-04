@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { XMarkIcon, HeartIcon, ChevronLeftIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
@@ -13,6 +13,7 @@ import { TrackCard } from '@/components/cards/TrackCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor } from '@/hooks/useDominantColor'
+import { cn } from '@/utils/cn'
 
 const NP_KEY = 'ns-nowplaying-width'
 const NP_DEFAULT = 320
@@ -58,8 +59,7 @@ export function NowPlayingPanel() {
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
   const setNowPlayingCollapsed = usePlayerStore((s) => s.setNowPlayingCollapsed)
 
-  const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } =
-    useLibraryStore()
+  const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
@@ -135,43 +135,46 @@ export function NowPlayingPanel() {
   const loadingArtist = !!artistId && !artistReady
   const album = albumData && albumData.albumId === albumId ? albumData.album : null
   const heroColor = useDominantColor(currentTrack?.album.coverUrl)
+  const panelClass = cn(
+    'relative hidden shrink-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex',
+    !dragging && 'transition-[width,opacity,transform] duration-300 ease-out',
+  )
 
   // Collapsed → thin sliver with an expand control (does not fully close).
   if (isNowPlayingCollapsed) {
     return (
-      <aside className="hidden lg:flex w-14 shrink-0 flex-col items-center rounded-lg bg-surface py-3 gap-3">
+      <aside className="group/now-playing-rail relative hidden w-4 shrink-0 overflow-hidden rounded-lg bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
         <button
           onClick={() => setNowPlayingCollapsed(false)}
-          className="text-secondary hover:text-primary hover:scale-110 transition-all"
+          className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
           aria-label="Expand now playing"
-          title="Expand"
+          title="Expand now playing"
         >
-          <ChevronLeftIcon className="w-5 h-5" />
+          {currentTrack && (
+            <img
+              src={currentTrack.album.coverUrl}
+              alt={currentTrack.album.title}
+              className="h-10 w-10 rounded object-cover opacity-80 shadow-lg"
+            />
+          )}
+          <ChevronLeftIcon className="h-5 w-5" />
         </button>
-        {currentTrack && (
-          <button
-            onClick={() => setNowPlayingCollapsed(false)}
-            className="w-10 h-10 rounded overflow-hidden hover:scale-105 transition-transform"
-            title={currentTrack.title}
-            aria-label="Expand now playing"
-          >
-            <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="w-full h-full object-cover" />
-          </button>
-        )}
       </aside>
     )
   }
 
   if (!currentTrack) {
     return (
-      <aside
-        style={{ width }}
-        className="relative hidden lg:flex shrink-0 flex-col rounded-lg bg-surface overflow-hidden"
-      >
+      <aside style={{ width }} className={panelClass}>
         <div className="flex items-center justify-between p-4">
           <h2 className="text-base font-bold text-primary">Now playing</h2>
-          <button onClick={() => setNowPlayingCollapsed(true)} className="text-secondary hover:text-primary" aria-label="Collapse panel">
-            <XMarkIcon className="w-5 h-5" />
+          <button
+            onClick={() => setNowPlayingCollapsed(true)}
+            className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            aria-label="Collapse now playing"
+            title="Collapse now playing"
+          >
+            <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">
@@ -196,144 +199,164 @@ export function NowPlayingPanel() {
   }
 
   return (
-    <aside
-      style={{ width }}
-      className="relative hidden lg:flex shrink-0 flex-col rounded-lg bg-surface overflow-hidden"
-    >
+    <aside style={{ width }} className={panelClass}>
       <div className="relative flex-1 overflow-y-auto">
-      {/* Dynamic colour hue from the cover */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-80 transition-opacity duration-700"
-        style={{ background: heroColor ? `linear-gradient(180deg, ${heroColor}b3 0%, ${heroColor}26 50%, transparent 100%)` : undefined }}
-      />
-      {/* Header */}
-      <div className="sticky top-0 z-20 flex items-center justify-between p-4 bg-surface/80 backdrop-blur">
-        <Link to={`/album/${currentTrack.album.id}`} className="text-base font-bold text-primary truncate hover:underline">
-          {currentTrack.album.title}
-        </Link>
-        <button onClick={() => setNowPlayingCollapsed(true)} className="text-secondary hover:text-primary shrink-0 ml-2" aria-label="Collapse panel">
-          <XMarkIcon className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Cover + title */}
-      <div className="px-4 pb-4">
-        <img
-          src={currentTrack.album.coverUrl}
-          alt={currentTrack.album.title}
-          className="w-full aspect-square rounded-lg object-cover shadow-lg"
+        {/* Dynamic colour hue from the cover */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-80 transition-opacity duration-700"
+          style={{
+            background: heroColor
+              ? `linear-gradient(180deg, ${heroColor}b3 0%, ${heroColor}26 50%, transparent 100%)`
+              : undefined,
+          }}
         />
-        <div className="flex items-start justify-between gap-2 mt-4">
-          <div className="min-w-0">
-            <Link to={`/album/${currentTrack.album.id}`} className="block text-xl font-bold text-primary truncate hover:underline">
-              {currentTrack.title}
-            </Link>
-            <Link to={`/artist/${currentTrack.artist.id}`} className="block text-sm text-secondary truncate hover:text-primary hover:underline">
-              {currentTrack.artist.name}
-            </Link>
-          </div>
-          <button onClick={toggleLike} className="shrink-0 mt-1" aria-label={isLiked ? 'Unlike' : 'Like'}>
-            {isLiked ? (
-              <HeartSolid className="w-6 h-6 text-accent" />
-            ) : (
-              <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
-            )}
+        {/* Header */}
+        <div className="sticky top-0 z-20 flex items-center justify-between p-4 bg-surface/80 backdrop-blur">
+          <Link
+            to={`/album/${currentTrack.album.id}`}
+            className="text-base font-bold text-primary truncate hover:underline"
+          >
+            {currentTrack.album.title}
+          </Link>
+          <button
+            onClick={() => setNowPlayingCollapsed(true)}
+            className="ml-2 shrink-0 rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            aria-label="Collapse now playing"
+            title="Collapse now playing"
+          >
+            <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
         </div>
-      </div>
 
-      {/* Related / recommended */}
-      {relatedTracks.length > 0 && (
-        <PanelSection title="Recommended" subtitle="Based on this song">
-          <div className="flex flex-col gap-1">
-            {relatedTracks.map((track) => (
-              <TrackCard key={track.id} track={track} queue={related} />
-            ))}
-          </div>
-        </PanelSection>
-      )}
-
-      {/* About the artist */}
-      {loadingArtist ? (
-        <div className="flex justify-center py-6">
-          <Spinner size="md" />
-        </div>
-      ) : (
-        artist && (
-          <PanelSection title="About the artist">
-            <div className="relative rounded-lg overflow-hidden bg-elevated">
-              {(artist.headerImageUrl || artist.imageUrl) && (
-                <img
-                  src={artist.headerImageUrl ?? artist.imageUrl ?? ''}
-                  alt={artist.name}
-                  className="w-full h-40 object-cover"
-                />
-              )}
-              <div className="p-4">
-                <div className="flex items-center gap-1.5">
-                  <Link to={`/artist/${artist.id}`} className="font-bold text-primary hover:underline">
-                    {artist.name}
-                  </Link>
-                  {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <p className="text-xs text-secondary">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
-                  <button
-                    onClick={toggleFollow}
-                    className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
-                  >
-                    {isFollowing ? 'Following' : 'Follow'}
-                  </button>
-                </div>
-                {artist.bio && <p className="text-sm text-secondary mt-3 line-clamp-4 leading-relaxed">{artist.bio}</p>}
-              </div>
-            </div>
-          </PanelSection>
-        )
-      )}
-
-      {/* Credits */}
-      <PanelSection title="Credits">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
+        {/* Cover + title */}
+        <div className="px-4 pb-4">
+          <img
+            src={currentTrack.album.coverUrl}
+            alt={currentTrack.album.title}
+            className="w-full aspect-square rounded-lg object-cover shadow-lg"
+          />
+          <div className="flex items-start justify-between gap-2 mt-4">
             <div className="min-w-0">
-              <Link to={`/artist/${currentTrack.artist.id}`} className="block text-sm font-medium text-primary truncate hover:underline">
+              <Link
+                to={`/album/${currentTrack.album.id}`}
+                className="block text-xl font-bold text-primary truncate hover:underline"
+              >
+                {currentTrack.title}
+              </Link>
+              <Link
+                to={`/artist/${currentTrack.artist.id}`}
+                className="block text-sm text-secondary truncate hover:text-primary hover:underline"
+              >
                 {currentTrack.artist.name}
               </Link>
-              <p className="text-xs text-secondary">Main Artist</p>
             </div>
-            {artist && (
-              <button
-                onClick={toggleFollow}
-                className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
-              >
-                {isFollowing ? 'Following' : 'Follow'}
-              </button>
-            )}
+            <button onClick={toggleLike} className="shrink-0 mt-1" aria-label={isLiked ? 'Unlike' : 'Like'}>
+              {isLiked ? (
+                <HeartSolid className="w-6 h-6 text-accent" />
+              ) : (
+                <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
+              )}
+            </button>
           </div>
-          {album?.label && (
-            <div>
-              <p className="text-sm font-medium text-primary truncate">{album.label}</p>
-              <p className="text-xs text-secondary">Label</p>
-            </div>
-          )}
-          {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
         </div>
-      </PanelSection>
 
-      {/* Next in queue */}
-      <PanelSection title="Next in queue">
-        {upNext.length > 0 ? (
-          <div className="flex flex-col gap-1">
-            {upNext.slice(0, 10).map((track, i) => (
-              <TrackCard key={`${track.id}-${i}`} track={track} queue={queue} />
-            ))}
+        {/* Related / recommended */}
+        {relatedTracks.length > 0 && (
+          <PanelSection title="Recommended" subtitle="Based on this song">
+            <div className="flex flex-col gap-1">
+              {relatedTracks.map((track) => (
+                <TrackCard key={track.id} track={track} queue={related} />
+              ))}
+            </div>
+          </PanelSection>
+        )}
+
+        {/* About the artist */}
+        {loadingArtist ? (
+          <div className="flex justify-center py-6">
+            <Spinner size="md" />
           </div>
         ) : (
-          <p className="text-sm text-secondary">Nothing queued up next.</p>
+          artist && (
+            <PanelSection title="About the artist">
+              <div className="relative rounded-lg overflow-hidden bg-elevated">
+                {(artist.headerImageUrl || artist.imageUrl) && (
+                  <img
+                    src={artist.headerImageUrl ?? artist.imageUrl ?? ''}
+                    alt={artist.name}
+                    className="w-full h-40 object-cover"
+                  />
+                )}
+                <div className="p-4">
+                  <div className="flex items-center gap-1.5">
+                    <Link to={`/artist/${artist.id}`} className="font-bold text-primary hover:underline">
+                      {artist.name}
+                    </Link>
+                    {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <p className="text-xs text-secondary">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
+                    <button
+                      onClick={toggleFollow}
+                      className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
+                    >
+                      {isFollowing ? 'Following' : 'Follow'}
+                    </button>
+                  </div>
+                  {artist.bio && (
+                    <p className="text-sm text-secondary mt-3 line-clamp-4 leading-relaxed">{artist.bio}</p>
+                  )}
+                </div>
+              </div>
+            </PanelSection>
+          )
         )}
-      </PanelSection>
+
+        {/* Credits */}
+        <PanelSection title="Credits">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <Link
+                  to={`/artist/${currentTrack.artist.id}`}
+                  className="block text-sm font-medium text-primary truncate hover:underline"
+                >
+                  {currentTrack.artist.name}
+                </Link>
+                <p className="text-xs text-secondary">Main Artist</p>
+              </div>
+              {artist && (
+                <button
+                  onClick={toggleFollow}
+                  className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
+                >
+                  {isFollowing ? 'Following' : 'Follow'}
+                </button>
+              )}
+            </div>
+            {album?.label && (
+              <div>
+                <p className="text-sm font-medium text-primary truncate">{album.label}</p>
+                <p className="text-xs text-secondary">Label</p>
+              </div>
+            )}
+            {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
+          </div>
+        </PanelSection>
+
+        {/* Next in queue */}
+        <PanelSection title="Next in queue">
+          {upNext.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {upNext.slice(0, 10).map((track, i) => (
+                <TrackCard key={`${track.id}-${i}`} track={track} queue={queue} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-secondary">Nothing queued up next.</p>
+          )}
+        </PanelSection>
       </div>
       <NowPlayingDragHandle onMouseDown={onDragStart} />
     </aside>

@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
-import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
 import { trackService } from '@/services/trackService'
 import { getDominantColor } from '@/hooks/useDominantColor'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 
 interface AlbumCardProps {
   album: Album
@@ -14,22 +16,28 @@ interface AlbumCardProps {
 }
 
 export function AlbumCard({ album, tracks }: AlbumCardProps) {
-  const play = usePlayerStore((s) => s.play)
+  const playWithGate = usePlaybackGate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const [loading, setLoading] = useState(false)
 
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Start listening with a free account', imageUrl: album.coverUrl })
+      return
+    }
     if (tracks && tracks.length > 0) {
-      play(tracks[0], tracks)
+      playWithGate(tracks[0], tracks)
       return
     }
     if (loading) return
     setLoading(true)
     try {
       const fetched = await trackService.getByAlbum(album.id)
-      if (fetched.length > 0) play(fetched[0], fetched)
+      if (fetched.length > 0) playWithGate(fetched[0], fetched)
     } finally {
       setLoading(false)
     }

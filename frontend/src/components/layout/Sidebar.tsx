@@ -11,6 +11,8 @@ import {
 import { HeartIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -43,9 +45,10 @@ function getInitialWidth(): number {
 
 export function Sidebar() {
   const navigate = useNavigate()
-  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } =
-    useLibraryStore()
+  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
 
   const [width, setWidth] = useState(getInitialWidth)
   const [filter, setFilter] = useState<Filter>('all')
@@ -57,8 +60,9 @@ export function Sidebar() {
 
   // Populate the library app-wide (today only LibraryPage triggers this).
   useEffect(() => {
+    if (!isAuthenticated) return
     fetchLibrary()
-  }, [fetchLibrary])
+  }, [fetchLibrary, isAuthenticated])
 
   // Persist width
   useEffect(() => {
@@ -98,6 +102,10 @@ export function Sidebar() {
   }, [dragging])
 
   const handleCreate = async () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Create playlists with a free account' })
+      return
+    }
     const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`)
     navigate(`/playlist/${playlist.id}`)
   }
@@ -136,10 +144,13 @@ export function Sidebar() {
     }))
 
     let list =
-      filter === 'playlists' ? playlists
-      : filter === 'albums' ? albums
-      : filter === 'artists' ? artists
-      : [...playlists, ...albums, ...artists]
+      filter === 'playlists'
+        ? playlists
+        : filter === 'albums'
+          ? albums
+          : filter === 'artists'
+            ? artists
+            : [...playlists, ...albums, ...artists]
 
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
@@ -147,7 +158,8 @@ export function Sidebar() {
     return list
   }, [savedPlaylists, savedAlbums, followedArtists, filter, query, sort])
 
-  const showLiked = (filter === 'all' || filter === 'playlists') &&
+  const showLiked =
+    (filter === 'all' || filter === 'playlists') &&
     (!query.trim() || 'liked songs'.includes(query.trim().toLowerCase()))
 
   const isNowPlaying = (item: LibItem) =>
@@ -162,6 +174,64 @@ export function Sidebar() {
   )
 
   // ── Rail (collapsed) ────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return (
+      <aside
+        style={{ width: DEFAULT_W }}
+        className="hidden shrink-0 select-none flex-col overflow-hidden rounded-lg bg-sidebar lg:flex"
+      >
+        <div className="flex items-center justify-between px-4 pb-4 pt-4">
+          <Link to="/library" className="text-sm font-bold text-primary">
+            Your Library
+          </Link>
+          <button
+            onClick={() => openAuthPrompt({ title: 'Create playlists with a free account' })}
+            className="rounded-full bg-elevated px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-elevated/70"
+          >
+            + Create
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 px-2">
+          <section className="rounded-lg bg-elevated p-4">
+            <h2 className="text-sm font-bold text-primary">Create your first playlist</h2>
+            <p className="mt-2 text-xs font-semibold text-primary">It's easy, we'll help you</p>
+            <button
+              onClick={() => openAuthPrompt({ title: 'Create playlists with a free account' })}
+              className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+            >
+              Create playlist
+            </button>
+          </section>
+
+          <section className="rounded-lg bg-elevated p-4">
+            <h2 className="text-sm font-bold text-primary">Let's find some podcasts to follow</h2>
+            <p className="mt-2 text-xs font-semibold text-primary">We'll keep you updated on new episodes</p>
+            <button
+              onClick={() => openAuthPrompt({ title: 'Follow shows with a free account' })}
+              className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+            >
+              Browse podcasts
+            </button>
+          </section>
+        </div>
+
+        <div className="mt-auto px-5 pb-6 text-[10px] text-secondary">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
+            <span>Legal</span>
+            <span>Safety & Privacy Center</span>
+            <span>Privacy Policy</span>
+            <span>Cookies</span>
+            <span>Accessibility</span>
+          </div>
+          <button className="mt-6 rounded-full border border-secondary/50 px-3 py-1.5 text-xs font-bold text-primary">
+            English
+          </button>
+        </div>
+      </aside>
+    )
+  }
+
   if (collapsed) {
     return (
       <aside style={frameStyle} className={frameClass}>
@@ -216,17 +286,20 @@ export function Sidebar() {
   return (
     <aside style={frameStyle} className={frameClass}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-3 gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2">
+        <div className="relative flex min-w-0 items-center">
           <button
             onClick={() => setWidth(RAIL)}
-            className="text-secondary hover:text-primary hover:scale-110 shrink-0 opacity-0 group-hover/sidebar:opacity-100 transition-all"
+            className="absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
             aria-label="Collapse Your Library"
             title="Collapse Your Library"
           >
             <ChevronDoubleLeftIcon className="w-5 h-5" />
           </button>
-          <Link to="/library" className="font-bold text-primary hover:text-secondary transition-colors truncate">
+          <Link
+            to="/library"
+            className="truncate pl-0 font-bold text-primary transition-all duration-200 hover:text-secondary group-hover/library-header:pl-7"
+          >
             Your Library
           </Link>
         </div>
@@ -260,7 +333,9 @@ export function Sidebar() {
               onClick={() => setFilter(filter === c.key ? 'all' : c.key)}
               className={cn(
                 'px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95',
-                filter === c.key ? 'bg-primary text-page' : 'bg-elevated text-secondary hover:text-primary hover:bg-elevated/70',
+                filter === c.key
+                  ? 'bg-primary text-page'
+                  : 'bg-elevated text-secondary hover:text-primary hover:bg-elevated/70',
               )}
             >
               {c.label}
@@ -277,7 +352,9 @@ export function Sidebar() {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onBlur={() => { if (!query) setSearchOpen(false) }}
+              onBlur={() => {
+                if (!query) setSearchOpen(false)
+              }}
               placeholder="Search in Your Library"
               className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-accent/50"
             />
@@ -307,7 +384,12 @@ export function Sidebar() {
         {showLiked && (
           <NavLink
             to="/library?tab=liked"
-            className={({ isActive }) => cn('flex items-center gap-3 p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 p-2 rounded-md transition-colors',
+                isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+              )
+            }
           >
             <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0">
               <HeartIcon className="w-5 h-5 text-white" />
@@ -323,9 +405,19 @@ export function Sidebar() {
           <NavLink
             key={item.key}
             to={item.to}
-            className={({ isActive }) => cn('flex items-center gap-3 p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 p-2 rounded-md transition-colors',
+                isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+              )
+            }
           >
-            <div className={cn('w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center', item.round ? 'rounded-full' : 'rounded-md')}>
+            <div
+              className={cn(
+                'w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+                item.round ? 'rounded-full' : 'rounded-md',
+              )}
+            >
               {item.image ? (
                 <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
               ) : (
@@ -333,7 +425,9 @@ export function Sidebar() {
               )}
             </div>
             <div className="min-w-0">
-              <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>{item.name}</p>
+              <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
+                {item.name}
+              </p>
               <p className="text-xs text-secondary truncate">{item.subtitle}</p>
             </div>
           </NavLink>

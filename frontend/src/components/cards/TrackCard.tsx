@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { formatMs } from '@/utils/formatTime'
 
 interface TrackCardProps {
@@ -10,14 +11,16 @@ interface TrackCardProps {
 }
 
 export function TrackCard({ track, queue }: TrackCardProps) {
-  const { currentTrack, isPlaying, play, pause, resume } = usePlayerStore()
+  const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const playWithGate = usePlaybackGate()
   const isCurrent = currentTrack?.id === track.id
 
   const handlePlay = () => {
     if (isCurrent) {
-      isPlaying ? pause() : resume()
+      if (isPlaying) pause()
+      else resume()
     } else {
-      play(track, queue ?? [track])
+      playWithGate(track, queue ?? [track])
     }
   }
 
@@ -37,15 +40,9 @@ export function TrackCard({ track, queue }: TrackCardProps) {
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
-          {track.title}
-        </p>
+        <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
         <p className="text-xs text-secondary truncate">
-          <Link
-            to={`/artist/${track.artist.id}`}
-            onClick={(e) => e.stopPropagation()}
-            className="hover:underline"
-          >
+          <Link to={`/artist/${track.artist.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
             {track.artist.name}
           </Link>
         </p>

@@ -2,7 +2,6 @@ import { QueueListIcon } from '@heroicons/react/24/outline'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
-import { ShuffleRepeatControls } from '@/components/player/ShuffleRepeatControls'
 import { VolumeControl } from '@/components/player/VolumeControl'
 import { usePlayerStore } from '@/stores/playerStore'
 
@@ -18,10 +17,7 @@ export function BottomPlayerBar() {
 
       {/* Center: Controls + Progress — equal side columns keep this perfectly centered */}
       <div className="flex flex-col items-center gap-2 w-full max-w-[620px] justify-self-center">
-        <div className="flex items-center gap-5">
-          <ShuffleRepeatControls />
-          <PlayerControls />
-        </div>
+        <PlayerControls />
         <ProgressBar />
       </div>
 

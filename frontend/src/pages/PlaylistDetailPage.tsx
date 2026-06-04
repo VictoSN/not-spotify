@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
-import { usePlayerStore } from '@/stores/playerStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -14,20 +14,28 @@ export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loading, setLoading] = useState(true)
-  const { play } = usePlayerStore()
+  const playWithGate = usePlaybackGate()
 
   useEffect(() => {
     if (!id) return
-    playlistService.getById(id).then((p) => { setPlaylist(p); setLoading(false) })
+    playlistService.getById(id).then((p) => {
+      setPlaylist(p)
+      setLoading(false)
+    })
   }, [id])
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner size="lg" />
+      </div>
+    )
   if (!playlist) return <div className="p-8 text-secondary">Playlist not found.</div>
 
   const tracks = playlist.tracks.map((pt) => pt.track)
 
   const handlePlayAll = () => {
-    if (tracks.length > 0) play(tracks[0], tracks)
+    if (tracks.length > 0) playWithGate(tracks[0], tracks)
   }
 
   return (
@@ -44,14 +52,13 @@ export function PlaylistDetailPage() {
         <div className="min-w-0 pb-2">
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Playlist</p>
           <h1 className="text-4xl sm:text-5xl font-black text-primary mt-1 mb-3">{playlist.name}</h1>
-          {playlist.description && (
-            <p className="text-secondary text-sm mb-2">{playlist.description}</p>
-          )}
+          {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
           <p className="text-xs text-secondary">
             <span className="font-semibold text-primary">{playlist.owner.name}</span>
-            {' · '}{formatNumber(playlist.followerCount)} likes
-            {' · '}{tracks.length} songs,{' '}
-            {formatMs(playlist.totalDurationMs)}
+            {' · '}
+            {formatNumber(playlist.followerCount)} likes
+            {' · '}
+            {tracks.length} songs, {formatMs(playlist.totalDurationMs)}
           </p>
         </div>
       </div>
@@ -75,7 +82,9 @@ export function PlaylistDetailPage() {
           <span className="text-xs text-secondary uppercase tracking-wider">Title</span>
           <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Album</span>
           <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Date added</span>
-          <span className="flex justify-end"><ClockIcon className="w-4 h-4 text-secondary" /></span>
+          <span className="flex justify-end">
+            <ClockIcon className="w-4 h-4 text-secondary" />
+          </span>
         </div>
 
         {tracks.map((track, i) => (

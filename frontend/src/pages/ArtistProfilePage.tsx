@@ -6,8 +6,10 @@ import type { Artist } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { artistService } from '@/services/artistService'
-import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { Spinner } from '@/components/ui/Spinner'
@@ -22,27 +24,40 @@ export function ArtistProfilePage() {
   const [topTracks, setTopTracks] = useState<Track[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
-  const { play } = usePlayerStore()
+  const playWithGate = usePlaybackGate()
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
 
   useEffect(() => {
     if (!id) return
-    Promise.all([
-      artistService.getById(id),
-      artistService.getTopTracks(id, 5),
-      artistService.getAlbums(id),
-    ]).then(([a, t, al]) => {
-      setArtist(a)
-      setTopTracks(t)
-      setAlbums(al)
-      setLoading(false)
-    })
+    Promise.all([artistService.getById(id), artistService.getTopTracks(id, 5), artistService.getAlbums(id)]).then(
+      ([a, t, al]) => {
+        setArtist(a)
+        setTopTracks(t)
+        setAlbums(al)
+        setLoading(false)
+      },
+    )
   }, [id])
 
-  if (loading) return <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Spinner size="lg" />
+      </div>
+    )
   if (!artist) return <div className="p-8 text-secondary">Artist not found.</div>
 
   const isFollowing = followedArtistIds.has(artist.id)
+  const toggleFollow = () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Follow artists with a free account', imageUrl: artist.imageUrl })
+      return
+    }
+    if (isFollowing) unfollowArtist(artist.id)
+    else followArtist(artist)
+  }
 
   return (
     <div>
@@ -56,7 +71,11 @@ export function ArtistProfilePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-page via-page/40 to-transparent" />
         <div className="absolute bottom-6 left-6 flex items-end gap-4">
           {artist.imageUrl && (
-            <img src={artist.imageUrl} alt={artist.name} className="w-24 h-24 rounded-full object-cover shadow-2xl border-2 border-elevated" />
+            <img
+              src={artist.imageUrl}
+              alt={artist.name}
+              className="w-24 h-24 rounded-full object-cover shadow-2xl border-2 border-elevated"
+            />
           )}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -72,14 +91,11 @@ export function ArtistProfilePage() {
       {/* Actions */}
       <div className="flex items-center gap-4 px-6 py-4">
         {topTracks.length > 0 && (
-          <Button onClick={() => play(topTracks[0], topTracks)} size="lg" className="gap-2">
+          <Button onClick={() => playWithGate(topTracks[0], topTracks)} size="lg" className="gap-2">
             <PlayIcon className="w-5 h-5" /> Play
           </Button>
         )}
-        <Button
-          variant={isFollowing ? 'outline' : 'secondary'}
-          onClick={() => isFollowing ? unfollowArtist(artist.id) : followArtist(artist)}
-        >
+        <Button variant={isFollowing ? 'outline' : 'secondary'} onClick={toggleFollow}>
           {isFollowing ? 'Following' : 'Follow'}
         </Button>
       </div>
@@ -112,7 +128,11 @@ export function ArtistProfilePage() {
           <SectionHeader title="About" />
           <div className="bg-surface rounded-xl p-6 relative overflow-hidden">
             {artist.headerImageUrl && (
-              <img src={artist.headerImageUrl} alt="" className="absolute inset-0 w-full h-full object-cover opacity-10" />
+              <img
+                src={artist.headerImageUrl}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-10"
+              />
             )}
             <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
             <p className="text-xs text-muted mt-4 relative z-10">{formatNumber(artist.followerCount)} followers</p>

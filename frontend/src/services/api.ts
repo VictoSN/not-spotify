@@ -22,9 +22,10 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config
-    const isAuthEndpoint = original.url?.includes('/auth/refresh') ||
-                           original.url?.includes('/auth/login') ||
-                           original.url?.includes('/auth/signup')
+    const isAuthEndpoint =
+      original.url?.includes('/auth/refresh') ||
+      original.url?.includes('/auth/login') ||
+      original.url?.includes('/auth/signup')
 
     if (error.response?.status !== 401 || original._retry || isAuthEndpoint) throw error
 
@@ -54,11 +55,9 @@ api.interceptors.response.use(
       return api(original)
     } catch {
       queue = []
-      window.location.href = '/login'
       throw error
     } finally {
       isRefreshing = false
     }
   },
 )
-

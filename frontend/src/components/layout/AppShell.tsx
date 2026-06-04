@@ -4,10 +4,13 @@ import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 
 export function AppShell() {
   const isMobile = useIsMobile()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
 
   return (
@@ -22,10 +25,11 @@ export function AppShell() {
           <Outlet />
         </main>
 
-        {!isMobile && isNowPlayingOpen && <NowPlayingPanel />}
+        {!isMobile && isAuthenticated && isNowPlayingOpen && <NowPlayingPanel />}
       </div>
 
-      <BottomPlayerBar />
+      {isAuthenticated && <BottomPlayerBar />}
+      <AuthPromptModal />
     </div>
   )
 }

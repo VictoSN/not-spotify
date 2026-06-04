@@ -25,10 +25,12 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
   {
-    element: <ProtectedRoute />,
-    errorElement: <ErrorBoundary><div /></ErrorBoundary>,
+    errorElement: (
+      <ErrorBoundary>
+        <div />
+      </ErrorBoundary>
+    ),
     children: [
-      // ── Music app (sidebar + player) ──────────────────────────────
       {
         element: <AppShell />,
         children: [
@@ -43,24 +45,27 @@ export const router = createBrowserRouter([
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },
-
-      // ── Admin panel (own layout, no music chrome) ─────────────────
       {
-        element: <AdminRoute />,
+        element: <ProtectedRoute />,
         children: [
           {
-            element: <AdminShell />,
+            element: <AdminRoute />,
             children: [
-              { path: 'admin', element: <Navigate to="/admin/artists" replace /> },
-              { path: 'admin/artists', element: <AdminArtistsListPage /> },
-              { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
-              { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },
-              { path: 'admin/albums', element: <AdminAlbumsListPage /> },
-              { path: 'admin/albums/new', element: <AdminAlbumFormPage /> },
-              { path: 'admin/albums/:id/edit', element: <AdminAlbumFormPage /> },
-              { path: 'admin/tracks', element: <AdminTracksListPage /> },
-              { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
-              { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
+              {
+                element: <AdminShell />,
+                children: [
+                  { path: 'admin', element: <Navigate to="/admin/artists" replace /> },
+                  { path: 'admin/artists', element: <AdminArtistsListPage /> },
+                  { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
+                  { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },
+                  { path: 'admin/albums', element: <AdminAlbumsListPage /> },
+                  { path: 'admin/albums/new', element: <AdminAlbumFormPage /> },
+                  { path: 'admin/albums/:id/edit', element: <AdminAlbumFormPage /> },
+                  { path: 'admin/tracks', element: <AdminTracksListPage /> },
+                  { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
+                  { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
+                ],
+              },
             ],
           },
         ],

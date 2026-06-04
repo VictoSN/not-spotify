@@ -4,6 +4,9 @@ import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 
@@ -16,21 +19,29 @@ interface TrackRowProps {
 }
 
 export function TrackRow({ track, index, queue, showAlbum = false, showPlayCount = false }: TrackRowProps) {
-  const { currentTrack, isPlaying, play, pause, resume } = usePlayerStore()
+  const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
+  const playWithGate = usePlaybackGate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
 
   const handlePlay = () => {
     if (isCurrent) {
-      isPlaying ? pause() : resume()
+      if (isPlaying) pause()
+      else resume()
     } else {
-      play(track, queue)
+      playWithGate(track, queue)
     }
   }
 
   const toggleLike = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Like songs with a free account', imageUrl: track.album.coverUrl })
+      return
+    }
     if (isLiked) unlikeTrack(track.id)
     else likeTrack(track)
   }
@@ -57,14 +68,22 @@ export function TrackRow({ track, index, queue, showAlbum = false, showPlayCount
 
       {/* Title + artist */}
       <div className="flex items-center gap-3 min-w-0">
-        <img src={track.album.coverUrl} alt={track.album.title} className="w-10 h-10 rounded flex-shrink-0 object-cover" />
+        <img
+          src={track.album.coverUrl}
+          alt={track.album.title}
+          className="w-10 h-10 rounded flex-shrink-0 object-cover"
+        />
         <div className="min-w-0">
           <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
             {track.title}
             {track.explicit && <span className="ml-1 text-xs bg-elevated px-1 rounded text-secondary">E</span>}
           </p>
           <p className="text-xs text-secondary truncate">
-            <Link to={`/artist/${track.artist.id}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary hover:underline">
+            <Link
+              to={`/artist/${track.artist.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:text-primary hover:underline"
+            >
               {track.artist.name}
             </Link>
           </p>
@@ -83,9 +102,7 @@ export function TrackRow({ track, index, queue, showAlbum = false, showPlayCount
       )}
 
       {/* Play count (optional) */}
-      {showPlayCount && (
-        <span className="text-sm text-secondary hidden md:block">{formatNumber(track.playCount)}</span>
-      )}
+      {showPlayCount && <span className="text-sm text-secondary hidden md:block">{formatNumber(track.playCount)}</span>}
 
       {/* Duration + actions */}
       <div className="flex items-center justify-end gap-3">

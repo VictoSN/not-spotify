@@ -47,7 +47,18 @@ cd backend/src/NotSpotify.Api
 dotnet user-secrets set "ConnectionStrings:Postgres" "Host=localhost;Port=5432;Database=notspotify;Username=notspotify_app;Password=<the-password-you-picked>"
 
 dotnet user-secrets set "Jwt:SigningKey" "<any-random-string-32+-chars>"
+
+# Optional: enable Stripe Billing in local dev/test mode
+dotnet user-secrets set "Stripe:SecretKey" "sk_test_your_real_secret_key"
+dotnet user-secrets set "Stripe:WebhookSecret" "whsec_your_real_webhook_secret"
+dotnet user-secrets set "Stripe:MonthlyPriceId" "price_your_monthly_recurring_price_id"
+dotnet user-secrets set "Stripe:YearlyPriceId" "price_your_yearly_recurring_price_id"
+dotnet user-secrets set "Stripe:SuccessUrl" "http://localhost:5173/premium?checkout=success"
+dotnet user-secrets set "Stripe:CancelUrl" "http://localhost:5173/premium?checkout=cancelled"
+dotnet user-secrets set "Stripe:PortalReturnUrl" "http://localhost:5173/account"
 ```
+
+For Stripe setup details, including installing Stripe CLI on Windows, creating recurring test prices, and forwarding webhooks to `/stripe/webhook`, see the root `README.md`.
 
 You can generate a JWT signing key with PowerShell:
 
@@ -136,6 +147,28 @@ backend/
 | `Jwt:AccessTokenMinutes` | `appsettings.json` | Default 15 |
 | `Jwt:RefreshTokenDays` | `appsettings.json` | Default 30 |
 | `Cors:AllowedOrigins` | `appsettings.json` | Defaults to Vite's `http://localhost:5173` |
+| `Stripe:SecretKey` | user-secrets / env var | Stripe test/live secret key for Checkout and Portal |
+| `Stripe:WebhookSecret` | user-secrets / env var | `whsec_...` signing secret for `/stripe/webhook` |
+| `Stripe:MonthlyPriceId` | user-secrets / env var | Stripe recurring monthly Price ID |
+| `Stripe:YearlyPriceId` | user-secrets / env var | Stripe recurring yearly Price ID, configured in Stripe as 15% cheaper annually |
+| `Stripe:SuccessUrl`, `Stripe:CancelUrl`, `Stripe:PortalReturnUrl` | user-secrets / env var | Frontend redirects for Checkout and Customer Portal |
+
+### Stripe webhook testing
+
+Run this while the API is running:
+
+```powershell
+stripe listen --forward-to https://localhost:7045/stripe/webhook
+```
+
+If Stripe CLI is not on `PATH`, run it from the folder where `stripe.exe` was extracted:
+
+```powershell
+cd C:\stripe
+.\stripe.exe listen --forward-to https://localhost:7045/stripe/webhook
+```
+
+Copy the printed `whsec_...` value into `Stripe:WebhookSecret`, restart the API, then perform a new Checkout test.
 
 ## Media storage
 

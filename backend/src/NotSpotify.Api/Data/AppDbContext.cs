@@ -18,7 +18,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
     public DbSet<UserSavedPlaylist> UserSavedPlaylists => Set<UserSavedPlaylist>();
     public DbSet<PlayHistory> PlayHistories => Set<PlayHistory>();
+    public DbSet<RecentSearch> RecentSearches => Set<RecentSearch>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -125,6 +127,27 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(x => x.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<RecentSearch>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany(u => u.RecentSearches)
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.UserId, x.SearchedAt });
+        });
+
+        b.Entity<ApplicationUser>(e =>
+        {
+            e.HasIndex(x => x.StripeCustomerId);
+            e.HasIndex(x => x.StripeSubscriptionId);
+        });
+
+        b.Entity<StripeWebhookEvent>(e =>
+        {
+            e.HasKey(x => x.Id);
         });
 
         b.Entity<PlayHistory>(e =>

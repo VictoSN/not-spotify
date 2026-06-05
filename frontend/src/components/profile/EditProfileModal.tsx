@@ -1,0 +1,145 @@
+import { useState } from 'react'
+import { CameraIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
+import { meService } from '@/services/meService'
+import { useAuthStore } from '@/stores/authStore'
+
+export function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md rounded-lg bg-surface p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1 text-secondary transition-colors hover:bg-elevated hover:text-primary"
+          aria-label="Close"
+        >
+          <XMarkIcon className="h-5 w-5" />
+        </button>
+        <h2 className="mb-5 text-2xl font-bold text-primary">Profile details</h2>
+        {/* Mounted fresh while open, so fields initialise from the current user. */}
+        <EditProfileForm onClose={onClose} />
+      </div>
+    </div>
+  )
+}
+
+function EditProfileForm({ onClose }: { onClose: () => void }) {
+  const user = useAuthStore((s) => s.user)
+  const setUser = useAuthStore((s) => s.setUser)
+  const [name, setName] = useState(user?.name ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
+  const [country, setCountry] = useState(user?.country ?? 'US')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      let updated = await meService.updateProfile({ name, email, country })
+      if (avatarFile) updated = await meService.uploadAvatar(avatarFile)
+      setUser(updated)
+      onClose()
+    } catch (err) {
+      const data = (err as { response?: { data?: { message?: string; errors?: string[] } } })?.response?.data
+      setError(data?.errors?.join(' ') ?? data?.message ?? 'Could not update profile.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const removePhoto = async () => {
+    if (avatarFile) {
+      setAvatarFile(null)
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      setUser(await meService.deleteAvatar())
+    } catch {
+      setError('Could not remove profile picture.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputClass =
+    'h-11 rounded-md border border-secondary/20 bg-elevated px-3 text-sm text-primary outline-none transition-colors focus:border-accent'
+
+  return (
+    <form onSubmit={save} className="grid gap-4">
+      <div className="flex items-center gap-4">
+        <label className="group relative cursor-pointer">
+          <Avatar src={avatarFile ? URL.createObjectURL(avatarFile) : user?.avatarUrl} alt={name} size="xl" round />
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <CameraIcon className="h-6 w-6 text-white" />
+          </span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+          />
+        </label>
+        {(user?.avatarUrl || avatarFile) && (
+          <button
+            type="button"
+            onClick={removePhoto}
+            disabled={saving}
+            className="flex items-center gap-1.5 text-sm font-semibold text-secondary transition-colors hover:text-red-400 disabled:opacity-50"
+          >
+            <TrashIcon className="h-4 w-4" />
+            Remove photo
+          </button>
+        )}
+      </div>
+
+      <label className="grid gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Display name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} required />
+      </label>
+
+      <label className="grid gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Email</span>
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} required />
+      </label>
+
+      <label className="grid gap-1.5">
+        <span className="text-xs font-semibold text-secondary">Country</span>
+        <input
+          value={country}
+          onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
+          className={`${inputClass} w-28`}
+          minLength={2}
+          maxLength={2}
+          required
+        />
+      </label>
+
+      <div className="mt-2 flex items-center justify-end gap-3">
+        {error && <span className="mr-auto text-sm font-semibold text-red-400">{error}</span>}
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-full px-4 py-2 text-sm font-bold text-secondary transition-colors hover:text-primary"
+        >
+          Cancel
+        </button>
+        <Button type="submit" disabled={saving}>
+          {saving ? 'Saving…' : 'Save'}
+        </Button>
+      </div>
+    </form>
+  )
+}

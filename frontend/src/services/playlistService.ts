@@ -32,6 +32,23 @@ export const playlistService = {
     return res.data
   },
 
+  async update(
+    playlistId: string,
+    payload: { name?: string; description?: string | null; isPublic?: boolean },
+  ): Promise<Playlist> {
+    const res = await api.patch<Playlist>(`/playlists/${playlistId}`, payload)
+    return res.data
+  },
+
+  async uploadCover(playlistId: string, file: File): Promise<Playlist> {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await api.post<Playlist>(`/playlists/${playlistId}/cover`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data
+  },
+
   async addTrack(playlistId: string, track: Track): Promise<void> {
     await api.post(`/playlists/${playlistId}/tracks`, { trackId: track.id })
   },

@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
-import { HeartIcon as HeartOutlineIcon, TrashIcon, GlobeAltIcon, LockClosedIcon } from '@heroicons/react/24/outline'
+import {
+  HeartIcon as HeartOutlineIcon,
+  TrashIcon,
+  GlobeAltIcon,
+  LockClosedIcon,
+  PencilSquareIcon,
+  PhotoIcon,
+} from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
@@ -21,6 +28,10 @@ export function PlaylistDetailPage() {
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editDescription, setEditDescription] = useState('')
+  const [coverFile, setCoverFile] = useState<File | null>(null)
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -33,6 +44,8 @@ export function PlaylistDetailPage() {
     if (!id) return
     playlistService.getById(id).then((p) => {
       setPlaylist(p)
+      setEditName(p.name)
+      setEditDescription(p.description ?? '')
       setLoading(false)
     })
   }, [id])
@@ -95,6 +108,28 @@ export function PlaylistDetailPage() {
     }
   }
 
+  const handleSaveEdits = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!playlist) return
+    setBusy(true)
+    try {
+      let updated = await playlistService.update(playlist.id, {
+        name: editName.trim(),
+        description: editDescription.trim(),
+      })
+      if (coverFile) {
+        updated = await playlistService.uploadCover(playlist.id, coverFile)
+        setCoverFile(null)
+      }
+      setPlaylist(updated)
+      setEditName(updated.name)
+      setEditDescription(updated.description ?? '')
+      setEditOpen(false)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -132,6 +167,15 @@ export function PlaylistDetailPage() {
         {/* Owner-only: visibility toggle + delete */}
         {playlist.isOwner && (
           <>
+            <button
+              onClick={() => setEditOpen((v) => !v)}
+              disabled={busy}
+              title="Edit details"
+              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            >
+              <PencilSquareIcon className="w-5 h-5" />
+              Edit
+            </button>
             <button
               onClick={handleVisibilityToggle}
               disabled={busy}
@@ -184,6 +228,63 @@ export function PlaylistDetailPage() {
           </button>
         )}
       </div>
+
+      {playlist.isOwner && editOpen && (
+        <form onSubmit={handleSaveEdits} className="mx-6 mb-4 rounded-lg bg-surface p-5">
+          <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+            <div className="grid gap-4">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-secondary">Name</span>
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="h-11 rounded-md border border-secondary/20 bg-elevated px-3 text-sm text-primary outline-none transition-colors focus:border-accent"
+                  required
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-secondary">Description</span>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="min-h-24 rounded-md border border-secondary/20 bg-elevated px-3 py-2 text-sm text-primary outline-none transition-colors focus:border-accent"
+                />
+              </label>
+            </div>
+
+            <div>
+              <div className="aspect-square overflow-hidden rounded-md bg-elevated">
+                {coverFile ? (
+                  <img src={URL.createObjectURL(coverFile)} alt="Cover preview" className="h-full w-full object-cover" />
+                ) : playlist.coverUrl ? (
+                  <img src={playlist.coverUrl} alt={playlist.name} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-5xl">ðŸŽµ</div>
+                )}
+              </div>
+              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-elevated/70">
+                <PhotoIcon className="h-4 w-4" />
+                Choose cover
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Button type="submit" disabled={busy || !editName.trim()}>
+              {busy ? 'Saving...' : 'Save details'}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setEditOpen(false)} disabled={busy}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
 
       {/* Track list */}
       <div className="px-4">

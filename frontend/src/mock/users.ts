@@ -9,6 +9,14 @@ export const mockUser: User = {
   country: 'US',
   createdAt: '2022-01-10T00:00:00Z',
   roles: ['Admin'],
+  subscriptionStatus: 'active',
+  subscriptionInterval: 'yearly',
+  subscriptionCurrentPeriodEnd: null,
+  subscriptionCancelAtPeriodEnd: false,
+  capabilities: {
+    unlimitedPlayback: true,
+    customPlaylistPictures: true,
+  },
 }
 
 export const mockUserRef: UserRef = {

@@ -10,8 +10,8 @@ import {
   MusicalNoteIcon,
   UserIcon,
   UserCircleIcon,
-  QuestionMarkCircleIcon,
   ArrowDownTrayIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -70,7 +70,7 @@ export function TopBar() {
         </div>
 
         <div className="hidden items-center gap-5 text-sm font-bold text-secondary lg:flex">
-          <button className="transition-colors hover:text-primary">Premium</button>
+          <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
           <button className="transition-colors hover:text-primary">Support</button>
           <button className="transition-colors hover:text-primary">Download</button>
           <div className="h-6 w-px bg-secondary/40" />
@@ -148,35 +148,46 @@ export function TopBar() {
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 top-full mt-2 w-52 bg-elevated rounded-md shadow-xl border border-secondary/10 overflow-hidden z-50 py-1">
-              {/* Display-only placeholders for now (to be wired up later) */}
-              <button
-                type="button"
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default"
+              <Link
+                to="/account"
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
               >
                 <UserIcon className="w-4 h-4" />
                 Account
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default"
+              </Link>
+              <Link
+                to="/profile"
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
               >
                 <UserCircleIcon className="w-4 h-4" />
                 Profile
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default"
+              </Link>
+              <Link
+                to="/settings"
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
               >
-                <QuestionMarkCircleIcon className="w-4 h-4" />
-                Support
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors cursor-default"
+                <Cog6ToothIcon className="w-4 h-4" />
+                Settings
+              </Link>
+              <Link
+                to="/premium"
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
               >
                 <ArrowDownTrayIcon className="w-4 h-4" />
-                Download
-              </button>
+                Premium
+              </Link>
+              <Link
+                to="/history"
+                onClick={() => setShowMenu(false)}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+              >
+                <ClockIcon className="w-4 h-4" />
+                Listening history
+              </Link>
 
               <div className="my-1 border-t border-secondary/10" />
 

@@ -268,6 +268,24 @@ namespace NotSpotify.Api.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("StripeBillingInterval")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("StripeCancelAtPeriodEnd")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("StripeCurrentPeriodEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StripeSubscriptionId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("StripeSubscriptionStatus")
+                        .HasColumnType("text");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -283,6 +301,10 @@ namespace NotSpotify.Api.Migrations
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("StripeCustomerId");
+
+                    b.HasIndex("StripeSubscriptionId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -460,6 +482,29 @@ namespace NotSpotify.Api.Migrations
                     b.ToTable("PlaylistTracks");
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.RecentSearch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SearchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Term")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "SearchedAt");
+
+                    b.ToTable("RecentSearches");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -493,6 +538,23 @@ namespace NotSpotify.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("NotSpotify.Api.Models.StripeWebhookEvent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StripeWebhookEvents");
                 });
 
             modelBuilder.Entity("NotSpotify.Api.Models.Track", b =>
@@ -704,6 +766,17 @@ namespace NotSpotify.Api.Migrations
                     b.Navigation("Track");
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.RecentSearch", b =>
+                {
+                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "User")
+                        .WithMany("RecentSearches")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.RefreshToken", b =>
                 {
                     b.HasOne("NotSpotify.Api.Models.ApplicationUser", "User")
@@ -780,6 +853,8 @@ namespace NotSpotify.Api.Migrations
             modelBuilder.Entity("NotSpotify.Api.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Playlists");
+
+                    b.Navigation("RecentSearches");
 
                     b.Navigation("RefreshTokens");
 

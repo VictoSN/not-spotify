@@ -85,3 +85,127 @@ Ensure you have the following installed:
 Once both servers are running, log in with the following default developer account:
 * **Email:** `alex@example.com`
 * **Password:** `Password123!`
+
+---
+
+## Stripe Billing Setup For Teammates
+
+Stripe is only needed if you want to test the Premium checkout flow. Normal browsing, login, playback, playlists, profile editing, and admin media work without it.
+
+### 1. Install Stripe CLI
+
+The webhook confirmation uses Stripe CLI in local development.
+
+#### Windows manual install
+
+1. Open the official install page: <https://docs.stripe.com/stripe-cli/install>
+2. Choose **Windows** and download the Windows zip.
+3. Extract it somewhere simple, for example:
+   ```text
+   C:\stripe
+   ```
+4. Open PowerShell in that folder and run:
+   ```powershell
+   .\stripe.exe login
+   ```
+
+If you add `C:\stripe` to your Windows `PATH`, you can run `stripe` from any terminal. Otherwise use `.\stripe.exe` from inside `C:\stripe`.
+
+### 2. Create Stripe Test Prices
+
+In the Stripe Dashboard:
+
+1. Turn on **Test mode / Sandbox**.
+2. Go to **Product catalog**: <https://dashboard.stripe.com/test/products>
+3. Create a Premium product.
+4. Add one **recurring monthly** price.
+5. Add one **recurring yearly** price.
+   - If monthly is MYR 70, yearly with 15% discount should be MYR 714/year.
+6. Copy each price's **API ID**. Real Price IDs look like:
+   ```text
+   price_1Rxxxxxxxxxxxxxxxxxxxx
+   ```
+
+Do not use display labels like `price_55` or `price_200`; those are not real Stripe Price IDs.
+
+### 3. Set Backend User Secrets
+
+From the backend project folder:
+
+```powershell
+cd backend/src/NotSpotify.Api
+
+dotnet user-secrets set "Stripe:SecretKey" "sk_test_your_real_secret_key"
+dotnet user-secrets set "Stripe:MonthlyPriceId" "price_your_monthly_recurring_price_id"
+dotnet user-secrets set "Stripe:YearlyPriceId" "price_your_yearly_recurring_price_id"
+dotnet user-secrets set "Stripe:SuccessUrl" "http://localhost:5173/premium?checkout=success"
+dotnet user-secrets set "Stripe:CancelUrl" "http://localhost:5173/premium?checkout=cancelled"
+dotnet user-secrets set "Stripe:PortalReturnUrl" "http://localhost:5173/account"
+```
+
+Get `Stripe:SecretKey` from **Developers -> API keys** in Stripe test mode. It must start with `sk_test_`, not `pk_test_`.
+
+### 4. Add Public Business Name
+
+Stripe Checkout requires a public business name even in test mode. This is just the display name shown on the hosted checkout page; it is not live business verification.
+
+In Stripe Dashboard:
+
+1. Go to **Settings -> Business -> Public details**.
+2. Set a public business name, for example:
+   ```text
+   Not Spotify Test
+   ```
+3. Save.
+
+You do not need to add a real bank account or fully activate live payments for sandbox testing.
+
+### 5. Run Backend And Webhook Forwarding
+
+Terminal 1:
+
+```powershell
+cd backend/src/NotSpotify.Api
+dotnet run
+```
+
+Terminal 2:
+
+```powershell
+cd C:\stripe
+.\stripe.exe listen --forward-to https://localhost:7045/stripe/webhook
+```
+
+Stripe CLI prints a webhook signing secret:
+
+```text
+Your webhook signing secret is whsec_...
+```
+
+Set that value:
+
+```powershell
+cd backend/src/NotSpotify.Api
+dotnet user-secrets set "Stripe:WebhookSecret" "whsec_your_real_webhook_secret"
+```
+
+Restart the backend after setting the webhook secret.
+
+### 6. Test Checkout
+
+1. Start backend with `dotnet run`.
+2. Keep Stripe CLI running with `listen --forward-to`.
+3. Start frontend:
+   ```powershell
+   cd frontend
+   npm run dev
+   ```
+4. Log in as `alex@example.com` / `Password123!`.
+5. Open `http://localhost:5173/premium`.
+6. Choose a plan and pay with a Stripe test card:
+   ```text
+   4242 4242 4242 4242
+   ```
+   Use any future expiry date, any CVC, and any postal code.
+
+After checkout, the account changes to Premium only after the webhook reaches `/stripe/webhook`. If the page says the subscription is waiting for webhook confirmation, make sure Stripe CLI is still running and the backend was restarted after saving `Stripe:WebhookSecret`.

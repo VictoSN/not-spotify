@@ -52,6 +52,8 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
 builder.Services.AddSingleton<IStorageService, LocalStorageService>();
 builder.Services.AddScoped<MediaMapper>();
+builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
+builder.Services.AddHttpClient<StripeBillingService>();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173" };

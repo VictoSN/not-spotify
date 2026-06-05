@@ -18,6 +18,11 @@ public record AuthResponse(string AccessToken, UserDto User);
 
 public record AccessTokenResponse(string AccessToken);
 
+public record UserCapabilitiesDto(
+    bool UnlimitedPlayback,
+    bool CustomPlaylistPictures
+);
+
 public record UserDto(
     Guid Id,
     string Name,
@@ -26,5 +31,10 @@ public record UserDto(
     string Plan,
     string Country,
     DateTime CreatedAt,
-    IEnumerable<string> Roles
+    IEnumerable<string> Roles,
+    string? SubscriptionStatus,
+    string? SubscriptionInterval,
+    DateTime? SubscriptionCurrentPeriodEnd,
+    bool SubscriptionCancelAtPeriodEnd,
+    UserCapabilitiesDto Capabilities
 );

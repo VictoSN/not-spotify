@@ -24,6 +24,29 @@ public class MediaMapper
     public UserRefDto ToRef(ApplicationUser u)
         => new(u.Id, u.Name, ResolveImage(u.AvatarKey, u.AvatarUrl));
 
+    public UserDto ToUserDto(ApplicationUser u, IEnumerable<string> roles)
+    {
+        var premium = string.Equals(u.Plan, "premium", StringComparison.OrdinalIgnoreCase);
+        return new UserDto(
+            u.Id,
+            u.Name,
+            u.Email ?? string.Empty,
+            ResolveImage(u.AvatarKey, u.AvatarUrl),
+            u.Plan,
+            u.Country,
+            u.CreatedAt,
+            roles,
+            u.StripeSubscriptionStatus,
+            u.StripeBillingInterval,
+            u.StripeCurrentPeriodEnd,
+            u.StripeCancelAtPeriodEnd,
+            new UserCapabilitiesDto(
+                UnlimitedPlayback: premium,
+                CustomPlaylistPictures: true
+            )
+        );
+    }
+
     public async Task<TrackDto> ToDtoAsync(Track t, CancellationToken ct = default)
     {
         var audioUrl = await ResolveAudioAsync(t.AudioKey, t.AudioUrl, ct);

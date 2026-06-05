@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -14,19 +15,138 @@ namespace NotSpotify.Api.Controllers;
 [Authorize]
 public class MeController : ControllerBase
 {
+    private const int MaxRecentSearches = 8;
+
+    private static readonly HashSet<string> AllowedImageExts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp",
+    };
+
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly UserManager<ApplicationUser> _users;
+    private readonly IStorageService _storage;
 
-    public MeController(AppDbContext db, MediaMapper mapper)
+    public MeController(AppDbContext db, MediaMapper mapper, UserManager<ApplicationUser> users, IStorageService storage)
     {
         _db = db;
         _mapper = mapper;
+        _users = users;
+        _storage = storage;
     }
 
     private Guid? CurrentUserId()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         return Guid.TryParse(id, out var g) ? g : null;
+    }
+
+    [HttpPatch("profile")]
+    public async Task<ActionResult<UserDto>> UpdateProfile([FromBody] UpdateProfileRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        if (req.Name is not null)
+        {
+            var name = req.Name.Trim();
+            if (name.Length == 0) return BadRequest(new { message = "Name cannot be empty." });
+            user.Name = name;
+        }
+
+        if (req.Country is not null)
+        {
+            var country = req.Country.Trim().ToUpperInvariant();
+            if (country.Length != 2) return BadRequest(new { message = "Country must be a two-letter code." });
+            user.Country = country;
+        }
+
+        if (req.Email is not null)
+        {
+            var email = req.Email.Trim();
+            var existing = await _users.FindByEmailAsync(email);
+            if (existing is not null && existing.Id != user.Id)
+                return Conflict(new { message = "Email is already in use." });
+
+            if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailResult = await _users.SetEmailAsync(user, email);
+                if (!emailResult.Succeeded)
+                    return BadRequest(new { errors = emailResult.Errors.Select(e => e.Description) });
+
+                var usernameResult = await _users.SetUserNameAsync(user, email);
+                if (!usernameResult.Succeeded)
+                    return BadRequest(new { errors = usernameResult.Errors.Select(e => e.Description) });
+
+                user.EmailConfirmed = true;
+            }
+        }
+
+        var result = await _users.UpdateAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+
+        var roles = await _users.GetRolesAsync(user);
+        return Ok(_mapper.ToUserDto(user, roles));
+    }
+
+    [HttpPost("avatar")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<UserDto>> UploadAvatar([FromForm] AvatarUploadRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        var file = req.File;
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExts.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'." });
+
+        var oldKey = user.AvatarKey;
+        var key = $"avatars/{user.Id}/{Guid.NewGuid()}{ext}";
+
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        user.AvatarKey = key;
+        user.AvatarUrl = null;
+        await _users.UpdateAsync(user);
+
+        if (!string.IsNullOrWhiteSpace(oldKey))
+            await _storage.DeleteAsync(oldKey, ct);
+
+        var roles = await _users.GetRolesAsync(user);
+        return Ok(_mapper.ToUserDto(user, roles));
+    }
+
+    [HttpDelete("avatar")]
+    public async Task<ActionResult<UserDto>> DeleteAvatar(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        var oldKey = user.AvatarKey;
+        user.AvatarKey = null;
+        user.AvatarUrl = null;
+        await _users.UpdateAsync(user);
+
+        if (!string.IsNullOrWhiteSpace(oldKey))
+            await _storage.DeleteAsync(oldKey, ct);
+
+        var roles = await _users.GetRolesAsync(user);
+        return Ok(_mapper.ToUserDto(user, roles));
     }
 
     /// <summary>
@@ -167,6 +287,123 @@ public class MeController : ControllerBase
         var byId = tracks.ToDictionary(t => t.Id);
         var ordered = orderedTrackIds.Select(id => byId[id]).ToList();
         return Ok(await _mapper.ToDtoListAsync(ordered, ct));
+    }
+
+    [HttpGet("history")]
+    public async Task<ActionResult<IEnumerable<PlayHistoryDto>>> History([FromQuery] int limit = 50, [FromQuery] int offset = 0, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        limit = Math.Clamp(limit, 1, 100);
+        offset = Math.Max(0, offset);
+
+        var rows = await _db.PlayHistories
+            .Where(h => h.UserId == me)
+            .OrderByDescending(h => h.PlayedAt)
+            .Skip(offset)
+            .Take(limit)
+            .Include(h => h.Track).ThenInclude(t => t.Artist)
+            .Include(h => h.Track).ThenInclude(t => t.Album)
+            .Include(h => h.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var result = new List<PlayHistoryDto>(rows.Count);
+        foreach (var row in rows)
+            result.Add(new PlayHistoryDto(await _mapper.ToDtoAsync(row.Track, ct), row.PlayedAt));
+
+        return Ok(result);
+    }
+
+    [HttpGet("recent-searches")]
+    public async Task<ActionResult<IEnumerable<RecentSearchDto>>> RecentSearches(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var rows = await _db.RecentSearches
+            .Where(s => s.UserId == me)
+            .OrderByDescending(s => s.SearchedAt)
+            .Take(MaxRecentSearches)
+            .Select(s => new RecentSearchDto(s.Id, s.Term, s.SearchedAt))
+            .ToListAsync(ct);
+
+        return Ok(rows);
+    }
+
+    [HttpPost("recent-searches")]
+    public async Task<ActionResult<IEnumerable<RecentSearchDto>>> AddRecentSearch([FromBody] RecentSearchRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var term = req.Term.Trim();
+        if (term.Length == 0) return BadRequest(new { message = "Search term cannot be empty." });
+
+        var lower = term.ToLower();
+        var existing = await _db.RecentSearches
+            .FirstOrDefaultAsync(s => s.UserId == me && s.Term.ToLower() == lower, ct);
+
+        if (existing is null)
+        {
+            _db.RecentSearches.Add(new RecentSearch
+            {
+                Id = Guid.NewGuid(),
+                UserId = me.Value,
+                Term = term,
+                SearchedAt = DateTime.UtcNow,
+            });
+        }
+        else
+        {
+            existing.Term = term;
+            existing.SearchedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        await PruneRecentSearchesAsync(me.Value, ct);
+
+        return await RecentSearches(ct);
+    }
+
+    [HttpDelete("recent-searches/{id:guid}")]
+    public async Task<IActionResult> DeleteRecentSearch(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var row = await _db.RecentSearches.FirstOrDefaultAsync(s => s.Id == id && s.UserId == me, ct);
+        if (row is null) return NotFound();
+
+        _db.RecentSearches.Remove(row);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("recent-searches")]
+    public async Task<IActionResult> ClearRecentSearches(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var rows = await _db.RecentSearches.Where(s => s.UserId == me).ToListAsync(ct);
+        _db.RecentSearches.RemoveRange(rows);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    private async Task PruneRecentSearchesAsync(Guid userId, CancellationToken ct)
+    {
+        var stale = await _db.RecentSearches
+            .Where(s => s.UserId == userId)
+            .OrderByDescending(s => s.SearchedAt)
+            .Skip(MaxRecentSearches)
+            .ToListAsync(ct);
+
+        if (stale.Count == 0) return;
+
+        _db.RecentSearches.RemoveRange(stale);
+        await _db.SaveChangesAsync(ct);
     }
 }
 

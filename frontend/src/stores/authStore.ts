@@ -7,6 +7,7 @@ interface AuthState {
   accessToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
+  isInitializing: boolean
   error: string | null
 
   login: (email: string, password: string) => Promise<void>
@@ -15,6 +16,7 @@ interface AuthState {
   refreshToken: () => Promise<void>
   clearError: () => void
   hydrateFromCookie: () => Promise<void>
+  setUser: (user: User) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -22,6 +24,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
   isAuthenticated: false,
   isLoading: true,
+  isInitializing: true,
   error: null,
 
   login: async (email, password) => {
@@ -70,14 +73,16 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   clearError: () => set({ error: null }),
 
+  setUser: (user) => set({ user, isAuthenticated: true }),
+
   hydrateFromCookie: async () => {
     set({ isLoading: true })
     try {
       const { accessToken, user } = await authService.refresh()
       ;(window as { __authToken?: string }).__authToken = accessToken
-      set({ user, accessToken, isAuthenticated: true, isLoading: false })
+      set({ user, accessToken, isAuthenticated: true, isLoading: false, isInitializing: false })
     } catch {
-      set({ isLoading: false })
+      set({ isLoading: false, isInitializing: false })
     }
   },
 }))

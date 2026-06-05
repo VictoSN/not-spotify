@@ -20,13 +20,15 @@ public class AuthController : ControllerBase
     private readonly TokenService _tokens;
     private readonly AppDbContext _db;
     private readonly JwtOptions _jwt;
+    private readonly MediaMapper _mapper;
 
-    public AuthController(UserManager<ApplicationUser> users, TokenService tokens, AppDbContext db, JwtOptions jwt)
+    public AuthController(UserManager<ApplicationUser> users, TokenService tokens, AppDbContext db, JwtOptions jwt, MediaMapper mapper)
     {
         _users = users;
         _tokens = tokens;
         _db = db;
         _jwt = jwt;
+        _mapper = mapper;
     }
 
     [HttpPost("signup")]
@@ -122,7 +124,7 @@ public class AuthController : ControllerBase
         if (user is null) return NotFound();
 
         var roles = await _users.GetRolesAsync(user);
-        return Ok(ToDto(user, roles));
+        return Ok(_mapper.ToUserDto(user, roles));
     }
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
@@ -139,7 +141,7 @@ public class AuthController : ControllerBase
 
         SetRefreshCookie(raw, expiresAt);
         var roles = await _users.GetRolesAsync(user);
-        return new AuthResponse(_tokens.CreateAccessToken(user, roles), ToDto(user, roles));
+        return new AuthResponse(_tokens.CreateAccessToken(user, roles), _mapper.ToUserDto(user, roles));
     }
 
     private void SetRefreshCookie(string raw, DateTime expiresAt)
@@ -154,6 +156,4 @@ public class AuthController : ControllerBase
         });
     }
 
-    private static UserDto ToDto(ApplicationUser u, IEnumerable<string> roles) => new(
-        u.Id, u.Name, u.Email ?? string.Empty, u.AvatarUrl, u.Plan, u.Country, u.CreatedAt, roles);
 }

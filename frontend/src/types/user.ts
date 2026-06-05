@@ -7,6 +7,14 @@ export interface User {
   country: string
   createdAt: string
   roles: string[]
+  subscriptionStatus: string | null
+  subscriptionInterval: 'monthly' | 'yearly' | null
+  subscriptionCurrentPeriodEnd: string | null
+  subscriptionCancelAtPeriodEnd: boolean
+  capabilities: {
+    unlimitedPlayback: boolean
+    customPlaylistPictures: boolean
+  }
 }
 
 export interface UserRef {

@@ -13,13 +13,20 @@ namespace NotSpotify.Api.Controllers;
 [Route("playlists")]
 public class PlaylistsController : ControllerBase
 {
+    private static readonly HashSet<string> AllowedImageExts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp",
+    };
+
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly IStorageService _storage;
 
-    public PlaylistsController(AppDbContext db, MediaMapper mapper)
+    public PlaylistsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
     {
         _db = db;
         _mapper = mapper;
+        _storage = storage;
     }
 
     private Guid? CurrentUserId()
@@ -111,6 +118,41 @@ public class PlaylistsController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+
+        var loaded = await LoadFullPlaylist(id, ct);
+        return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
+    }
+
+    [HttpPost("{id:guid}/cover")]
+    [Authorize]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<PlaylistDto>> UploadCover(Guid id, [FromForm] PlaylistCoverUploadRequest req, CancellationToken ct = default)
+    {
+        var p = await _db.Playlists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (p is null) return NotFound();
+        if (p.OwnerId != CurrentUserId()) return StatusCode(StatusCodes.Status403Forbidden);
+
+        var file = req.File;
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExts.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'." });
+
+        var oldKey = p.CoverKey;
+        var key = $"covers/playlists/{p.Id}/{Guid.NewGuid()}{ext}";
+
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        p.CoverKey = key;
+        p.CoverUrl = null;
+        p.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        if (!string.IsNullOrWhiteSpace(oldKey))
+            await _storage.DeleteAsync(oldKey, ct);
 
         var loaded = await LoadFullPlaylist(id, ct);
         return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));

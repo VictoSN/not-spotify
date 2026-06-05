@@ -1,12 +1,12 @@
-import { useState, useEffect, useReducer } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { genreService } from '@/services/genreService'
+import { meService, type RecentSearch } from '@/services/meService'
 import type { Genre } from '@/types/genre'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
-import { getRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from '@/utils/recentSearches'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -25,11 +25,10 @@ export function SearchPage() {
   const [resultsState, setResultsState] = useState<{ query: string; data: SearchResults } | null>(null)
   const [genres, setGenres] = useState<Genre[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('all')
+  const [recents, setRecents] = useState<RecentSearch[]>([])
 
   const navigate = useNavigate()
-  const userId = useAuthStore((s) => s.user?.id)
-  const [, bumpRecents] = useReducer((x: number) => x + 1, 0)
-  const recents = getRecentSearches(userId)
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
   // Derive results/loading from state so the effect never calls setState synchronously.
   const trimmed = query.trim()
@@ -41,6 +40,14 @@ export function SearchPage() {
     genreService.getAll().then(setGenres)
   }, [])
 
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setRecents([])
+      return
+    }
+    meService.getRecentSearches().then(setRecents).catch(() => setRecents([]))
+  }, [isAuthenticated])
+
   // Search when query changes
   useEffect(() => {
     const q = debouncedQuery.trim()
@@ -51,15 +58,14 @@ export function SearchPage() {
       setResultsState({ query: q, data: r })
       const hasResults =
         r.tracks.length > 0 || r.artists.length > 0 || r.albums.length > 0 || r.playlists.length > 0
-      if (hasResults) {
-        addRecentSearch(userId, q)
-        bumpRecents()
+      if (hasResults && isAuthenticated) {
+        meService.addRecentSearch(q).then(setRecents).catch(() => {})
       }
     })
     return () => {
       cancelled = true
     }
-  }, [debouncedQuery, userId])
+  }, [debouncedQuery, isAuthenticated])
 
   const tabs: Tab[] = ['all', 'songs', 'artists', 'albums', 'playlists']
 
@@ -73,27 +79,33 @@ export function SearchPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold text-primary">Recent searches</h2>
                 <button
-                  onClick={() => { clearRecentSearches(userId); bumpRecents() }}
+                  onClick={() => {
+                    meService.clearRecentSearches().then(() => setRecents([])).catch(() => {})
+                  }}
                   className="text-xs font-semibold text-secondary hover:text-primary uppercase tracking-wider transition-colors"
                 >
                   Clear all
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {recents.map((term) => (
+                {recents.map((recent) => (
                   <div
-                    key={term}
+                    key={recent.id}
                     className="flex items-center gap-1 bg-elevated hover:bg-surface rounded-full pl-4 pr-1.5 py-1.5 transition-colors"
                   >
                     <button
-                      onClick={() => navigate(`/search?q=${encodeURIComponent(term)}`)}
+                      onClick={() => navigate(`/search?q=${encodeURIComponent(recent.term)}`)}
                       className="text-sm font-medium text-primary"
                     >
-                      {term}
+                      {recent.term}
                     </button>
                     <button
-                      onClick={() => { removeRecentSearch(userId, term); bumpRecents() }}
-                      aria-label={`Remove ${term}`}
+                      onClick={() => {
+                        meService.removeRecentSearch(recent.id)
+                          .then(() => setRecents((rows) => rows.filter((row) => row.id !== recent.id)))
+                          .catch(() => {})
+                      }}
+                      aria-label={`Remove ${recent.term}`}
                       className="text-secondary hover:text-primary p-0.5 rounded-full hover:bg-elevated transition-colors"
                     >
                       <XMarkIcon className="w-4 h-4" />

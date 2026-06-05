@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
 import {
@@ -8,19 +8,28 @@ import {
   LockClosedIcon,
   PencilSquareIcon,
   PhotoIcon,
+  ArrowsRightLeftIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
 import { playlistService } from '@/services/playlistService'
+import { trackService } from '@/services/trackService'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
+import { cn } from '@/utils/cn'
 
 export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -32,6 +41,12 @@ export function PlaylistDetailPage() {
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [findPanelOpen, setFindPanelOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Track[]>([])
+  const [recommendations, setRecommendations] = useState<Track[]>([])
+  const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set())
+  const debouncedQuery = useDebounce(searchQuery, 300)
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -39,6 +54,9 @@ export function PlaylistDetailPage() {
   const unsavePlaylist = useLibraryStore((s) => s.unsavePlaylist)
   const setPlaylistVisibility = useLibraryStore((s) => s.setPlaylistVisibility)
   const deletePlaylistAction = useLibraryStore((s) => s.deletePlaylist)
+  const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
+  const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
+  const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
 
   useEffect(() => {
     if (!id) return
@@ -49,6 +67,39 @@ export function PlaylistDetailPage() {
       setLoading(false)
     })
   }, [id])
+
+  // Fetch recommendations once the playlist (and its tracks/genres) are loaded — they
+  // refresh after every add so newly-added tracks drop off the list.
+  useEffect(() => {
+    if (!playlist?.isOwner) return
+    playlistService.getRecommendations(playlist.id, 10).then(setRecommendations).catch(() => setRecommendations([]))
+  }, [playlist?.id, playlist?.isOwner])
+
+  // Live-search the catalog as the user types. Clearing the box restores recommendations.
+  useEffect(() => {
+    if (!playlist?.isOwner) return
+    const q = debouncedQuery.trim()
+    if (!q) {
+      setSearchResults([])
+      return
+    }
+    let cancelled = false
+    trackService.search(q).then((tracks) => {
+      if (!cancelled) setSearchResults(tracks)
+    }).catch(() => {
+      if (!cancelled) setSearchResults([])
+    })
+    return () => { cancelled = true }
+  }, [debouncedQuery, playlist?.isOwner])
+
+  // Tracks already in the playlist (or in-flight) should never appear in the find panel.
+  const findCandidates = useMemo(() => {
+    if (!playlist) return []
+    const present = new Set(playlist.tracks.map((pt) => pt.track.id))
+    const filter = (t: Track) => !present.has(t.id) && !addingTrackIds.has(t.id)
+    const source = searchQuery.trim() ? searchResults : recommendations
+    return source.filter(filter)
+  }, [playlist, searchQuery, searchResults, recommendations, addingTrackIds])
 
   if (loading)
     return (
@@ -130,6 +181,38 @@ export function PlaylistDetailPage() {
     }
   }
 
+  const handleAdd = async (track: Track) => {
+    if (!playlist) return
+    setAddingTrackIds((s) => {
+      const next = new Set(s)
+      next.add(track.id)
+      return next
+    })
+    try {
+      await addTrackToPlaylist(playlist.id, track)
+      setPlaylist((p) =>
+        p
+          ? {
+              ...p,
+              tracks: [
+                ...p.tracks,
+                { track, addedAt: new Date().toISOString(), addedBy: p.owner },
+              ],
+              totalDurationMs: p.totalDurationMs + track.durationMs,
+            }
+          : p,
+      )
+      // Refresh recs so the just-added track drops off and a new one fills the slot.
+      playlistService.getRecommendations(playlist.id, 10).then(setRecommendations).catch(() => {})
+    } finally {
+      setAddingTrackIds((s) => {
+        const next = new Set(s)
+        next.delete(track.id)
+        return next
+      })
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -164,7 +247,23 @@ export function PlaylistDetailPage() {
           Play
         </Button>
 
-        {/* Owner-only: visibility toggle + delete */}
+        {/* Shuffle — visible to all viewers, playback pref only */}
+        <button
+          onClick={toggleShuffle}
+          title={shuffleEnabled ? 'Shuffle on' : 'Shuffle off'}
+          aria-pressed={shuffleEnabled}
+          className={cn(
+            'relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95',
+            shuffleEnabled ? 'text-accent' : 'text-secondary hover:text-primary',
+          )}
+        >
+          <ArrowsRightLeftIcon className="w-5 h-5" />
+          {shuffleEnabled && (
+            <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-accent" />
+          )}
+        </button>
+
+        {/* Owner-only: visibility toggle + delete + reopen find panel */}
         {playlist.isOwner && (
           <>
             <button
@@ -203,6 +302,16 @@ export function PlaylistDetailPage() {
               <TrashIcon className="w-5 h-5" />
               Delete
             </button>
+            {!findPanelOpen && (
+              <button
+                onClick={() => setFindPanelOpen(true)}
+                title="Add songs"
+                className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+              >
+                <PlusIcon className="w-5 h-5" />
+                Add songs
+              </button>
+            )}
           </>
         )}
 
@@ -259,7 +368,7 @@ export function PlaylistDetailPage() {
                 ) : playlist.coverUrl ? (
                   <img src={playlist.coverUrl} alt={playlist.name} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-5xl">ðŸŽµ</div>
+                  <div className="flex h-full w-full items-center justify-center text-5xl">🎵</div>
                 )}
               </div>
               <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-elevated/70">
@@ -306,6 +415,85 @@ export function PlaylistDetailPage() {
           <TrackRow key={track.id} track={track} index={i} queue={tracks} showAlbum />
         ))}
       </div>
+
+      {/* "Let's find something for your playlist" panel — owner only */}
+      {playlist.isOwner && findPanelOpen && (
+        <div className="px-6 pt-6 pb-10 border-t border-elevated/30 mt-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold text-primary">Let's find something for your playlist</h2>
+            <button
+              onClick={() => setFindPanelOpen(false)}
+              title="Close"
+              className="text-secondary hover:text-primary hover:scale-110 active:scale-90 transition-all"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="relative mb-4 max-w-md">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search for songs or episodes"
+              className="w-full h-10 rounded-md bg-elevated text-sm text-primary placeholder:text-muted pl-9 pr-3 outline-none focus:ring-1 focus:ring-accent/50"
+            />
+          </div>
+
+          {findCandidates.length === 0 ? (
+            <p className="text-sm text-secondary px-1 py-4">
+              {searchQuery.trim()
+                ? 'No matching songs found.'
+                : 'No suggestions yet — add a song to get personalized recommendations.'}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {findCandidates.map((track) => (
+                <AddableRow
+                  key={track.id}
+                  track={track}
+                  disabled={addingTrackIds.has(track.id)}
+                  onAdd={() => handleAdd(track)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Lightweight row used inside the "find something" panel: cover, title, artist, album, + */
+function AddableRow({
+  track,
+  onAdd,
+  disabled,
+}: {
+  track: Track
+  onAdd: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div
+      className="grid items-center gap-4 px-3 py-2 rounded-md hover:bg-elevated/50 transition-colors"
+      style={{ gridTemplateColumns: '40px minmax(0, 5fr) minmax(0, 3fr) 40px' }}
+    >
+      <img src={track.album.coverUrl} alt={track.album.title} className="w-10 h-10 rounded object-cover" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-primary truncate">{track.title}</p>
+        <p className="text-xs text-secondary truncate">{track.artist.name}</p>
+      </div>
+      <p className="text-xs text-secondary truncate hidden md:block">{track.album.title}</p>
+      <button
+        onClick={onAdd}
+        disabled={disabled}
+        title="Add to this playlist"
+        aria-label={`Add ${track.title} to this playlist`}
+        className="w-9 h-9 rounded-full border border-secondary/50 flex items-center justify-center text-primary hover:scale-105 hover:border-accent hover:text-accent active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
+      >
+        <PlusIcon className="w-4 h-4" />
+      </button>
     </div>
   )
 }

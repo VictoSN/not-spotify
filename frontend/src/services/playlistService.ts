@@ -73,4 +73,9 @@ export const playlistService = {
     const res = await api.get<{ playlists: Playlist[] }>('/search', { params: { q: query, type: 'playlist' } })
     return res.data.playlists
   },
+
+  async getRecommendations(playlistId: string, limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/playlists/${playlistId}/recommendations`, { params: { limit } })
+    return res.data
+  },
 }

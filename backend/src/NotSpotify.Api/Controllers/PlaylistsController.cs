@@ -216,6 +216,56 @@ public class PlaylistsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Suggests tracks the owner might want to add: other tracks sharing at least one
+    /// genre with the playlist's existing tracks. Ranked by genre-overlap count, then
+    /// by play count. Empty for empty playlists. Anonymous — UX gates this to owners.
+    /// </summary>
+    [HttpGet("{id:guid}/recommendations")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Recommendations(Guid id, [FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        var existingTrackIds = await _db.PlaylistTracks
+            .Where(pt => pt.PlaylistId == id)
+            .Select(pt => pt.TrackId)
+            .ToListAsync(ct);
+
+        var genreIds = await _db.TrackGenres
+            .Where(tg => existingTrackIds.Contains(tg.TrackId))
+            .Select(tg => tg.GenreId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (genreIds.Count == 0) return Ok(Array.Empty<TrackDto>());
+
+        var ranked = await _db.TrackGenres
+            .Where(tg => genreIds.Contains(tg.GenreId) && !existingTrackIds.Contains(tg.TrackId))
+            .GroupBy(tg => tg.TrackId)
+            .Select(g => new { TrackId = g.Key, MatchCount = g.Count() })
+            .OrderByDescending(x => x.MatchCount)
+            .Take(limit * 4)
+            .ToListAsync(ct);
+
+        if (ranked.Count == 0) return Ok(Array.Empty<TrackDto>());
+
+        var trackIds = ranked.Select(r => r.TrackId).ToList();
+        var tracks = await _db.Tracks
+            .Where(t => trackIds.Contains(t.Id))
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var byId = tracks.ToDictionary(t => t.Id);
+        var ordered = ranked
+            .Where(r => byId.ContainsKey(r.TrackId))
+            .OrderByDescending(r => r.MatchCount)
+            .ThenByDescending(r => byId[r.TrackId].PlayCount)
+            .Take(limit)
+            .Select(r => byId[r.TrackId]);
+
+        return Ok(await _mapper.ToDtoListAsync(ordered, ct));
+    }
+
     private Task<Playlist?> LoadFullPlaylist(Guid id, CancellationToken ct) => _db.Playlists
         .Include(p => p.Owner)
         .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Artist)

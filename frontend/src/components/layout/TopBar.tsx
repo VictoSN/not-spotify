@@ -12,7 +12,6 @@ import {
   UserCircleIcon,
   ArrowDownTrayIcon,
   ClockIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'

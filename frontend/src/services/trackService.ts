@@ -35,4 +35,17 @@ export const trackService = {
   async recordPlay(trackId: string): Promise<void> {
     await api.post('/me/plays', { trackId })
   },
+
+  async like(trackId: string): Promise<void> {
+    await api.post(`/me/saved-tracks/${trackId}`)
+  },
+
+  async unlike(trackId: string): Promise<void> {
+    await api.delete(`/me/saved-tracks/${trackId}`)
+  },
+
+  async getLikedSongs(): Promise<Track[]> {
+    const res = await api.get<Track[]>('/me/saved-tracks')
+    return res.data
+  },
 }

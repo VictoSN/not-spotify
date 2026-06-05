@@ -104,7 +104,7 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
   }
 
   const handleNewPlaylist = async () => {
-    const playlist = await createPlaylist('My Playlist', undefined, true)
+    const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`, undefined, true)
     await addTrackToPlaylist(playlist.id, track)
     navigate(`/playlist/${playlist.id}`)
   }

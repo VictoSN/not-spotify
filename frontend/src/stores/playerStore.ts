@@ -181,3 +181,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   tick: (currentTime, duration) => set({ currentTime, duration }),
 }))
+
+// Subscribe to auth state changes to pause and reset playback on logout
+useAuthStore.subscribe((state) => {
+  if (!state.isAuthenticated) {
+    usePlayerStore.setState({
+      currentTrack: null,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      queue: [],
+      queueIndex: -1,
+      history: [],
+    })
+  }
+})

@@ -46,20 +46,28 @@ class AudioEngine {
       const { currentTrack, isPlaying, volume, isMuted, currentTime, duration } = state
 
       // Track changed — load new source
-      if (currentTrack && currentTrack.id !== prevTrackId) {
-        const src = currentTrack.audioUrl
-        if (src !== this.currentSrc) {
-          this.audio.src = src
-          this.currentSrc = src
-          this.audio.load()
+      if (currentTrack) {
+        if (currentTrack.id !== prevTrackId) {
+          const src = currentTrack.audioUrl
+          if (src !== this.currentSrc) {
+            this.audio.src = src
+            this.currentSrc = src
+            this.audio.load()
+          }
+          prevTrackId = currentTrack.id
         }
-        prevTrackId = currentTrack.id
-      }
 
-      // Seek requested externally (not from timeupdate)
-      if (Math.abs(currentTime - this.audio.currentTime) > 1.5 && currentTime !== prevSeek) {
-        this.audio.currentTime = currentTime
-        prevSeek = currentTime
+        // Seek requested externally (not from timeupdate)
+        if (Math.abs(currentTime - this.audio.currentTime) > 1.5 && currentTime !== prevSeek) {
+          this.audio.currentTime = currentTime
+          prevSeek = currentTime
+        }
+      } else {
+        if (this.currentSrc !== '') {
+          this.audio.src = ''
+          this.currentSrc = ''
+        }
+        prevTrackId = null
       }
 
       // Play / pause

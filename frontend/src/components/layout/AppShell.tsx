@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Outlet, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
@@ -11,8 +12,17 @@ import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 
 export function AppShell() {
   const isMobile = useIsMobile()
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
+  const prevAuth = useRef(isAuthenticated)
+
+  useEffect(() => {
+    if (prevAuth.current && !isAuthenticated) {
+      navigate('/', { replace: true })
+    }
+    prevAuth.current = isAuthenticated
+  }, [isAuthenticated, navigate])
 
   return (
     <div className="flex flex-col h-screen bg-base text-primary">

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import {
   MagnifyingGlassIcon,
@@ -12,10 +12,12 @@ import {
   UserCircleIcon,
   ArrowDownTrayIcon,
   ClockIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { meService, type RecentSearch } from '@/services/meService'
 import { Avatar } from '@/components/ui/Avatar'
 
 export function TopBar() {
@@ -24,16 +26,55 @@ export function TopBar() {
   const [searchParams] = useSearchParams()
   const { user, isAuthenticated, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
-  const [showMenu, setShowMenu] = useState(false)
 
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
   const isAdmin = user?.roles?.includes('Admin') ?? false
 
+  const [showMenu, setShowMenu] = useState(false)
+  const [showSearchRecents, setShowSearchRecents] = useState(false)
+  const [recents, setRecents] = useState<RecentSearch[]>([])
+  const [searchValue, setSearchValue] = useState(currentQuery)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setRecents([])
+      return
+    }
+    meService.getRecentSearches().then(setRecents).catch(() => setRecents([]))
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    setSearchValue(currentQuery)
+  }, [currentQuery])
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target as Node)) {
+        setShowSearchRecents(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value
+    setSearchValue(q)
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
     else navigate('/search')
+  }
+
+  const handleClearSearch = () => {
+    setSearchValue('')
+    navigate('/search')
+    searchInputRef.current?.focus()
+  }
+
+  const handleRecentClick = (term: string) => {
+    setShowSearchRecents(false)
+    navigate(`/search?q=${encodeURIComponent(term)}`)
   }
 
   if (!isAuthenticated) {
@@ -59,13 +100,22 @@ export function TopBar() {
             <input
               type="search"
               placeholder="What do you want to play?"
-              defaultValue={currentQuery}
+              value={searchValue}
               onChange={handleSearch}
               onFocus={() => {
                 if (!location.pathname.startsWith('/search')) navigate('/search')
               }}
-              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-4 text-sm text-primary transition-colors placeholder:text-muted hover:border-secondary/30 focus:border-primary focus:outline-none"
+              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-10 text-sm text-primary transition-colors placeholder:text-muted hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
+            {searchValue && (
+              <button
+                onClick={handleClearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
+                aria-label="Clear search"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -113,15 +163,40 @@ export function TopBar() {
         <div className="relative w-full max-w-md">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
           <input
+            ref={searchInputRef}
             type="search"
             placeholder="What do you want to play?"
-            defaultValue={currentQuery}
+            value={searchValue}
             onChange={handleSearch}
             onFocus={() => {
               if (!location.pathname.startsWith('/search')) navigate('/search')
+              if (recents.length > 0) setShowSearchRecents(true)
             }}
-            className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-4 h-12 rounded-full border border-transparent hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
+            className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-12 rounded-full border border-transparent hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
           />
+          {searchValue && (
+            <button
+              onClick={handleClearSearch}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
+              aria-label="Clear search"
+            >
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          )}
+          {showSearchRecents && recents.length > 0 && (
+            <div className="absolute top-full mt-2 w-full bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50">
+              {recents.slice(0, 5).map((recent) => (
+                <button
+                  key={recent.id}
+                  onClick={() => handleRecentClick(recent.term)}
+                  className="w-full px-4 py-2.5 text-left text-sm text-primary hover:bg-surface transition-colors flex items-center gap-3"
+                >
+                  <MagnifyingGlassIcon className="w-4 h-4 text-secondary flex-shrink-0" />
+                  <span>{recent.term}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Theme toggle — sits right beside the search */}

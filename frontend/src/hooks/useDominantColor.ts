@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Vibrant } from 'node-vibrant/browser'
+import Vibrant from "node-vibrant"
 
 // Extract the dominant colour from a cover image (for Spotify-style gradient hues).
 // Results are cached by URL; failures (e.g. CORS) resolve to null and are ignored.

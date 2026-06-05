@@ -14,7 +14,7 @@ function recordPlay(trackId: string) {
   const now = Date.now()
   if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
   lastRecordedAt.set(trackId, now)
-  trackService.recordPlay(trackId).catch(() => {})
+  trackService.recordPlay(trackId).catch(() => { })
 }
 
 export type RepeatMode = 'off' | 'one' | 'all'

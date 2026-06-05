@@ -5,6 +5,7 @@ import type { Album } from '@/types/album'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
+import { useAuthStore } from './authStore'
 
 interface LibraryState {
   savedPlaylists: Playlist[]
@@ -229,3 +230,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set((s) => ({ savedPlaylists: s.savedPlaylists.filter((p) => p.id !== playlistId) }))
   },
 }))
+
+// Subscribe to auth state changes to clear library state on logout
+useAuthStore.subscribe((state) => {
+  if (!state.isAuthenticated) {
+    useLibraryStore.setState({
+      savedPlaylists: [],
+      likedSongs: [],
+      followedArtists: [],
+      savedAlbums: [],
+      likedTrackIds: new Set(),
+      followedArtistIds: new Set(),
+      savedAlbumIds: new Set(),
+      isLoading: false,
+    })
+  }
+})

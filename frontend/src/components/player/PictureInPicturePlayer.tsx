@@ -54,7 +54,10 @@ async function openPlayerPictureInPicture() {
   try {
     const pipWindow = await api.requestWindow({ width: 304, height: 360 })
     pipWindow.addEventListener('pagehide', () => {
-      if (!closingProgrammatically) suppressUntilVisible = true
+      if (!closingProgrammatically) {
+        suppressUntilVisible = true
+      }
+      closingProgrammatically = false
     })
     renderPipDocument(pipWindow)
     return true
@@ -68,9 +71,6 @@ function closePlayerPictureInPicture() {
   if (pipWindow && !pipWindow.closed) {
     closingProgrammatically = true
     pipWindow.close()
-    window.setTimeout(() => {
-      closingProgrammatically = false
-    }, 0)
   }
 }
 
@@ -291,13 +291,16 @@ export function PictureInPicturePlayer() {
     }
 
     const syncWithVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      const isAppActive = document.visibilityState === 'visible' && document.hasFocus()
+
+      if (isAppActive) {
         suppressUntilVisible = false
         closePlayerPictureInPicture()
         return
       }
 
-      if (openingRef.current || window.documentPictureInPicture?.window) return
+      const pipWindow = window.documentPictureInPicture?.window
+      if (openingRef.current || (pipWindow && !pipWindow.closed)) return
       openingRef.current = true
       openPlayerPictureInPicture().finally(() => {
         openingRef.current = false
@@ -305,9 +308,15 @@ export function PictureInPicturePlayer() {
     }
 
     document.addEventListener('visibilitychange', syncWithVisibility)
+    window.addEventListener('focus', syncWithVisibility)
+    window.addEventListener('blur', syncWithVisibility)
     syncWithVisibility()
 
-    return () => document.removeEventListener('visibilitychange', syncWithVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', syncWithVisibility)
+      window.removeEventListener('focus', syncWithVisibility)
+      window.removeEventListener('blur', syncWithVisibility)
+    }
   }, [currentTrack, isPlaying])
 
   useEffect(() => {

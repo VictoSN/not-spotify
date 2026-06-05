@@ -15,4 +15,5 @@ export interface Track {
   album: AlbumRef
   genres: string[]
   createdAt: string
+  isSaved?: boolean
 }

@@ -12,7 +12,6 @@ import {
   UserCircleIcon,
   ArrowDownTrayIcon,
   ClockIcon,
-  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -66,12 +65,6 @@ export function TopBar() {
     else navigate('/search')
   }
 
-  const handleClearSearch = () => {
-    setSearchValue('')
-    navigate('/search')
-    searchInputRef.current?.focus()
-  }
-
   const handleRecentClick = (term: string) => {
     setShowSearchRecents(false)
     navigate(`/search?q=${encodeURIComponent(term)}`)
@@ -107,15 +100,6 @@ export function TopBar() {
               }}
               className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-10 text-sm text-primary transition-colors placeholder:text-muted hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
-            {searchValue && (
-              <button
-                onClick={handleClearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
-                aria-label="Clear search"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -174,15 +158,6 @@ export function TopBar() {
             }}
             className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-12 rounded-full border border-transparent hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
           />
-          {searchValue && (
-            <button
-              onClick={handleClearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors"
-              aria-label="Clear search"
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-          )}
           {showSearchRecents && recents.length > 0 && (
             <div className="absolute top-full mt-2 w-full bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50">
               {recents.slice(0, 5).map((recent) => (

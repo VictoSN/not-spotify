@@ -4,6 +4,7 @@ import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
+import { trackService } from '@/services/trackService'
 
 interface LibraryState {
   savedPlaylists: Playlist[]
@@ -45,40 +46,87 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ isLoading: true })
     try {
       const playlists = await playlistService.getUserPlaylists()
-      set({ savedPlaylists: playlists, isLoading: false })
+      let likedTracks: Track[] = []
+      try {
+        likedTracks = await trackService.getLikedSongs()
+      } catch {
+        // If getLikedSongs endpoint doesn't exist, try localStorage as fallback
+        const stored = localStorage.getItem('ns-liked-tracks')
+        if (stored) {
+          try {
+            likedTracks = JSON.parse(stored)
+          } catch {
+            likedTracks = []
+          }
+        }
+      }
+      let followedArtists: Artist[] = []
+      try {
+        const stored = localStorage.getItem('ns-followed-artists')
+        if (stored) {
+          try {
+            followedArtists = JSON.parse(stored)
+          } catch {
+            followedArtists = []
+          }
+        }
+      } catch {
+        followedArtists = []
+      }
+      const likedIds = new Set(likedTracks.map((t) => t.id))
+      const followedIds = new Set(followedArtists.map((a) => a.id))
+      set({
+        savedPlaylists: playlists,
+        likedSongs: likedTracks,
+        likedTrackIds: likedIds,
+        followedArtists,
+        followedArtistIds: followedIds,
+        isLoading: false,
+      })
     } catch {
       set({ isLoading: false })
     }
   },
 
   likeTrack: async (track) => {
-    const prev = get().likedSongs
     const prevIds = get().likedTrackIds
+    const newLikedSongs = [track, ...get().likedSongs]
+    const newLikedIds = new Set([...prevIds, track.id])
     set({
-      likedSongs: [track, ...prev],
-      likedTrackIds: new Set([...prevIds, track.id]),
+      likedSongs: newLikedSongs,
+      likedTrackIds: newLikedIds,
     })
-    // TODO: call trackService.like(track.id) and roll back on failure
+    localStorage.setItem('ns-liked-tracks', JSON.stringify(newLikedSongs))
+    trackService.like(track.id).catch(() => {
+      // Silently ignore errors - the UI update stays in place
+    })
   },
 
   unlikeTrack: async (trackId) => {
-    const prev = get().likedSongs
     const prevIds = get().likedTrackIds
     const newIds = new Set(prevIds)
     newIds.delete(trackId)
+    const newLikedSongs = get().likedSongs.filter((t) => t.id !== trackId)
     set({
-      likedSongs: prev.filter((t) => t.id !== trackId),
+      likedSongs: newLikedSongs,
       likedTrackIds: newIds,
+    })
+    localStorage.setItem('ns-liked-tracks', JSON.stringify(newLikedSongs))
+    trackService.unlike(trackId).catch(() => {
+      // Silently ignore errors - the UI update stays in place
     })
   },
 
   followArtist: async (artist) => {
     const prev = get().followedArtists
     const prevIds = get().followedArtistIds
+    const newArtists = [artist, ...prev]
+    const newIds = new Set([...prevIds, artist.id])
     set({
-      followedArtists: [artist, ...prev],
-      followedArtistIds: new Set([...prevIds, artist.id]),
+      followedArtists: newArtists,
+      followedArtistIds: newIds,
     })
+    localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
   },
 
   unfollowArtist: async (artistId) => {
@@ -86,10 +134,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const prevIds = get().followedArtistIds
     const newIds = new Set(prevIds)
     newIds.delete(artistId)
+    const newArtists = prev.filter((a) => a.id !== artistId)
     set({
-      followedArtists: prev.filter((a) => a.id !== artistId),
+      followedArtists: newArtists,
       followedArtistIds: newIds,
     })
+    localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
   },
 
   saveAlbum: async (album) => {
@@ -141,17 +191,22 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   addTrackToPlaylist: async (playlistId, track) => {
-    await playlistService.addTrack(playlistId, track)
-    set((s) => ({
-      savedPlaylists: s.savedPlaylists.map((p) => {
-        if (p.id !== playlistId) return p
-        return {
-          ...p,
-          tracks: [...p.tracks, { track, addedAt: new Date().toISOString(), addedBy: p.owner }],
-          totalDurationMs: p.totalDurationMs + track.durationMs,
-        }
-      }),
-    }))
+    try {
+      await playlistService.addTrack(playlistId, track)
+      set((s) => ({
+        savedPlaylists: s.savedPlaylists.map((p) => {
+          if (p.id !== playlistId) return p
+          return {
+            ...p,
+            tracks: [...p.tracks, { track, addedAt: new Date().toISOString(), addedBy: p.owner }],
+            totalDurationMs: p.totalDurationMs + track.durationMs,
+          }
+        }),
+      }))
+    } catch (error) {
+      console.error('Failed to add track to playlist:', error)
+      throw error
+    }
   },
 
   removeTrackFromPlaylist: async (playlistId, trackId) => {

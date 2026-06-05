@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
   MagnifyingGlassIcon,
   HomeIcon,
   SunIcon,
@@ -42,7 +40,8 @@ export function TopBar() {
     return (
       <header className="grid h-16 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 bg-base px-4">
         <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
-          <MusicalNoteIcon className="w-8 h-8 text-primary" />
+          <MusicalNoteIcon className="w-8 h-8 text-accent" />
+          <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
         </Link>
 
         <div className="flex min-w-0 items-center justify-center gap-2">
@@ -95,26 +94,8 @@ export function TopBar() {
       {/* Far left: logo */}
       <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
         <MusicalNoteIcon className="w-8 h-8 text-accent" />
-        <span className="hidden md:block font-bold text-lg text-primary tracking-tight">not-spotify</span>
+        <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
       </Link>
-
-      {/* Left: back / forward */}
-      <div className="hidden lg:flex items-center gap-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="w-8 h-8 rounded-full bg-elevated flex items-center justify-center text-secondary hover:text-primary transition-colors"
-          aria-label="Go back"
-        >
-          <ChevronLeftIcon className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => navigate(1)}
-          className="w-8 h-8 rounded-full bg-elevated flex items-center justify-center text-secondary hover:text-primary transition-colors"
-          aria-label="Go forward"
-        >
-          <ChevronRightIcon className="w-5 h-5" />
-        </button>
-      </div>
 
       {/* Center: home + search + theme toggle */}
       <div className="flex-1 flex items-center justify-center gap-2">

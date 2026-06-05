@@ -26,7 +26,7 @@ Ensure you have the following installed:
 
 2. Configure your Supabase database connection and JWT secret via **dotnet user-secrets** (these stay on your machine, outside the repo):
    ```bash
-   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=aws-1-ap-northeast-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.nayirxkfuaiejdmeagbr;Password=YOUR_SUPABASE_PASSWORD;SSL Mode=Require;Trust Server Certificate=true"
+   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=aws-1-ap-northeast-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.nayirxkfuaiejdmeagbr;Password=aLnyRQxbaqyDfeH1;SSL Mode=Require;Trust Server Certificate=true"
    dotnet user-secrets set "Jwt:SigningKey" "a-very-long-random-string-at-least-32-chars-long"
    ```
    Replace `YOUR_SUPABASE_PASSWORD` with the password from your teammate. The values above use the **Supabase Session Pooler** (IPv4-compatible, works with EF Core migrations).

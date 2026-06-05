@@ -174,60 +174,81 @@ export function Sidebar() {
   )
 
   // ── Rail (collapsed) ────────────────────────────────────────────
+  if (!isAuthenticated && collapsed) {
+    return (
+      <aside style={frameStyle} className={frameClass}>
+        <button
+          onClick={() => setWidth(DEFAULT_W)}
+          className="m-3 w-12 h-12 rounded-md flex items-center justify-center text-secondary hover:text-primary hover:bg-elevated hover:scale-105 transition-all"
+          aria-label="Expand Your Library"
+          title="Expand Your Library"
+        >
+          <ChevronDoubleRightIcon className="w-6 h-6" />
+        </button>
+
+        <DragHandle onMouseDown={onDragStart} />
+      </aside>
+    )
+  }
+
   if (!isAuthenticated) {
     return (
-      <aside
-        style={{ width: DEFAULT_W }}
-        className="hidden shrink-0 select-none flex-col overflow-hidden rounded-lg bg-sidebar lg:flex"
-      >
-        <div className="flex items-center justify-between px-4 pb-4 pt-4">
-          <Link to="/library" className="text-sm font-bold text-primary">
-            Your Library
-          </Link>
-          <button
-            onClick={() => openAuthPrompt({ title: 'Create playlists with a free account' })}
-            className="rounded-full bg-elevated px-4 py-2 text-sm font-bold text-primary transition-colors hover:bg-elevated/70"
-          >
-            + Create
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-3 px-2">
-          <section className="rounded-lg bg-elevated p-4">
-            <h2 className="text-sm font-bold text-primary">Create your first playlist</h2>
-            <p className="mt-2 text-xs font-semibold text-primary">It's easy, we'll help you</p>
+      <aside style={frameStyle} className={frameClass}>
+        <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2">
+          <div className="relative flex min-w-0 items-center">
             <button
-              onClick={() => openAuthPrompt({ title: 'Create playlists with a free account' })}
-              className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+              onClick={() => setWidth(RAIL)}
+              className="absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
+              aria-label="Collapse Your Library"
+              title="Collapse Your Library"
             >
-              Create playlist
+              <ChevronDoubleLeftIcon className="w-5 h-5" />
             </button>
-          </section>
-
-          <section className="rounded-lg bg-elevated p-4">
-            <h2 className="text-sm font-bold text-primary">Let's find some podcasts to follow</h2>
-            <p className="mt-2 text-xs font-semibold text-primary">We'll keep you updated on new episodes</p>
-            <button
-              onClick={() => openAuthPrompt({ title: 'Follow shows with a free account' })}
-              className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+            <Link
+              to="/library"
+              className="truncate pl-0 font-bold text-primary transition-all duration-200 hover:text-secondary group-hover/library-header:pl-7"
             >
-              Browse podcasts
-            </button>
-          </section>
-        </div>
-
-        <div className="mt-auto px-5 pb-6 text-[10px] text-secondary">
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            <span>Legal</span>
-            <span>Safety & Privacy Center</span>
-            <span>Privacy Policy</span>
-            <span>Cookies</span>
-            <span>Accessibility</span>
+              Your Library
+            </Link>
           </div>
-          <button className="mt-6 rounded-full border border-secondary/50 px-3 py-1.5 text-xs font-bold text-primary">
-            English
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-1.5 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 active:scale-95 text-primary text-sm font-semibold pl-2.5 pr-3.5 py-1.5 transition-all shrink-0"
+            aria-label="Create playlist"
+            title="Create playlist"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Create
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto px-2 pb-2">
+          <div className="flex flex-col gap-3">
+            <section className="rounded-lg bg-elevated p-4">
+              <h2 className="text-sm font-bold text-primary">Create your first playlist</h2>
+              <p className="mt-2 text-xs font-semibold text-primary">It's easy, we'll help you</p>
+              <button
+                onClick={() => openAuthPrompt({ title: 'Create playlists with a free account' })}
+                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+              >
+                Create playlist
+              </button>
+            </section>
+
+            <section className="rounded-lg bg-elevated p-4">
+              <h2 className="text-sm font-bold text-primary">Let's find some podcasts to follow</h2>
+              <p className="mt-2 text-xs font-semibold text-primary">We'll keep you updated on new episodes</p>
+              <button
+                onClick={() => openAuthPrompt({ title: 'Follow shows with a free account' })}
+                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+              >
+                Browse podcasts
+              </button>
+            </section>
+          </div>
+        </div>
+
+        <DragHandle onMouseDown={onDragStart} />
       </aside>
     )
   }

@@ -412,7 +412,14 @@ export function PlaylistDetailPage() {
         </div>
 
         {tracks.map((track, i) => (
-          <TrackRow key={track.id} track={track} index={i} queue={tracks} showAlbum />
+          <TrackRow
+            key={track.id}
+            track={track}
+            index={i}
+            queue={tracks}
+            showAlbum
+            currentPlaylistId={playlist.id}
+          />
         ))}
       </div>
 

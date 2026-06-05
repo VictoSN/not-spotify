@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { PlayIcon, PauseIcon, HeartIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
+import { TrackRowMenu } from './TrackRowMenu'
 
 interface TrackRowProps {
   track: Track
@@ -16,9 +17,18 @@ interface TrackRowProps {
   queue: Track[]
   showAlbum?: boolean
   showPlayCount?: boolean
+  /** When this row is rendered inside a playlist page, omit that playlist from "Add to playlist". */
+  currentPlaylistId?: string
 }
 
-export function TrackRow({ track, index, queue, showAlbum = false, showPlayCount = false }: TrackRowProps) {
+export function TrackRow({
+  track,
+  index,
+  queue,
+  showAlbum = false,
+  showPlayCount = false,
+  currentPlaylistId,
+}: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
   const playWithGate = usePlaybackGate()
@@ -118,13 +128,7 @@ export function TrackRow({ track, index, queue, showAlbum = false, showPlayCount
           )}
         </button>
         <span className="text-sm text-secondary">{formatMs(track.durationMs)}</span>
-        <button
-          onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100 transition-opacity"
-          aria-label="More options"
-        >
-          <EllipsisHorizontalIcon className="w-4 h-4 text-secondary hover:text-primary" />
-        </button>
+        <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} />
       </div>
     </div>
   )

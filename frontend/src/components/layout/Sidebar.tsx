@@ -239,12 +239,9 @@ export function Sidebar() {
             >
               <ChevronDoubleLeftIcon className="w-5 h-5" />
             </button>
-            <Link
-              to="/library"
-              className="truncate pl-0 font-bold text-primary transition-all duration-200 hover:text-secondary group-hover/library-header:pl-7"
-            >
+            <span className="truncate pl-0 font-bold text-primary transition-all duration-200 group-hover/library-header:pl-7">
               Your Library
-            </Link>
+            </span>
           </div>
           <button
             onClick={handleCreate}
@@ -352,12 +349,9 @@ export function Sidebar() {
           >
             <ChevronDoubleLeftIcon className="w-5 h-5" />
           </button>
-          <Link
-            to="/library"
-            className="truncate pl-0 font-bold text-primary transition-all duration-200 hover:text-secondary group-hover/library-header:pl-7"
-          >
+          <span className="truncate pl-0 font-bold text-primary transition-all duration-200 group-hover/library-header:pl-7">
             Your Library
-          </Link>
+          </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button

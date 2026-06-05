@@ -1,14 +1,17 @@
 import { usePlayerStore } from '@/stores/playerStore'
+import type { Track } from '@/types/track'
 
 class AudioEngine {
   private audio: HTMLAudioElement
   private currentSrc = ''
   private unsubscribe: (() => void) | null = null
+  private mediaSessionTrackId: string | null = null
 
   constructor() {
     this.audio = new Audio()
     this.audio.preload = 'metadata'
     this.bindEvents()
+    this.bindMediaSessionActions()
     this.subscribeToStore()
   }
 
@@ -40,7 +43,7 @@ class AudioEngine {
     let prevSeek = 0
 
     this.unsubscribe = usePlayerStore.subscribe((state) => {
-      const { currentTrack, isPlaying, volume, isMuted, currentTime } = state
+      const { currentTrack, isPlaying, volume, isMuted, currentTime, duration } = state
 
       // Track changed — load new source
       if (currentTrack && currentTrack.id !== prevTrackId) {
@@ -75,13 +78,108 @@ class AudioEngine {
         prevVolume = volume
         prevIsMuted = isMuted
       }
+
+      this.updateMediaSession({ currentTrack, isPlaying, currentTime, duration })
     })
+  }
+
+  private getMediaSession(): MediaSession | null {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return null
+    return (navigator as Navigator & { mediaSession?: MediaSession }).mediaSession ?? null
+  }
+
+  private bindMediaSessionActions() {
+    const session = this.getMediaSession()
+    if (!session) return
+
+    const setHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler) => {
+      try {
+        session.setActionHandler(action, handler)
+      } catch {
+        // Some browsers expose Media Session but do not support every action.
+      }
+    }
+
+    setHandler('play', () => usePlayerStore.getState().resume())
+    setHandler('pause', () => usePlayerStore.getState().pause())
+    setHandler('previoustrack', () => usePlayerStore.getState().skipPrevious())
+    setHandler('nexttrack', () => usePlayerStore.getState().skipNext())
+    setHandler('seekbackward', (details) => {
+      const state = usePlayerStore.getState()
+      state.seek(Math.max(0, state.currentTime - (details.seekOffset ?? 10)))
+    })
+    setHandler('seekforward', (details) => {
+      const state = usePlayerStore.getState()
+      const duration =
+        state.duration > 0 ? state.duration : state.currentTrack?.durationMs ? state.currentTrack.durationMs / 1000 : 0
+      state.seek(duration > 0 ? Math.min(duration, state.currentTime + (details.seekOffset ?? 10)) : state.currentTime)
+    })
+    setHandler('seekto', (details) => {
+      if (details.seekTime == null) return
+      usePlayerStore.getState().seek(details.seekTime)
+    })
+  }
+
+  private updateMediaSession(state: {
+    currentTrack: Track | null
+    isPlaying: boolean
+    currentTime: number
+    duration: number
+  }) {
+    const session = this.getMediaSession()
+    if (!session) return
+
+    const { currentTrack, isPlaying, currentTime, duration } = state
+    if (!currentTrack) {
+      this.mediaSessionTrackId = null
+      session.metadata = null
+      session.playbackState = 'none'
+      return
+    }
+
+    if (currentTrack.id !== this.mediaSessionTrackId && typeof MediaMetadata !== 'undefined') {
+      session.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist.name,
+        album: currentTrack.album.title,
+        artwork: this.buildArtwork(currentTrack),
+      })
+      this.mediaSessionTrackId = currentTrack.id
+    }
+
+    session.playbackState = isPlaying ? 'playing' : 'paused'
+
+    const displayDuration = duration > 0 ? duration : currentTrack.durationMs / 1000
+    if (displayDuration > 0) {
+      try {
+        session.setPositionState({
+          duration: displayDuration,
+          playbackRate: this.audio.playbackRate,
+          position: Math.min(displayDuration, Math.max(0, currentTime)),
+        })
+      } catch {
+        // Ignore invalid transient values while metadata is loading.
+      }
+    }
+  }
+
+  private buildArtwork(track: Track): MediaImage[] {
+    if (!track.album.coverUrl) return []
+    return [96, 128, 192, 256, 384, 512].map((size) => ({
+      src: track.album.coverUrl,
+      sizes: `${size}x${size}`,
+    }))
   }
 
   destroy() {
     this.unsubscribe?.()
     this.audio.pause()
     this.audio.src = ''
+    const session = this.getMediaSession()
+    if (session) {
+      session.metadata = null
+      session.playbackState = 'none'
+    }
   }
 }
 

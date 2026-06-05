@@ -66,6 +66,11 @@ Ensure you have the following installed:
    ```bash
    npm install
    ```
+   This installs the frontend runtime packages already listed in `frontend/package.json`, including:
+   - `@fontsource-variable/montserrat` for the local Montserrat font.
+   - `node-vibrant` for cover-art colour extraction.
+
+   The Spotify-style tab-away mini-player uses browser APIs (`documentPictureInPicture` and Media Session). It does not require an npm dependency, but it works best in Chrome or Edge on `localhost`/HTTPS.
 
 3. Verify or configure your local environment settings in `frontend/.env.development`:
    ```env

@@ -4,7 +4,8 @@ import { MusicalNoteIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { useEffect } from 'react'
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
+import { useEffect, useState } from 'react'
 
 interface FormValues {
   email: string
@@ -15,22 +16,38 @@ export function LoginPage() {
   const navigate = useNavigate()
   const { login, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
+  const [socialNotice, setSocialNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
 
   const onSubmit = async (data: FormValues) => {
+    clearError()
+    setSocialNotice(null)
     await login(data.email, data.password)
   }
 
   return (
-    <div className="min-h-screen bg-page flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <MusicalNoteIcon className="w-10 h-10 text-accent mb-3" />
-          <h1 className="text-3xl font-bold text-primary">Log in to not-spotify</h1>
+    <div className="min-h-screen bg-base px-4 py-8 text-primary">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
+          <h1 className="text-5xl font-black leading-tight text-primary">Welcome back</h1>
+          <p className="mt-3 text-sm font-medium text-secondary">Log in with your account or continue with a provider.</p>
+        </div>
+
+        <SocialAuthButtons
+          onUnavailable={(provider) => {
+            setSocialNotice(`${provider[0].toUpperCase()}${provider.slice(1)} login needs OAuth credentials before it can be enabled.`)
+            clearError()
+          }}
+        />
+
+        <div className="my-6 flex items-center gap-4">
+          <div className="h-px flex-1 bg-elevated" />
+          <span className="text-sm font-bold text-primary">or</span>
+          <div className="h-px flex-1 bg-elevated" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
@@ -61,19 +78,22 @@ export function LoginPage() {
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
+          {socialNotice && (
+            <div className="rounded-md border border-accent/30 bg-accent-dim/30 px-4 py-3">
+              <p className="text-sm font-medium text-primary">{socialNotice}</p>
+            </div>
+          )}
 
-          <Button type="submit" size="lg" className="mt-2 w-full" disabled={isLoading} onClick={clearError}>
-            {isLoading ? <Spinner size="sm" /> : 'Log In'}
+          <Button type="submit" size="lg" className="mt-2 w-full" disabled={isLoading}>
+            {isLoading ? <Spinner size="sm" /> : 'Log in'}
           </Button>
         </form>
 
-        <div className="mt-8 text-center border-t border-elevated/30 pt-6">
-          <p className="text-secondary text-sm">
-            Don't have an account?{' '}
-            <Link to="/signup" className="text-primary font-semibold hover:text-accent transition-colors">
-              Sign up
-            </Link>
-          </p>
+        <div className="mt-8 text-center">
+          <p className="text-secondary text-sm">Don't have an account?</p>
+          <Link to="/signup" className="mt-2 inline-flex text-base font-black text-primary transition-colors hover:text-accent">
+            Sign up
+          </Link>
         </div>
       </div>
     </div>

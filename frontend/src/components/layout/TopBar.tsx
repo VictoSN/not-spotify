@@ -38,13 +38,13 @@ export function TopBar() {
 
   if (!isAuthenticated) {
     return (
-      <header className="grid h-16 shrink-0 grid-cols-[auto_1fr_auto] items-center gap-4 bg-base px-4">
-        <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
+      <header className="grid h-16 shrink-0 grid-cols-[1fr_minmax(280px,560px)_1fr] items-center gap-4 bg-base px-4">
+        <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label="not-spotify home">
           <MusicalNoteIcon className="w-8 h-8 text-accent" />
           <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
         </Link>
 
-        <div className="flex min-w-0 items-center justify-center gap-2">
+        <div className="flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
           <button
             onClick={() => navigate('/')}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
@@ -54,7 +54,7 @@ export function TopBar() {
             {isHome ? <HomeSolid className="h-6 w-6 text-primary" /> : <HomeIcon className="h-6 w-6 text-secondary" />}
           </button>
 
-          <div className="relative w-full max-w-md">
+          <div className="relative w-full">
             <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />
             <input
               type="search"
@@ -69,12 +69,14 @@ export function TopBar() {
           </div>
         </div>
 
-        <div className="hidden items-center gap-5 text-sm font-bold text-secondary lg:flex">
-          <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
-          <button className="transition-colors hover:text-primary">Support</button>
-          <button className="transition-colors hover:text-primary">Download</button>
-          <div className="h-6 w-px bg-secondary/40" />
-          <button className="transition-colors hover:text-primary">Install App</button>
+        <div className="hidden items-center justify-end gap-5 text-sm font-bold text-secondary lg:flex">
+          <div className="hidden items-center gap-5 2xl:flex">
+            <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
+            <button className="transition-colors hover:text-primary">Support</button>
+            <button className="transition-colors hover:text-primary">Download</button>
+            <div className="h-6 w-px bg-secondary/40" />
+            <button className="transition-colors hover:text-primary">Install App</button>
+          </div>
           <Link to="/signup" className="transition-colors hover:text-primary">
             Sign up
           </Link>

@@ -1,13 +1,15 @@
-# 🎨 not-spotify Frontend
+# not-spotify Frontend
 
 React + TypeScript + Vite user interface for the not-spotify music streaming application.
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### 1. Prerequisites
+
 Ensure you have the following installed locally:
+
 * [Node.js (LTS)](https://nodejs.org/)
 
 ---
@@ -23,55 +25,71 @@ Ensure you have the following installed locally:
    ```bash
    npm install
    ```
-   > **New runtime dependencies (already in `package.json`, pulled in by `npm install` — no extra steps):**
-   > - [`@fontsource-variable/montserrat`](https://www.npmjs.com/package/@fontsource-variable/montserrat) — self-hosted **Montserrat**, a free stand-in for Spotify's proprietary "Circular" typeface (no CDN, works offline).
-   > - [`node-vibrant`](https://www.npmjs.com/package/node-vibrant) — extracts the dominant colour from cover art to render Spotify-style gradient hues (home header, now-playing panel, album pages).
+
+   New runtime dependencies are already in `package.json` and are pulled in by `npm install`; no extra commands are needed.
+
+   * `@fontsource-variable/montserrat` - self-hosted Montserrat, a free stand-in for Spotify's proprietary Circular typeface.
+   * `node-vibrant` - extracts dominant colours from cover art for Spotify-style gradient hues.
+
+   Browser API features do not need npm packages:
+
+   * The tab-away mini-player uses Chrome/Edge's `documentPictureInPicture` API and the Media Session API. It works best on `localhost` or HTTPS. Unsupported browsers simply keep normal in-app playback.
+   * Keep the dominant-colour import as `import { Vibrant } from 'node-vibrant/browser'`. Changing it to `import Vibrant from 'node-vibrant'` can pull the wrong package entry for the browser build.
 
 ---
 
 ### 3. Environment Configurations
 
-Open [frontend/.env.development](file:///c:/Main/Project/Cloud/not-spotify/frontend/.env.development) to configure how the frontend interacts with data:
+Open `frontend/.env.development` to configure how the frontend interacts with data:
 
 #### Running with Mock Data (No Backend Required)
+
 If you want to run the frontend independently using mock service workers:
+
 ```env
 VITE_USE_MOCK=true
 VITE_API_URL=http://localhost:5000
 ```
 
 #### Running with the Local Backend API (C# PostgreSQL)
+
 If you are running the actual database and .NET Web API:
+
 ```env
 VITE_USE_MOCK=false
 VITE_API_URL=https://localhost:7045
 ```
-*(Note: Because authentication cookies are `Secure`, you must use the HTTPS backend URL).*
+
+Because authentication cookies are `Secure`, you must use the HTTPS backend URL.
 
 ---
 
 ### 4. Running the Client
 
 Start the development server:
+
 ```bash
 npm run dev
 ```
-*The local development client will be available at **`http://localhost:5173`**.*
+
+The local development client will be available at `http://localhost:5173`.
 
 ---
 
-### 🛠️ Available Scripts
+### Available Scripts
 
 In the frontend directory, you can run:
 
-* `npm run dev` — Starts the Vite development server with Hot Module Replacement (HMR).
-* `npm run build` — Compiles the TypeScript code and bundles the asset files for production.
-* `npm run lint` — Runs ESLint to check for code issues.
-* `npm run preview` — Locally previews the built production bundle.
+* `npm run dev` - starts the Vite development server with Hot Module Replacement.
+* `npm run build` - compiles the TypeScript code and bundles assets for production.
+* `npm run lint` - runs ESLint to check for code issues.
+* `npm run preview` - locally previews the built production bundle.
 
 ---
 
-### 🔑 Seed Login Credentials (When VITE_USE_MOCK=false)
+### Seed Login Credentials (When VITE_USE_MOCK=false)
+
 Log in with the default development user:
+
 * **Email:** `alex@example.com`
 * **Password:** `Password123!`

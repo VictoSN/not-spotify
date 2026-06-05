@@ -35,14 +35,14 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative h-6 w-11 shrink-0 rounded-full transition-colors',
-        checked ? 'bg-accent' : 'bg-elevated',
+        'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-page',
+        checked ? 'border-accent bg-accent' : 'border-secondary/20 bg-elevated',
       )}
     >
       <span
         className={cn(
-          'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform',
-          checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+          'absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+          checked ? 'translate-x-5' : 'translate-x-0',
         )}
       />
     </button>
@@ -143,7 +143,7 @@ export function SettingsPage() {
       <Section title="Appearance">
         <Row
           label="Theme"
-          sub="Dark uses the green accent, Light uses purple"
+          sub="Dark and light use the same music-first green accent"
           control={
             <Select
               label="Theme"

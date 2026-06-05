@@ -40,23 +40,25 @@ export function ArtistCard({ artist }: ArtistCardProps) {
       to={`/artist/${artist.id}`}
       className="group flex-shrink-0 w-40 sm:w-44 text-center p-3 rounded-lg hover:bg-surface transition-colors"
     >
-      <div className="relative aspect-square rounded-full overflow-hidden bg-elevated mb-3 mx-auto shadow-lg">
-        {artist.imageUrl ? (
-          <img
-            src={artist.imageUrl}
-            alt={artist.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl">🎤</div>
-        )}
+      <div className="relative mx-auto mb-3 aspect-square">
+        <div className="h-full w-full overflow-hidden rounded-full bg-elevated shadow-lg">
+          {artist.imageUrl ? (
+            <img
+              src={artist.imageUrl}
+              alt={artist.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-4xl">🎤</div>
+          )}
+        </div>
         <button
           onClick={handlePlay}
-          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 disabled:opacity-60"
+          className="absolute bottom-1 right-1 z-10 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-accent opacity-0 shadow-lg transition-all duration-200 hover:scale-105 group-hover:translate-y-0 group-hover:opacity-100 disabled:opacity-60"
           aria-label={`Play ${artist.name}`}
           disabled={loading}
         >
-          <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+          <PlayIcon className="ml-0.5 h-5 w-5 text-black" />
         </button>
       </div>
       <p className="text-sm font-semibold text-primary truncate">{artist.name}</p>

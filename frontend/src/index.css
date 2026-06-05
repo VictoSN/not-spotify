@@ -130,6 +130,19 @@ body,
   display: none;
 }
 
+/* Content fade-in (e.g. library expand/collapse) — smooth without reflow glitches */
+@keyframes ns-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: ns-fade-in 0.22s ease-out;
+}
+
 @keyframes auth-overlay-in {
   from {
     opacity: 0;

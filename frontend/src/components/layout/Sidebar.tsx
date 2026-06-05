@@ -7,12 +7,17 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ListBulletIcon,
+  ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+  Squares2X2Icon,
+  CheckIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useUiStore } from '@/stores/uiStore'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -23,7 +28,15 @@ const SNAP_THRESHOLD = 220 // drag below this → collapse to the icon rail
 const STORAGE_KEY = 'ns-sidebar-width'
 
 type Filter = 'all' | 'playlists' | 'artists' | 'albums'
-type Sort = 'recents' | 'alpha'
+type Sort = 'recents' | 'recentlyAdded' | 'alpha' | 'creator' | 'custom'
+
+const SORT_OPTIONS: { key: Sort; label: string }[] = [
+  { key: 'recents', label: 'Recents' },
+  { key: 'recentlyAdded', label: 'Recently Added' },
+  { key: 'alpha', label: 'Alphabetical' },
+  { key: 'creator', label: 'Creator' },
+  { key: 'custom', label: 'Custom Order' },
+]
 
 interface LibItem {
   key: string
@@ -55,8 +68,24 @@ export function Sidebar() {
   const [sort, setSort] = useState<Sort>('recents')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() =>
+    typeof window !== 'undefined' && window.localStorage.getItem('ns-library-view') === 'grid' ? 'grid' : 'list',
+  )
+  const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const libraryExpanded = useUiStore((s) => s.libraryExpanded)
+  const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
+
+  const setView = (v: 'list' | 'grid') => {
+    setViewMode(v)
+    try {
+      window.localStorage.setItem('ns-library-view', v)
+    } catch {
+      /* ignore */
+    }
+  }
 
   const collapsed = width <= RAIL
+  const grid = libraryExpanded || viewMode === 'grid'
 
   // Populate the library app-wide (today only LibraryPage triggers this).
   useEffect(() => {
@@ -155,6 +184,7 @@ export function Sidebar() {
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
+    else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
     return list
   }, [savedPlaylists, savedAlbums, followedArtists, filter, query, sort])
 
@@ -167,10 +197,15 @@ export function Sidebar() {
     ((item.kind === 'album' && currentTrack.album.id === item.id) ||
       (item.kind === 'artist' && currentTrack.artist.id === item.id))
 
-  const frameStyle: React.CSSProperties = { width: collapsed ? RAIL : width }
+  const frameStyle: React.CSSProperties = {
+    flexBasis: collapsed ? RAIL : width,
+    flexGrow: libraryExpanded ? 1 : 0,
+    flexShrink: 0,
+  }
   const frameClass = cn(
-    'group/sidebar relative shrink-0 rounded-lg bg-sidebar flex flex-col overflow-hidden select-none',
-    !dragging && 'transition-[width] duration-300 ease-out',
+    'group/sidebar relative min-w-0 rounded-lg bg-sidebar flex flex-col overflow-hidden select-none',
+    // Animate width (rail/drag) but expand instantly — a growing grid reflows columns and looks glitchy.
+    !dragging && 'transition-[flex-basis] duration-300 ease-out',
   )
 
   // ── Rail (collapsed) ────────────────────────────────────────────
@@ -253,7 +288,7 @@ export function Sidebar() {
     )
   }
 
-  if (collapsed) {
+  if (collapsed && !libraryExpanded) {
     return (
       <aside style={frameStyle} className={frameClass}>
         <button
@@ -324,15 +359,29 @@ export function Sidebar() {
             Your Library
           </Link>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-1.5 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 active:scale-95 text-primary text-sm font-semibold pl-2.5 pr-3.5 py-1.5 transition-all shrink-0"
-          aria-label="Create playlist"
-          title="Create playlist"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Create
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-1.5 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 active:scale-95 text-primary text-sm font-semibold pl-2.5 pr-3.5 py-1.5 transition-all"
+            aria-label="Create playlist"
+            title="Create playlist"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Create
+          </button>
+          <button
+            onClick={() => setLibraryExpanded(!libraryExpanded)}
+            className="p-1.5 rounded-full text-secondary hover:text-primary hover:bg-elevated hover:scale-110 active:scale-90 transition-all"
+            aria-label={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
+            title={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
+          >
+            {libraryExpanded ? (
+              <ArrowsPointingInIcon className="w-5 h-5" />
+            ) : (
+              <ArrowsPointingOutIcon className="w-5 h-5" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filter chips */}
@@ -390,72 +439,171 @@ export function Sidebar() {
             <MagnifyingGlassIcon className="w-4 h-4" />
           </button>
         )}
-        <button
-          onClick={() => setSort(sort === 'recents' ? 'alpha' : 'recents')}
-          className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all shrink-0 px-1"
-          title="Sort"
-        >
-          {sort === 'recents' ? 'Recents' : 'A–Z'}
-          <ListBulletIcon className="w-4 h-4" />
-        </button>
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setSortMenuOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all px-1"
+            title="Sort"
+            aria-haspopup="menu"
+            aria-expanded={sortMenuOpen}
+          >
+            {SORT_OPTIONS.find((o) => o.key === sort)?.label ?? 'Recents'}
+            {viewMode === 'grid' ? <Squares2X2Icon className="w-4 h-4" /> : <ListBulletIcon className="w-4 h-4" />}
+          </button>
+          {sortMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setSortMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl z-50">
+                <p className="px-3 pb-1 pt-2 text-xs font-bold text-secondary">Sort by</p>
+                {SORT_OPTIONS.map((o) => (
+                  <button
+                    key={o.key}
+                    onClick={() => { setSort(o.key); setSortMenuOpen(false) }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-surface"
+                  >
+                    <span className={cn(sort === o.key ? 'font-semibold text-accent' : 'text-primary')}>{o.label}</span>
+                    {sort === o.key && <CheckIcon className="h-4 w-4 text-accent" />}
+                  </button>
+                ))}
+                <div className="my-1 border-t border-secondary/10" />
+                <p className="px-3 pb-1 pt-1 text-xs font-bold text-secondary">View as</p>
+                <div className="flex items-center gap-1 px-2 pb-2">
+                  <button
+                    onClick={() => { setView('list'); setSortMenuOpen(false) }}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors',
+                      viewMode === 'list' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
+                    )}
+                  >
+                    <ListBulletIcon className="h-4 w-4" /> List
+                  </button>
+                  <button
+                    onClick={() => { setView('grid'); setSortMenuOpen(false) }}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors',
+                      viewMode === 'grid' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
+                    )}
+                  >
+                    <Squares2X2Icon className="h-4 w-4" /> Grid
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-2 pb-2">
-        {showLiked && (
-          <NavLink
-            to="/library?tab=liked"
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 p-2 rounded-md transition-colors',
-                isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-              )
-            }
+      {/* List / grid */}
+      <div key={libraryExpanded ? 'expanded' : 'normal'} className="flex-1 overflow-y-auto px-2 pb-2 animate-fade-in">
+        {grid ? (
+          <div
+            className={cn(
+              'grid gap-1',
+              libraryExpanded ? '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2' : 'grid-cols-2',
+            )}
           >
-            <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0">
-              <HeartIcon className="w-5 h-5 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-primary truncate">Liked Songs</p>
-              <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>
-            </div>
-          </NavLink>
-        )}
-
-        {items.map((item) => (
-          <NavLink
-            key={item.key}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 p-2 rounded-md transition-colors',
-                isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-              )
-            }
-          >
-            <div
-              className={cn(
-                'w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
-                item.round ? 'rounded-full' : 'rounded-md',
-              )}
-            >
-              {item.image ? (
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-lg">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
-                {item.name}
-              </p>
-              <p className="text-xs text-secondary truncate">{item.subtitle}</p>
-            </div>
-          </NavLink>
-        ))}
-
-        {items.length === 0 && !showLiked && (
-          <p className="text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
+            {showLiked && (
+              <NavLink
+                to="/library?tab=liked"
+                onClick={() => libraryExpanded && setLibraryExpanded(false)}
+                className={({ isActive }) =>
+                  cn('p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')
+                }
+              >
+                <div className="aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center mb-2">
+                  <HeartIcon className="w-8 h-8 text-white" />
+                </div>
+                <p className="text-sm font-medium text-primary truncate">Liked Songs</p>
+                <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>
+              </NavLink>
+            )}
+            {items.map((item) => (
+              <NavLink
+                key={item.key}
+                to={item.to}
+                onClick={() => libraryExpanded && setLibraryExpanded(false)}
+                className={({ isActive }) =>
+                  cn('p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')
+                }
+              >
+                <div
+                  className={cn(
+                    'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center mb-2',
+                    item.round ? 'rounded-full' : 'rounded-md',
+                  )}
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-2xl">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                  )}
+                </div>
+                <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
+                  {item.name}
+                </p>
+                <p className="text-xs text-secondary truncate">{item.subtitle}</p>
+              </NavLink>
+            ))}
+            {items.length === 0 && !showLiked && (
+              <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
+            )}
+          </div>
+        ) : (
+          <>
+            {showLiked && (
+              <NavLink
+                to="/library?tab=liked"
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 p-2 rounded-md transition-colors',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
+                }
+              >
+                <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0">
+                  <HeartIcon className="w-5 h-5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-primary truncate">Liked Songs</p>
+                  <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>
+                </div>
+              </NavLink>
+            )}
+            {items.map((item) => (
+              <NavLink
+                key={item.key}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 p-2 rounded-md transition-colors',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
+                }
+              >
+                <div
+                  className={cn(
+                    'w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+                    item.round ? 'rounded-full' : 'rounded-md',
+                  )}
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-lg">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
+                    {item.name}
+                  </p>
+                  <p className="text-xs text-secondary truncate">{item.subtitle}</p>
+                </div>
+              </NavLink>
+            ))}
+            {items.length === 0 && !showLiked && (
+              <p className="text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
+            )}
+          </>
         )}
       </div>
 

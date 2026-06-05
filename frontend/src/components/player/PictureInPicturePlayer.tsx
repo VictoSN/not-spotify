@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { usePlayerStore } from '@/stores/playerStore'
 import { formatSeconds } from '@/utils/formatTime'
 
@@ -7,14 +7,13 @@ type DocumentPictureInPicture = {
   window?: Window | null
 }
 
-let suppressUntilVisible = false
-let closingProgrammatically = false
-
 declare global {
   interface Window {
     documentPictureInPicture?: DocumentPictureInPicture
   }
 }
+
+const PIP_SIZE = 300 // square
 
 function escapeHtml(value: string) {
   return value
@@ -46,32 +45,23 @@ const pauseIcon = `
   </svg>
 `
 
-async function openPlayerPictureInPicture() {
+async function openPip() {
   const api = window.documentPictureInPicture
   const { currentTrack } = usePlayerStore.getState()
-  if (!api || !currentTrack || suppressUntilVisible) return false
+  if (!api || !currentTrack) return
+  if (api.window && !api.window.closed) return // already open
 
   try {
-    const pipWindow = await api.requestWindow({ width: 304, height: 360 })
-    pipWindow.addEventListener('pagehide', () => {
-      if (!closingProgrammatically) {
-        suppressUntilVisible = true
-      }
-      closingProgrammatically = false
-    })
+    const pipWindow = await api.requestWindow({ width: PIP_SIZE, height: PIP_SIZE })
     renderPipDocument(pipWindow)
-    return true
   } catch {
-    return false
+    /* unsupported or blocked — ignore */
   }
 }
 
-function closePlayerPictureInPicture() {
+function closePip() {
   const pipWindow = window.documentPictureInPicture?.window
-  if (pipWindow && !pipWindow.closed) {
-    closingProgrammatically = true
-    pipWindow.close()
-  }
+  if (pipWindow && !pipWindow.closed) pipWindow.close()
 }
 
 function renderPipDocument(pipWindow: Window) {
@@ -98,7 +88,7 @@ function renderPipDocument(pipWindow: Window) {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        min-height: 100%;
+        height: 100%;
         padding: 8px;
         border: 1px solid rgba(255,255,255,.08);
         border-radius: 8px;
@@ -137,11 +127,7 @@ function renderPipDocument(pipWindow: Window) {
         cursor: pointer;
         font: inherit;
       }
-      button svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
+      button svg { width: 100%; height: 100%; display: block; }
       .art-controls {
         position: absolute;
         inset: 0;
@@ -153,54 +139,47 @@ function renderPipDocument(pipWindow: Window) {
       }
       .side-control {
         display: grid;
-        width: 32px;
-        height: 32px;
+        width: 30px;
+        height: 30px;
         place-items: center;
         color: rgba(255,255,255,.78);
         filter: drop-shadow(0 2px 8px rgba(0,0,0,.55));
       }
       .primary-control {
         display: grid;
-        width: 62px;
-        height: 62px;
+        width: 56px;
+        height: 56px;
         place-items: center;
         background: #fff;
         color: #000;
         box-shadow: 0 10px 26px rgba(0,0,0,.42);
       }
-      .primary-control svg {
-        width: 28px;
-        height: 28px;
-      }
-      .footer {
-        flex: 0 0 auto;
-        min-width: 0;
-      }
-      .meta { min-width: 0; }
+      .primary-control svg { width: 26px; height: 26px; }
+      .footer { flex: 0 0 auto; min-width: 0; }
       .title {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-size: 18px;
+        font-size: 16px;
         line-height: 1.15;
-        font-weight: 900;
+        font-weight: 800;
       }
       .artist {
-        margin-top: 3px;
+        margin-top: 2px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         color: #b3b3b3;
-        font-size: 13px;
-        font-weight: 900;
+        font-size: 12px;
+        font-weight: 700;
       }
       .bar-row {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 7px;
+        margin-bottom: 6px;
         color: #fff;
-        font-size: 11px;
+        font-size: 10px;
         font-variant-numeric: tabular-nums;
       }
       .bar {
@@ -217,27 +196,7 @@ function renderPipDocument(pipWindow: Window) {
         border-radius: inherit;
         background: #fff;
       }
-      .info-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .info-row .meta {
-        flex: 1;
-        min-width: 0;
-      }
-      .save {
-        display: grid;
-        width: 30px;
-        height: 30px;
-        flex: 0 0 auto;
-        place-items: center;
-        border: 2px solid rgba(255,255,255,.78);
-        color: rgba(255,255,255,.86);
-        font-size: 25px;
-        font-weight: 300;
-        line-height: 1;
-      }
+      .meta { min-width: 0; }
     </style>
     <main class="player">
       <div class="art">
@@ -254,12 +213,9 @@ function renderPipDocument(pipWindow: Window) {
           <div class="bar"><span></span></div>
           <span>${formatSeconds(displayDuration)}</span>
         </div>
-        <div class="info-row">
-          <div class="meta">
-            <div class="title">${escapeHtml(currentTrack.title)}</div>
-            <div class="artist">${escapeHtml(currentTrack.artist.name)}</div>
-          </div>
-          <button class="save" aria-label="Save">+</button>
+        <div class="meta">
+          <div class="title">${escapeHtml(currentTrack.title)}</div>
+          <div class="artist">${escapeHtml(currentTrack.artist.name)}</div>
         </div>
       </div>
     </main>
@@ -277,54 +233,34 @@ function renderPipDocument(pipWindow: Window) {
 }
 
 export function PictureInPicturePlayer() {
-  const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const stateSignature = usePlayerStore((s) =>
     s.currentTrack ? `${s.currentTrack.id}:${s.isPlaying}:${Math.round(s.currentTime)}:${Math.round(s.duration)}` : '',
   )
-  const openingRef = useRef(false)
 
+  // Simple rule: tab hidden (with a loaded track) → show PiP; tab visible → hide it.
+  // Re-runs when the track changes so it also closes when playback is cleared.
   useEffect(() => {
-    if (!currentTrack || !isPlaying) {
-      closePlayerPictureInPicture()
-      return
-    }
-
-    const syncWithVisibility = () => {
-      const isAppActive = document.visibilityState === 'visible' && document.hasFocus()
-
-      if (isAppActive) {
-        suppressUntilVisible = false
-        closePlayerPictureInPicture()
-        return
+    const sync = () => {
+      if (document.hidden && usePlayerStore.getState().currentTrack) {
+        void openPip()
+      } else {
+        closePip()
       }
-
-      const pipWindow = window.documentPictureInPicture?.window
-      if (openingRef.current || (pipWindow && !pipWindow.closed)) return
-      openingRef.current = true
-      openPlayerPictureInPicture().finally(() => {
-        openingRef.current = false
-      })
     }
+    document.addEventListener('visibilitychange', sync)
+    sync()
+    return () => document.removeEventListener('visibilitychange', sync)
+  }, [currentTrack])
 
-    document.addEventListener('visibilitychange', syncWithVisibility)
-    window.addEventListener('focus', syncWithVisibility)
-    window.addEventListener('blur', syncWithVisibility)
-    syncWithVisibility()
-
-    return () => {
-      document.removeEventListener('visibilitychange', syncWithVisibility)
-      window.removeEventListener('focus', syncWithVisibility)
-      window.removeEventListener('blur', syncWithVisibility)
-    }
-  }, [currentTrack, isPlaying])
-
+  // Keep the PiP content in sync with playback while it's open.
   useEffect(() => {
     const pipWindow = window.documentPictureInPicture?.window
     if (pipWindow && !pipWindow.closed) renderPipDocument(pipWindow)
   }, [stateSignature])
 
-  useEffect(() => closePlayerPictureInPicture, [])
+  // Close on unmount (e.g. logout hides the player).
+  useEffect(() => closePip, [])
 
   return null
 }

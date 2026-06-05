@@ -231,18 +231,26 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 }))
 
-// Subscribe to auth state changes to clear library state on logout
-useAuthStore.subscribe((state) => {
-  if (!state.isAuthenticated) {
-    useLibraryStore.setState({
-      savedPlaylists: [],
-      likedSongs: [],
-      followedArtists: [],
-      savedAlbums: [],
-      likedTrackIds: new Set(),
-      followedArtistIds: new Set(),
-      savedAlbumIds: new Set(),
-      isLoading: false,
-    })
+// Clear the personal library the moment the user logs out — no refresh needed.
+// Only fire on the authenticated → unauthenticated transition (not during the
+// initial hydration window), and also drop the localStorage caches so likes/follows
+// can't survive logout or leak into the next session.
+useAuthStore.subscribe((state, prev) => {
+  if (!prev.isAuthenticated || state.isAuthenticated) return
+  try {
+    localStorage.removeItem('ns-liked-tracks')
+    localStorage.removeItem('ns-followed-artists')
+  } catch {
+    /* ignore */
   }
+  useLibraryStore.setState({
+    savedPlaylists: [],
+    likedSongs: [],
+    followedArtists: [],
+    savedAlbums: [],
+    likedTrackIds: new Set(),
+    followedArtistIds: new Set(),
+    savedAlbumIds: new Set(),
+    isLoading: false,
+  })
 })

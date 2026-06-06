@@ -260,7 +260,7 @@ export function NowPlayingPanel() {
                   <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
                 )}
               </button>
-              <TrackRowMenu track={currentTrack} />
+              <TrackRowMenu track={currentTrack} alwaysVisible />
             </div>
           </div>
         </div>

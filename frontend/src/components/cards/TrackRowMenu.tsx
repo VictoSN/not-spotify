@@ -24,9 +24,11 @@ interface TrackRowMenuProps {
   track: Track
   /** When rendered inside a playlist page, omit this playlist from the "Add to playlist" flyout. */
   currentPlaylistId?: string
+  /** Always show the trigger button regardless of parent hover state. */
+  alwaysVisible?: boolean
 }
 
-export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
+export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackRowMenuProps) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -183,7 +185,7 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
               setRemovePlaylistQuery('')
             }}
             aria-label="More options"
-            className="cursor-pointer opacity-0 group-hover:opacity-100 data-[open]:opacity-100 transition-opacity"
+            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
           >
             <EllipsisHorizontalIcon className="w-4 h-4 text-secondary hover:text-primary" />
           </MenuButton>

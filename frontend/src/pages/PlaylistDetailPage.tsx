@@ -56,6 +56,7 @@ export function PlaylistDetailPage() {
   const deletePlaylistAction = useLibraryStore((s) => s.deletePlaylist)
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
   const syncPlaylistTracks = useLibraryStore((s) => s.syncPlaylistTracks)
+  const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
 
@@ -69,6 +70,15 @@ export function PlaylistDetailPage() {
       syncPlaylistTracks(p.id, p.tracks)
     })
   }, [id])
+
+  // Keep local playlist state in sync with the store so that add/remove operations
+  // triggered from TrackRowMenu (which write to the store) are reflected immediately.
+  useEffect(() => {
+    if (!playlist) return
+    const storePlaylist = savedPlaylists.find((p) => p.id === playlist.id)
+    if (!storePlaylist) return
+    setPlaylist((prev) => prev ? { ...prev, tracks: storePlaylist.tracks, totalDurationMs: storePlaylist.totalDurationMs } : prev)
+  }, [savedPlaylists])
 
   // Fetch recommendations once the playlist (and its tracks/genres) are loaded — they
   // refresh after every add so newly-added tracks drop off the list.

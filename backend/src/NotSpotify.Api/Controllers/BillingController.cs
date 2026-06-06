@@ -95,6 +95,34 @@ public class BillingController : ControllerBase
         }
     }
 
+    [HttpDelete("subscription")]
+    [Authorize]
+    public async Task<IActionResult> CancelSubscription(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == me, ct);
+        if (user is null) return NotFound();
+
+        // If Stripe is configured and the user has an active subscription, cancel it there first.
+        if (_stripe.HasSecretKey && !string.IsNullOrWhiteSpace(user.StripeSubscriptionId))
+        {
+            try { await _stripe.CancelSubscriptionAsync(user.StripeSubscriptionId, ct); }
+            catch { /* best-effort; still downgrade locally */ }
+        }
+
+        // Downgrade the user to free immediately regardless of Stripe response.
+        user.Plan = "free";
+        user.StripeSubscriptionStatus = "canceled";
+        user.StripeCancelAtPeriodEnd = false;
+        user.StripeSubscriptionId = null;
+        user.StripeCurrentPeriodEnd = null;
+        await _db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
     [HttpPost("portal-session")]
     [Authorize]
     public async Task<ActionResult<BillingRedirectDto>> PortalSession(CancellationToken ct = default)

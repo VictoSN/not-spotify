@@ -56,9 +56,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    try { await authService.logout() } catch { /* ignore */ }
+    // Clear auth state immediately so UI re-renders (sidebar empties) before the API call.
     ;(window as { __authToken?: string }).__authToken = undefined
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false })
+    try { await authService.logout() } catch { /* ignore */ }
     window.location.reload()
   },
 

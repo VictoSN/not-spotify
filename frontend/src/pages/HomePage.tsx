@@ -11,6 +11,7 @@ import { playlistService } from '@/services/playlistService'
 import { albumService } from '@/services/albumService'
 import { artistService } from '@/services/artistService'
 import { useAuthStore } from '@/stores/authStore'
+import { SparklesIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useHueStore } from '@/stores/hueStore'
@@ -117,6 +118,23 @@ export function HomePage() {
           </h1>
         )}
 
+        {/* Upgrade nudge for free-tier users */}
+        {isAuthenticated && user?.capabilities?.unlimitedPlayback === false && (
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-accent-dim to-surface px-5 py-4 ring-1 ring-accent/20">
+            <div className="min-w-0">
+              <p className="text-sm font-black text-primary">You're on the Free plan</p>
+              <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls</p>
+            </div>
+            <Link
+              to="/premium"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+            >
+              <SparklesIcon className="h-4 w-4" />
+              Explore Premium
+            </Link>
+          </div>
+        )}
+
         {/* Quick access — the same library shown in the sidebar */}
         {isAuthenticated && quickPicks.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
@@ -194,8 +212,8 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Recommended playlists (was "Featured playlists") */}
-        {recommendedPlaylists.length > 0 && (
+        {/* Recommended playlists — auth only */}
+        {isAuthenticated && recommendedPlaylists.length > 0 && (
           <section className="mb-8">
             <SectionHeader title="Recommended playlists" href="/playlists" />
             <HorizontalScroller>

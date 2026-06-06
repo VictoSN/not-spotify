@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { MusicalNoteIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -30,6 +30,10 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-base px-4 py-8 text-primary">
+      <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary transition-colors">
+        <ArrowLeftIcon className="h-4 w-4" />
+        Back to home
+      </Link>
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
           <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />

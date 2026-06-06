@@ -12,6 +12,7 @@ import {
   UserCircleIcon,
   ArrowDownTrayIcon,
   ClockIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -185,6 +186,17 @@ export function TopBar() {
           {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
         </button>
       </div>
+
+      {/* Explore Premium pill — only for free-tier authenticated users */}
+      {user?.capabilities?.unlimitedPlayback === false && (
+        <Link
+          to="/premium"
+          className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+        >
+          <SparklesIcon className="h-3.5 w-3.5" />
+          Explore Premium
+        </Link>
+      )}
 
       {/* Right: user menu */}
       <div className="relative">

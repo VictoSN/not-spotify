@@ -78,6 +78,14 @@ public class StripeBillingService
     public Task<JsonElement> FetchSubscriptionAsync(string subscriptionId, CancellationToken ct = default)
         => GetJsonAsync($"subscriptions/{Uri.EscapeDataString(subscriptionId)}", ct);
 
+    public async Task CancelSubscriptionAsync(string subscriptionId, CancellationToken ct = default)
+    {
+        EnsureConfigured();
+        using var req = new HttpRequestMessage(HttpMethod.Delete, $"subscriptions/{Uri.EscapeDataString(subscriptionId)}");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", Options.SecretKey);
+        await SendJsonAsync(req, ct);
+    }
+
     public Task<JsonElement> FetchPriceAsync(string priceId, CancellationToken ct = default)
         => GetJsonAsync($"prices/{Uri.EscapeDataString(priceId)}", ct);
 

@@ -47,7 +47,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   isLoading: false,
 
   fetchLibrary: async () => {
-    set({ isLoading: true })
+    set({ isLoading: true, savedPlaylists: [], likedSongs: [], likedTrackIds: new Set(), followedArtists: [], followedArtistIds: new Set() })
     try {
       const playlists = await playlistService.getUserPlaylists()
       let likedTracks: Track[] = []

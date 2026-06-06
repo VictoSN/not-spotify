@@ -38,4 +38,8 @@ export const billingService = {
     const res = await api.post<{ url: string }>('/billing/portal-session')
     return res.data.url
   },
+
+  async cancelSubscription(): Promise<void> {
+    await api.delete('/billing/subscription')
+  },
 }

@@ -93,6 +93,38 @@ Once both servers are running, log in with the following default developer accou
 
 ---
 
+## Free vs Premium Tier
+
+### Free Tier Constraints
+
+| Feature | Free | Premium |
+|---|---|---|
+| Listening | Playlists only, **shuffle forced on** | Any order, any source |
+| Shuffle | Always on, cannot be turned off | Toggle on/off |
+| Repeat | Not available (locked) | Repeat all / repeat one |
+| Track selection | Random start — clicking a specific track shuffles the whole playlist | Play any track directly |
+| Liked Songs | Full access — like, unlike, view | Full access |
+| Playlist management | Create, edit, add/remove songs, set cover, visibility | Same |
+| Queue | Add to queue, view next-up | Same |
+
+### How free-tier enforcement works (frontend)
+
+- **`user.capabilities.unlimitedPlayback`** (`false` for free, `true` for premium) is set by the backend in `MediaMapper` and included in every auth token response.
+- **`playerStore.play()`** — when `isFreeUser()` is true and the queue has more than one track, the queue is shuffled immediately and playback starts from a random position rather than the tapped song.
+- **`playerStore.toggleShuffle()`** — no-op for free users; `shuffleEnabled` is always forced to `true`.
+- **`playerStore.cycleRepeat()`** — no-op for free users; `repeatMode` stays `'off'`.
+- **`ShuffleRepeatControls`** — shuffle button is visually locked (disabled, accent-coloured with tooltip). Repeat button links to `/premium` with a tooltip explaining the restriction.
+
+### Cancelling a subscription
+
+Premium users see a **Cancel subscription** row in Account → Subscription. Clicking it:
+1. Prompts for confirmation.
+2. Calls `DELETE /billing/subscription` on the backend.
+3. The backend cancels the Stripe subscription (if configured) and immediately sets `user.Plan = "free"`.
+4. The frontend refreshes the auth token so the new plan takes effect without a page reload.
+
+---
+
 ## Stripe Billing Setup For Teammates
 
 Stripe is only needed if you want to test the Premium checkout flow. Normal browsing, login, playback, playlists, profile editing, and admin media work without it.

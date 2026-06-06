@@ -101,6 +101,23 @@ export function AccountSettingsPage() {
     }
   }
 
+  const cancelSubscription = async () => {
+    if (!confirm('Cancel your Premium subscription? You will lose access to Premium features immediately.')) return
+    setBusy(true)
+    setError(null)
+    try {
+      await billingService.cancelSubscription()
+      // Refresh the auth token so the user object reflects the new free plan.
+      await useAuthStore.getState().refreshToken()
+      setSubscription({ plan: 'free', status: 'canceled', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? 'Could not cancel subscription. Please try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const signOutEverywhere = async () => {
     await logout()
     navigate('/login')
@@ -180,8 +197,17 @@ export function AccountSettingsPage() {
 
       <Section title="Subscription">
         <SettingRow icon={SparklesIcon} label="Available plans" sub="Compare Free and Premium" to="/premium" />
-        <SettingRow icon={CreditCardIcon} label="Manage your subscription" sub="Update or cancel via the billing portal" onClick={openPortal} external />
-        <SettingRow icon={XCircleIcon} label="Cancel subscription" disabled />
+        {isPremium && (
+          <SettingRow icon={CreditCardIcon} label="Manage your subscription" sub="Update payment method or billing details" onClick={openPortal} external />
+        )}
+        {isPremium && (
+          <SettingRow
+            icon={XCircleIcon}
+            label="Cancel subscription"
+            sub="Downgrade to Free immediately"
+            onClick={cancelSubscription}
+          />
+        )}
       </Section>
 
       <Section title="Payment">

@@ -17,6 +17,10 @@ function recordPlay(trackId: string) {
   trackService.recordPlay(trackId).catch(() => { })
 }
 
+function isFreeUser(): boolean {
+  return useAuthStore.getState().user?.capabilities?.unlimitedPlayback === false
+}
+
 export type RepeatMode = 'off' | 'one' | 'all'
 
 interface PlayerState {
@@ -71,19 +75,30 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isNowPlayingCollapsed: false,
 
   play: (track, queue) => {
-    const newQueue = queue ?? [track]
-    const index = newQueue.findIndex((t) => t.id === track.id)
+    let newQueue = queue ?? [track]
+    let targetTrack = track
+    const free = isFreeUser()
+
+    if (free && newQueue.length > 1) {
+      // Free users always get a shuffled queue; the specific track they tapped
+      // is ignored in favour of a random starting position.
+      newQueue = shuffle(newQueue)
+      targetTrack = newQueue[0]
+    }
+
+    const index = newQueue.findIndex((t) => t.id === targetTrack.id)
     const { currentTrack, history } = get()
     const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
     set({
-      currentTrack: track,
+      currentTrack: targetTrack,
       queue: newQueue,
       queueIndex: index,
       history: newHistory,
       isPlaying: true,
       currentTime: 0,
+      shuffleEnabled: free ? true : get().shuffleEnabled,
     })
-    recordPlay(track.id)
+    recordPlay(targetTrack.id)
   },
 
   pause: () => set({ isPlaying: false }),
@@ -146,6 +161,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleShuffle: () =>
     set((s) => {
+      // Free users are locked to shuffle — turning it off is a no-op.
+      if (isFreeUser()) return { shuffleEnabled: true }
       if (!s.shuffleEnabled) {
         const shuffled = shuffle(s.queue)
         return { shuffleEnabled: true, queue: shuffled, queueIndex: shuffled.findIndex((t) => t.id === s.currentTrack?.id) }
@@ -155,6 +172,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   cycleRepeat: () =>
     set((s) => {
+      // Free users cannot use repeat.
+      if (isFreeUser()) return {}
       const order: RepeatMode[] = ['off', 'all', 'one']
       const next = order[(order.indexOf(s.repeatMode) + 1) % order.length]
       return { repeatMode: next }

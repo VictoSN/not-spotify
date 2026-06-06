@@ -6,20 +6,28 @@ import { billingService, type BillingPlan, type BillingSubscription } from '@/se
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
 
-const COMPARISON: { label: string; free: boolean }[] = [
+const COMPARISON: { label: string; free: boolean | 'partial'; freeNote?: string }[] = [
   { label: 'Ad-free music listening', free: false },
   { label: 'Download to listen offline', free: false },
-  { label: 'Play songs in any order', free: true },
+  { label: 'Play songs in any order', free: false },
+  { label: 'Shuffle toggle & repeat modes', free: false },
   { label: 'High audio quality', free: false },
-  { label: 'Listen with friends in real time', free: false },
-  { label: 'Organize your listening queue', free: true },
+  { label: 'Save playlists & liked songs', free: true },
+  { label: 'Organize your listening queue', free: false },
 ]
 
 const PREMIUM_PERKS = [
   'Ad-free, uninterrupted listening',
-  'Unlimited skips and any-order play',
+  'Play any song in any order — no forced shuffle',
+  'Shuffle toggle and repeat modes (all / one)',
   'Stripe-hosted secure checkout',
-  'Manage everything from the billing portal',
+]
+
+const FREE_PERKS = [
+  'Listen to all music (shuffle only)',
+  'Save playlists to your library',
+  'Like songs and follow artists',
+  'Search and browse the full catalogue',
 ]
 
 function PlanCard({
@@ -195,7 +203,7 @@ export function PremiumPage() {
               >
                 <span>{row.label}</span>
                 <span className="flex justify-center">
-                  {row.free ? <CheckIcon className="h-5 w-5 text-primary" /> : <MinusIcon className="h-5 w-5 text-muted" />}
+                  {row.free === true ? <CheckIcon className="h-5 w-5 text-primary" /> : <MinusIcon className="h-5 w-5 text-muted" />}
                 </span>
                 <span className="flex justify-center">
                   <CheckIcon className="h-5 w-5 text-accent" />
@@ -217,7 +225,7 @@ export function PremiumPage() {
               headerClass="bg-elevated text-primary"
               price="$0"
               priceSub="The current baseline account."
-              perks={['Listen with a free account', 'Save playlists to your library', 'Personal history and searches']}
+              perks={FREE_PERKS}
               footer={
                 <div className="text-sm font-bold capitalize text-secondary">
                   {(user?.plan ?? 'free') === 'free' ? 'Your current plan' : 'Included'}

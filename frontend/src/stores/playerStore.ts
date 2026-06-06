@@ -52,6 +52,7 @@ interface PlayerState {
   setQueue: (tracks: Track[], startIndex?: number) => void
   addToQueue: (track: Track) => void
   removeFromQueue: (index: number) => void
+  reorderQueue: (fromIndex: number, toIndex: number) => void
   toggleNowPlaying: () => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
   tick: (currentTime: number, duration: number) => void
@@ -193,6 +194,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       const newQueue = s.queue.filter((_, i) => i !== index)
       const newIndex = index < s.queueIndex ? s.queueIndex - 1 : s.queueIndex
       return { queue: newQueue, queueIndex: newIndex }
+    }),
+
+  reorderQueue: (from, to) =>
+    set((s) => {
+      const newQueue = [...s.queue]
+      const [moved] = newQueue.splice(from, 1)
+      newQueue.splice(to, 0, moved)
+      let newQueueIndex = s.queueIndex
+      if (s.queueIndex === from) {
+        newQueueIndex = to
+      } else if (from < s.queueIndex && to >= s.queueIndex) {
+        newQueueIndex = s.queueIndex - 1
+      } else if (from > s.queueIndex && to <= s.queueIndex) {
+        newQueueIndex = s.queueIndex + 1
+      }
+      return { queue: newQueue, queueIndex: newQueueIndex }
     }),
 
   toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen, isNowPlayingCollapsed: false })),

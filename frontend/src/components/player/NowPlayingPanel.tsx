@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, Bars3Icon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { useAuthStore } from '@/stores/authStore'
 import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
 import { TrackCard } from '@/components/cards/TrackCard'
@@ -57,8 +58,11 @@ export function NowPlayingPanel() {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const queue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
+  const reorderQueue = usePlayerStore((s) => s.reorderQueue)
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
   const setNowPlayingCollapsed = usePlayerStore((s) => s.setNowPlayingCollapsed)
+  const isPremium = useAuthStore((s) => s.user?.capabilities?.unlimitedPlayback !== false)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
 
@@ -353,9 +357,44 @@ export function NowPlayingPanel() {
         <PanelSection title="Next in queue">
           {upNext.length > 0 ? (
             <div className="flex flex-col gap-1">
-              {upNext.slice(0, 10).map((track, i) => (
-                <TrackCard key={`${track.id}-${i}`} track={track} queue={queue} />
-              ))}
+              {upNext.slice(0, 10).map((track, upNextIdx) => {
+                const absoluteIdx = queueIndex + 1 + upNextIdx
+                return (
+                  <div
+                    key={`${track.id}-${upNextIdx}`}
+                    draggable={isPremium}
+                    onDragStart={isPremium ? (e) => {
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', String(absoluteIdx))
+                    } : undefined}
+                    onDragOver={isPremium ? (e) => {
+                      e.preventDefault()
+                      e.dataTransfer.dropEffect = 'move'
+                      setDragOverIndex(absoluteIdx)
+                    } : undefined}
+                    onDragLeave={isPremium ? () => setDragOverIndex(null) : undefined}
+                    onDrop={isPremium ? (e) => {
+                      e.preventDefault()
+                      const from = Number(e.dataTransfer.getData('text/plain'))
+                      if (!isNaN(from) && from !== absoluteIdx) reorderQueue(from, absoluteIdx)
+                      setDragOverIndex(null)
+                    } : undefined}
+                    onDragEnd={isPremium ? () => setDragOverIndex(null) : undefined}
+                    className={cn(
+                      'flex items-center gap-1 rounded transition-colors',
+                      isPremium && 'cursor-grab active:cursor-grabbing',
+                      dragOverIndex === absoluteIdx && 'ring-1 ring-accent/60 bg-elevated/60',
+                    )}
+                  >
+                    {isPremium && (
+                      <Bars3Icon className="w-4 h-4 shrink-0 text-secondary/40 ml-1" aria-hidden />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <TrackCard track={track} queue={queue} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <p className="text-sm text-secondary">Nothing queued up next.</p>

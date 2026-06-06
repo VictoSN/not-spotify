@@ -1,266 +1,232 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePlayerStore } from '@/stores/playerStore'
-import { formatSeconds } from '@/utils/formatTime'
 
-type DocumentPictureInPicture = {
-  requestWindow: (options?: { width?: number; height?: number }) => Promise<Window>
-  window?: Window | null
-}
+// Module-level ref so BottomPlayerBar can trigger PiP without prop drilling.
+let _videoEl: HTMLVideoElement | null = null
 
-declare global {
-  interface Window {
-    documentPictureInPicture?: DocumentPictureInPicture
+export function enterPip() {
+  if (!_videoEl || !document.pictureInPictureEnabled) return
+  if (document.pictureInPictureElement === _videoEl) {
+    document.exitPictureInPicture().catch(() => {})
+  } else {
+    _videoEl.requestPictureInPicture().catch(() => {})
   }
 }
 
-const PIP_SIZE = 300 // square
+// Canvas size for the PiP overlay artwork
+const CW = 512
+const CH = 512
 
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
-}
-
-const previousIcon = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M7 6h2v12H7zM10 12l9-6v12z" fill="currentColor" />
-  </svg>
-`
-const nextIcon = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M15 6h2v12h-2zM14 12l-9 6V6z" fill="currentColor" />
-  </svg>
-`
-const playIcon = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M8 5v14l11-7z" fill="currentColor" />
-  </svg>
-`
-const pauseIcon = `
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor" />
-  </svg>
-`
-
-async function openPip() {
-  const api = window.documentPictureInPicture
-  const { currentTrack } = usePlayerStore.getState()
-  if (!api || !currentTrack) return
-  if (api.window && !api.window.closed) return // already open
-
-  try {
-    const pipWindow = await api.requestWindow({ width: PIP_SIZE, height: PIP_SIZE })
-    renderPipDocument(pipWindow)
-  } catch {
-    /* unsupported or blocked — ignore */
-  }
-}
-
-function closePip() {
-  const pipWindow = window.documentPictureInPicture?.window
-  if (pipWindow && !pipWindow.closed) pipWindow.close()
-}
-
-function renderPipDocument(pipWindow: Window) {
-  const state = usePlayerStore.getState()
-  const { currentTrack, isPlaying, currentTime, duration } = state
+// Draw current state onto the canvas — called at ~4 fps while playing
+function drawFrame(
+  ctx: CanvasRenderingContext2D,
+  cover: HTMLImageElement | null,
+) {
+  const { currentTrack, currentTime, duration } = usePlayerStore.getState()
   if (!currentTrack) return
 
   const displayDuration = duration > 0 ? duration : currentTrack.durationMs / 1000
-  const progress = displayDuration > 0 ? Math.min(100, Math.max(0, (currentTime / displayDuration) * 100)) : 0
-  const playLabel = isPlaying ? 'Pause' : 'Play'
-  const currentPlayIcon = isPlaying ? pauseIcon : playIcon
 
-  pipWindow.document.body.innerHTML = `
-    <style>
-      * { box-sizing: border-box; }
-      html, body { height: 100%; margin: 0; overflow: hidden; }
-      body {
-        background: transparent;
-        color: #fff;
-        font-family: Montserrat, "Helvetica Neue", Arial, sans-serif;
-        user-select: none;
-      }
-      .player {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        height: 100%;
-        padding: 8px;
-        border: 1px solid rgba(255,255,255,.08);
-        border-radius: 8px;
-        background: #121212;
-        box-shadow: 0 18px 60px rgba(0, 0, 0, .55);
-      }
-      .art {
-        position: relative;
-        flex: 1 1 auto;
-        min-height: 0;
-        overflow: hidden;
-        border-radius: 7px;
-        background: #000;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, .35);
-      }
-      .art img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
-        transform: scale(1.01);
-      }
-      .art::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.42)),
-          radial-gradient(circle at center, rgba(0,0,0,.18), rgba(0,0,0,.38));
-      }
-      button {
-        border: 0;
-        border-radius: 999px;
-        color: #fff;
-        background: transparent;
-        cursor: pointer;
-        font: inherit;
-      }
-      button svg { width: 100%; height: 100%; display: block; }
-      .art-controls {
-        position: absolute;
-        inset: 0;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
-      }
-      .side-control {
-        display: grid;
-        width: 30px;
-        height: 30px;
-        place-items: center;
-        color: rgba(255,255,255,.78);
-        filter: drop-shadow(0 2px 8px rgba(0,0,0,.55));
-      }
-      .primary-control {
-        display: grid;
-        width: 56px;
-        height: 56px;
-        place-items: center;
-        background: #fff;
-        color: #000;
-        box-shadow: 0 10px 26px rgba(0,0,0,.42);
-      }
-      .primary-control svg { width: 26px; height: 26px; }
-      .footer { flex: 0 0 auto; min-width: 0; }
-      .title {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 16px;
-        line-height: 1.15;
-        font-weight: 800;
-      }
-      .artist {
-        margin-top: 2px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: #b3b3b3;
-        font-size: 12px;
-        font-weight: 700;
-      }
-      .bar-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 6px;
-        color: #fff;
-        font-size: 10px;
-        font-variant-numeric: tabular-nums;
-      }
-      .bar {
-        height: 4px;
-        flex: 1;
-        overflow: hidden;
-        border-radius: 999px;
-        background: #4b4b4b;
-      }
-      .bar span {
-        display: block;
-        height: 100%;
-        width: ${progress}%;
-        border-radius: inherit;
-        background: #fff;
-      }
-      .meta { min-width: 0; }
-    </style>
-    <main class="player">
-      <div class="art">
-        <img src="${escapeHtml(currentTrack.album.coverUrl)}" alt="" />
-        <div class="art-controls">
-          <button class="side-control" id="previous" aria-label="Previous">${previousIcon}</button>
-          <button class="primary-control" id="toggle" aria-label="${playLabel}">${currentPlayIcon}</button>
-          <button class="side-control" id="next" aria-label="Next">${nextIcon}</button>
-        </div>
-      </div>
-      <div class="footer">
-        <div class="bar-row">
-          <span>${formatSeconds(currentTime)}</span>
-          <div class="bar"><span></span></div>
-          <span>${formatSeconds(displayDuration)}</span>
-        </div>
-        <div class="meta">
-          <div class="title">${escapeHtml(currentTrack.title)}</div>
-          <div class="artist">${escapeHtml(currentTrack.artist.name)}</div>
-        </div>
-      </div>
-    </main>
-  `
+  // Background
+  ctx.fillStyle = '#121212'
+  ctx.fillRect(0, 0, CW, CH)
 
-  pipWindow.document.getElementById('toggle')?.addEventListener('click', () => {
-    usePlayerStore.getState().togglePlayPause()
-  })
-  pipWindow.document.getElementById('previous')?.addEventListener('click', () => {
-    usePlayerStore.getState().skipPrevious()
-  })
-  pipWindow.document.getElementById('next')?.addEventListener('click', () => {
-    usePlayerStore.getState().skipNext()
-  })
+  // Album art + gradient scrim
+  if (cover?.complete && cover.naturalWidth > 0) {
+    ctx.drawImage(cover, 0, 0, CW, CH)
+    const scrim = ctx.createLinearGradient(0, CH * 0.45, 0, CH)
+    scrim.addColorStop(0, 'rgba(0,0,0,0)')
+    scrim.addColorStop(1, 'rgba(0,0,0,0.88)')
+    ctx.fillStyle = scrim
+    ctx.fillRect(0, 0, CW, CH)
+  }
+
+  // Title
+  ctx.font = 'bold 28px "Helvetica Neue",Arial,sans-serif'
+  ctx.fillStyle = '#ffffff'
+  ctx.textBaseline = 'alphabetic'
+  const titleY = CH - 76
+  ctx.fillText(clampText(ctx, currentTrack.title, CW - 40), 20, titleY)
+
+  // Artist
+  ctx.font = '500 20px "Helvetica Neue",Arial,sans-serif'
+  ctx.fillStyle = 'rgba(255,255,255,0.65)'
+  ctx.fillText(clampText(ctx, currentTrack.artist.name, CW - 40), 20, titleY + 30)
+
+  // Progress bar track
+  const barY = CH - 22
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'
+  ctx.beginPath()
+  roundRect(ctx, 20, barY, CW - 40, 4, 2)
+  ctx.fill()
+
+  // Progress bar fill
+  if (displayDuration > 0) {
+    const pct = Math.min(1, currentTime / displayDuration)
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    roundRect(ctx, 20, barY, (CW - 40) * pct, 4, 2)
+    ctx.fill()
+  }
+}
+
+function clampText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string {
+  if (ctx.measureText(text).width <= maxW) return text
+  let lo = 0, hi = text.length
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if (ctx.measureText(text.slice(0, mid) + '…').width <= maxW) lo = mid
+    else hi = mid - 1
+  }
+  return text.slice(0, lo) + '…'
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number, w: number, h: number, r: number,
+) {
+  if (w <= 0) return
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r)
+  } else {
+    ctx.rect(x, y, w, h)
+  }
 }
 
 export function PictureInPicturePlayer() {
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const stateSignature = usePlayerStore((s) =>
-    s.currentTrack ? `${s.currentTrack.id}:${s.isPlaying}:${Math.round(s.currentTime)}:${Math.round(s.duration)}` : '',
-  )
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const coverRef = useRef<HTMLImageElement | null>(null)
+  const coverUrlRef = useRef('')
+  const rafRef = useRef<number | null>(null)
 
-  // Simple rule: tab hidden (with a loaded track) → show PiP; tab visible → hide it.
-  // Re-runs when the track changes so it also closes when playback is cleared.
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const currentTime = usePlayerStore((s) => s.currentTime)
+  const duration = usePlayerStore((s) => s.duration)
+
+  // Create the hidden canvas + video element once on mount
   useEffect(() => {
-    const sync = () => {
-      if (document.hidden && usePlayerStore.getState().currentTrack) {
-        void openPip()
-      } else {
-        closePip()
+    const canvas = document.createElement('canvas')
+    canvas.width = CW
+    canvas.height = CH
+    canvasRef.current = canvas
+
+    const video = document.createElement('video')
+    video.muted = true
+    video.autoplay = true
+    // autoPictureInPicture: browser automatically enters PiP on tab-hide and
+    // exits on tab-show — fixes both the "persists after close" and return-button bugs.
+    video.setAttribute('autopictureinpicture', '')
+    video.playsInline = true
+    Object.assign(video.style, {
+      position: 'fixed', top: '0', left: '0',
+      width: '1px', height: '1px',
+      opacity: '0.001', pointerEvents: 'none',
+      zIndex: '-1',
+    })
+    document.body.appendChild(video)
+    videoRef.current = video
+    _videoEl = video
+
+    const stream = canvas.captureStream(4)
+    video.srcObject = stream
+    video.play().catch(() => {/* autoplay blocked — PiP won't work but app still plays audio */})
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      if (document.pictureInPictureElement === video) {
+        document.exitPictureInPicture().catch(() => {})
       }
+      video.remove()
+      _videoEl = null
     }
-    document.addEventListener('visibilitychange', sync)
-    sync()
-    return () => document.removeEventListener('visibilitychange', sync)
+  }, [])
+
+  // Render loop — draw canvas frames while a track is loaded
+  useEffect(() => {
+    if (!currentTrack) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let active = true
+    const loop = () => {
+      if (!active) return
+      drawFrame(ctx, coverRef.current)
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    loop()
+    return () => {
+      active = false
+      if (rafRef.current) cancelAnimationFrame(rafRef.current)
+    }
+  }, [currentTrack, isPlaying, currentTime, duration])
+
+  // Reload cover image when the track changes
+  useEffect(() => {
+    if (!currentTrack || coverUrlRef.current === currentTrack.album.coverUrl) return
+    coverUrlRef.current = currentTrack.album.coverUrl
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => { coverRef.current = img }
+    img.onerror = () => { coverRef.current = null }
+    img.src = currentTrack.album.coverUrl
   }, [currentTrack])
 
-  // Keep the PiP content in sync with playback while it's open.
+  // mediaSession metadata — populates the native PiP title / artwork / OS widget
   useEffect(() => {
-    const pipWindow = window.documentPictureInPicture?.window
-    if (pipWindow && !pipWindow.closed) renderPipDocument(pipWindow)
-  }, [stateSignature])
+    if (!('mediaSession' in navigator)) return
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null
+      return
+    }
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.title,
+      artist: currentTrack.artist.name,
+      album: currentTrack.album.title,
+      artwork: [{ src: currentTrack.album.coverUrl, sizes: '512x512', type: 'image/jpeg' }],
+    })
+    const store = usePlayerStore.getState
+    navigator.mediaSession.setActionHandler('play', () => store().resume())
+    navigator.mediaSession.setActionHandler('pause', () => store().pause())
+    navigator.mediaSession.setActionHandler('nexttrack', () => store().skipNext())
+    navigator.mediaSession.setActionHandler('previoustrack', () => store().skipPrevious())
 
-  // Close on unmount (e.g. logout hides the player).
-  useEffect(() => closePip, [])
+    return () => {
+      ;(['play', 'pause', 'nexttrack', 'previoustrack'] as const).forEach((a) =>
+        navigator.mediaSession.setActionHandler(a, null),
+      )
+    }
+  }, [currentTrack])
+
+  // mediaSession playback state
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused'
+  }, [isPlaying])
+
+  // mediaSession position state
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentTrack) return
+    const displayDuration = duration > 0 ? duration : currentTrack.durationMs / 1000
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: displayDuration,
+        playbackRate: 1,
+        position: Math.min(currentTime, displayDuration),
+      })
+    } catch { /* setPositionState throws if duration is 0 */ }
+  }, [currentTime, duration, currentTrack])
+
+  // Exit PiP when playback stops entirely (logout / track cleared)
+  useEffect(() => {
+    const video = videoRef.current
+    if (!currentTrack && video && document.pictureInPictureElement === video) {
+      document.exitPictureInPicture().catch(() => {})
+    }
+  }, [currentTrack])
 
   return null
 }

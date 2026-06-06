@@ -212,8 +212,8 @@ export function HomePage() {
           </section>
         )}
 
-        {/* Recommended playlists — auth only */}
-        {isAuthenticated && recommendedPlaylists.length > 0 && (
+        {/* Recommended playlists */}
+        {recommendedPlaylists.length > 0 && (
           <section className="mb-8">
             <SectionHeader title="Recommended playlists" href="/playlists" />
             <HorizontalScroller>

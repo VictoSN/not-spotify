@@ -50,8 +50,10 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const createPlaylist = useLibraryStore((s) => s.createPlaylist)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const addToQueue = usePlayerStore((s) => s.addToQueue)
+  const queue = usePlayerStore((s) => s.queue)
 
   const isLiked = likedTrackIds.has(track.id)
+  const isInQueue = queue.some((t) => t.id === track.id)
   const myOwnedPlaylists = savedPlaylists.filter((p) => p.isOwner)
 
   // Playlists this track has already been added to — include the current playlist so the
@@ -424,20 +426,22 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
               </button>
             </MenuItem>
 
-            <MenuItem>
-              <button
-                type="button"
-                onClick={(e) => {
-                  stop(e)
-                  handleAddToQueue()
-                  close()
-                }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
-              >
-                <QueueListIcon className="w-4 h-4" />
-                Add to queue
-              </button>
-            </MenuItem>
+            {!isInQueue && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    handleAddToQueue()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <QueueListIcon className="w-4 h-4" />
+                  Add to queue
+                </button>
+              </MenuItem>
+            )}
 
             <div className="my-1 h-px bg-secondary/20" />
 

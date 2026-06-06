@@ -4,6 +4,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import {
   EllipsisHorizontalIcon,
   PlusIcon,
+  MinusCircleIcon,
   HeartIcon as HeartOutlineIcon,
   QueueListIcon,
   UserIcon,
@@ -27,12 +28,15 @@ interface TrackRowMenuProps {
 
 export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
   const navigate = useNavigate()
-  const [submenuOpen, setSubmenuOpen] = useState(false)
+  const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
+  const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
   const [playlistQuery, setPlaylistQuery] = useState('')
+  const [removePlaylistQuery, setRemovePlaylistQuery] = useState('')
   // Hover-intent timer: closing the flyout is delayed so the pointer can cross
   // the small gap between the "Add to playlist" row and the flyout without it
   // flickering shut.
-  const closeTimer = useRef<number | null>(null)
+  const addCloseTimer = useRef<number | null>(null)
+  const removeCloseTimer = useRef<number | null>(null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
@@ -40,38 +44,76 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
   const unlikeTrack = useLibraryStore((s) => s.unlikeTrack)
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
+  const removeTrackFromPlaylist = useLibraryStore((s) => s.removeTrackFromPlaylist)
   const createPlaylist = useLibraryStore((s) => s.createPlaylist)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const addToQueue = usePlayerStore((s) => s.addToQueue)
 
   const isLiked = likedTrackIds.has(track.id)
-  const myPlaylists = savedPlaylists.filter((p) => p.isOwner && p.id !== currentPlaylistId)
-  const trimmedQuery = playlistQuery.trim().toLowerCase()
-  const filteredPlaylists = trimmedQuery
-    ? myPlaylists.filter((p) => p.name.toLowerCase().includes(trimmedQuery))
-    : myPlaylists
+  const myOwnedPlaylists = savedPlaylists.filter((p) => p.isOwner)
 
-  const openSubmenu = () => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current)
-      closeTimer.current = null
+  // Playlists this track has already been added to — include the current playlist so the
+  // user can remove the song they're looking at right now.
+  const playlistsWithTrack = myOwnedPlaylists.filter((p) =>
+    (p.tracks ?? []).some((pt) => pt.track.id === track.id),
+  )
+  // Playlists this track hasn't been added to — exclude the current playlist since it
+  // would be a duplicate add.
+  const playlistsWithoutTrack = myOwnedPlaylists.filter(
+    (p) => p.id !== currentPlaylistId && !(p.tracks ?? []).some((pt) => pt.track.id === track.id),
+  )
+
+  const trimmedQuery = playlistQuery.trim().toLowerCase()
+  const filteredAddPlaylists = trimmedQuery
+    ? playlistsWithoutTrack.filter((p) => p.name.toLowerCase().includes(trimmedQuery))
+    : playlistsWithoutTrack
+
+  const trimmedRemoveQuery = removePlaylistQuery.trim().toLowerCase()
+  const filteredRemovePlaylists = trimmedRemoveQuery
+    ? playlistsWithTrack.filter((p) => p.name.toLowerCase().includes(trimmedRemoveQuery))
+    : playlistsWithTrack
+
+  const openAddSubmenu = () => {
+    if (addCloseTimer.current) {
+      clearTimeout(addCloseTimer.current)
+      addCloseTimer.current = null
     }
     // Lazily ensure the playlist list is hydrated.
     if (savedPlaylists.length === 0) void fetchLibrary()
-    setSubmenuOpen(true)
+    setAddSubmenuOpen(true)
+    setRemoveSubmenuOpen(false)
   }
 
-  const scheduleCloseSubmenu = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current)
-    closeTimer.current = window.setTimeout(() => {
-      setSubmenuOpen(false)
+  const scheduleCloseAddSubmenu = () => {
+    if (addCloseTimer.current) clearTimeout(addCloseTimer.current)
+    addCloseTimer.current = window.setTimeout(() => {
+      setAddSubmenuOpen(false)
       setPlaylistQuery('')
     }, 120)
   }
 
-  // Clear any pending close timer if the menu unmounts.
+  const openRemoveSubmenu = () => {
+    if (removeCloseTimer.current) {
+      clearTimeout(removeCloseTimer.current)
+      removeCloseTimer.current = null
+    }
+    if (savedPlaylists.length === 0) void fetchLibrary()
+    setRemoveSubmenuOpen(true)
+    setAddSubmenuOpen(false)
+  }
+
+  const scheduleCloseRemoveSubmenu = () => {
+    if (removeCloseTimer.current) clearTimeout(removeCloseTimer.current)
+    removeCloseTimer.current = window.setTimeout(() => {
+      setRemoveSubmenuOpen(false)
+      setRemovePlaylistQuery('')
+    }, 120)
+  }
+
+  // Clear any pending close timers if the menu unmounts.
   useEffect(() => () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current)
+    if (addCloseTimer.current) clearTimeout(addCloseTimer.current)
+    if (removeCloseTimer.current) clearTimeout(removeCloseTimer.current)
   }, [])
 
   // Re-used auth-gate that opens the existing modal with a contextual title.
@@ -93,13 +135,18 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
     gate('Add to queue with a free account', () => addToQueue(track))
 
   const handleAddToPlaylist = async (playlistId: string) => {
-    // The `/me/playlists` summary doesn't include the tracks array, so we can't
-    // pre-detect duplicates here. The backend returns 409 on duplicate; we catch
-    // and swallow it silently so a double-click is a no-op rather than a crash.
     try {
       await addTrackToPlaylist(playlistId, track)
     } catch {
       // ignore duplicate / network blips
+    }
+  }
+
+  const handleRemoveFromPlaylist = async (playlistId: string) => {
+    try {
+      await removeTrackFromPlaylist(playlistId, track.id)
+    } catch {
+      // ignore network blips
     }
   }
 
@@ -130,8 +177,10 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.
-              setSubmenuOpen(false)
+              setAddSubmenuOpen(false)
+              setRemoveSubmenuOpen(false)
               setPlaylistQuery('')
+              setRemovePlaylistQuery('')
             }}
             aria-label="More options"
             className="cursor-pointer opacity-0 group-hover:opacity-100 data-[open]:opacity-100 transition-opacity"
@@ -155,14 +204,15 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
               that; we lose ↑/↓ keyboard nav onto this single row but Tab still
               reaches it and the trigger stays a real <button>.
             */}
+            {/* Add to playlist */}
             <div
               className="relative"
               onMouseDown={stop}
               onPointerDown={stop}
               onMouseEnter={() => {
-                if (isAuthenticated) openSubmenu()
+                if (isAuthenticated) openAddSubmenu()
               }}
-              onMouseLeave={scheduleCloseSubmenu}
+              onMouseLeave={scheduleCloseAddSubmenu}
             >
               <button
                 type="button"
@@ -177,7 +227,7 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                     close()
                     return
                   }
-                  openSubmenu()
+                  openAddSubmenu()
                 }}
                 className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
               >
@@ -188,14 +238,20 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                 <ChevronRightIcon className="w-4 h-4 text-secondary" />
               </button>
 
-              {submenuOpen && isAuthenticated && (
+              {addSubmenuOpen && isAuthenticated && (
                 <div
                   onClick={stop}
                   onMouseDown={stop}
                   onPointerDown={stop}
+                  onMouseEnter={() => {
+                    if (addCloseTimer.current) {
+                      clearTimeout(addCloseTimer.current)
+                      addCloseTimer.current = null
+                    }
+                  }}
+                  onMouseLeave={scheduleCloseAddSubmenu}
                   className="absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1"
                 >
-                  {/* "Find a playlist" search */}
                   <div className="px-2 pt-1 pb-2">
                     <div className="relative">
                       <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
@@ -217,7 +273,7 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                     onClick={async (e) => {
                       stop(e)
                       await handleNewPlaylist()
-                      setSubmenuOpen(false)
+                      setAddSubmenuOpen(false)
                       setPlaylistQuery('')
                       close()
                     }}
@@ -227,16 +283,16 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                     New playlist
                   </button>
 
-                  {filteredPlaylists.length > 0 && <div className="my-1 h-px bg-secondary/20" />}
+                  {filteredAddPlaylists.length > 0 && <div className="my-1 h-px bg-secondary/20" />}
 
-                  {filteredPlaylists.map((p) => (
+                  {filteredAddPlaylists.map((p) => (
                     <button
                       key={p.id}
                       type="button"
                       onClick={async (e) => {
                         stop(e)
                         await handleAddToPlaylist(p.id)
-                        setSubmenuOpen(false)
+                        setAddSubmenuOpen(false)
                         setPlaylistQuery('')
                         close()
                       }}
@@ -251,7 +307,7 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                     </button>
                   ))}
 
-                  {filteredPlaylists.length === 0 && (
+                  {filteredAddPlaylists.length === 0 && (
                     <p className="px-3 py-2 text-xs text-secondary">
                       {trimmedQuery ? 'No matches.' : 'No playlists yet.'}
                     </p>
@@ -259,6 +315,93 @@ export function TrackRowMenu({ track, currentPlaylistId }: TrackRowMenuProps) {
                 </div>
               )}
             </div>
+
+            {/* Remove from playlist — only shown when the track is in at least one owned playlist */}
+            {isAuthenticated && playlistsWithTrack.length > 0 && (
+              <div
+                className="relative"
+                onMouseDown={stop}
+                onPointerDown={stop}
+                onMouseEnter={openRemoveSubmenu}
+                onMouseLeave={scheduleCloseRemoveSubmenu}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    openRemoveSubmenu()
+                  }}
+                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                >
+                  <span className="flex items-center gap-2">
+                    <MinusCircleIcon className="w-4 h-4" />
+                    Remove from playlist
+                  </span>
+                  <ChevronRightIcon className="w-4 h-4 text-secondary" />
+                </button>
+
+                {removeSubmenuOpen && (
+                  <div
+                    onClick={stop}
+                    onMouseDown={stop}
+                    onPointerDown={stop}
+                    onMouseEnter={() => {
+                      if (removeCloseTimer.current) {
+                        clearTimeout(removeCloseTimer.current)
+                        removeCloseTimer.current = null
+                      }
+                    }}
+                    onMouseLeave={scheduleCloseRemoveSubmenu}
+                    className="absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1"
+                  >
+                    <div className="px-2 pt-1 pb-2">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
+                        <input
+                          type="text"
+                          value={removePlaylistQuery}
+                          onChange={(e) => setRemovePlaylistQuery(e.target.value)}
+                          onClick={stop}
+                          onMouseDown={stop}
+                          onPointerDown={stop}
+                          placeholder="Find a playlist"
+                          className="w-full h-9 rounded-md bg-surface text-sm text-primary placeholder:text-muted pl-8 pr-3 outline-none focus:ring-1 focus:ring-accent/50"
+                        />
+                      </div>
+                    </div>
+
+                    {filteredRemovePlaylists.length > 0 && <div className="my-1 h-px bg-secondary/20" />}
+
+                    {filteredRemovePlaylists.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={async (e) => {
+                          stop(e)
+                          await handleRemoveFromPlaylist(p.id)
+                          setRemoveSubmenuOpen(false)
+                          setRemovePlaylistQuery('')
+                          close()
+                        }}
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                      >
+                        {p.coverUrl ? (
+                          <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
+                        ) : (
+                          <div className="w-6 h-6 rounded bg-surface flex items-center justify-center text-[10px]">🎵</div>
+                        )}
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                    ))}
+
+                    {filteredRemovePlaylists.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-secondary">No matches.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <MenuItem>
               <button

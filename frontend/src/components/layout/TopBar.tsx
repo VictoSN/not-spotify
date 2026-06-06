@@ -35,6 +35,7 @@ export function TopBar() {
   const [recents, setRecents] = useState<RecentSearch[]>([])
   const [searchValue, setSearchValue] = useState(currentQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -50,7 +51,7 @@ export function TopBar() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (searchInputRef.current && !searchInputRef.current.contains(e.target as Node)) {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setShowSearchRecents(false)
       }
     }
@@ -144,7 +145,7 @@ export function TopBar() {
           {isHome ? <HomeSolid className="w-6 h-6 text-primary" /> : <HomeIcon className="w-6 h-6 text-secondary" />}
         </button>
 
-        <div className="relative w-full max-w-md">
+        <div ref={searchContainerRef} className="relative w-full max-w-md">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
           <input
             ref={searchInputRef}

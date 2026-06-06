@@ -17,6 +17,7 @@ interface TrackRowProps {
   queue: Track[]
   showAlbum?: boolean
   showPlayCount?: boolean
+  addedAt?: string
   /** When this row is rendered inside a playlist page, omit that playlist from "Add to playlist". */
   currentPlaylistId?: string
 }
@@ -27,6 +28,7 @@ export function TrackRow({
   queue,
   showAlbum = false,
   showPlayCount = false,
+  addedAt,
   currentPlaylistId,
 }: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
@@ -113,6 +115,13 @@ export function TrackRow({
 
       {/* Play count (optional) */}
       {showPlayCount && <span className="text-sm text-secondary hidden md:block">{formatNumber(track.playCount)}</span>}
+
+      {/* Date added (optional — shown when showAlbum is true) */}
+      {showAlbum && (
+        <span className="text-sm text-secondary hidden md:block truncate">
+          {addedAt ? new Date(addedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
+        </span>
+      )}
 
       {/* Duration + actions */}
       <div className="flex items-center justify-end gap-3">

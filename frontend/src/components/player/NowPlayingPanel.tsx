@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid, CheckBadgeIcon, CheckIcon } from '@heroicons/react/24/solid'
+import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -10,6 +10,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
 import { TrackCard } from '@/components/cards/TrackCard'
+import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor } from '@/hooks/useDominantColor'
@@ -59,11 +60,10 @@ export function NowPlayingPanel() {
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
   const setNowPlayingCollapsed = usePlayerStore((s) => s.setNowPlayingCollapsed)
 
-  const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist, savedPlaylists, addTrackToPlaylist, removeTrackFromPlaylist } = useLibraryStore()
+  const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
-  const [showPlaylistMenu, setShowPlaylistMenu] = useState(false)
 
   // Resizable width — drag the left edge.
   const [width, setWidth] = useState(getInitialNpWidth)
@@ -189,22 +189,6 @@ export function NowPlayingPanel() {
   const isLiked = likedTrackIds.has(currentTrack.id)
   const toggleLike = () => (isLiked ? unlikeTrack(currentTrack.id) : likeTrack(currentTrack))
 
-  const handleTogglePlaylist = async (playlistId: string) => {
-    const playlist = savedPlaylists.find((p) => p.id === playlistId)
-    if (!playlist) return
-
-    const trackIsInPlaylist = playlist.tracks.some((pt) => pt.track.id === currentTrack.id)
-    try {
-      if (trackIsInPlaylist) {
-        await removeTrackFromPlaylist(playlistId, currentTrack.id)
-      } else {
-        await addTrackToPlaylist(playlistId, currentTrack)
-      }
-    } catch (error) {
-      console.error('Failed to update playlist:', error)
-    }
-  }
-
   const relatedTracks = related.filter((t) => t.id !== currentTrack.id).slice(0, 5)
   const upNext = queueIndex >= 0 ? queue.slice(queueIndex + 1) : []
 
@@ -276,48 +260,7 @@ export function NowPlayingPanel() {
                   <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
                 )}
               </button>
-              <div className="relative">
-                <button
-                  onClick={() => setShowPlaylistMenu(!showPlaylistMenu)}
-                  className="mt-1 text-secondary hover:text-primary transition-colors"
-                  aria-label="Add to playlist"
-                >
-                  <EllipsisHorizontalIcon className="w-6 h-6" />
-                </button>
-                {showPlaylistMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-48 bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50">
-                    {savedPlaylists.length === 0 ? (
-                      <div className="px-4 py-3 text-sm text-secondary text-center">
-                        Create a playlist first
-                      </div>
-                    ) : (
-                      <>
-                        <div className="px-4 py-2 text-xs font-semibold text-secondary uppercase tracking-wider border-b border-secondary/10">
-                          Add to playlist
-                        </div>
-                        <div className="max-h-48 overflow-y-auto">
-                          {savedPlaylists.map((playlist) => {
-                            const isInPlaylist = playlist.tracks.some((pt) => pt.track.id === currentTrack.id)
-                            return (
-                              <button
-                                key={playlist.id}
-                                onClick={async () => {
-                                  await handleTogglePlaylist(playlist.id)
-                                  setShowPlaylistMenu(false)
-                                }}
-                                className="w-full px-4 py-2.5 text-left text-sm text-primary hover:bg-surface transition-colors flex items-center justify-between"
-                              >
-                                <span className="truncate">{playlist.name}</span>
-                                {isInPlaylist && <CheckIcon className="w-4 h-4 text-accent flex-shrink-0 ml-2" />}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
+              <TrackRowMenu track={currentTrack} />
             </div>
           </div>
         </div>

@@ -3,22 +3,27 @@ import { useSearchParams } from 'react-router-dom'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { usePlayerStore } from '@/stores/playerStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
-import { TrackCard } from '@/components/cards/TrackCard'
+import { TrackRow } from '@/components/cards/TrackRow'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { PlusIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PlayIcon, ClockIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 
 type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
 
 export function LibraryPage() {
-  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, isLoading, fetchLibrary, createPlaylist } =
+  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, likedAtMap, isLoading, fetchLibrary, createPlaylist } =
     useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const playWithGate = usePlaybackGate()
+  const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') as Filter | null
   const filter: Filter = tab && ['playlists', 'albums', 'artists', 'liked'].includes(tab) ? tab : 'playlists'
@@ -122,9 +127,54 @@ export function LibraryPage() {
         (likedSongs.length === 0 ? (
           <EmptyState title="No liked songs" description="Like songs to add them to this list." />
         ) : (
-          <div className="flex flex-col gap-1">
-            {likedSongs.map((track) => (
-              <TrackCard key={track.id} track={track} queue={likedSongs} />
+          <div>
+            {/* Playlist-style header */}
+            <div className="flex items-end gap-6 pb-6 bg-gradient-to-b from-accent-dim/40 to-transparent rounded-lg mb-4 p-4">
+              <div className="w-36 h-36 rounded-md shadow-2xl flex-shrink-0 bg-accent/20 flex items-center justify-center">
+                <HeartSolid className="w-16 h-16 text-accent" />
+              </div>
+              <div className="min-w-0 pb-1">
+                <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Playlist</p>
+                <h2 className="text-4xl font-black text-primary mt-1 mb-2">Liked Songs</h2>
+                <p className="text-xs text-secondary">{likedSongs.length} songs</p>
+              </div>
+            </div>
+
+            {/* Play button */}
+            <div className="flex items-center gap-4 mb-4">
+              <Button
+                onClick={() => playWithGate(likedSongs[0], likedSongs)}
+                size="lg"
+                className="gap-2"
+              >
+                <PlayIcon className="w-5 h-5" />
+                Play
+              </Button>
+            </div>
+
+            {/* Column headers */}
+            <div
+              className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
+              style={{ gridTemplateColumns: '16px 6fr 4fr 3fr 1fr' }}
+            >
+              <span className="text-xs text-secondary">#</span>
+              <span className="text-xs text-secondary uppercase tracking-wider">Title</span>
+              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Album</span>
+              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Date added</span>
+              <span className="flex justify-end">
+                <ClockIcon className="w-4 h-4 text-secondary" />
+              </span>
+            </div>
+
+            {likedSongs.map((track, i) => (
+              <TrackRow
+                key={track.id}
+                track={track}
+                index={i}
+                queue={likedSongs}
+                showAlbum
+                addedAt={likedAtMap[track.id]}
+              />
             ))}
           </div>
         ))}

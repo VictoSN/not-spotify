@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
-import type { Playlist } from '@/types/playlist'
+import type { Playlist, PlaylistTrack } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
 import { useAuthStore } from './authStore'
@@ -10,6 +10,7 @@ import { useAuthStore } from './authStore'
 interface LibraryState {
   savedPlaylists: Playlist[]
   likedSongs: Track[]
+  likedAtMap: Record<string, string>
   followedArtists: Artist[]
   savedAlbums: Album[]
   likedTrackIds: Set<string>
@@ -25,6 +26,7 @@ interface LibraryState {
   saveAlbum: (album: Album) => Promise<void>
   unsaveAlbum: (albumId: string) => Promise<void>
   createPlaylist: (name: string, description?: string, isPublic?: boolean) => Promise<Playlist>
+  syncPlaylistTracks: (playlistId: string, tracks: PlaylistTrack[]) => void
   addTrackToPlaylist: (playlistId: string, track: Track) => Promise<void>
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>
   deletePlaylist: (playlistId: string) => Promise<void>
@@ -36,6 +38,7 @@ interface LibraryState {
 export const useLibraryStore = create<LibraryState>((set, get) => ({
   savedPlaylists: [],
   likedSongs: [],
+  likedAtMap: {},
   followedArtists: [],
   savedAlbums: [],
   likedTrackIds: new Set(),
@@ -76,9 +79,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       }
       const likedIds = new Set(likedTracks.map((t) => t.id))
       const followedIds = new Set(followedArtists.map((a) => a.id))
+      let likedAtMap: Record<string, string> = {}
+      try {
+        const stored = localStorage.getItem('ns-liked-at')
+        if (stored) likedAtMap = JSON.parse(stored)
+      } catch { /* ignore */ }
       set({
         savedPlaylists: playlists,
         likedSongs: likedTracks,
+        likedAtMap,
         likedTrackIds: likedIds,
         followedArtists,
         followedArtistIds: followedIds,
@@ -93,14 +102,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const prevIds = get().likedTrackIds
     const newLikedSongs = [track, ...get().likedSongs]
     const newLikedIds = new Set([...prevIds, track.id])
-    set({
-      likedSongs: newLikedSongs,
-      likedTrackIds: newLikedIds,
-    })
+    const newLikedAtMap = { ...get().likedAtMap, [track.id]: new Date().toISOString() }
+    set({ likedSongs: newLikedSongs, likedTrackIds: newLikedIds, likedAtMap: newLikedAtMap })
     localStorage.setItem('ns-liked-tracks', JSON.stringify(newLikedSongs))
-    trackService.like(track.id).catch(() => {
-      // Silently ignore errors - the UI update stays in place
-    })
+    localStorage.setItem('ns-liked-at', JSON.stringify(newLikedAtMap))
+    trackService.like(track.id).catch(() => {})
   },
 
   unlikeTrack: async (trackId) => {
@@ -108,14 +114,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const newIds = new Set(prevIds)
     newIds.delete(trackId)
     const newLikedSongs = get().likedSongs.filter((t) => t.id !== trackId)
-    set({
-      likedSongs: newLikedSongs,
-      likedTrackIds: newIds,
-    })
+    const newLikedAtMap = { ...get().likedAtMap }
+    delete newLikedAtMap[trackId]
+    set({ likedSongs: newLikedSongs, likedTrackIds: newIds, likedAtMap: newLikedAtMap })
     localStorage.setItem('ns-liked-tracks', JSON.stringify(newLikedSongs))
-    trackService.unlike(trackId).catch(() => {
-      // Silently ignore errors - the UI update stays in place
-    })
+    localStorage.setItem('ns-liked-at', JSON.stringify(newLikedAtMap))
+    trackService.unlike(trackId).catch(() => {})
   },
 
   followArtist: async (artist) => {
@@ -169,6 +173,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     return playlist
   },
 
+  syncPlaylistTracks: (playlistId, tracks) => {
+    set((s) => ({
+      savedPlaylists: s.savedPlaylists.map((p) =>
+        p.id === playlistId ? { ...p, tracks } : p,
+      ),
+    }))
+  },
+
   savePlaylist: async (playlist) => {
     await playlistService.save(playlist.id)
     set((s) => ({
@@ -199,7 +211,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           if (p.id !== playlistId) return p
           return {
             ...p,
-            tracks: [...p.tracks, { track, addedAt: new Date().toISOString(), addedBy: p.owner }],
+            tracks: [...(p.tracks ?? []), { track, addedAt: new Date().toISOString(), addedBy: p.owner }],
             totalDurationMs: p.totalDurationMs + track.durationMs,
           }
         }),
@@ -215,10 +227,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set((s) => ({
       savedPlaylists: s.savedPlaylists.map((p) => {
         if (p.id !== playlistId) return p
-        const removed = p.tracks.find((pt) => pt.track.id === trackId)
+        const removed = (p.tracks ?? []).find((pt) => pt.track.id === trackId)
         return {
           ...p,
-          tracks: p.tracks.filter((pt) => pt.track.id !== trackId),
+          tracks: (p.tracks ?? []).filter((pt) => pt.track.id !== trackId),
           totalDurationMs: p.totalDurationMs - (removed?.track.durationMs ?? 0),
         }
       }),
@@ -239,6 +251,7 @@ useAuthStore.subscribe((state, prev) => {
   if (!prev.isAuthenticated || state.isAuthenticated) return
   try {
     localStorage.removeItem('ns-liked-tracks')
+    localStorage.removeItem('ns-liked-at')
     localStorage.removeItem('ns-followed-artists')
   } catch {
     /* ignore */
@@ -246,6 +259,7 @@ useAuthStore.subscribe((state, prev) => {
   useLibraryStore.setState({
     savedPlaylists: [],
     likedSongs: [],
+    likedAtMap: {},
     followedArtists: [],
     savedAlbums: [],
     likedTrackIds: new Set(),

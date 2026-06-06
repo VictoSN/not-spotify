@@ -55,6 +55,7 @@ export function PlaylistDetailPage() {
   const setPlaylistVisibility = useLibraryStore((s) => s.setPlaylistVisibility)
   const deletePlaylistAction = useLibraryStore((s) => s.deletePlaylist)
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
+  const syncPlaylistTracks = useLibraryStore((s) => s.syncPlaylistTracks)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
 
@@ -65,6 +66,7 @@ export function PlaylistDetailPage() {
       setEditName(p.name)
       setEditDescription(p.description ?? '')
       setLoading(false)
+      syncPlaylistTracks(p.id, p.tracks)
     })
   }, [id])
 
@@ -411,13 +413,14 @@ export function PlaylistDetailPage() {
           </span>
         </div>
 
-        {tracks.map((track, i) => (
+        {playlist.tracks.map((pt, i) => (
           <TrackRow
-            key={track.id}
-            track={track}
+            key={pt.track.id}
+            track={pt.track}
             index={i}
             queue={tracks}
             showAlbum
+            addedAt={pt.addedAt}
             currentPlaylistId={playlist.id}
           />
         ))}

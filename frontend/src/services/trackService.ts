@@ -48,4 +48,19 @@ export const trackService = {
     const res = await api.get<Track[]>('/me/saved-tracks')
     return res.data
   },
+
+  async getMyRatings(): Promise<Record<string, number>> {
+    const res = await api.get<Record<string, number>>('/me/ratings')
+    return res.data
+  },
+
+  async rateTrack(trackId: string, rating: number): Promise<{ ratingCount: number; averageRating: number; myRating: number }> {
+    const res = await api.put(`/me/track-ratings/${trackId}`, { rating })
+    return res.data
+  },
+
+  async unrateTrack(trackId: string): Promise<{ ratingCount: number; averageRating: number; myRating: number }> {
+    const res = await api.delete(`/me/track-ratings/${trackId}`)
+    return res.data
+  },
 }

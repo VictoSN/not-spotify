@@ -11,6 +11,9 @@ export interface Track {
   discNumber: number
   explicit: boolean
   playCount: number
+  ratingCount: number
+  averageRating: number
+  myRating?: number | null
   artist: ArtistRef
   album: AlbumRef
   genres: string[]

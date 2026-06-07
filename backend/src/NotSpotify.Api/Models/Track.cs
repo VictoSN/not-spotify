@@ -12,6 +12,8 @@ public class Track
     public int DiscNumber { get; set; } = 1;
     public bool Explicit { get; set; }
     public long PlayCount { get; set; }
+    public int RatingCount { get; set; }
+    public int RatingSum { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public Guid ArtistId { get; set; }
@@ -22,4 +24,5 @@ public class Track
 
     public ICollection<TrackGenre> TrackGenres { get; set; } = new List<TrackGenre>();
     public ICollection<PlaylistTrack> PlaylistTracks { get; set; } = new List<PlaylistTrack>();
+    public ICollection<TrackRating> Ratings { get; set; } = new List<TrackRating>();
 }

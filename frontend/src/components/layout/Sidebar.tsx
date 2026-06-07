@@ -18,6 +18,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useRatingStore } from '@/stores/ratingStore'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -59,6 +60,7 @@ function getInitialWidth(): number {
 export function Sidebar() {
   const navigate = useNavigate()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
+  const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -91,7 +93,8 @@ export function Sidebar() {
   useEffect(() => {
     if (!isAuthenticated) return
     fetchLibrary()
-  }, [fetchLibrary, isAuthenticated])
+    loadRatings()
+  }, [fetchLibrary, loadRatings, isAuthenticated])
 
   // Persist width
   useEffect(() => {

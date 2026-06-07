@@ -4,6 +4,7 @@ import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
+import { StarRating } from '@/components/player/StarRating'
 import { usePlayerStore } from '@/stores/playerStore'
 
 // Inline SVG: rectangle with small inset rectangle — standard PiP icon
@@ -32,8 +33,13 @@ export function BottomPlayerBar() {
         <ProgressBar />
       </div>
 
-      {/* Right: Volume + PiP + Now Playing panel toggle */}
+      {/* Right: Stars + Volume + PiP + Now Playing panel toggle */}
       <div className="flex items-center gap-3 justify-self-end">
+        {currentTrack && (
+          <div className="hidden md:flex">
+            <StarRating track={currentTrack} />
+          </div>
+        )}
         <VolumeControl />
         {currentTrack && (
           <button

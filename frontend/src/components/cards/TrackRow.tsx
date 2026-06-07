@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
@@ -10,6 +11,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { TrackRowMenu } from './TrackRowMenu'
+import { useRatingStore } from '@/stores/ratingStore'
 
 interface TrackRowProps {
   track: Track
@@ -33,11 +35,19 @@ export function TrackRow({
 }: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
+  const { getAggregate, seedAggregate } = useRatingStore()
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
+  const { ratingCount, averageRating } = getAggregate(track.id)
+
+  useEffect(() => {
+    if ((track.ratingCount ?? 0) > 0) {
+      seedAggregate(track.id, track.ratingCount, track.averageRating)
+    }
+  }, [track.id, track.ratingCount, track.averageRating, seedAggregate])
 
   const handlePlay = () => {
     if (isCurrent) {
@@ -125,6 +135,15 @@ export function TrackRow({
 
       {/* Duration + actions */}
       <div className="flex items-center justify-end gap-3">
+        {ratingCount > 0 && (
+          <span className="hidden sm:flex items-center gap-0.5 text-xs text-secondary/70 whitespace-nowrap" title={`${averageRating.toFixed(1)} average from ${ratingCount} rating${ratingCount !== 1 ? 's' : ''}`}>
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-accent/70" aria-hidden="true">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            {averageRating.toFixed(1)}
+            <span className="text-secondary/40 ml-0.5">({ratingCount})</span>
+          </span>
+        )}
         <button
           onClick={toggleLike}
           className={`opacity-0 group-hover:opacity-100 transition-opacity ${isLiked ? 'opacity-100' : ''}`}

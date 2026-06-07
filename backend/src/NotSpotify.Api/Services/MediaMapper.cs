@@ -47,9 +47,10 @@ public class MediaMapper
         );
     }
 
-    public async Task<TrackDto> ToDtoAsync(Track t, CancellationToken ct = default)
+    public async Task<TrackDto> ToDtoAsync(Track t, CancellationToken ct = default, int? myRating = null)
     {
         var audioUrl = await ResolveAudioAsync(t.AudioKey, t.AudioUrl, ct);
+        var avg = t.RatingCount > 0 ? Math.Round((double)t.RatingSum / t.RatingCount, 1) : 0.0;
         return new TrackDto(
             t.Id,
             t.Title,
@@ -63,14 +64,21 @@ public class MediaMapper
             ToRef(t.Artist),
             ToRef(t.Album),
             t.TrackGenres.Select(g => g.Genre.Slug),
-            t.CreatedAt
+            t.CreatedAt,
+            t.RatingCount,
+            avg,
+            myRating
         );
     }
 
-    public async Task<List<TrackDto>> ToDtoListAsync(IEnumerable<Track> tracks, CancellationToken ct = default)
+    public async Task<List<TrackDto>> ToDtoListAsync(IEnumerable<Track> tracks, CancellationToken ct = default, Dictionary<Guid, int>? myRatings = null)
     {
         var list = new List<TrackDto>();
-        foreach (var t in tracks) list.Add(await ToDtoAsync(t, ct));
+        foreach (var t in tracks)
+        {
+            var myRating = myRatings?.GetValueOrDefault(t.Id);
+            list.Add(await ToDtoAsync(t, ct, myRating));
+        }
         return list;
     }
 

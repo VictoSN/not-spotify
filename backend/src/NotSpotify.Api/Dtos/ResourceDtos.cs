@@ -17,7 +17,10 @@ public record TrackDto(
     ArtistRefDto Artist,
     AlbumRefDto Album,
     IEnumerable<string> Genres,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    int RatingCount,
+    double AverageRating,
+    int? MyRating
 );
 
 public record ArtistDto(

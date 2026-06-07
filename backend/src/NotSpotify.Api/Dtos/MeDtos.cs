@@ -26,3 +26,7 @@ public class PlaylistCoverUploadRequest
     [Required]
     public IFormFile File { get; set; } = null!;
 }
+
+public record RateTrackRequest([Required, Range(1, 5)] int Rating);
+
+public record TrackRatingResultDto(int RatingCount, double AverageRating, int MyRating);

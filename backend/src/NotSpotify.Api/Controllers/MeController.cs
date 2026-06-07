@@ -392,6 +392,89 @@ public class MeController : ControllerBase
         return NoContent();
     }
 
+    // ──────────────────────────────────────────────
+    // Track ratings
+    // ──────────────────────────────────────────────
+
+    /// <summary>Returns all ratings the current user has submitted, as a map of trackId → rating.</summary>
+    [HttpGet("ratings")]
+    public async Task<ActionResult<Dictionary<Guid, int>>> GetMyRatings(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var rows = await _db.TrackRatings
+            .Where(r => r.UserId == me)
+            .Select(r => new { r.TrackId, r.Rating })
+            .ToListAsync(ct);
+
+        return Ok(rows.ToDictionary(r => r.TrackId, r => r.Rating));
+    }
+
+    /// <summary>Upserts the current user's rating for a track (1–5) and updates the track's aggregate.</summary>
+    [HttpPut("track-ratings/{trackId:guid}")]
+    public async Task<ActionResult<TrackRatingResultDto>> RateTrack(Guid trackId, [FromBody] RateTrackRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        if (req.Rating < 1 || req.Rating > 5)
+            return BadRequest(new { message = "Rating must be between 1 and 5." });
+
+        var track = await _db.Tracks.FirstOrDefaultAsync(t => t.Id == trackId, ct);
+        if (track is null) return NotFound();
+
+        var existing = await _db.TrackRatings
+            .FirstOrDefaultAsync(r => r.UserId == me && r.TrackId == trackId, ct);
+
+        if (existing is null)
+        {
+            _db.TrackRatings.Add(new TrackRating
+            {
+                UserId = me.Value,
+                TrackId = trackId,
+                Rating = req.Rating,
+                RatedAt = DateTime.UtcNow,
+            });
+            track.RatingCount++;
+            track.RatingSum += req.Rating;
+        }
+        else
+        {
+            track.RatingSum += req.Rating - existing.Rating;
+            existing.Rating = req.Rating;
+            existing.RatedAt = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var avg = track.RatingCount > 0 ? Math.Round((double)track.RatingSum / track.RatingCount, 1) : 0.0;
+        return Ok(new TrackRatingResultDto(track.RatingCount, avg, req.Rating));
+    }
+
+    /// <summary>Removes the current user's rating for a track and updates the track's aggregate.</summary>
+    [HttpDelete("track-ratings/{trackId:guid}")]
+    public async Task<ActionResult<TrackRatingResultDto>> UnrateTrack(Guid trackId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var existing = await _db.TrackRatings
+            .FirstOrDefaultAsync(r => r.UserId == me && r.TrackId == trackId, ct);
+        if (existing is null) return NotFound();
+
+        var track = await _db.Tracks.FirstOrDefaultAsync(t => t.Id == trackId, ct);
+        if (track is null) return NotFound();
+
+        _db.TrackRatings.Remove(existing);
+        track.RatingSum -= existing.Rating;
+        track.RatingCount = Math.Max(0, track.RatingCount - 1);
+        await _db.SaveChangesAsync(ct);
+
+        var avg = track.RatingCount > 0 ? Math.Round((double)track.RatingSum / track.RatingCount, 1) : 0.0;
+        return Ok(new TrackRatingResultDto(track.RatingCount, avg, 0));
+    }
+
     private async Task PruneRecentSearchesAsync(Guid userId, CancellationToken ct)
     {
         var stale = await _db.RecentSearches

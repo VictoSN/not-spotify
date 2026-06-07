@@ -19,6 +19,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<UserSavedPlaylist> UserSavedPlaylists => Set<UserSavedPlaylist>();
     public DbSet<PlayHistory> PlayHistories => Set<PlayHistory>();
     public DbSet<RecentSearch> RecentSearches => Set<RecentSearch>();
+    public DbSet<TrackRating> TrackRatings => Set<TrackRating>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
 
@@ -148,6 +149,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         b.Entity<StripeWebhookEvent>(e =>
         {
             e.HasKey(x => x.Id);
+        });
+
+        b.Entity<TrackRating>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.TrackId });
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany(t => t.Ratings)
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.Property(x => x.Rating).IsRequired();
         });
 
         b.Entity<PlayHistory>(e =>

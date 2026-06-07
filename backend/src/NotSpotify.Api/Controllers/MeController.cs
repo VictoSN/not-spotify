@@ -393,6 +393,364 @@ public class MeController : ControllerBase
     }
 
     // ──────────────────────────────────────────────
+    // Artist applications
+    // ──────────────────────────────────────────────
+
+    [HttpGet("artist-application")]
+    public async Task<ActionResult<ArtistApplicationDto>> GetArtistApplication(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var app = await _db.ArtistApplications
+            .Include(a => a.User)
+            .FirstOrDefaultAsync(a => a.UserId == me, ct);
+        if (app is null) return NotFound();
+
+        return Ok(ToApplicationDto(app));
+    }
+
+    [HttpPost("artist-application")]
+    public async Task<ActionResult<ArtistApplicationDto>> SubmitArtistApplication(
+        [FromBody] SubmitArtistApplicationRequest req,
+        CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var existing = await _db.ArtistApplications
+            .AnyAsync(a => a.UserId == me && a.Status != "rejected", ct);
+        if (existing)
+            return Conflict(new { message = "You already have an active or approved application." });
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return Unauthorized();
+
+        var app = new ArtistApplication
+        {
+            Id = Guid.NewGuid(),
+            UserId = me.Value,
+            DisplayName = req.DisplayName,
+            Bio = req.Bio,
+            SampleWorkUrl = req.SampleWorkUrl,
+            SubmittedAt = DateTime.UtcNow,
+        };
+        _db.ArtistApplications.Add(app);
+        await _db.SaveChangesAsync(ct);
+
+        app.User = user;
+        return Ok(ToApplicationDto(app));
+    }
+
+    private static ArtistApplicationDto ToApplicationDto(ArtistApplication a) => new(
+        a.Id, a.UserId, a.User.Name, a.User.Email ?? string.Empty,
+        a.DisplayName, a.Bio, a.SampleWorkUrl,
+        a.Status, a.SubmittedAt, a.ReviewedAt, a.ReviewNote
+    );
+
+    // ──────────────────────────────────────────────
+    // Artist — album management (Artist role required)
+    // ──────────────────────────────────────────────
+
+    [HttpPost("artist-albums")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<AlbumDto>> SubmitArtistAlbum(
+        [FromBody] ArtistSubmitAlbumRequest req,
+        CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = new Album
+        {
+            Id = Guid.NewGuid(),
+            Title = req.Title,
+            Type = req.Type,
+            ArtistId = user.ArtistId.Value,
+            ReleaseDate = req.ReleaseDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            Label = req.Label,
+            Copyright = req.Copyright,
+            Status = "pending",
+            SubmittedByUserId = me.Value,
+            CoverUrl = string.Empty,
+        };
+        _db.Albums.Add(album);
+        await _db.SaveChangesAsync(ct);
+
+        var created = await _db.Albums.Include(a => a.Artist).FirstAsync(a => a.Id == album.Id, ct);
+        return Ok(_mapper.ToDto(created));
+    }
+
+    [HttpPost("artist-albums/{id:guid}/cover")]
+    [Authorize(Roles = "Artist")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<AlbumDto>> UploadArtistAlbumCover(Guid id, [FromForm] AlbumCoverUploadRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id && a.ArtistId == user.ArtistId, ct);
+        if (album is null) return NotFound();
+
+        var file = req.File;
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExts.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'. Allowed: jpg, jpeg, png, webp" });
+
+        var key = $"covers/{Guid.NewGuid()}{ext}";
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        album.CoverKey = key;
+        album.CoverUrl = string.Empty;
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(_mapper.ToDto(album));
+    }
+
+    // ──────────────────────────────────────────────
+    // Artist — track management (Artist role required)
+    // ──────────────────────────────────────────────
+
+    [HttpGet("artist-tracks")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> GetArtistTracks(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var tracks = await _db.Tracks
+            .Where(t => t.ArtistId == user.ArtistId)
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync(ct);
+
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
+    [HttpPost("artist-tracks")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TrackDto>> SubmitArtistTrack(
+        [FromBody] ArtistSubmitTrackRequest req,
+        CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == req.AlbumId && a.ArtistId == user.ArtistId, ct);
+        if (album is null) return BadRequest(new { message = "Album not found or does not belong to your artist profile." });
+
+        var track = new Track
+        {
+            Id = Guid.NewGuid(),
+            Title = req.Title,
+            AlbumId = req.AlbumId,
+            ArtistId = user.ArtistId.Value,
+            DurationMs = req.DurationMs,
+            TrackNumber = req.TrackNumber,
+            DiscNumber = req.DiscNumber,
+            Explicit = req.Explicit,
+            Status = "pending",
+            SubmittedByUserId = me.Value,
+            AudioUrl = string.Empty,
+            CreatedAt = DateTime.UtcNow,
+        };
+        _db.Tracks.Add(track);
+        await _db.SaveChangesAsync(ct);
+
+        var created = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .FirstAsync(t => t.Id == track.Id, ct);
+        return Ok(await _mapper.ToDtoAsync(created, ct));
+    }
+
+    [HttpPost("artist-tracks/{id:guid}/audio")]
+    [Authorize(Roles = "Artist")]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<ActionResult<TrackDto>> UploadArtistTrackAudio(Guid id, [FromForm] TrackAudioUploadRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var track = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .FirstOrDefaultAsync(t => t.Id == id && t.SubmittedByUserId == me, ct);
+        if (track is null) return NotFound();
+
+        var file = req.File;
+        if (file is null || file.Length == 0) return BadRequest(new { message = "No file provided." });
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var allowedAudio = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".opus", ".weba" };
+        if (!allowedAudio.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'." });
+
+        var key = $"audio/{Guid.NewGuid()}{ext}";
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "audio/mpeg", ct);
+
+        track.AudioKey = key;
+        track.AudioUrl = string.Empty;
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(await _mapper.ToDtoAsync(track, ct));
+    }
+
+    [HttpGet("artist-albums")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<IEnumerable<AlbumDto>>> GetArtistAlbums(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var albums = await _db.Albums
+            .Where(a => a.ArtistId == user.ArtistId)
+            .Include(a => a.Artist)
+            .OrderByDescending(a => a.ReleaseDate)
+            .ToListAsync(ct);
+
+        return Ok(albums.Select(a => _mapper.ToDto(a)));
+    }
+
+    [HttpDelete("artist-albums/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<IActionResult> DeleteArtistAlbum(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = await _db.Albums
+            .Include(a => a.Tracks)
+            .FirstOrDefaultAsync(a => a.Id == id && a.ArtistId == user.ArtistId, ct);
+        if (album is null) return NotFound();
+        if (album.Status == "approved")
+            return Conflict(new { message = "Cannot delete an approved release." });
+
+        _db.Tracks.RemoveRange(album.Tracks);
+        _db.Albums.Remove(album);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("artist-tracks/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<IActionResult> DeleteArtistTrack(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var track = await _db.Tracks
+            .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (track is null) return NotFound();
+        if (track.Status == "approved")
+            return Conflict(new { message = "Cannot delete a live track." });
+
+        _db.Tracks.Remove(track);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    // ──────────────────────────────────────────────
+    // Saved tracks (liked songs)
+    // ──────────────────────────────────────────────
+
+    [HttpGet("saved-tracks")]
+    public async Task<ActionResult<IEnumerable<SavedTrackDto>>> GetSavedTracks(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var rows = await _db.UserSavedTracks
+            .Where(s => s.UserId == me)
+            .OrderByDescending(s => s.SavedAt)
+            .Include(s => s.Track).ThenInclude(t => t.Artist)
+            .Include(s => s.Track).ThenInclude(t => t.Album)
+            .Include(s => s.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var dtos = new List<SavedTrackDto>(rows.Count);
+        foreach (var row in rows)
+            dtos.Add(new SavedTrackDto(await _mapper.ToDtoAsync(row.Track, ct), row.SavedAt));
+
+        return Ok(dtos);
+    }
+
+    [HttpPost("saved-tracks/{trackId:guid}")]
+    public async Task<IActionResult> SaveTrack(Guid trackId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == trackId, ct);
+        if (!trackExists) return NotFound();
+
+        var existing = await _db.UserSavedTracks
+            .FirstOrDefaultAsync(s => s.UserId == me && s.TrackId == trackId, ct);
+        if (existing is not null) return NoContent();
+
+        _db.UserSavedTracks.Add(new UserSavedTrack
+        {
+            UserId = me.Value,
+            TrackId = trackId,
+            SavedAt = DateTime.UtcNow,
+        });
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("saved-tracks/{trackId:guid}")]
+    public async Task<IActionResult> UnsaveTrack(Guid trackId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var row = await _db.UserSavedTracks
+            .FirstOrDefaultAsync(s => s.UserId == me && s.TrackId == trackId, ct);
+        if (row is null) return NotFound();
+
+        _db.UserSavedTracks.Remove(row);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    // ──────────────────────────────────────────────
     // Track ratings
     // ──────────────────────────────────────────────
 

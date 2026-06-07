@@ -22,14 +22,20 @@ public class AlbumsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AlbumDto>>> List(CancellationToken ct = default)
     {
-        var albums = await _db.Albums.Include(a => a.Artist).ToListAsync(ct);
+        var albums = await _db.Albums
+            .Where(a => a.Status == "approved")
+            .Include(a => a.Artist)
+            .ToListAsync(ct);
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<AlbumDto>> Get(Guid id, CancellationToken ct = default)
     {
-        var album = await _db.Albums.Include(a => a.Artist).FirstOrDefaultAsync(a => a.Id == id, ct);
+        var album = await _db.Albums
+            .Where(a => a.Status == "approved")
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
         if (album is null) return NotFound();
 
         var genres = await _db.TrackGenres
@@ -45,7 +51,7 @@ public class AlbumsController : ControllerBase
     public async Task<ActionResult<IEnumerable<TrackDto>>> Tracks(Guid id, CancellationToken ct = default)
     {
         var tracks = await _db.Tracks
-            .Where(t => t.AlbumId == id)
+            .Where(t => t.AlbumId == id && t.Status == "approved")
             .Include(t => t.Artist)
             .Include(t => t.Album)
             .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)

@@ -17,9 +17,11 @@ public static class DbSeeder
         var users = sp.GetRequiredService<UserManager<ApplicationUser>>();
         var roles = sp.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-        // Always-run (idempotent): ensure Admin role exists + demo user is in it.
+        // Always-run (idempotent): ensure required roles exist.
         if (!await roles.RoleExistsAsync(AdminRole))
             await roles.CreateAsync(new IdentityRole<Guid>(AdminRole) { Id = Guid.NewGuid() });
+        if (!await roles.RoleExistsAsync("Artist"))
+            await roles.CreateAsync(new IdentityRole<Guid>("Artist") { Id = Guid.NewGuid() });
 
         // Seed user (matches frontend mockUser).
         var demoUser = await users.FindByEmailAsync("alex@example.com");

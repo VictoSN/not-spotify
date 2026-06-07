@@ -29,6 +29,72 @@ public class AdminAlbumsController : ControllerBase
         _storage = storage;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<AlbumDto>>> List(CancellationToken ct = default)
+    {
+        var albums = await _db.Albums
+            .Include(a => a.Artist)
+            .OrderByDescending(a => a.ReleaseDate)
+            .ToListAsync(ct);
+        return Ok(albums.Select(a => _mapper.ToDto(a)));
+    }
+
+    [HttpGet("pending")]
+    public async Task<ActionResult<IEnumerable<AlbumDto>>> ListPending(CancellationToken ct = default)
+    {
+        var albums = await _db.Albums
+            .Where(a => a.Status == "pending")
+            .Include(a => a.Artist)
+            .OrderByDescending(a => a.ReleaseDate)
+            .ToListAsync(ct);
+        return Ok(albums.Select(a => _mapper.ToDto(a)));
+    }
+
+    [HttpPatch("{id:guid}/approve")]
+    public async Task<ActionResult<AlbumDto>> Approve(Guid id, CancellationToken ct = default)
+    {
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (album is null) return NotFound();
+        if (album.Status != "pending")
+            return Conflict(new { message = $"Album is already {album.Status}." });
+
+        album.Status = "approved";
+
+        // Approve all pending tracks in this album
+        var pendingTracks = await _db.Tracks
+            .Where(t => t.AlbumId == id && t.Status == "pending")
+            .ToListAsync(ct);
+        foreach (var t in pendingTracks)
+            t.Status = "approved";
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(album));
+    }
+
+    [HttpPatch("{id:guid}/reject")]
+    public async Task<ActionResult<AlbumDto>> Reject(Guid id, CancellationToken ct = default)
+    {
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (album is null) return NotFound();
+        if (album.Status != "pending")
+            return Conflict(new { message = $"Album is already {album.Status}." });
+
+        album.Status = "rejected";
+
+        var pendingTracks = await _db.Tracks
+            .Where(t => t.AlbumId == id && t.Status == "pending")
+            .ToListAsync(ct);
+        foreach (var t in pendingTracks)
+            t.Status = "rejected";
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(album));
+    }
+
     [HttpPost]
     public async Task<ActionResult<AlbumDto>> Create([FromBody] CreateAlbumRequest req, CancellationToken ct = default)
     {

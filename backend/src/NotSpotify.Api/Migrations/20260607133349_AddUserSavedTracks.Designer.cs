@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NotSpotify.Api.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NotSpotify.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260607133349_AddUserSavedTracks")]
+    partial class AddUserSavedTracks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -194,21 +197,9 @@ namespace NotSpotify.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasDefaultValue("approved")
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("SubmittedByUserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("ArtistId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("SubmittedByUserId");
 
                     b.ToTable("Albums");
                 });
@@ -686,26 +677,6 @@ namespace NotSpotify.Api.Migrations
                     b.ToTable("UserSavedPlaylists");
                 });
 
-            modelBuilder.Entity("NotSpotify.Api.Models.UserSavedTrack", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TrackId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("SavedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("UserId", "TrackId");
-
-                    b.HasIndex("TrackId");
-
-                    b.HasIndex("UserId", "SavedAt");
-
-                    b.ToTable("UserSavedTracks");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -765,14 +736,7 @@ namespace NotSpotify.Api.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "SubmittedBy")
-                        .WithMany()
-                        .HasForeignKey("SubmittedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Artist");
-
-                    b.Navigation("SubmittedBy");
                 });
 
             modelBuilder.Entity("NotSpotify.Api.Models.PlayHistory", b =>
@@ -926,25 +890,6 @@ namespace NotSpotify.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Playlist");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("NotSpotify.Api.Models.UserSavedTrack", b =>
-                {
-                    b.HasOne("NotSpotify.Api.Models.Track", "Track")
-                        .WithMany()
-                        .HasForeignKey("TrackId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Track");
 
                     b.Navigation("User");
                 });

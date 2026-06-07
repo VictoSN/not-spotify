@@ -15,7 +15,7 @@ public class AdminTracksController : ControllerBase
 {
     private static readonly HashSet<string> AllowedAudioExts = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".mp3",
+        ".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".opus", ".weba",
     };
 
     private readonly AppDbContext _db;
@@ -137,7 +137,7 @@ public class AdminTracksController : ControllerBase
 
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
         if (!AllowedAudioExts.Contains(ext))
-            return BadRequest(new { message = $"Unsupported file type '{ext}'. Only .mp3 is allowed." });
+            return BadRequest(new { message = $"Unsupported file type '{ext}'." });
 
         var key = $"audio/{Guid.NewGuid()}{ext}";
         await using var stream = file.OpenReadStream();
@@ -148,6 +148,42 @@ public class AdminTracksController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return Ok(await _mapper.ToDtoAsync(t, ct));
+    }
+
+    [HttpGet("pending")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Pending(CancellationToken ct = default)
+    {
+        var tracks = await BaseQuery()
+            .Where(t => t.Status == "pending")
+            .OrderBy(t => t.CreatedAt)
+            .ToListAsync(ct);
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
+    [HttpPatch("{id:guid}/approve")]
+    public async Task<IActionResult> Approve(Guid id, CancellationToken ct = default)
+    {
+        var t = await _db.Tracks.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (t is null) return NotFound();
+        if (t.Status != "pending")
+            return Conflict(new { message = $"Track is already {t.Status}." });
+
+        t.Status = "approved";
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPatch("{id:guid}/reject")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] ReviewApplicationRequest? req, CancellationToken ct = default)
+    {
+        var t = await _db.Tracks.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (t is null) return NotFound();
+        if (t.Status != "pending")
+            return Conflict(new { message = $"Track is already {t.Status}." });
+
+        t.Status = "rejected";
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
     }
 
     private async Task SyncAlbumStatsAsync(Guid albumId, CancellationToken ct)

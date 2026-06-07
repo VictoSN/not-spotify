@@ -36,5 +36,6 @@ public record UserDto(
     string? SubscriptionInterval,
     DateTime? SubscriptionCurrentPeriodEnd,
     bool SubscriptionCancelAtPeriodEnd,
-    UserCapabilitiesDto Capabilities
+    UserCapabilitiesDto Capabilities,
+    Guid? ArtistId
 );

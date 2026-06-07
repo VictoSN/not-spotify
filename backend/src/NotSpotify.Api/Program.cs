@@ -15,7 +15,14 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
 builder.Services.AddSingleton(jwt);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+{
+    // Supabase session-mode pooler is capped at 15 connections shared across all team members.
+    // Limiting the app-side pool prevents one running instance from consuming all slots.
+    var cs = builder.Configuration.GetConnectionString("Postgres") ?? string.Empty;
+    if (!cs.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
+        cs += ";Maximum Pool Size=5";
+    opt.UseNpgsql(cs);
+});
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(opt =>
@@ -49,8 +56,18 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 
-builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
-builder.Services.AddSingleton<IStorageService, LocalStorageService>();
+var supabaseStorageSection = builder.Configuration.GetSection("SupabaseStorage");
+if (!string.IsNullOrWhiteSpace(supabaseStorageSection["Url"]))
+{
+    builder.Services.Configure<SupabaseStorageOptions>(supabaseStorageSection);
+    builder.Services.AddHttpClient();
+    builder.Services.AddSingleton<IStorageService, SupabaseStorageService>();
+}
+else
+{
+    builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
+    builder.Services.AddSingleton<IStorageService, LocalStorageService>();
+}
 builder.Services.AddScoped<MediaMapper>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();

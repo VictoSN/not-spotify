@@ -14,6 +14,10 @@ public class Album
     public string? Copyright { get; set; }
     public int Popularity { get; set; }
 
+    public string Status { get; set; } = "approved"; // approved | pending | rejected
+    public Guid? SubmittedByUserId { get; set; }
+    public ApplicationUser? SubmittedBy { get; set; }
+
     public Guid ArtistId { get; set; }
     public Artist Artist { get; set; } = null!;
 

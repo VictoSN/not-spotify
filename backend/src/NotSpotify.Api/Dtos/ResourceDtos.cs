@@ -1,5 +1,7 @@
 namespace NotSpotify.Api.Dtos;
 
+public record SavedTrackDto(TrackDto Track, DateTime SavedAt);
+
 public record ArtistRefDto(Guid Id, string Name, string? ImageUrl);
 
 public record AlbumRefDto(Guid Id, string Title, string CoverUrl, DateOnly ReleaseDate, string Type);
@@ -51,7 +53,8 @@ public record AlbumDto(
     IEnumerable<string> Genres,
     string? Label,
     string? Copyright,
-    int Popularity
+    int Popularity,
+    string Status
 );
 
 public record GenreDto(Guid Id, string Name, string Slug, string Color, string? ImageUrl);

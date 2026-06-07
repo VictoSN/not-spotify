@@ -17,6 +17,9 @@ public class ApplicationUser : IdentityUser<Guid>
     public DateTime? StripeCurrentPeriodEnd { get; set; }
     public bool StripeCancelAtPeriodEnd { get; set; }
 
+    // Set when the user is approved as an artist; null for regular users.
+    public Guid? ArtistId { get; set; }
+
     public ICollection<Playlist> Playlists { get; set; } = new List<Playlist>();
     public ICollection<UserSavedPlaylist> SavedPlaylists { get; set; } = new List<UserSavedPlaylist>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();

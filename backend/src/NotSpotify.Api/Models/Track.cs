@@ -16,6 +16,11 @@ public class Track
     public int RatingSum { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // approved | pending | rejected  (admin-created tracks are approved by default)
+    public string Status { get; set; } = "approved";
+    public Guid? SubmittedByUserId { get; set; }
+    public ApplicationUser? SubmittedBy { get; set; }
+
     public Guid ArtistId { get; set; }
     public Artist Artist { get; set; } = null!;
 

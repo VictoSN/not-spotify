@@ -74,7 +74,10 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(t => t.TokenHash == hash);
 
         if (existing is null || !existing.IsActive)
+        {
+            Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/auth" });
             return Unauthorized();
+        }
 
         var (newRaw, newHash, expiresAt) = _tokens.CreateRefreshToken();
         existing.RevokedAt = DateTime.UtcNow;

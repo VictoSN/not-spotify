@@ -77,3 +77,48 @@ public class TrackAudioUploadRequest
     public IFormFile File { get; set; } = null!;
 }
 
+// ── Artist applications ───────────────────────────────────────────────────────
+
+public record ArtistApplicationDto(
+    Guid Id,
+    Guid UserId,
+    string UserName,
+    string UserEmail,
+    string DisplayName,
+    string Bio,
+    string? SampleWorkUrl,
+    string Status,
+    DateTime SubmittedAt,
+    DateTime? ReviewedAt,
+    string? ReviewNote
+);
+
+public record SubmitArtistApplicationRequest(
+    [Required, StringLength(120, MinimumLength = 1)] string DisplayName,
+    [StringLength(500)] string Bio = "",
+    string? SampleWorkUrl = null
+);
+
+public record ReviewApplicationRequest(string? Note);
+
+// ── Artist — album submission ─────────────────────────────────────────────────
+
+public record ArtistSubmitAlbumRequest(
+    [Required, StringLength(200, MinimumLength = 1)] string Title,
+    string Type = "album",   // album | single | ep
+    DateOnly? ReleaseDate = null,
+    string? Label = null,
+    string? Copyright = null
+);
+
+// ── Artist — track submission ─────────────────────────────────────────────────
+
+public record ArtistSubmitTrackRequest(
+    [Required, StringLength(200, MinimumLength = 1)] string Title,
+    [Required] Guid AlbumId,
+    [Required, Range(1, long.MaxValue)] long DurationMs,
+    int TrackNumber = 1,
+    int DiscNumber = 1,
+    bool Explicit = false
+);
+

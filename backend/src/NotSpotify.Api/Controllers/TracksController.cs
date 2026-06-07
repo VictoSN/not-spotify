@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -20,6 +21,7 @@ public class TracksController : ControllerBase
     }
 
     private IQueryable<Models.Track> BaseQuery() => _db.Tracks
+        .Where(t => t.Status == "approved")
         .Include(t => t.Artist)
         .Include(t => t.Album)
         .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre);
@@ -44,10 +46,144 @@ public class TracksController : ControllerBase
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
 
+    /// <summary>
+    /// Trending: score = (plays in last 7 days × 3) + (all-time play count × 0.01).
+    /// Recent activity is weighted 300× more than historical play count to surface
+    /// currently popular tracks rather than all-time favourites.
+    /// </summary>
+    [HttpGet("trending")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Trending([FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+        var cutoff = DateTime.UtcNow.AddDays(-7);
+
+        var recentCounts = await _db.PlayHistories
+            .Where(h => h.PlayedAt >= cutoff)
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var recentMap = recentCounts.ToDictionary(r => r.TrackId, r => r.Count);
+
+        // Fetch a wide pool ordered by all-time plays; re-rank in memory by trending score.
+        var pool = await BaseQuery()
+            .OrderByDescending(t => t.PlayCount)
+            .Take(limit * 8)
+            .ToListAsync(ct);
+
+        var ranked = pool
+            .OrderByDescending(t => recentMap.GetValueOrDefault(t.Id) * 3.0 + t.PlayCount * 0.01)
+            .Take(limit)
+            .ToList();
+
+        return Ok(await _mapper.ToDtoListAsync(ranked, ct));
+    }
+
+    /// <summary>
+    /// Most Liked: tracks with ≥ 2 ratings ranked by a confidence-weighted score.
+    /// Score = averageRating × log₂(ratingCount + 1).
+    /// The logarithm prevents a single 5-star rating from outranking a track with
+    /// 100 ratings averaging 4.8.
+    /// </summary>
+    [HttpGet("most-liked")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> MostLiked([FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+
+        var tracks = await BaseQuery()
+            .Where(t => t.RatingCount >= 2)
+            .ToListAsync(ct);
+
+        var ranked = tracks
+            .OrderByDescending(t => (t.RatingSum / (double)t.RatingCount) * Math.Log2(t.RatingCount + 1))
+            .Take(limit)
+            .ToList();
+
+        return Ok(await _mapper.ToDtoListAsync(ranked, ct));
+    }
+
+    /// <summary>
+    /// New Music: the most recently added tracks, sorted by creation date descending.
+    /// Surfaces catalogue additions before they accumulate play counts.
+    /// </summary>
+    [HttpGet("new-music")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> NewMusic([FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+
+        var tracks = await BaseQuery()
+            .OrderByDescending(t => t.CreatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
+    /// <summary>
+    /// For You Today: personalised for authenticated users.
+    /// Algorithm:
+    ///   1. Collect genres of tracks the user played in the last 30 days.
+    ///   2. Find tracks that share those genres but weren't recently played.
+    ///   3. Rank by genre-overlap count, then by all-time play count.
+    /// Falls back to trending for anonymous or first-time users with no history.
+    /// </summary>
+    [HttpGet("for-you")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> ForYou([FromQuery] int limit = 10, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+
+        var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+
+        if (rawId is null || !Guid.TryParse(rawId, out var me))
+            return await TrendingFallback(limit, ct);
+
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+        var recentIds = await _db.PlayHistories
+            .Where(h => h.UserId == me && h.PlayedAt >= cutoff)
+            .Select(h => h.TrackId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (recentIds.Count == 0)
+            return await TrendingFallback(limit, ct);
+
+        var genreIds = await _db.TrackGenres
+            .Where(tg => recentIds.Contains(tg.TrackId))
+            .Select(tg => tg.GenreId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var candidates = await BaseQuery()
+            .Where(t => !recentIds.Contains(t.Id) && t.TrackGenres.Any(tg => genreIds.Contains(tg.GenreId)))
+            .OrderByDescending(t => t.PlayCount)
+            .Take(limit * 4)
+            .ToListAsync(ct);
+
+        var ranked = candidates
+            .OrderByDescending(t => t.TrackGenres.Count(tg => genreIds.Contains(tg.GenreId)))
+            .ThenByDescending(t => t.PlayCount)
+            .Take(limit)
+            .ToList();
+
+        if (ranked.Count == 0)
+            return await TrendingFallback(limit, ct);
+
+        return Ok(await _mapper.ToDtoListAsync(ranked, ct));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TrackDto>> Get(Guid id, CancellationToken ct = default)
     {
         var t = await BaseQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
         return t is null ? NotFound() : Ok(await _mapper.ToDtoAsync(t, ct));
+    }
+
+    private async Task<ActionResult<IEnumerable<TrackDto>>> TrendingFallback(int limit, CancellationToken ct)
+    {
+        var tracks = await BaseQuery()
+            .OrderByDescending(t => t.PlayCount)
+            .Take(limit)
+            .ToListAsync(ct);
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
 }

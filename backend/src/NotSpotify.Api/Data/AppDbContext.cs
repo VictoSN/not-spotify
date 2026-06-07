@@ -20,6 +20,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<PlayHistory> PlayHistories => Set<PlayHistory>();
     public DbSet<RecentSearch> RecentSearches => Set<RecentSearch>();
     public DbSet<TrackRating> TrackRatings => Set<TrackRating>();
+    public DbSet<UserSavedTrack> UserSavedTracks => Set<UserSavedTrack>();
+    public DbSet<ArtistApplication> ArtistApplications => Set<ArtistApplication>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
 
@@ -38,6 +40,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .WithMany(a => a.Albums)
                 .HasForeignKey(x => x.ArtistId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne(x => x.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(x => x.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.SubmittedByUserId);
         });
 
         b.Entity<Track>(e =>
@@ -52,7 +62,29 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(x => x.AlbumId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            e.HasOne(x => x.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(x => x.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             e.HasIndex(x => x.Title);
+            e.HasIndex(x => x.Status);
+        });
+
+        b.Entity<ArtistApplication>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(x => x.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.UserId);
         });
 
         b.Entity<Genre>(e =>
@@ -166,6 +198,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .OnDelete(DeleteBehavior.Cascade);
 
             e.Property(x => x.Rating).IsRequired();
+        });
+
+        b.Entity<UserSavedTrack>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.TrackId });
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.UserId, x.SavedAt });
         });
 
         b.Entity<PlayHistory>(e =>

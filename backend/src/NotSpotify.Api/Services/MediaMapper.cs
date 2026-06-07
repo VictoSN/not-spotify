@@ -43,7 +43,8 @@ public class MediaMapper
             new UserCapabilitiesDto(
                 UnlimitedPlayback: premium,
                 CustomPlaylistPictures: true
-            )
+            ),
+            u.ArtistId
         );
     }
 
@@ -108,7 +109,8 @@ public class MediaMapper
         genres ?? Array.Empty<string>(),
         a.Label,
         a.Copyright,
-        a.Popularity
+        a.Popularity,
+        a.Status
     );
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);

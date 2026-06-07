@@ -54,10 +54,8 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest req)
     {
         var user = await _users.FindByEmailAsync(req.Email);
-        if (user is null) return Unauthorized();
-
-        if (!await _users.CheckPasswordAsync(user, req.Password))
-            return Unauthorized();
+        if (user is null || !await _users.CheckPasswordAsync(user, req.Password))
+            return Unauthorized(new { message = "Invalid email or password." });
 
         return Ok(await IssueTokensAsync(user));
     }

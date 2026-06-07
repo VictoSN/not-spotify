@@ -29,6 +29,7 @@ public class SupabaseStorageService : IStorageService
         var url = $"{_opt.Url.TrimEnd('/')}/storage/v1/object/{_opt.Bucket}/{normalized}";
 
         using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Headers.Add("apikey", _opt.ServiceKey);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _opt.ServiceKey);
         req.Headers.Add("x-upsert", "true");
         req.Content = new StreamContent(content);
@@ -48,6 +49,7 @@ public class SupabaseStorageService : IStorageService
         var url = $"{_opt.Url.TrimEnd('/')}/storage/v1/object/{_opt.Bucket}/{normalized}";
 
         using var req = new HttpRequestMessage(HttpMethod.Delete, url);
+        req.Headers.Add("apikey", _opt.ServiceKey);
         req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _opt.ServiceKey);
 
         await _http.SendAsync(req, ct);

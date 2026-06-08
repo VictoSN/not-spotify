@@ -23,4 +23,6 @@ export interface Album {
   label: string | null
   copyright: string | null
   popularity: number
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }

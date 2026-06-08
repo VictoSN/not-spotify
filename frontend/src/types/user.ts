@@ -15,6 +15,7 @@ export interface User {
     unlimitedPlayback: boolean
     customPlaylistPictures: boolean
   }
+  artistId: string | null
 }
 
 export interface UserRef {

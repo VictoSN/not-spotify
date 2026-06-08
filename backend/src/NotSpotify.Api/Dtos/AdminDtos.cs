@@ -111,6 +111,24 @@ public record ArtistSubmitAlbumRequest(
     string? Copyright = null
 );
 
+// ── Artist — album update (pending only) ─────────────────────────────────────
+
+public record ArtistUpdateAlbumRequest(
+    string? Title,
+    string? Type,
+    DateOnly? ReleaseDate,
+    string? Label,
+    string? Copyright
+);
+
+// ── Artist — track update (track number / title / explicit) ──────────────────
+
+public record ArtistUpdateTrackRequest(
+    int? TrackNumber,
+    string? Title,
+    bool? Explicit
+);
+
 // ── Artist — track submission ─────────────────────────────────────────────────
 
 public record ArtistSubmitTrackRequest(

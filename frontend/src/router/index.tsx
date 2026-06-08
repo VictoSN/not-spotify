@@ -31,6 +31,8 @@ import { AdminAlbumsListPage } from '@/pages/admin/AdminAlbumsListPage'
 import { AdminAlbumFormPage } from '@/pages/admin/AdminAlbumFormPage'
 import { AdminTracksListPage } from '@/pages/admin/AdminTracksListPage'
 import { AdminTrackFormPage } from '@/pages/admin/AdminTrackFormPage'
+import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
+import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -76,7 +78,10 @@ export const router = createBrowserRouter([
         children: [
           {
             element: <SettingsShell />,
-            children: [{ path: 'account', element: <AccountSettingsPage /> }],
+            children: [
+              { path: 'account', element: <AccountSettingsPage /> },
+              { path: 'artist-dashboard', element: <ArtistDashboardPage /> },
+            ],
           },
         ],
       },
@@ -89,7 +94,7 @@ export const router = createBrowserRouter([
               {
                 element: <AdminShell />,
                 children: [
-                  { path: 'admin', element: <Navigate to="/admin/artists" replace /> },
+                  { path: 'admin', element: <Navigate to="/admin/applications" replace /> },
                   { path: 'admin/artists', element: <AdminArtistsListPage /> },
                   { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
                   { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },
@@ -99,6 +104,7 @@ export const router = createBrowserRouter([
                   { path: 'admin/tracks', element: <AdminTracksListPage /> },
                   { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
                   { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
+                  { path: 'admin/applications', element: <AdminApplicationsPage /> },
                 ],
               },
             ],

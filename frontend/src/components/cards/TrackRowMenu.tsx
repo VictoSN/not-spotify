@@ -12,6 +12,7 @@ import {
   ShareIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
@@ -476,6 +477,18 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
             </MenuItem>
 
             <div className="my-1 h-px bg-secondary/20" />
+
+            <MenuItem>
+              <a
+                href={track.audioUrl}
+                download
+                onClick={stop}
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+              >
+                <ArrowDownTrayIcon className="w-4 h-4" />
+                Download
+              </a>
+            </MenuItem>
 
             <MenuItem>
               <button

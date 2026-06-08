@@ -55,15 +55,7 @@ export function SettingsShell() {
             Back to app
           </Link>
 
-          <div className="flex items-center gap-2">
-            <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
-            <button
-              onClick={handleLogout}
-              className="text-sm font-semibold text-secondary transition-colors hover:text-primary"
-            >
-              Log out
-            </button>
-          </div>
+          <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
         </div>
       </header>
 

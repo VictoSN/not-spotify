@@ -213,8 +213,33 @@ export function PremiumPage() {
           </div>
         </section>
 
+        {/* Promo banner */}
+        <div className="mx-auto mt-10 max-w-5xl">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface ring-1 ring-accent/40 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl shrink-0">🎉</span>
+              <div>
+                <p className="font-black text-primary text-sm sm:text-base">
+                  5% off your first month — no strings attached.
+                </p>
+                <p className="text-xs text-secondary mt-0.5">
+                  Enter code{' '}
+                  <strong className="font-black text-accent tracking-wide">5OFF</strong>
+                  {' '}at checkout. Valid on any plan. Expires August 1st.
+                </p>
+              </div>
+            </div>
+            <a
+              href="#plans"
+              className="shrink-0 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+            >
+              Claim offer
+            </a>
+          </div>
+        </div>
+
         {/* Plans */}
-        <section id="plans" className="mx-auto mt-14 max-w-5xl scroll-mt-6">
+        <section id="plans" className="mx-auto mt-10 max-w-5xl scroll-mt-6">
           <h2 className="text-center text-2xl font-black text-primary">Affordable plans for any situation</h2>
           <p className="mt-1 text-center text-sm text-secondary">Choose a plan and listen ad-free. Cancel anytime.</p>
 

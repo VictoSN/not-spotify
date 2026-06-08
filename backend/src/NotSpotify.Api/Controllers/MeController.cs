@@ -643,6 +643,33 @@ public class MeController : ControllerBase
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
 
+    [HttpPatch("artist-albums/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<AlbumDto>> UpdateArtistAlbum(Guid id, [FromBody] ArtistUpdateAlbumRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id && a.ArtistId == user.ArtistId, ct);
+        if (album is null) return NotFound();
+        if (album.Status == "approved")
+            return Conflict(new { message = "Cannot edit an approved release." });
+
+        if (req.Title is not null) album.Title = req.Title;
+        if (req.Type is not null) album.Type = req.Type;
+        if (req.ReleaseDate.HasValue) album.ReleaseDate = req.ReleaseDate.Value;
+        if (req.Label is not null) album.Label = req.Label;
+        if (req.Copyright is not null) album.Copyright = req.Copyright;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(album));
+    }
+
     [HttpDelete("artist-albums/{id:guid}")]
     [Authorize(Roles = "Artist")]
     public async Task<IActionResult> DeleteArtistAlbum(Guid id, CancellationToken ct = default)
@@ -664,6 +691,33 @@ public class MeController : ControllerBase
         _db.Albums.Remove(album);
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpPatch("artist-tracks/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TrackDto>> UpdateArtistTrack(Guid id, [FromBody] ArtistUpdateTrackRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var track = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (track is null) return NotFound();
+        if (track.Status == "approved")
+            return Conflict(new { message = "Cannot edit a live track." });
+
+        if (req.TrackNumber.HasValue) track.TrackNumber = req.TrackNumber.Value;
+        if (req.Title is not null) track.Title = req.Title;
+        if (req.Explicit.HasValue) track.Explicit = req.Explicit.Value;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await _mapper.ToDtoAsync(track, ct));
     }
 
     [HttpDelete("artist-tracks/{id:guid}")]

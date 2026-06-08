@@ -18,6 +18,7 @@ public class Track
 
     // approved | pending | rejected  (admin-created tracks are approved by default)
     public string Status { get; set; } = "approved";
+    public string? ReviewNote { get; set; }
     public Guid? SubmittedByUserId { get; set; }
     public ApplicationUser? SubmittedBy { get; set; }
 

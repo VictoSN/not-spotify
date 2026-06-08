@@ -30,6 +30,7 @@ export function TopBar() {
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
   const isAdmin = user?.roles?.includes('Admin') ?? false
+  const isArtist = user?.roles?.includes('Artist') ?? false
 
   const [showMenu, setShowMenu] = useState(false)
   const [showSearchRecents, setShowSearchRecents] = useState(false)
@@ -256,6 +257,16 @@ export function TopBar() {
 
               <div className="my-1 border-t border-secondary/10" />
 
+              {isArtist && (
+                <Link
+                  to="/artist-dashboard"
+                  onClick={() => setShowMenu(false)}
+                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                >
+                  <MusicalNoteIcon className="w-4 h-4" />
+                  Artist Dashboard
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   to="/admin"

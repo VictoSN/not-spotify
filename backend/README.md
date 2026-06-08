@@ -58,7 +58,67 @@ dotnet user-secrets set "Stripe:CancelUrl" "http://localhost:5173/premium?checko
 dotnet user-secrets set "Stripe:PortalReturnUrl" "http://localhost:5173/account"
 ```
 
+#### Supabase Storage (for file uploads — audio, covers, avatars)
+
+1. Go to your [Supabase dashboard](https://supabase.com/dashboard) → **Storage** → **New bucket**
+   - Name: `media`
+   - Check **Public bucket** (so uploaded files are accessible without auth tokens)
+
+2. Get your **Project URL**:
+   - Go to **Settings → General**
+   - Copy the **Project ID** value
+   - Your URL is `https://<Project ID>.supabase.co`
+
+3. Get your **secret key**:
+   - Go to **Settings → API Keys**
+   - Copy the **secret key** (starts with `sb-secret-...`) — NOT the publishable key
+
+4. Save them as user secrets:
+
+```powershell
+cd backend/src/NotSpotify.Api
+
+dotnet user-secrets set "SupabaseStorage:Url" "https://abcdefgh.supabase.co"
+dotnet user-secrets set "SupabaseStorage:ServiceKey" "eyJhbGciOiJIUzI1NiIs..."
+```
+
+> The bucket name defaults to `media`. If you used a different name, also run:
+> ```powershell
+> dotnet user-secrets set "SupabaseStorage:Bucket" "your-bucket-name"
+> ```
+
+Once `SupabaseStorage:Url` is set the backend switches automatically to Supabase Storage. Leave it empty and it falls back to local disk storage.
+
+Uploaded files land at:
+```
+https://<project>.supabase.co/storage/v1/object/public/media/audio/<uuid>.<ext>
+https://<project>.supabase.co/storage/v1/object/public/media/covers/<uuid>.<ext>
+```
+
 For Stripe setup details, including installing Stripe CLI on Windows, creating recurring test prices, and forwarding webhooks to `/stripe/webhook`, see the root `README.md`.
+
+#### Stripe promotional codes (e.g. 5OFF)
+
+Stripe separates *coupons* (the discount rule) from *promotion codes* (the customer-facing code string). You need to create both.
+
+1. **Create the coupon**
+   - Go to [Stripe Dashboard](https://dashboard.stripe.com) → **Billing → Coupons → Create coupon**
+   - Set:
+     - **Type:** Percentage discount
+     - **Percent off:** `5`
+     - **Duration:** Once (applies to the first billing period only)
+     - **Redemption limits:** Check **Limit the number of times this coupon can be redeemed** if you want a hard cap, or leave unchecked for unlimited
+     - **Redemption date:** Set expiry date to **August 1, 2026** (or your desired date) — tick "Redeem by" and pick the date
+   - Click **Create coupon**
+
+2. **Create the promotion code**
+   - On the coupon detail page, click **Add promotion code**
+   - **Code:** `5OFF` (exact, case-insensitive in Stripe)
+   - **First-time orders only:** Enable "Limit to first-time orders" so it only applies once per customer
+   - Click **Save**
+
+3. **Enable codes at checkout**
+   - Already done. `StripeBillingService.cs` passes `allow_promotion_codes=true` to every checkout session, so the Stripe-hosted checkout page already shows a "Promo code" field automatically. No code changes needed.
 
 You can generate a JWT signing key with PowerShell:
 
@@ -152,6 +212,9 @@ backend/
 | `Stripe:MonthlyPriceId` | user-secrets / env var | Stripe recurring monthly Price ID |
 | `Stripe:YearlyPriceId` | user-secrets / env var | Stripe recurring yearly Price ID, configured in Stripe as 15% cheaper annually |
 | `Stripe:SuccessUrl`, `Stripe:CancelUrl`, `Stripe:PortalReturnUrl` | user-secrets / env var | Frontend redirects for Checkout and Customer Portal |
+| `SupabaseStorage:Url` | user-secrets / env var | Supabase project URL — enables cloud storage when set |
+| `SupabaseStorage:ServiceKey` | user-secrets / env var | Supabase `service_role` key (never the anon key) |
+| `SupabaseStorage:Bucket` | `appsettings.json` | Storage bucket name, default `media` |
 
 ### Stripe webhook testing
 
@@ -207,19 +270,11 @@ If `*Key` is set, the API resolves it via `IStorageService`. Otherwise it falls 
    ```
 3. `GET /tracks/{id}` now returns `audioUrl = https://localhost:7080/uploads/audio/my-song.mp3`.
 
-### Production (AWS S3 — not yet implemented)
+### Supabase Storage (cloud)
 
-The plan is to ship an `S3StorageService` that uses the same interface:
-
-- **Audio bucket** — private, accessed via short-lived presigned URLs
-- **Public bucket** — fronted by CloudFront for covers/avatars/headers
-
-Switching is one DI registration line in `Program.cs`. No controller or DB schema changes.
+`SupabaseStorageService` uploads directly to a Supabase Storage bucket via the REST API. Enable it by setting `SupabaseStorage:Url` in user secrets (see setup steps above). Files are served from the bucket's public URL — no extra CDN needed for dev/staging.
 
 ## What's not built yet
 
-- **`S3StorageService`** — comes with the AWS deployment milestone (needs an AWS account, IAM, bucket).
-- **Upload endpoints** — `IStorageService.UploadAsync` exists but no controller calls it yet. Admin upload UI is a future feature.
-- **Dockerfile + ECS deployment**
-- **RDS deployment** — schema works as-is; just point the connection string at the RDS endpoint.
+- **Dockerfile + deployment**
 - **CI/CD pipeline**

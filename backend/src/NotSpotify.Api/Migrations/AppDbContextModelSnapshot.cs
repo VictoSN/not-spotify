@@ -194,6 +194,9 @@ namespace NotSpotify.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasDefaultValue("approved")
@@ -612,6 +615,17 @@ namespace NotSpotify.Api.Migrations
                     b.Property<int>("RatingSum")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ReviewNote")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasDefaultValue("approved")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasColumnType("text");
@@ -624,6 +638,10 @@ namespace NotSpotify.Api.Migrations
                     b.HasIndex("AlbumId");
 
                     b.HasIndex("ArtistId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("SubmittedByUserId");
 
                     b.HasIndex("Title");
 

@@ -51,7 +51,7 @@ public class AdminAlbumsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/approve")]
-    public async Task<ActionResult<AlbumDto>> Approve(Guid id, CancellationToken ct = default)
+    public async Task<ActionResult<AlbumDto>> Approve(Guid id, [FromBody] ReviewApplicationRequest? req, CancellationToken ct = default)
     {
         var album = await _db.Albums
             .Include(a => a.Artist)
@@ -61,6 +61,7 @@ public class AdminAlbumsController : ControllerBase
             return Conflict(new { message = $"Album is already {album.Status}." });
 
         album.Status = "approved";
+        album.ReviewNote = req?.Note;
 
         // Approve all pending tracks in this album
         var pendingTracks = await _db.Tracks
@@ -74,7 +75,7 @@ public class AdminAlbumsController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/reject")]
-    public async Task<ActionResult<AlbumDto>> Reject(Guid id, CancellationToken ct = default)
+    public async Task<ActionResult<AlbumDto>> Reject(Guid id, [FromBody] ReviewApplicationRequest? req, CancellationToken ct = default)
     {
         var album = await _db.Albums
             .Include(a => a.Artist)
@@ -84,12 +85,16 @@ public class AdminAlbumsController : ControllerBase
             return Conflict(new { message = $"Album is already {album.Status}." });
 
         album.Status = "rejected";
+        album.ReviewNote = req?.Note;
 
         var pendingTracks = await _db.Tracks
             .Where(t => t.AlbumId == id && t.Status == "pending")
             .ToListAsync(ct);
         foreach (var t in pendingTracks)
+        {
             t.Status = "rejected";
+            t.ReviewNote = req?.Note;
+        }
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(album));
@@ -123,6 +128,24 @@ public class AdminAlbumsController : ControllerBase
     {
         var a = await _db.Albums.Include(x => x.Artist).FirstOrDefaultAsync(x => x.Id == id, ct);
         return a is null ? NotFound() : Ok(_mapper.ToDto(a));
+    }
+
+    /// <summary>Returns all tracks for an album regardless of track status — for admin review.</summary>
+    [HttpGet("{id:guid}/tracks")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> GetTracks(Guid id, CancellationToken ct = default)
+    {
+        var albumExists = await _db.Albums.AnyAsync(a => a.Id == id, ct);
+        if (!albumExists) return NotFound();
+
+        var tracks = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album).ThenInclude(a => a.Artist)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .Where(t => t.AlbumId == id)
+            .OrderBy(t => t.TrackNumber)
+            .ToListAsync(ct);
+
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
 
     [HttpPatch("{id:guid}")]

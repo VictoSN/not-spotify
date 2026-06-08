@@ -1,11 +1,12 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { MusicalNoteIcon, UserGroupIcon, RectangleStackIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { MusicalNoteIcon, UserGroupIcon, RectangleStackIcon, ArrowLeftIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 
 const navItems = [
-  { to: '/admin/artists', label: 'Artists', icon: UserGroupIcon },
-  { to: '/admin/albums',  label: 'Albums',  icon: RectangleStackIcon },
-  { to: '/admin/tracks',  label: 'Tracks',  icon: MusicalNoteIcon },
+  { to: '/admin/artists',      label: 'Artists',      icon: UserGroupIcon },
+  { to: '/admin/albums',       label: 'Albums',        icon: RectangleStackIcon },
+  { to: '/admin/tracks',       label: 'Tracks',        icon: MusicalNoteIcon },
+  { to: '/admin/applications', label: 'Applications', icon: ClipboardDocumentListIcon },
 ]
 
 export function AdminShell() {
@@ -58,15 +59,7 @@ export function AdminShell() {
             Back to app
           </Link>
 
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-secondary">{user?.name}</span>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-secondary hover:text-primary transition-colors"
-            >
-              Log out
-            </button>
-          </div>
+          <span className="text-sm text-secondary">{user?.name}</span>
         </div>
       </header>
 

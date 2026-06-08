@@ -7,14 +7,24 @@ export const trackService = {
     return res.data
   },
 
-  async getTrending(limit = 20): Promise<Track[]> {
-    const res = await api.get<Track[]>('/tracks/featured')
-    return res.data.slice(0, limit)
+  async getTrending(limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/trending', { params: { limit } })
+    return res.data
   },
 
-  async getRecommended(limit = 20): Promise<Track[]> {
-    const res = await api.get<Track[]>('/tracks/featured')
-    return res.data.slice(0, limit)
+  async getMostLiked(limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/most-liked', { params: { limit } })
+    return res.data
+  },
+
+  async getNewMusic(limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/new-music', { params: { limit } })
+    return res.data
+  },
+
+  async getForYou(limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/for-you', { params: { limit } })
+    return res.data
   },
 
   async getByAlbum(albumId: string): Promise<Track[]> {
@@ -44,8 +54,8 @@ export const trackService = {
     await api.delete(`/me/saved-tracks/${trackId}`)
   },
 
-  async getLikedSongs(): Promise<Track[]> {
-    const res = await api.get<Track[]>('/me/saved-tracks')
+  async getLikedSongs(): Promise<{ track: Track; savedAt: string }[]> {
+    const res = await api.get<{ track: Track; savedAt: string }[]>('/me/saved-tracks')
     return res.data
   },
 

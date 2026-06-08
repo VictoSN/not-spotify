@@ -2,6 +2,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { MusicalNoteIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
+import { api } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
@@ -12,6 +13,7 @@ interface FormValues {
   email: string
   password: string
   confirmPassword: string
+  wantsArtist: boolean
 }
 
 export function SignupPage() {
@@ -28,6 +30,10 @@ export function SignupPage() {
     clearError()
     setSocialNotice(null)
     await signup(data.name, data.email, data.password)
+    if (data.wantsArtist) {
+      // Auto-submit artist application after account creation (fire-and-forget; user can also apply from Account settings)
+      api.post('/me/artist-application', { displayName: data.name, bio: '' }).catch(() => {})
+    }
   }
 
   return (
@@ -103,6 +109,18 @@ export function SignupPage() {
             />
             {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
           </div>
+
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              {...register('wantsArtist')}
+              className="mt-0.5 accent-accent w-4 h-4 shrink-0"
+            />
+            <div>
+              <p className="text-sm font-semibold text-primary">I want to be an artist</p>
+              <p className="text-xs text-secondary">Submits an application — admins will review and approve it</p>
+            </div>
+          </label>
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">

@@ -68,7 +68,9 @@ public class MediaMapper
             t.CreatedAt,
             t.RatingCount,
             avg,
-            myRating
+            myRating,
+            t.Status,
+            t.ReviewNote
         );
     }
 
@@ -110,7 +112,8 @@ public class MediaMapper
         a.Label,
         a.Copyright,
         a.Popularity,
-        a.Status
+        a.Status,
+        a.ReviewNote
     );
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);

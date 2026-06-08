@@ -3,6 +3,20 @@ import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { api } from './api'
 
+export interface ArtistApplication {
+  id: string
+  userId: string
+  userName: string
+  userEmail: string
+  displayName: string
+  bio: string
+  sampleWorkUrl: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  submittedAt: string
+  reviewedAt: string | null
+  reviewNote: string | null
+}
+
 // ── Artist ────────────────────────────────────────────────────────────────────
 
 export interface CreateArtistPayload {
@@ -82,7 +96,22 @@ export const adminService = {
 
   // Albums
   async listAlbums(): Promise<Album[]> {
-    const res = await api.get<Album[]>('/albums')
+    const res = await api.get<Album[]>('/admin/albums')
+    return res.data
+  },
+
+  async listPendingAlbums(): Promise<Album[]> {
+    const res = await api.get<Album[]>('/admin/albums/pending')
+    return res.data
+  },
+
+  async approveAlbum(id: string, note?: string): Promise<Album> {
+    const res = await api.patch<Album>(`/admin/albums/${id}/approve`, { note: note || null })
+    return res.data
+  },
+
+  async rejectAlbum(id: string, note?: string): Promise<Album> {
+    const res = await api.patch<Album>(`/admin/albums/${id}/reject`, { note: note || null })
     return res.data
   },
 
@@ -116,7 +145,7 @@ export const adminService = {
 
   // Tracks
   async listTracks(): Promise<Track[]> {
-    const res = await api.get<Track[]>('/tracks')
+    const res = await api.get<Track[]>('/admin/tracks')
     return res.data
   },
 
@@ -145,6 +174,48 @@ export const adminService = {
     const res = await api.post<Track>(`/admin/tracks/${id}/audio`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
+    return res.data
+  },
+
+  async getAlbumTracks(albumId: string): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/admin/albums/${albumId}/tracks`)
+    return res.data
+  },
+
+  async updateArtistTrack(id: string, payload: { trackNumber?: number; title?: string; explicit?: boolean }): Promise<Track> {
+    const res = await api.patch<Track>(`/me/artist-tracks/${id}`, payload)
+    return res.data
+  },
+
+  // Pending track approvals
+  async listPendingTracks(): Promise<Track[]> {
+    const res = await api.get<Track[]>('/admin/tracks/pending')
+    return res.data
+  },
+
+  async approveTrack(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/tracks/${id}/approve`, { note: note || null })
+  },
+
+  async rejectTrack(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/tracks/${id}/reject`, { note: note || null })
+  },
+
+  // Artist applications
+  async listApplications(status?: string): Promise<ArtistApplication[]> {
+    const res = await api.get<ArtistApplication[]>('/admin/applications', {
+      params: status ? { status } : undefined,
+    })
+    return res.data
+  },
+
+  async approveApplication(id: string, note?: string): Promise<ArtistApplication> {
+    const res = await api.patch<ArtistApplication>(`/admin/applications/${id}/approve`, { note })
+    return res.data
+  },
+
+  async rejectApplication(id: string, note?: string): Promise<ArtistApplication> {
+    const res = await api.patch<ArtistApplication>(`/admin/applications/${id}/reject`, { note })
     return res.data
   },
 }

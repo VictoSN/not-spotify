@@ -16,10 +16,24 @@ import {
   EyeIcon,
   ArrowRightOnRectangleIcon,
   TrashIcon,
+  MusicalNoteIcon,
+  CheckCircleIcon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import { billingService, type BillingSubscription } from '@/services/billingService'
 import { useAuthStore } from '@/stores/authStore'
+import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
+
+interface ArtistApplication {
+  id: string
+  displayName: string
+  bio: string
+  sampleWorkUrl: string | null
+  status: 'pending' | 'approved' | 'rejected'
+  submittedAt: string
+  reviewNote: string | null
+}
 
 function formatDate(value: string | null | undefined) {
   return value ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'Not set'
@@ -83,9 +97,43 @@ export function AccountSettingsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Artist application state
+  const [artistApp, setArtistApp] = useState<ArtistApplication | null | undefined>(undefined)
+  const [showApplyForm, setShowApplyForm] = useState(false)
+  const [applyName, setApplyName] = useState(user?.name ?? '')
+  const [applyBio, setApplyBio] = useState('')
+  const [applySample, setApplySample] = useState('')
+  const [applyBusy, setApplyBusy] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
+
+  const isArtist = user?.roles?.includes('Artist')
+
   useEffect(() => {
     billingService.getSubscription().then(setSubscription).catch(() => setSubscription(null))
+    api.get<ArtistApplication>('/me/artist-application')
+      .then((r) => setArtistApp(r.data))
+      .catch(() => setArtistApp(null))
   }, [])
+
+  const handleApply = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setApplyBusy(true)
+    setApplyError(null)
+    try {
+      const res = await api.post<ArtistApplication>('/me/artist-application', {
+        displayName: applyName,
+        bio: applyBio,
+        sampleWorkUrl: applySample || null,
+      })
+      setArtistApp(res.data)
+      setShowApplyForm(false)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setApplyError(msg ?? 'Failed to submit application.')
+    } finally {
+      setApplyBusy(false)
+    }
+  }
 
   const openPortal = async () => {
     setBusy(true)
@@ -214,6 +262,111 @@ export function AccountSettingsPage() {
         <SettingRow icon={DocumentTextIcon} label="Payment history" disabled />
         <SettingRow icon={CreditCardIcon} label="Saved payment cards" disabled />
         <SettingRow icon={GiftIcon} label="Redeem" disabled />
+      </Section>
+
+      {/* Artist section */}
+      <Section title="Artist">
+        {isArtist ? (
+          <SettingRow
+            icon={CheckCircleIcon}
+            label="Artist Dashboard"
+            sub="Manage and submit your tracks"
+            to="/artist-dashboard"
+          />
+        ) : artistApp === undefined ? (
+          <div className="px-4 py-3.5 flex items-center gap-4">
+            <MusicalNoteIcon className="h-5 w-5 shrink-0 text-secondary" />
+            <p className="text-sm text-secondary">Loading…</p>
+          </div>
+        ) : artistApp === null ? (
+          <>
+            <div className="px-4 py-3.5">
+              <div className="flex items-center gap-4">
+                <MusicalNoteIcon className="h-5 w-5 shrink-0 text-secondary" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-primary">Become an artist</p>
+                  <p className="text-xs text-secondary">Apply to publish your music on not-spotify</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowApplyForm((v) => !v)}
+                  className="text-xs font-semibold text-accent hover:text-accent-dark transition-colors"
+                >
+                  {showApplyForm ? 'Cancel' : 'Apply'}
+                </button>
+              </div>
+              {showApplyForm && (
+                <form onSubmit={handleApply} className="mt-4 flex flex-col gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-primary mb-1">Artist name</label>
+                    <input
+                      required
+                      value={applyName}
+                      onChange={(e) => setApplyName(e.target.value)}
+                      className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none"
+                      placeholder="Your artist name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-primary mb-1">Bio (optional)</label>
+                    <textarea
+                      value={applyBio}
+                      onChange={(e) => setApplyBio(e.target.value)}
+                      rows={3}
+                      className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none resize-none"
+                      placeholder="Tell us about your music…"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-primary mb-1">Sample work URL (optional)</label>
+                    <input
+                      type="url"
+                      value={applySample}
+                      onChange={(e) => setApplySample(e.target.value)}
+                      className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none"
+                      placeholder="https://soundcloud.com/…"
+                    />
+                  </div>
+                  {applyError && <p className="text-xs text-red-400">{applyError}</p>}
+                  <button
+                    type="submit"
+                    disabled={applyBusy}
+                    className="self-start px-5 py-2 rounded-full bg-accent text-white text-sm font-bold hover:bg-accent-dark transition-colors disabled:opacity-50"
+                  >
+                    {applyBusy ? 'Submitting…' : 'Submit application'}
+                  </button>
+                </form>
+              )}
+            </div>
+          </>
+        ) : artistApp.status === 'pending' ? (
+          <div className="px-4 py-3.5 flex items-center gap-4">
+            <ClockIcon className="h-5 w-5 shrink-0 text-yellow-400" />
+            <div>
+              <p className="text-sm font-medium text-primary">Application pending review</p>
+              <p className="text-xs text-secondary">
+                Submitted as &ldquo;{artistApp.displayName}&rdquo; · Admins will review it shortly
+              </p>
+            </div>
+          </div>
+        ) : artistApp.status === 'rejected' ? (
+          <div className="px-4 py-3.5 flex items-center gap-4">
+            <XCircleIcon className="h-5 w-5 shrink-0 text-red-400" />
+            <div>
+              <p className="text-sm font-medium text-primary">Application rejected</p>
+              {artistApp.reviewNote && (
+                <p className="text-xs text-secondary mt-0.5">Reason: {artistApp.reviewNote}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => { setArtistApp(null); setShowApplyForm(true) }}
+                className="text-xs font-semibold text-accent hover:text-accent-dark transition-colors mt-1 block"
+              >
+                Apply again
+              </button>
+            </div>
+          </div>
+        ) : null}
       </Section>
 
       <Section title="Security and privacy">

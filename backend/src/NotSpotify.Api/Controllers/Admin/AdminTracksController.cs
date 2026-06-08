@@ -29,6 +29,15 @@ public class AdminTracksController : ControllerBase
         _storage = storage;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> List(CancellationToken ct = default)
+    {
+        var tracks = await BaseQuery()
+            .OrderBy(t => t.Album.Title).ThenBy(t => t.TrackNumber)
+            .ToListAsync(ct);
+        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
     private IQueryable<Track> BaseQuery() => _db.Tracks
         .Include(t => t.Artist)
         .Include(t => t.Album).ThenInclude(a => a.Artist)
@@ -161,7 +170,7 @@ public class AdminTracksController : ControllerBase
     }
 
     [HttpPatch("{id:guid}/approve")]
-    public async Task<IActionResult> Approve(Guid id, CancellationToken ct = default)
+    public async Task<IActionResult> Approve(Guid id, [FromBody] ReviewApplicationRequest? req, CancellationToken ct = default)
     {
         var t = await _db.Tracks.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (t is null) return NotFound();
@@ -169,6 +178,7 @@ public class AdminTracksController : ControllerBase
             return Conflict(new { message = $"Track is already {t.Status}." });
 
         t.Status = "approved";
+        t.ReviewNote = req?.Note;
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -182,6 +192,7 @@ public class AdminTracksController : ControllerBase
             return Conflict(new { message = $"Track is already {t.Status}." });
 
         t.Status = "rejected";
+        t.ReviewNote = req?.Note;
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }

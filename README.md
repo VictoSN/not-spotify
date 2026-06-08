@@ -246,3 +246,92 @@ Restart the backend after setting the webhook secret.
    Use any future expiry date, any CVC, and any postal code.
 
 After checkout, the account changes to Premium only after the webhook reaches `/stripe/webhook`. If the page says the subscription is waiting for webhook confirmation, make sure Stripe CLI is still running and the backend was restarted after saving `Stripe:WebhookSecret`.
+
+---
+
+## Recommendation Algorithms
+
+All algorithms run server-side in [`TracksController.cs`](backend/src/NotSpotify.Api/Controllers/TracksController.cs). Each endpoint accepts a `limit` query parameter (default 10, max 50).
+
+### Trending — `GET /tracks/trending`
+
+Surfaces tracks that are popular *right now*, not just all-time favourites.
+
+**Score formula:**
+```
+score = (plays in last 7 days × 3) + (all-time play count × 0.01)
+```
+
+- Recent plays are weighted **300×** more than the historical play count, so a song that went viral this week ranks above a song that was played a lot two years ago.
+- A candidate pool of the top `8 × limit` tracks by all-time plays is fetched from the DB first, then re-ranked in memory by the trending score. This keeps the SQL query simple while still favouring recency.
+- **Data used:** `PlayHistories` (last 7 days), `Tracks.PlayCount`
+
+---
+
+### Most Liked — `GET /tracks/most-liked`
+
+Ranks by community ratings with a **confidence correction** to prevent single-vote outliers from topping the chart.
+
+**Score formula:**
+```
+score = averageRating × log₂(ratingCount + 1)
+```
+
+- Tracks with fewer than **2 ratings** are excluded entirely.
+- The log₂ factor grows slowly: 1 rating → ×1.0, 3 ratings → ×2.0, 7 ratings → ×3.0. A track with 100 ratings at 4.8 still comfortably beats one with 2 ratings at 5.0.
+- `RatingCount` and `RatingSum` are stored directly on `Tracks` (denormalised) and updated atomically on every `PUT /me/track-ratings/{id}` or `DELETE /me/track-ratings/{id}`.
+- **Data used:** `Tracks.RatingSum`, `Tracks.RatingCount`
+
+---
+
+### For You Today — `GET /tracks/for-you`
+
+Personalised for authenticated users based on their recent listening history. Falls back to the trending feed for guests or first-time users with no history.
+
+**Algorithm steps:**
+1. Collect the **distinct track IDs** the user played in the last **30 days** from `PlayHistories`.
+2. Extract the **genre IDs** of those tracks via `TrackGenres`.
+3. Find tracks that **share at least one of those genres** but were **not recently played** by the user.
+4. Rank by **genre-overlap count** (tracks that match more of the user's preferred genres rank higher), breaking ties by all-time play count.
+
+- First-time users (empty play history) receive the trending feed instead.
+- **Data used:** `PlayHistories`, `TrackGenres`, `Tracks.PlayCount`
+
+---
+
+### New Music — `GET /tracks/new-music`
+
+Surfaces the most recently added catalogue entries before they accumulate play counts.
+
+```
+ORDER BY Tracks.CreatedAt DESC
+```
+
+- No scoring — pure recency sort.
+- Ensures newly uploaded tracks are discoverable before they appear in trending or most-liked.
+- **Data used:** `Tracks.CreatedAt`
+
+---
+
+### Recently Played — `GET /me/recents`
+
+Returns the current user's most recently played **distinct** tracks (requires auth).
+
+- Raw play events are de-duplicated: multiple plays of the same track in a session collapse to the single most-recent timestamp.
+- **Data used:** `PlayHistories` (user-scoped)
+
+---
+
+### Track Ratings — `PUT /me/track-ratings/{id}` · `DELETE /me/track-ratings/{id}`
+
+Each authenticated user can rate a track 1–5 stars from the bottom player bar. Ratings feed directly into the **Most Liked** algorithm and are stored for future use in personalised feeds.
+
+| Table / Column | Purpose |
+|---|---|
+| `TrackRatings` (UserId, TrackId, Rating, RatedAt) | One row per user per track |
+| `Tracks.RatingCount` | Denormalised count — updated on every write |
+| `Tracks.RatingSum` | Denormalised sum — updated on every write |
+
+`AverageRating = RatingSum / RatingCount` is derived at query time.
+
+The frontend stores the user's own rating in `ratingStore` (Zustand + localStorage) and syncs to the backend **optimistically** — the UI updates immediately and rolls back if the API call fails.

@@ -15,6 +15,7 @@ public class Album
     public int Popularity { get; set; }
 
     public string Status { get; set; } = "approved"; // approved | pending | rejected
+    public string? ReviewNote { get; set; }
     public Guid? SubmittedByUserId { get; set; }
     public ApplicationUser? SubmittedBy { get; set; }
 

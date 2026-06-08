@@ -33,43 +33,62 @@ export function HomePage() {
   const playWithGate = usePlaybackGate()
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const [trending, setTrending] = useState<Track[]>([])
+  const [mostLiked, setMostLiked] = useState<Track[]>([])
+  const [forYou, setForYou] = useState<Track[]>([])
+  const [newMusic, setNewMusic] = useState<Track[]>([])
   const [recommendedPlaylists, setRecommendedPlaylists] = useState<Playlist[]>([])
   const [newReleases, setNewReleases] = useState<Album[]>([])
-  const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([])
   const [recents, setRecents] = useState<Track[]>([])
   const [popularArtists, setPopularArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Recents are user-scoped and the endpoint requires auth — for anon users we
-    // just return an empty list rather than firing a guaranteed 401.
-    const recentsCall = isAuthenticated
-      ? trackService.getRecents(PREVIEW_LIMIT).catch(() => [] as Track[])
-      : Promise.resolve([] as Track[])
+    let cancelled = false
 
-    Promise.all([
-      trackService.getTrending(PREVIEW_LIMIT),
-      playlistService.getRecommended(PREVIEW_LIMIT),
-      albumService.getNewReleases(PREVIEW_LIMIT),
-      trackService.getRecommended(PREVIEW_LIMIT),
-      recentsCall,
-      artistService.getPopular(PREVIEW_LIMIT),
-    ])
-      .then(([tr, rp, nr, rt, rc, pa]) => {
+    const load = async () => {
+      try {
+        // Wave 1: above-the-fold content (3 requests)
+        const [fy, tr, rc] = await Promise.all([
+          trackService.getForYou(PREVIEW_LIMIT),
+          trackService.getTrending(PREVIEW_LIMIT),
+          isAuthenticated
+            ? trackService.getRecents(PREVIEW_LIMIT).catch(() => [] as Track[])
+            : Promise.resolve([] as Track[]),
+        ])
+        if (cancelled) return
+        setForYou(fy)
         setTrending(tr)
+        setRecents(rc)
+        setLoading(false)
+
+        // Wave 2: secondary sections (4 requests, staggered after paint)
+        const [ml, nm, rp, nr, pa] = await Promise.all([
+          trackService.getMostLiked(PREVIEW_LIMIT),
+          trackService.getNewMusic(PREVIEW_LIMIT),
+          playlistService.getRecommended(PREVIEW_LIMIT),
+          albumService.getNewReleases(PREVIEW_LIMIT),
+          artistService.getPopular(PREVIEW_LIMIT),
+        ])
+        if (cancelled) return
+        setMostLiked(ml)
+        setNewMusic(nm)
         setRecommendedPlaylists(rp)
         setNewReleases(nr)
-        setRecommendedTracks(rt)
-        setRecents(rc)
         setPopularArtists(pa)
-      })
-      .finally(() => setLoading(false))
+      } catch {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
   }, [isAuthenticated])
 
   // Cover-derived hue for the top of the page (reflects what's playing, else a featured cover).
   const heroSeed =
     currentTrack?.album.coverUrl ??
-    recommendedTracks[0]?.album.coverUrl ??
+    forYou[0]?.album.coverUrl ??
+    trending[0]?.album.coverUrl ??
     savedPlaylists.find((p) => p.coverUrl)?.coverUrl ??
     null
   const baseColor = useDominantColor(heroSeed)
@@ -118,20 +137,55 @@ export function HomePage() {
           </h1>
         )}
 
-        {/* Upgrade nudge for free-tier users */}
-        {isAuthenticated && user?.capabilities?.unlimitedPlayback === false && (
-          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl bg-gradient-to-r from-accent-dim to-surface px-5 py-4 ring-1 ring-accent/20">
-            <div className="min-w-0">
-              <p className="text-sm font-black text-primary">You're on the Free plan</p>
-              <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls</p>
+        {/* Guest promo banner */}
+        {!isAuthenticated && (
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-surface ring-1 ring-accent/40 px-5 py-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-xl shrink-0">🎉</span>
+              <div className="min-w-0">
+                <p className="text-sm font-black text-primary">Get Premium — 5% off your first month</p>
+                <p className="mt-0.5 text-xs text-secondary">
+                  Use code{' '}
+                  <strong className="font-black text-accent">5OFF</strong>
+                  {' '}at checkout. Expires August 1st.
+                </p>
+              </div>
             </div>
             <Link
               to="/premium"
               className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
             >
               <SparklesIcon className="h-4 w-4" />
-              Explore Premium
+              See plans
             </Link>
+          </div>
+        )}
+
+        {/* Free-plan nudge + promo combined */}
+        {isAuthenticated && user?.capabilities?.unlimitedPlayback === false && (
+          <div className="mb-8 rounded-xl bg-surface ring-1 ring-accent/30 overflow-hidden">
+            <div className="flex items-center justify-between gap-4 px-5 py-3.5">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-primary">You're on the Free plan</p>
+                <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls.</p>
+              </div>
+              <Link
+                to="/premium"
+                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+              >
+                <SparklesIcon className="h-4 w-4" />
+                Explore Premium
+              </Link>
+            </div>
+            <div className="flex items-center gap-2.5 px-5 py-2.5 border-t border-elevated/30 bg-elevated/20">
+              <span className="text-base shrink-0">🎉</span>
+              <p className="text-xs text-secondary">
+                First month 5% off — use code{' '}
+                <strong className="font-black text-accent">5OFF</strong>
+                {' '}at checkout.{' '}
+                <span className="text-muted">Expires Aug 1.</span>
+              </p>
+            </div>
           </div>
         )}
 
@@ -176,25 +230,13 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Recommended for you (tracks) — auth only */}
-        {isAuthenticated && recommendedTracks.length > 0 && (
+        {/* For You Today — personalised, auth only */}
+        {isAuthenticated && forYou.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Recommended for you" href="/recommended-tracks" />
+            <SectionHeader title="For you today" />
             <HorizontalScroller>
-              {recommendedTracks.map((track) => (
-                <TrackTile key={track.id} track={track} queue={recommendedTracks} />
-              ))}
-            </HorizontalScroller>
-          </section>
-        )}
-
-        {/* Trending now — horizontal card row (was a vertical list) */}
-        {trending.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={isAuthenticated ? 'Trending now' : 'Trending songs'} href="/trending" />
-            <HorizontalScroller>
-              {trending.slice(0, PREVIEW_LIMIT).map((track) => (
-                <TrackTile key={track.id} track={track} queue={trending} />
+              {forYou.map((track) => (
+                <TrackTile key={track.id} track={track} queue={forYou} />
               ))}
             </HorizontalScroller>
           </section>
@@ -203,10 +245,34 @@ export function HomePage() {
         {/* Recents — auth only, hidden until the user has played something */}
         {isAuthenticated && recents.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Recents" href="/recents" />
+            <SectionHeader title="Recently played" />
             <HorizontalScroller>
               {recents.map((track) => (
                 <TrackTile key={track.id} track={track} queue={recents} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* Trending now */}
+        {trending.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="Trending now" />
+            <HorizontalScroller>
+              {trending.map((track) => (
+                <TrackTile key={track.id} track={track} queue={trending} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* Most Liked */}
+        {mostLiked.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="Most liked" />
+            <HorizontalScroller>
+              {mostLiked.map((track) => (
+                <TrackTile key={track.id} track={track} queue={mostLiked} />
               ))}
             </HorizontalScroller>
           </section>
@@ -219,6 +285,18 @@ export function HomePage() {
             <HorizontalScroller>
               {recommendedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* New Music */}
+        {newMusic.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="New music" />
+            <HorizontalScroller>
+              {newMusic.map((track) => (
+                <TrackTile key={track.id} track={track} queue={newMusic} />
               ))}
             </HorizontalScroller>
           </section>

@@ -19,4 +19,6 @@ export interface Track {
   genres: string[]
   createdAt: string
   isSaved?: boolean
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }

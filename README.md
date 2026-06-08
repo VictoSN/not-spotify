@@ -87,9 +87,16 @@ Ensure you have the following installed:
 ---
 
 ### 🔑 Seed Login Credentials
-Once both servers are running, log in with the following default developer account:
-* **Email:** `alex@example.com`
-* **Password:** `Password123!`
+
+The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mode) for one-click login into any of the accounts below.
+
+| Account | Email | Password | Role |
+|---|---|---|---|
+| alex | `alex@example.com` | `Password123!` | Admin + Artist |
+| testing1 | `testing1@example.com` | `Testing1` | User |
+| testing2 | `testing2@example.com` | `Testing2` | User |
+
+> These are seeded accounts that already exist in the shared Supabase database. Do not change their passwords or you will break the shortcuts for your teammates.
 
 ---
 

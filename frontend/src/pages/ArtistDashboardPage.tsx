@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MusicalNoteIcon, CloudArrowUpIcon, CheckCircleIcon, ClockIcon,
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
+import type { ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -42,7 +43,19 @@ export function ArtistDashboardPage() {
 
   const [albums, setAlbums] = useState<AlbumWithTracks[]>([])
   const [loading, setLoading] = useState(true)
+  const [isRevoked, setIsRevoked] = useState(false)
+  const [revocationNote, setRevocationNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Resubmit form state
+  const [resubmitAlbumId, setResubmitAlbumId] = useState<string | null>(null)
+  const [resubmitTrackId, setResubmitTrackId] = useState<string | null>(null)
+  const [resubmitNote, setResubmitNote] = useState('')
+
+  // Review history state
+  const [reviewHistory, setReviewHistory] = useState<Record<string, ReviewHistoryEntry[]>>({})
+  const [historyOpen, setHistoryOpen] = useState<Set<string>>(new Set())
+  const [historyLoading, setHistoryLoading] = useState<Set<string>>(new Set())
   const [expandedAlbum, setExpandedAlbum] = useState<string | null>(null)
 
   // Create album form
@@ -96,10 +109,13 @@ export function ArtistDashboardPage() {
   const reload = async () => {
     setLoading(true)
     try {
-      const [tracksRes, albumsRes] = await Promise.all([
+      const [tracksRes, albumsRes, profileRes] = await Promise.all([
         api.get<Track[]>('/me/artist-tracks'),
         api.get<Album[]>('/me/artist-albums'),
+        api.get<{ isRevoked?: boolean; revocationNote?: string | null }>('/me/artist-profile').catch(() => ({ data: {} })),
       ])
+      setIsRevoked(profileRes.data.isRevoked ?? false)
+      setRevocationNote(profileRes.data.revocationNote ?? null)
       const tracksByAlbum = new Map<string, Track[]>()
       for (const t of tracksRes.data) {
         const list = tracksByAlbum.get(t.album.id) ?? []
@@ -217,26 +233,46 @@ export function ArtistDashboardPage() {
     }
   }
 
-  const handleResubmitAlbum = async (album: AlbumWithTracks) => {
+  const handleResubmitAlbum = async (album: AlbumWithTracks, note: string) => {
     try {
-      const res = await api.post<Album>(`/me/artist-albums/${album.id}/resubmit`)
-      setAlbums((prev) => prev.map((a) => a.id === album.id ? { ...a, ...res.data, trackList: a.trackList.map((t) => ({ ...t, status: t.status === 'rejected' ? 'pending' : t.status, reviewNote: t.status === 'rejected' ? null : t.reviewNote })) } : a))
+      const res = await api.post<Album>(`/me/artist-albums/${album.id}/resubmit`, { note: note.trim() || null })
+      setAlbums((prev) => prev.map((a) => a.id === album.id ? { ...a, ...res.data, trackList: a.trackList.map((t) => ({ ...t, status: t.status === 'rejected' ? 'pending' : t.status })) } : a))
+      setResubmitAlbumId(null)
+      setResubmitNote('')
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Failed to resubmit release.')
     }
   }
 
-  const handleResubmitTrack = async (track: Track, albumId: string) => {
+  const handleResubmitTrack = async (track: Track, albumId: string, note: string) => {
     try {
-      const res = await api.post<Track>(`/me/artist-tracks/${track.id}/resubmit`)
+      const res = await api.post<Track>(`/me/artist-tracks/${track.id}/resubmit`, { note: note.trim() || null })
       setAlbums((prev) => prev.map((a) => a.id === albumId
         ? { ...a, trackList: a.trackList.map((t) => t.id === track.id ? { ...t, ...res.data } : t) }
         : a
       ))
+      setResubmitTrackId(null)
+      setResubmitNote('')
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Failed to resubmit track.')
+    }
+  }
+
+  const toggleHistory = async (id: string, kind: 'album' | 'track') => {
+    const next = new Set(historyOpen)
+    if (next.has(id)) { next.delete(id); setHistoryOpen(next); return }
+    next.add(id); setHistoryOpen(next)
+    if (reviewHistory[id] !== undefined) return
+    setHistoryLoading((s) => new Set(s).add(id))
+    try {
+      const res = await api.get<ReviewHistoryEntry[]>(
+        kind === 'album' ? `/me/artist-albums/${id}/review-history` : `/me/artist-tracks/${id}/review-history`
+      )
+      setReviewHistory((prev) => ({ ...prev, [id]: res.data }))
+    } finally {
+      setHistoryLoading((s) => { const n = new Set(s); n.delete(id); return n })
     }
   }
 
@@ -374,15 +410,29 @@ export function ArtistDashboardPage() {
 
   return (
     <div>
+      {isRevoked && (
+        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4">
+          <p className="font-semibold text-red-400">Your artist account has been revoked.</p>
+          <p className="text-sm text-red-400/80 mt-0.5">
+            You cannot submit or resubmit content. Contact support to appeal.
+          </p>
+          {revocationNote && (
+            <p className="text-sm text-red-400/70 italic mt-1">Admin note: {revocationNote}</p>
+          )}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-primary">Artist Dashboard</h1>
           <p className="text-secondary text-sm mt-1">Submit albums and tracks for admin review. Approved releases go live.</p>
         </div>
-        <Button onClick={() => { setShowAlbumForm((v) => !v); setAlbumFormError(null) }}>
-          <PlusCircleIcon className="w-5 h-5" />
-          {showAlbumForm ? 'Cancel' : 'New release'}
-        </Button>
+        {!isRevoked && (
+          <Button onClick={() => { setShowAlbumForm((v) => !v); setAlbumFormError(null) }}>
+            <PlusCircleIcon className="w-5 h-5" />
+            {showAlbumForm ? 'Cancel' : 'New release'}
+          </Button>
+        )}
       </div>
 
       {/* Create album form */}
@@ -515,18 +565,32 @@ export function ArtistDashboardPage() {
                       {album.trackList.length} track{album.trackList.length !== 1 ? 's' : ''}
                     </p>
                     {album.reviewNote && (
-                      <p className="text-xs mt-1 px-2 py-1 rounded bg-elevated/60 text-secondary italic">
-                        Admin note: {album.reviewNote}
+                      <p className={`text-xs mt-1 px-2 py-1 rounded italic ${
+                        album.status === 'rejected'
+                          ? 'bg-red-500/10 text-red-400'
+                          : album.status === 'approved'
+                          ? 'bg-green-500/10 text-green-400'
+                          : 'bg-amber-500/10 text-amber-400'
+                      }`}>
+                        {album.status === 'rejected' ? 'Rejection note' : album.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {album.reviewNote}
                       </p>
                     )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleHistory(album.id, 'album') }}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
+                    >
+                      <ClockIcon className="w-3.5 h-3.5" />
+                      {historyOpen.has(album.id) ? 'Hide history' : 'Review history'}
+                    </button>
                   </div>
                   {album.status !== 'approved' && (
                     <>
                       {album.status === 'rejected' && (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); handleResubmitAlbum(album) }}
-                          className="p-1.5 rounded hover:bg-green-500/20 text-muted hover:text-green-400 transition-colors shrink-0"
+                          onClick={(e) => { e.stopPropagation(); setResubmitAlbumId(resubmitAlbumId === album.id ? null : album.id); setResubmitNote('') }}
+                          className={`p-1.5 rounded transition-colors shrink-0 ${resubmitAlbumId === album.id ? 'bg-green-500/20 text-green-400' : 'hover:bg-green-500/20 text-muted hover:text-green-400'}`}
                           title="Resubmit for review"
                         >
                           <ArrowPathIcon className="w-4 h-4" />
@@ -636,6 +700,61 @@ export function ArtistDashboardPage() {
                   </form>
                 )}
 
+                {/* Inline resubmit form */}
+                {resubmitAlbumId === album.id && (
+                  <div className="border-t border-elevated/40 p-4 flex flex-col gap-3 bg-green-500/5">
+                    <p className="text-sm font-semibold text-green-400">Resubmit for review</p>
+                    <textarea
+                      autoFocus
+                      rows={2}
+                      value={resubmitNote}
+                      onChange={(e) => setResubmitNote(e.target.value)}
+                      placeholder="Optional message to the admin (what you changed, why it should be approved…)"
+                      className="w-full bg-elevated border border-elevated/50 focus:border-green-400/60 text-primary placeholder:text-muted rounded px-3 py-2 text-sm resize-none focus:outline-none transition-colors"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setResubmitAlbumId(null); setResubmitNote('') }}
+                        className="px-3 py-1.5 rounded text-sm font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleResubmitAlbum(album, resubmitNote)}
+                        className="px-3 py-1.5 rounded text-sm font-semibold bg-green-500 hover:bg-green-600 text-white transition-colors"
+                      >
+                        Resubmit
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Album review history panel */}
+                {historyOpen.has(album.id) && (
+                  <div className="border-t border-elevated/40 px-4 py-3 bg-elevated/5">
+                    {historyLoading.has(album.id) ? (
+                      <div className="flex items-center gap-1.5 text-xs text-secondary">
+                        <Spinner size="sm" /> Loading…
+                      </div>
+                    ) : !reviewHistory[album.id] || reviewHistory[album.id].length === 0 ? (
+                      <p className="text-xs text-muted italic">No review history yet.</p>
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Album review history</p>
+                        {reviewHistory[album.id].map((h) => (
+                          <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                            <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
+                            <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
+                            {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Expanded: track list + add track */}
                 {isOpen && (
                   <div className="border-t border-elevated/40">
@@ -657,8 +776,8 @@ export function ArtistDashboardPage() {
                             const isDragging  = dragId === t.id
                             const isDropTarget = dropId === t.id && dragId !== t.id
                             return (
+                              <React.Fragment key={t.id}>
                               <tr
-                                key={t.id}
                                 draggable={canEdit}
                                 onDragStart={(e) => canEdit && handleDragStart(e, t.id)}
                                 onDragOver={(e) => canEdit && handleDragOver(e, t.id)}
@@ -718,8 +837,24 @@ export function ArtistDashboardPage() {
                                       )}
                                     </div>
                                     {t.reviewNote && (
-                                      <span className="text-xs text-secondary italic">Admin note: {t.reviewNote}</span>
+                                      <span className={`text-xs italic ${
+                                        t.status === 'rejected'
+                                          ? 'text-red-400'
+                                          : t.status === 'approved'
+                                          ? 'text-green-400'
+                                          : 'text-amber-400'
+                                      }`}>
+                                        {t.status === 'rejected' ? 'Rejection note' : t.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {t.reviewNote}
+                                      </span>
                                     )}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); toggleHistory(t.id, 'track') }}
+                                      className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
+                                    >
+                                      <ClockIcon className="w-3 h-3" />
+                                      {historyOpen.has(t.id) ? 'Hide history' : 'History'}
+                                    </button>
                                   </div>
                                 </td>
                                 <td className="px-4 py-2.5 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
@@ -729,8 +864,8 @@ export function ArtistDashboardPage() {
                                     {t.status === 'rejected' && (
                                       <button
                                         type="button"
-                                        onClick={() => handleResubmitTrack(t, album.id)}
-                                        className="p-1 rounded hover:bg-green-500/20 text-muted hover:text-green-400 transition-colors"
+                                        onClick={() => { setResubmitTrackId(resubmitTrackId === t.id ? null : t.id); setResubmitNote('') }}
+                                        className={`p-1 rounded transition-colors ${resubmitTrackId === t.id ? 'bg-green-500/20 text-green-400' : 'hover:bg-green-500/20 text-muted hover:text-green-400'}`}
                                         title="Resubmit for review"
                                       >
                                         <ArrowPathIcon className="w-3.5 h-3.5" />
@@ -749,6 +884,60 @@ export function ArtistDashboardPage() {
                                   </div>
                                 </td>
                               </tr>
+                              {/* Inline track resubmit form */}
+                              {resubmitTrackId === t.id && (
+                                <tr className="border-b border-elevated/20 bg-green-500/5">
+                                  <td colSpan={5} className="px-4 py-3">
+                                    <div className="flex flex-col gap-2 max-w-lg">
+                                      <p className="text-xs font-semibold text-green-400">Resubmit track for review</p>
+                                      <textarea
+                                        autoFocus
+                                        rows={2}
+                                        value={resubmitNote}
+                                        onChange={(e) => setResubmitNote(e.target.value)}
+                                        placeholder="Optional message (what you changed…)"
+                                        className="w-full bg-elevated border border-elevated/50 focus:border-green-400/60 text-primary placeholder:text-muted rounded px-3 py-2 text-xs resize-none focus:outline-none transition-colors"
+                                      />
+                                      <div className="flex gap-2">
+                                        <button type="button" onClick={() => { setResubmitTrackId(null); setResubmitNote('') }}
+                                          className="px-3 py-1 rounded text-xs font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors">
+                                          Cancel
+                                        </button>
+                                        <button type="button" onClick={() => handleResubmitTrack(t, album.id, resubmitNote)}
+                                          className="px-3 py-1 rounded text-xs font-semibold bg-green-500 hover:bg-green-600 text-white transition-colors">
+                                          Resubmit
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              {/* Track review history panel */}
+                              {historyOpen.has(t.id) && (
+                                <tr className="border-b border-elevated/20 bg-elevated/5">
+                                  <td colSpan={6} className="px-4 py-2">
+                                    {historyLoading.has(t.id) ? (
+                                      <div className="flex items-center gap-1.5 text-xs text-secondary">
+                                        <Spinner size="sm" /> Loading…
+                                      </div>
+                                    ) : !reviewHistory[t.id] || reviewHistory[t.id].length === 0 ? (
+                                      <p className="text-xs text-muted italic">No review history yet.</p>
+                                    ) : (
+                                      <div className="flex flex-col gap-1">
+                                        <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Track review history</p>
+                                        {reviewHistory[t.id].map((h) => (
+                                          <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                                            <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
+                                            <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
+                                            {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                </tr>
+                              )}
+                              </React.Fragment>
                             )
                           })}
                         </tbody>

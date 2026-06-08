@@ -57,6 +57,16 @@ export interface CreateTrackPayload {
 
 export type UpdateTrackPayload = Partial<CreateTrackPayload>
 
+export interface ReviewHistoryEntry {
+  id: string
+  entityType: string
+  entityId: string
+  action: 'approved' | 'rejected'
+  note: string | null
+  reviewedByName: string | null
+  reviewedAt: string
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const adminService = {
@@ -83,6 +93,16 @@ export const adminService = {
 
   async deleteArtist(id: string): Promise<void> {
     await api.delete(`/admin/artists/${id}`)
+  },
+
+  async revokeArtist(id: string, note?: string): Promise<Artist> {
+    const res = await api.post<Artist>(`/admin/artists/${id}/revoke`, { note: note || null })
+    return res.data
+  },
+
+  async reinstateArtist(id: string): Promise<Artist> {
+    const res = await api.post<Artist>(`/admin/artists/${id}/reinstate`)
+    return res.data
   },
 
   async uploadArtistImage(id: string, file: File, type: 'profile' | 'header' = 'profile'): Promise<Artist> {
@@ -199,6 +219,16 @@ export const adminService = {
 
   async rejectTrack(id: string, note?: string): Promise<void> {
     await api.patch(`/admin/tracks/${id}/reject`, { note: note || null })
+  },
+
+  async getAlbumReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
+    const res = await api.get<ReviewHistoryEntry[]>(`/admin/albums/${id}/review-history`)
+    return res.data
+  },
+
+  async getTrackReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
+    const res = await api.get<ReviewHistoryEntry[]>(`/admin/tracks/${id}/review-history`)
+    return res.data
   },
 
   // Artist applications

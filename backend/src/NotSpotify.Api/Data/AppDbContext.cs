@@ -24,6 +24,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ArtistApplication> ArtistApplications => Set<ArtistApplication>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
+    public DbSet<ReviewHistory> ReviewHistories => Set<ReviewHistory>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

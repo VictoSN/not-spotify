@@ -38,7 +38,20 @@ public record ArtistDto(
     long FollowerCount,
     bool Verified,
     SocialLinksDto SocialLinks,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool IsRevoked = false,
+    string? RevocationNote = null,
+    DateTime? RevokedAt = null
+);
+
+public record ReviewHistoryDto(
+    Guid Id,
+    string EntityType,
+    Guid EntityId,
+    string Action,
+    string? Note,
+    string? ReviewedByName,
+    DateTime ReviewedAt
 );
 
 public record SocialLinksDto(string? Instagram, string? Twitter, string? Website);

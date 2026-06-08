@@ -464,6 +464,10 @@ public class MeController : ControllerBase
         var user = await _users.FindByIdAsync(me.Value.ToString());
         if (user?.ArtistId is null) return Forbid();
 
+        var artist = await _db.Artists.FindAsync([user.ArtistId.Value], ct);
+        if (artist is { IsRevoked: true })
+            return Forbid();
+
         var album = new Album
         {
             Id = Guid.NewGuid(),
@@ -556,6 +560,10 @@ public class MeController : ControllerBase
         var user = await _users.FindByIdAsync(me.Value.ToString());
         if (user?.ArtistId is null) return Forbid();
 
+        var artist = await _db.Artists.FindAsync([user.ArtistId.Value], ct);
+        if (artist is { IsRevoked: true })
+            return Forbid();
+
         var album = await _db.Albums
             .Include(a => a.Artist)
             .FirstOrDefaultAsync(a => a.Id == req.AlbumId && a.ArtistId == user.ArtistId, ct);
@@ -622,6 +630,63 @@ public class MeController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         return Ok(await _mapper.ToDtoAsync(track, ct));
+    }
+
+    [HttpGet("artist-profile")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<ArtistDto>> GetArtistProfile(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == user.ArtistId, ct);
+        if (artist is null) return NotFound();
+
+        return Ok(_mapper.ToDto(artist));
+    }
+
+    [HttpGet("artist-albums/{id:guid}/review-history")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetArtistAlbumHistory(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        // Verify ownership
+        var owns = await _db.Albums.AnyAsync(a => a.Id == id && a.ArtistId == user.ArtistId, ct);
+        if (!owns) return NotFound();
+
+        var history = await _db.ReviewHistories
+            .Where(h => h.EntityType == "album" && h.EntityId == id)
+            .OrderBy(h => h.ReviewedAt)
+            .ToListAsync(ct);
+        return Ok(history.Select(h => new ReviewHistoryDto(
+            h.Id, h.EntityType, h.EntityId, h.Action, h.Note, h.ReviewedByName, h.ReviewedAt)));
+    }
+
+    [HttpGet("artist-tracks/{id:guid}/review-history")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetArtistTrackHistory(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var owns = await _db.Tracks.AnyAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (!owns) return NotFound();
+
+        var history = await _db.ReviewHistories
+            .Where(h => h.EntityType == "track" && h.EntityId == id)
+            .OrderBy(h => h.ReviewedAt)
+            .ToListAsync(ct);
+        return Ok(history.Select(h => new ReviewHistoryDto(
+            h.Id, h.EntityType, h.EntityId, h.Action, h.Note, h.ReviewedByName, h.ReviewedAt)));
     }
 
     [HttpGet("artist-albums")]
@@ -743,13 +808,17 @@ public class MeController : ControllerBase
 
     [HttpPost("artist-albums/{id:guid}/resubmit")]
     [Authorize(Roles = "Artist")]
-    public async Task<ActionResult<AlbumDto>> ResubmitArtistAlbum(Guid id, CancellationToken ct = default)
+    public async Task<ActionResult<AlbumDto>> ResubmitArtistAlbum(Guid id, [FromBody] ResubmitRequest? req = null, CancellationToken ct = default)
     {
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
 
         var user = await _users.FindByIdAsync(me.Value.ToString());
         if (user?.ArtistId is null) return Forbid();
+
+        var artist = await _db.Artists.FindAsync([user.ArtistId.Value], ct);
+        if (artist is { IsRevoked: true })
+            return Forbid();
 
         var album = await _db.Albums
             .Include(a => a.Artist)
@@ -759,7 +828,17 @@ public class MeController : ControllerBase
             return Conflict(new { message = "Only rejected releases can be resubmitted." });
 
         album.Status = "pending";
-        album.ReviewNote = null;
+        // ReviewNote intentionally preserved so artist retains rejection history
+
+        var artistName = User.FindFirstValue("name");
+        var resubmitNote = string.IsNullOrWhiteSpace(req?.Note) ? null : req.Note.Trim();
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "album", EntityId = id,
+            Action = "resubmitted", Note = resubmitNote,
+            ReviewedByName = artistName, ReviewedAt = DateTime.UtcNow,
+        });
 
         // Also resubmit rejected tracks in this album
         var rejectedTracks = await _db.Tracks
@@ -768,7 +847,13 @@ public class MeController : ControllerBase
         foreach (var t in rejectedTracks)
         {
             t.Status = "pending";
-            t.ReviewNote = null;
+            // ReviewNote intentionally preserved
+            _db.ReviewHistories.Add(new ReviewHistory
+            {
+                EntityType = "track", EntityId = t.Id,
+                Action = "resubmitted", Note = resubmitNote,
+                ReviewedByName = artistName, ReviewedAt = DateTime.UtcNow,
+            });
         }
 
         await _db.SaveChangesAsync(ct);
@@ -777,13 +862,17 @@ public class MeController : ControllerBase
 
     [HttpPost("artist-tracks/{id:guid}/resubmit")]
     [Authorize(Roles = "Artist")]
-    public async Task<ActionResult<TrackDto>> ResubmitArtistTrack(Guid id, CancellationToken ct = default)
+    public async Task<ActionResult<TrackDto>> ResubmitArtistTrack(Guid id, [FromBody] ResubmitRequest? req = null, CancellationToken ct = default)
     {
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
 
         var user = await _users.FindByIdAsync(me.Value.ToString());
         if (user?.ArtistId is null) return Forbid();
+
+        var artistForTrack = await _db.Artists.FindAsync([user.ArtistId.Value], ct);
+        if (artistForTrack is { IsRevoked: true })
+            return Forbid();
 
         var track = await _db.Tracks
             .Include(t => t.Artist)
@@ -795,7 +884,15 @@ public class MeController : ControllerBase
             return Conflict(new { message = "Only rejected tracks can be resubmitted." });
 
         track.Status = "pending";
-        track.ReviewNote = null;
+        // ReviewNote intentionally preserved so artist retains rejection history
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "track", EntityId = id,
+            Action = "resubmitted",
+            Note = string.IsNullOrWhiteSpace(req?.Note) ? null : req.Note.Trim(),
+            ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
+        });
 
         await _db.SaveChangesAsync(ct);
         return Ok(await _mapper.ToDtoAsync(track, ct));

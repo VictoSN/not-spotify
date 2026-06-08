@@ -101,6 +101,10 @@ public record SubmitArtistApplicationRequest(
 
 public record ReviewApplicationRequest(string? Note);
 
+public record RevokeArtistRequest(string? Note);
+
+public record ResubmitRequest(string? Note);
+
 // ── Artist — album submission ─────────────────────────────────────────────────
 
 public record ArtistSubmitAlbumRequest(

@@ -96,7 +96,10 @@ public class MediaMapper
         a.FollowerCount,
         a.Verified,
         new SocialLinksDto(a.Instagram, a.Twitter, a.Website),
-        a.CreatedAt
+        a.CreatedAt,
+        a.IsRevoked,
+        a.RevocationNote,
+        a.RevokedAt
     );
 
     public AlbumDto ToDto(Album a, IEnumerable<string>? genres = null) => new(

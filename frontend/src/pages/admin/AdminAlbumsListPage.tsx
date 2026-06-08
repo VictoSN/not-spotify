@@ -4,10 +4,11 @@ import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon,
   CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon,
   PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ChevronRightIcon, Bars3Icon,
+  ClockIcon,
 } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
-import { adminService } from '@/services/adminService'
+import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
@@ -88,6 +89,32 @@ export function AdminAlbumsListPage() {
   // Review-with-note state (shared for album and track reviews)
   type PendingReview = { id: string; kind: 'album' | 'track'; action: 'approve' | 'reject'; note: string; saving: boolean }
   const [pendingReview, setPendingReview] = useState<PendingReview | null>(null)
+
+  // Review history state: keyed by album or track ID
+  const [reviewHistory, setReviewHistory] = useState<Record<string, ReviewHistoryEntry[]>>({})
+  const [historyOpen, setHistoryOpen] = useState<Set<string>>(new Set())
+  const [historyLoading, setHistoryLoading] = useState<Set<string>>(new Set())
+
+  const toggleHistory = async (id: string, kind: 'album' | 'track') => {
+    const next = new Set(historyOpen)
+    if (next.has(id)) {
+      next.delete(id)
+      setHistoryOpen(next)
+      return
+    }
+    next.add(id)
+    setHistoryOpen(next)
+    if (reviewHistory[id] !== undefined) return // already loaded
+    setHistoryLoading((s) => new Set(s).add(id))
+    try {
+      const data = kind === 'album'
+        ? await adminService.getAlbumReviewHistory(id)
+        : await adminService.getTrackReviewHistory(id)
+      setReviewHistory((prev) => ({ ...prev, [id]: data }))
+    } finally {
+      setHistoryLoading((s) => { const n = new Set(s); n.delete(id); return n })
+    }
+  }
 
   // Drag-to-reorder state
   const [dragId, setDragId] = useState<string | null>(null)
@@ -413,14 +440,29 @@ export function AdminAlbumsListPage() {
                                 <span className="text-sm font-medium text-primary truncate">{album.title}</span>
                               </div>
                               {album.reviewNote && (
-                                <p className="ml-7 text-xs text-secondary italic truncate" title={album.reviewNote}>
-                                  Note: {album.reviewNote}
+                                <p className={`ml-7 text-xs italic truncate ${album.status === 'rejected' ? 'text-red-400' : album.status === 'approved' ? 'text-green-400' : 'text-amber-400'}`} title={album.reviewNote}>
+                                  {album.status === 'rejected' ? 'Rejection' : album.status === 'approved' ? 'Approval' : 'Prior rejection'} note: {album.reviewNote}
                                 </p>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => toggleHistory(album.id, 'album')}
+                                className="ml-7 inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
+                                title="View review history"
+                              >
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                History
+                                {historyOpen.has(album.id) ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
+                              </button>
                             </div>
                             <span className="text-xs text-secondary capitalize">{album.type}</span>
                             <span className="text-xs text-secondary">{String(album.releaseDate)}</span>
                             <StatusBadge status={album.status} />
+                            {tab === 'rejected' && album.status === 'pending' && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold">
+                                Resubmitted
+                              </span>
+                            )}
                             <div className="flex gap-1.5 justify-end flex-wrap">
                               {album.status === 'pending' ? (
                                 <>
@@ -459,6 +501,35 @@ export function AdminAlbumsListPage() {
                                 onConfirm={confirmReview}
                                 onCancel={() => setPendingReview(null)}
                               />
+                            </div>
+                          )}
+
+                          {/* Album review history panel */}
+                          {historyOpen.has(album.id) && (
+                            <div className="px-8 py-3 border-b border-elevated/10 bg-elevated/5">
+                              {historyLoading.has(album.id) ? (
+                                <div className="flex items-center gap-2 text-xs text-secondary">
+                                  <Spinner size="sm" /> Loading history…
+                                </div>
+                              ) : !reviewHistory[album.id] || reviewHistory[album.id].length === 0 ? (
+                                <p className="text-xs text-muted italic">No review history yet.</p>
+                              ) : (
+                                <div className="flex flex-col gap-1.5">
+                                  <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">Review history</p>
+                                  {reviewHistory[album.id].map((h) => (
+                                    <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                                      <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>
+                                        {h.action}
+                                      </span>
+                                      <span className="text-muted shrink-0">
+                                        {new Date(h.reviewedAt).toLocaleString()}
+                                        {h.reviewedByName && ` · ${h.reviewedByName}`}
+                                      </span>
+                                      {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -514,10 +585,19 @@ export function AdminAlbumsListPage() {
                                                 {t.explicit && <span className="text-xs px-1 py-0.5 rounded bg-elevated text-secondary font-mono">E</span>}
                                               </div>
                                               {t.reviewNote && (
-                                                <span className="text-xs text-secondary italic truncate" title={t.reviewNote}>
-                                                  Note: {t.reviewNote}
+                                                <span className={`text-xs italic truncate ${t.status === 'rejected' ? 'text-red-400' : t.status === 'approved' ? 'text-green-400' : 'text-amber-400'}`} title={t.reviewNote}>
+                                                  {t.status === 'rejected' ? 'Rejection' : t.status === 'approved' ? 'Approval' : 'Prior rejection'} note: {t.reviewNote}
                                                 </span>
                                               )}
+                                              <button
+                                                type="button"
+                                                onClick={() => toggleHistory(t.id, 'track')}
+                                                className="inline-flex items-center gap-0.5 text-xs text-muted hover:text-secondary transition-colors"
+                                                title="View review history"
+                                              >
+                                                <ClockIcon className="w-3 h-3" />
+                                                History
+                                              </button>
                                             </div>
                                           </td>
                                           <td className="px-3 py-2 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
@@ -567,6 +647,31 @@ export function AdminAlbumsListPage() {
                                                 onConfirm={confirmReview}
                                                 onCancel={() => setPendingReview(null)}
                                               />
+                                            </td>
+                                          </tr>
+                                        )}
+
+                                        {/* Track review history panel */}
+                                        {historyOpen.has(t.id) && (
+                                          <tr className="border-b border-elevated/10 bg-elevated/5">
+                                            <td colSpan={6} className="px-4 py-2">
+                                              {historyLoading.has(t.id) ? (
+                                                <div className="flex items-center gap-1.5 text-xs text-secondary py-1">
+                                                  <Spinner size="sm" /> Loading…
+                                                </div>
+                                              ) : !reviewHistory[t.id] || reviewHistory[t.id].length === 0 ? (
+                                                <p className="text-xs text-muted italic py-1">No review history.</p>
+                                              ) : (
+                                                <div className="flex flex-col gap-1">
+                                                  {reviewHistory[t.id].map((h) => (
+                                                    <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                                                      <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
+                                                      <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
+                                                      {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              )}
                                             </td>
                                           </tr>
                                         )}

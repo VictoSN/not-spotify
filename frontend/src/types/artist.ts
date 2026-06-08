@@ -20,4 +20,7 @@ export interface Artist {
     website?: string
   }
   createdAt: string
+  isRevoked?: boolean
+  revocationNote?: string | null
+  revokedAt?: string | null
 }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,8 +34,21 @@ public class AdminAlbumsController : ControllerBase
     public async Task<ActionResult<IEnumerable<AlbumDto>>> List([FromQuery] string? status = null, CancellationToken ct = default)
     {
         var q = _db.Albums.Include(a => a.Artist).AsQueryable();
-        if (!string.IsNullOrEmpty(status))
+        if (status == "rejected")
+        {
+            // Include currently-rejected AND previously-rejected albums that the artist has resubmitted
+            // (status == "pending" but has at least one rejection in history)
+            var resubmittedIds = await _db.ReviewHistories
+                .Where(h => h.EntityType == "album" && h.Action == "rejected")
+                .Select(h => h.EntityId)
+                .Distinct()
+                .ToListAsync(ct);
+            q = q.Where(a => a.Status == "rejected" || (a.Status == "pending" && resubmittedIds.Contains(a.Id)));
+        }
+        else if (!string.IsNullOrEmpty(status))
+        {
             q = q.Where(a => a.Status == status);
+        }
         var albums = await q.OrderByDescending(a => a.ReleaseDate).ToListAsync(ct);
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
@@ -63,12 +77,29 @@ public class AdminAlbumsController : ControllerBase
         album.Status = "approved";
         album.ReviewNote = req?.Note;
 
+        var reviewerName = User.FindFirstValue("name");
+
         // Approve all pending tracks in this album
         var pendingTracks = await _db.Tracks
             .Where(t => t.AlbumId == id && t.Status == "pending")
             .ToListAsync(ct);
         foreach (var t in pendingTracks)
+        {
             t.Status = "approved";
+            _db.ReviewHistories.Add(new ReviewHistory
+            {
+                EntityType = "track", EntityId = t.Id,
+                Action = "approved", Note = req?.Note,
+                ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+            });
+        }
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "album", EntityId = id,
+            Action = "approved", Note = req?.Note,
+            ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+        });
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(album));
@@ -87,6 +118,8 @@ public class AdminAlbumsController : ControllerBase
         album.Status = "rejected";
         album.ReviewNote = req?.Note;
 
+        var reviewerName = User.FindFirstValue("name");
+
         var pendingTracks = await _db.Tracks
             .Where(t => t.AlbumId == id && t.Status == "pending")
             .ToListAsync(ct);
@@ -94,10 +127,34 @@ public class AdminAlbumsController : ControllerBase
         {
             t.Status = "rejected";
             t.ReviewNote = req?.Note;
+            _db.ReviewHistories.Add(new ReviewHistory
+            {
+                EntityType = "track", EntityId = t.Id,
+                Action = "rejected", Note = req?.Note,
+                ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+            });
         }
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "album", EntityId = id,
+            Action = "rejected", Note = req?.Note,
+            ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+        });
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(album));
+    }
+
+    [HttpGet("{id:guid}/review-history")]
+    public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetReviewHistory(Guid id, CancellationToken ct = default)
+    {
+        var history = await _db.ReviewHistories
+            .Where(h => h.EntityType == "album" && h.EntityId == id)
+            .OrderBy(h => h.ReviewedAt)
+            .ToListAsync(ct);
+        return Ok(history.Select(h => new ReviewHistoryDto(
+            h.Id, h.EntityType, h.EntityId, h.Action, h.Note, h.ReviewedByName, h.ReviewedAt)));
     }
 
     [HttpPost]

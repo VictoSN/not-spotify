@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -33,8 +34,19 @@ public class AdminTracksController : ControllerBase
     public async Task<ActionResult<IEnumerable<TrackDto>>> List([FromQuery] string? status = null, CancellationToken ct = default)
     {
         var q = BaseQuery().AsQueryable();
-        if (!string.IsNullOrEmpty(status))
+        if (status == "rejected")
+        {
+            var resubmittedIds = await _db.ReviewHistories
+                .Where(h => h.EntityType == "track" && h.Action == "rejected")
+                .Select(h => h.EntityId)
+                .Distinct()
+                .ToListAsync(ct);
+            q = q.Where(t => t.Status == "rejected" || (t.Status == "pending" && resubmittedIds.Contains(t.Id)));
+        }
+        else if (!string.IsNullOrEmpty(status))
+        {
             q = q.Where(t => t.Status == status);
+        }
         var tracks = await q.OrderBy(t => t.Album.Title).ThenBy(t => t.TrackNumber).ToListAsync(ct);
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
@@ -180,6 +192,12 @@ public class AdminTracksController : ControllerBase
 
         t.Status = "approved";
         t.ReviewNote = req?.Note;
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "track", EntityId = id,
+            Action = "approved", Note = req?.Note,
+            ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
+        });
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -194,8 +212,25 @@ public class AdminTracksController : ControllerBase
 
         t.Status = "rejected";
         t.ReviewNote = req?.Note;
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "track", EntityId = id,
+            Action = "rejected", Note = req?.Note,
+            ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
+        });
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpGet("{id:guid}/review-history")]
+    public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetReviewHistory(Guid id, CancellationToken ct = default)
+    {
+        var history = await _db.ReviewHistories
+            .Where(h => h.EntityType == "track" && h.EntityId == id)
+            .OrderBy(h => h.ReviewedAt)
+            .ToListAsync(ct);
+        return Ok(history.Select(h => new ReviewHistoryDto(
+            h.Id, h.EntityType, h.EntityId, h.Action, h.Note, h.ReviewedByName, h.ReviewedAt)));
     }
 
     private async Task SyncAlbumStatsAsync(Guid albumId, CancellationToken ct)

@@ -88,6 +88,34 @@ public class AdminArtistsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/revoke")]
+    public async Task<ActionResult<ArtistDto>> Revoke(Guid id, [FromBody] RevokeArtistRequest req, CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (a is null) return NotFound();
+
+        a.IsRevoked = true;
+        a.RevocationNote = string.IsNullOrWhiteSpace(req.Note) ? null : req.Note.Trim();
+        a.RevokedAt = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(a));
+    }
+
+    [HttpPost("{id:guid}/reinstate")]
+    public async Task<ActionResult<ArtistDto>> Reinstate(Guid id, CancellationToken ct = default)
+    {
+        var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (a is null) return NotFound();
+
+        a.IsRevoked = false;
+        a.RevocationNote = null;
+        a.RevokedAt = null;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(a));
+    }
+
     [HttpPost("{id:guid}/image")]
     [RequestSizeLimit(5_000_000)]
     public async Task<ActionResult<ArtistDto>> UploadImage(Guid id, [FromForm] ArtistImageUploadRequest req, [FromQuery] string type = "profile", CancellationToken ct = default)

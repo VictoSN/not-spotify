@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckCircleIcon, XCircleIcon,
-  PlayIcon, StopCircleIcon, ArrowDownTrayIcon,
+  PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ClockIcon,
 } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
-import { adminService } from '@/services/adminService'
+import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
@@ -27,6 +27,24 @@ export function AdminTracksListPage() {
   const [playingId, setPlayingId] = useState<string | null>(null)
   type PendingReview = { id: string; action: 'approve' | 'reject'; note: string; saving: boolean }
   const [pendingReview, setPendingReview] = useState<PendingReview | null>(null)
+
+  const [reviewHistory, setReviewHistory] = useState<Record<string, ReviewHistoryEntry[]>>({})
+  const [historyOpen, setHistoryOpen] = useState<Set<string>>(new Set())
+  const [historyLoading, setHistoryLoading] = useState<Set<string>>(new Set())
+
+  const toggleHistory = async (id: string) => {
+    const next = new Set(historyOpen)
+    if (next.has(id)) { next.delete(id); setHistoryOpen(next); return }
+    next.add(id); setHistoryOpen(next)
+    if (reviewHistory[id] !== undefined) return
+    setHistoryLoading((s) => new Set(s).add(id))
+    try {
+      const data = await adminService.getTrackReviewHistory(id)
+      setReviewHistory((prev) => ({ ...prev, [id]: data }))
+    } finally {
+      setHistoryLoading((s) => { const n = new Set(s); n.delete(id); return n })
+    }
+  }
 
   const reload = async (t: Tab = tab) => {
     setIsLoading(true)
@@ -152,11 +170,31 @@ export function AdminTracksListPage() {
                   <tr className="border-b border-elevated/20 hover:bg-elevated/30 transition-colors">
                     <td className="px-4 py-3 text-secondary text-sm">{t.trackNumber}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-primary font-medium">{t.title}</span>
-                        {t.explicit && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-elevated text-secondary font-mono">E</span>
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-primary font-medium">{t.title}</span>
+                          {t.explicit && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-elevated text-secondary font-mono">E</span>
+                          )}
+                        </div>
+                        {tab === 'rejected' && t.status === 'pending' && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold w-fit">
+                            Resubmitted
+                          </span>
                         )}
+                        {t.reviewNote && (
+                          <span className={`text-xs italic ${t.status === 'rejected' ? 'text-red-400' : t.status === 'approved' ? 'text-green-400' : 'text-amber-400'}`}>
+                            {t.status === 'rejected' ? 'Rejection' : t.status === 'approved' ? 'Approval' : 'Prior rejection'} note: {t.reviewNote}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggleHistory(t.id)}
+                          className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
+                        >
+                          <ClockIcon className="w-3.5 h-3.5" />
+                          History
+                        </button>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-secondary text-sm">{t.artist.name}</td>
@@ -236,6 +274,32 @@ export function AdminTracksListPage() {
                           onConfirm={confirmReview}
                           onCancel={() => setPendingReview(null)}
                         />
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Review history panel */}
+                  {historyOpen.has(t.id) && (
+                    <tr className="bg-elevated/5 border-b border-elevated/20">
+                      <td colSpan={6} className="px-4 py-2">
+                        {historyLoading.has(t.id) ? (
+                          <div className="flex items-center gap-1.5 text-xs text-secondary">
+                            <Spinner size="sm" /> Loading…
+                          </div>
+                        ) : !reviewHistory[t.id] || reviewHistory[t.id].length === 0 ? (
+                          <p className="text-xs text-muted italic">No review history yet.</p>
+                        ) : (
+                          <div className="flex flex-col gap-1">
+                            <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Review history</p>
+                            {reviewHistory[t.id].map((h) => (
+                              <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                                <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
+                                <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
+                                {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}

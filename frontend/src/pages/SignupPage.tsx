@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { MusicalNoteIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { MusicalNoteIcon, ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +21,8 @@ export function SignupPage() {
   const { signup, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
+  const [showPw, setShowPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
@@ -87,26 +89,48 @@ export function SignupPage() {
 
           <div>
             <label className="block text-sm font-semibold text-primary mb-1">Password</label>
-            <input
-              type="password"
-              {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
-              className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder="Password (min 8 characters)"
-            />
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
+                className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 pr-11 text-sm focus:outline-none transition-colors"
+                placeholder="Password (min 8 characters)"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
+                tabIndex={-1}
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+              >
+                {showPw ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              </button>
+            </div>
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-primary mb-1">Confirm Password</label>
-            <input
-              type="password"
-              {...register('confirmPassword', {
-                required: 'Please confirm your password',
-                validate: (v) => v === watch('password') || 'Passwords do not match',
-              })}
-              className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder="Confirm password"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPw ? 'text' : 'password'}
+                {...register('confirmPassword', {
+                  required: 'Please confirm your password',
+                  validate: (v) => v === watch('password') || 'Passwords do not match',
+                })}
+                className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 pr-11 text-sm focus:outline-none transition-colors"
+                placeholder="Confirm password"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
+                tabIndex={-1}
+                aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+              >
+                {showConfirmPw ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+              </button>
+            </div>
             {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
           </div>
 

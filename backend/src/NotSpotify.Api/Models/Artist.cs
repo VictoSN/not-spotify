@@ -17,6 +17,10 @@ public class Artist
     public string? Website { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public bool IsRevoked { get; set; }
+    public string? RevocationNote { get; set; }
+    public DateTime? RevokedAt { get; set; }
+
     public ICollection<Album> Albums { get; set; } = new List<Album>();
     public ICollection<Track> Tracks { get; set; } = new List<Track>();
 }

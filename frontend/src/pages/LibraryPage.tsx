@@ -155,15 +155,20 @@ export function LibraryPage() {
             {/* Column headers */}
             <div
               className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
-              style={{ gridTemplateColumns: '16px 6fr 4fr 3fr 1fr' }}
+              style={{ gridTemplateColumns: '16px 6fr 4fr 3fr var(--track-actions-width)' }}
             >
               <span className="text-xs text-secondary">#</span>
               <span className="text-xs text-secondary uppercase tracking-wider">Title</span>
               <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Album</span>
               <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Date added</span>
-              <span className="flex justify-end">
-                <ClockIcon className="w-4 h-4 text-secondary" />
-              </span>
+              <div className="grid grid-cols-[32px_50px_32px] sm:grid-cols-[80px_32px_50px_32px] items-center gap-1.5 sm:gap-2 justify-end w-[114px] sm:w-[194px] ml-auto">
+                <span className="hidden sm:block" />
+                <span />
+                <span className="flex justify-end pr-1">
+                  <ClockIcon className="w-4 h-4 text-secondary" />
+                </span>
+                <span />
+              </div>
             </div>
 
             {likedSongs.map((track, i) => (

@@ -14,9 +14,9 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 
 const STATUS_CONFIG = {
-  approved: { label: 'Live',     icon: CheckCircleIcon, cls: 'text-green-400',  bg: 'bg-green-500/15' },
-  pending:  { label: 'Pending',  icon: ClockIcon,       cls: 'text-yellow-400', bg: 'bg-yellow-500/15' },
-  rejected: { label: 'Rejected', icon: XCircleIcon,     cls: 'text-red-400',    bg: 'bg-red-500/15' },
+  approved: { label: 'Live', icon: CheckCircleIcon, cls: 'text-green-400', bg: 'bg-green-500/15' },
+  pending: { label: 'Pending', icon: ClockIcon, cls: 'text-yellow-400', bg: 'bg-yellow-500/15' },
+  rejected: { label: 'Rejected', icon: XCircleIcon, cls: 'text-red-400', bg: 'bg-red-500/15' },
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -132,7 +132,7 @@ export function ArtistDashboardPage() {
       if (merged.length > 0 && !expandedAlbum) setExpandedAlbum(merged[0].id)
     } catch (err) {
       const status = (err as { response?: { status?: number; data?: { message?: string } } })?.response?.status
-      const msg    = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(`Failed to load your releases. (${status ?? 'network'}) ${msg ?? ''}`.trim())
     } finally {
       setLoading(false)
@@ -345,7 +345,7 @@ export function ArtistDashboardPage() {
     if (!from || from === targetId) return
 
     const fromIdx = trackList.findIndex((t) => t.id === from)
-    const toIdx   = trackList.findIndex((t) => t.id === targetId)
+    const toIdx = trackList.findIndex((t) => t.id === targetId)
     if (fromIdx === -1 || toIdx === -1) return
 
     const reordered = [...trackList]
@@ -565,13 +565,12 @@ export function ArtistDashboardPage() {
                       {album.trackList.length} track{album.trackList.length !== 1 ? 's' : ''}
                     </p>
                     {album.reviewNote && (
-                      <p className={`text-xs mt-1 px-2 py-1 rounded italic ${
-                        album.status === 'rejected'
+                      <p className={`text-xs mt-1 px-2 py-1 rounded italic ${album.status === 'rejected'
                           ? 'bg-red-500/10 text-red-400'
                           : album.status === 'approved'
-                          ? 'bg-green-500/10 text-green-400'
-                          : 'bg-amber-500/10 text-amber-400'
-                      }`}>
+                            ? 'bg-green-500/10 text-green-400'
+                            : 'bg-amber-500/10 text-amber-400'
+                        }`}>
                         {album.status === 'rejected' ? 'Rejection note' : album.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {album.reviewNote}
                       </p>
                     )}
@@ -773,170 +772,168 @@ export function ArtistDashboardPage() {
                         <tbody>
                           {album.trackList.map((t) => {
                             const canEdit = t.status !== 'approved'
-                            const isDragging  = dragId === t.id
+                            const isDragging = dragId === t.id
                             const isDropTarget = dropId === t.id && dragId !== t.id
                             return (
                               <React.Fragment key={t.id}>
-                              <tr
-                                draggable={canEdit}
-                                onDragStart={(e) => canEdit && handleDragStart(e, t.id)}
-                                onDragOver={(e) => canEdit && handleDragOver(e, t.id)}
-                                onDrop={(e) => handleDrop(e, t.id, album.id, album.trackList)}
-                                onDragEnd={handleDragEnd}
-                                className={`border-b border-elevated/10 transition-colors ${
-                                  isDropTarget ? 'bg-accent/10 border-t-2 border-t-accent'
-                                  : isDragging  ? 'opacity-40 bg-elevated/30'
-                                  : 'hover:bg-elevated/20'
-                                }`}
-                              >
-                                {/* Drag handle */}
-                                <td className="px-2 py-2.5 w-7">
-                                  {canEdit && (
-                                    <span className="cursor-grab active:cursor-grabbing text-muted hover:text-secondary transition-colors">
-                                      <Bars3Icon className="w-4 h-4" />
-                                    </span>
-                                  )}
-                                </td>
-
-                                {/* Track number — click to edit inline */}
-                                <td className="px-2 py-2.5 w-10">
-                                  {editTrackId === t.id ? (
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      max={album.trackList.length}
-                                      value={editTrackNum}
-                                      onChange={(e) => setEditTrackNum(Number(e.target.value))}
-                                      onBlur={() => commitEditTrackNum(t, album.id, album.trackList)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') commitEditTrackNum(t, album.id, album.trackList)
-                                        if (e.key === 'Escape') setEditTrackId(null)
-                                      }}
-                                      autoFocus
-                                      className="w-10 bg-elevated border border-accent text-primary text-sm text-center rounded px-1 py-0.5 focus:outline-none"
-                                    />
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      disabled={!canEdit}
-                                      onClick={() => canEdit && startEditTrackNum(t)}
-                                      title={canEdit ? 'Click to edit track number' : undefined}
-                                      className={`text-sm w-7 text-center rounded px-1 py-0.5 transition-colors ${canEdit ? 'text-secondary hover:text-primary hover:bg-elevated/60 cursor-text' : 'text-secondary cursor-default'}`}
-                                    >
-                                      {savingTrackId === t.id ? <Spinner size="sm" /> : t.trackNumber}
-                                    </button>
-                                  )}
-                                </td>
-
-                                <td className="px-4 py-2.5">
-                                  <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-primary text-sm font-medium">{t.title}</span>
-                                      {t.explicit && (
-                                        <span className="text-xs px-1 py-0.5 rounded bg-elevated text-secondary font-mono">E</span>
-                                      )}
-                                    </div>
-                                    {t.reviewNote && (
-                                      <span className={`text-xs italic ${
-                                        t.status === 'rejected'
-                                          ? 'text-red-400'
-                                          : t.status === 'approved'
-                                          ? 'text-green-400'
-                                          : 'text-amber-400'
-                                      }`}>
-                                        {t.status === 'rejected' ? 'Rejection note' : t.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {t.reviewNote}
+                                <tr
+                                  draggable={canEdit}
+                                  onDragStart={(e) => canEdit && handleDragStart(e, t.id)}
+                                  onDragOver={(e) => canEdit && handleDragOver(e, t.id)}
+                                  onDrop={(e) => handleDrop(e, t.id, album.id, album.trackList)}
+                                  onDragEnd={handleDragEnd}
+                                  className={`border-b border-elevated/10 transition-colors ${isDropTarget ? 'bg-accent/10 border-t-2 border-t-accent'
+                                      : isDragging ? 'opacity-40 bg-elevated/30'
+                                        : 'hover:bg-elevated/20'
+                                    }`}
+                                >
+                                  {/* Drag handle */}
+                                  <td className="px-2 py-2.5 w-7">
+                                    {canEdit && (
+                                      <span className="cursor-grab active:cursor-grabbing text-muted hover:text-secondary transition-colors">
+                                        <Bars3Icon className="w-4 h-4" />
                                       </span>
                                     )}
-                                    <button
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); toggleHistory(t.id, 'track') }}
-                                      className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
-                                    >
-                                      <ClockIcon className="w-3 h-3" />
-                                      {historyOpen.has(t.id) ? 'Hide history' : 'History'}
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="px-4 py-2.5 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
-                                <td className="px-4 py-2.5"><StatusBadge status={t.status ?? 'pending'} /></td>
-                                <td className="px-4 py-2.5">
-                                  <div className="flex gap-1 items-center">
-                                    {t.status === 'rejected' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => { setResubmitTrackId(resubmitTrackId === t.id ? null : t.id); setResubmitNote('') }}
-                                        className={`p-1 rounded transition-colors ${resubmitTrackId === t.id ? 'bg-green-500/20 text-green-400' : 'hover:bg-green-500/20 text-muted hover:text-green-400'}`}
-                                        title="Resubmit for review"
-                                      >
-                                        <ArrowPathIcon className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                    {canEdit && (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteTrack(t, album.id)}
-                                        className="p-1 rounded hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors"
-                                        title="Delete track"
-                                      >
-                                        <TrashIcon className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                              {/* Inline track resubmit form */}
-                              {resubmitTrackId === t.id && (
-                                <tr className="border-b border-elevated/20 bg-green-500/5">
-                                  <td colSpan={5} className="px-4 py-3">
-                                    <div className="flex flex-col gap-2 max-w-lg">
-                                      <p className="text-xs font-semibold text-green-400">Resubmit track for review</p>
-                                      <textarea
+                                  </td>
+
+                                  {/* Track number — click to edit inline */}
+                                  <td className="px-2 py-2.5 w-10">
+                                    {editTrackId === t.id ? (
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={album.trackList.length}
+                                        value={editTrackNum}
+                                        onChange={(e) => setEditTrackNum(Number(e.target.value))}
+                                        onBlur={() => commitEditTrackNum(t, album.id, album.trackList)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter') commitEditTrackNum(t, album.id, album.trackList)
+                                          if (e.key === 'Escape') setEditTrackId(null)
+                                        }}
                                         autoFocus
-                                        rows={2}
-                                        value={resubmitNote}
-                                        onChange={(e) => setResubmitNote(e.target.value)}
-                                        placeholder="Optional message (what you changed…)"
-                                        className="w-full bg-elevated border border-elevated/50 focus:border-green-400/60 text-primary placeholder:text-muted rounded px-3 py-2 text-xs resize-none focus:outline-none transition-colors"
+                                        className="w-10 bg-elevated border border-accent text-primary text-sm text-center rounded px-1 py-0.5 focus:outline-none"
                                       />
-                                      <div className="flex gap-2">
-                                        <button type="button" onClick={() => { setResubmitTrackId(null); setResubmitNote('') }}
-                                          className="px-3 py-1 rounded text-xs font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors">
-                                          Cancel
-                                        </button>
-                                        <button type="button" onClick={() => handleResubmitTrack(t, album.id, resubmitNote)}
-                                          className="px-3 py-1 rounded text-xs font-semibold bg-green-500 hover:bg-green-600 text-white transition-colors">
-                                          Resubmit
-                                        </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={!canEdit}
+                                        onClick={() => canEdit && startEditTrackNum(t)}
+                                        title={canEdit ? 'Click to edit track number' : undefined}
+                                        className={`text-sm w-7 text-center rounded px-1 py-0.5 transition-colors ${canEdit ? 'text-secondary hover:text-primary hover:bg-elevated/60 cursor-text' : 'text-secondary cursor-default'}`}
+                                      >
+                                        {savingTrackId === t.id ? <Spinner size="sm" /> : t.trackNumber}
+                                      </button>
+                                    )}
+                                  </td>
+
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex flex-col gap-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-primary text-sm font-medium">{t.title}</span>
+                                        {t.explicit && (
+                                          <span className="text-xs px-1 py-0.5 rounded bg-elevated text-secondary font-mono">E</span>
+                                        )}
                                       </div>
+                                      {t.reviewNote && (
+                                        <span className={`text-xs italic ${t.status === 'rejected'
+                                            ? 'text-red-400'
+                                            : t.status === 'approved'
+                                              ? 'text-green-400'
+                                              : 'text-amber-400'
+                                          }`}>
+                                          {t.status === 'rejected' ? 'Rejection note' : t.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {t.reviewNote}
+                                        </span>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); toggleHistory(t.id, 'track') }}
+                                        className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
+                                      >
+                                        <ClockIcon className="w-3 h-3" />
+                                        {historyOpen.has(t.id) ? 'Hide history' : 'History'}
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-2.5 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
+                                  <td className="px-4 py-2.5"><StatusBadge status={t.status ?? 'pending'} /></td>
+                                  <td className="px-4 py-2.5">
+                                    <div className="flex gap-1 items-center">
+                                      {t.status === 'rejected' && (
+                                        <button
+                                          type="button"
+                                          onClick={() => { setResubmitTrackId(resubmitTrackId === t.id ? null : t.id); setResubmitNote('') }}
+                                          className={`p-1 rounded transition-colors ${resubmitTrackId === t.id ? 'bg-green-500/20 text-green-400' : 'hover:bg-green-500/20 text-muted hover:text-green-400'}`}
+                                          title="Resubmit for review"
+                                        >
+                                          <ArrowPathIcon className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
+                                      {canEdit && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteTrack(t, album.id)}
+                                          className="p-1 rounded hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors"
+                                          title="Delete track"
+                                        >
+                                          <TrashIcon className="w-3.5 h-3.5" />
+                                        </button>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
-                              )}
-                              {/* Track review history panel */}
-                              {historyOpen.has(t.id) && (
-                                <tr className="border-b border-elevated/20 bg-elevated/5">
-                                  <td colSpan={6} className="px-4 py-2">
-                                    {historyLoading.has(t.id) ? (
-                                      <div className="flex items-center gap-1.5 text-xs text-secondary">
-                                        <Spinner size="sm" /> Loading…
+                                {/* Inline track resubmit form */}
+                                {resubmitTrackId === t.id && (
+                                  <tr className="border-b border-elevated/20 bg-green-500/5">
+                                    <td colSpan={5} className="px-4 py-3">
+                                      <div className="flex flex-col gap-2 max-w-lg">
+                                        <p className="text-xs font-semibold text-green-400">Resubmit track for review</p>
+                                        <textarea
+                                          autoFocus
+                                          rows={2}
+                                          value={resubmitNote}
+                                          onChange={(e) => setResubmitNote(e.target.value)}
+                                          placeholder="Optional message (what you changed…)"
+                                          className="w-full bg-elevated border border-elevated/50 focus:border-green-400/60 text-primary placeholder:text-muted rounded px-3 py-2 text-xs resize-none focus:outline-none transition-colors"
+                                        />
+                                        <div className="flex gap-2">
+                                          <button type="button" onClick={() => { setResubmitTrackId(null); setResubmitNote('') }}
+                                            className="px-3 py-1 rounded text-xs font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors">
+                                            Cancel
+                                          </button>
+                                          <button type="button" onClick={() => handleResubmitTrack(t, album.id, resubmitNote)}
+                                            className="px-3 py-1 rounded text-xs font-semibold bg-green-500 hover:bg-green-600 text-white transition-colors">
+                                            Resubmit
+                                          </button>
+                                        </div>
                                       </div>
-                                    ) : !reviewHistory[t.id] || reviewHistory[t.id].length === 0 ? (
-                                      <p className="text-xs text-muted italic">No review history yet.</p>
-                                    ) : (
-                                      <div className="flex flex-col gap-1">
-                                        <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Track review history</p>
-                                        {reviewHistory[t.id].map((h) => (
-                                          <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
-                                            <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
-                                            <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
-                                            {h.note && <span className="text-secondary italic">— {h.note}</span>}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </td>
-                                </tr>
-                              )}
+                                    </td>
+                                  </tr>
+                                )}
+                                {/* Track review history panel */}
+                                {historyOpen.has(t.id) && (
+                                  <tr className="border-b border-elevated/20 bg-elevated/5">
+                                    <td colSpan={6} className="px-4 py-2">
+                                      {historyLoading.has(t.id) ? (
+                                        <div className="flex items-center gap-1.5 text-xs text-secondary">
+                                          <Spinner size="sm" /> Loading…
+                                        </div>
+                                      ) : !reviewHistory[t.id] || reviewHistory[t.id].length === 0 ? (
+                                        <p className="text-xs text-muted italic">No review history yet.</p>
+                                      ) : (
+                                        <div className="flex flex-col gap-1">
+                                          <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Track review history</p>
+                                          {reviewHistory[t.id].map((h) => (
+                                            <div key={h.id} className={`flex items-start gap-2 text-xs rounded px-2 py-1.5 ${h.action === 'rejected' ? 'bg-red-500/10' : h.action === 'resubmitted' ? 'bg-amber-500/10' : 'bg-green-500/10'}`}>
+                                              <span className={`font-semibold capitalize shrink-0 ${h.action === 'rejected' ? 'text-red-400' : h.action === 'resubmitted' ? 'text-amber-400' : 'text-green-400'}`}>{h.action}</span>
+                                              <span className="text-muted shrink-0">{new Date(h.reviewedAt).toLocaleString()}{h.reviewedByName && ` · ${h.reviewedByName}`}</span>
+                                              {h.note && <span className="text-secondary italic">— {h.note}</span>}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                )}
                               </React.Fragment>
                             )
                           })}

@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+:root {
+  --track-actions-width: 114px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --track-actions-width: 194px;
+  }
+}
+
+
 /*
  * Theme tokens are mapped (inline) to runtime CSS variables (--c-*) so the
  * whole UI re-themes by toggling `data-theme` on <html>. See themeStore.ts.

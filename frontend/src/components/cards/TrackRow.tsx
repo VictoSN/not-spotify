@@ -71,7 +71,7 @@ export function TrackRow({
   return (
     <div
       className="group grid items-center gap-4 px-4 py-2 rounded-md hover:bg-elevated/60 cursor-pointer"
-      style={{ gridTemplateColumns: showAlbum ? '16px 6fr 4fr 3fr 1fr' : '16px 6fr 3fr 1fr' }}
+      style={{ gridTemplateColumns: showAlbum ? '16px 6fr 4fr 3fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
       onClick={handlePlay}
     >
       {/* Index / play indicator */}
@@ -134,29 +134,52 @@ export function TrackRow({
       )}
 
       {/* Duration + actions */}
-      <div className="flex items-center justify-end gap-3">
-        {ratingCount > 0 && (
-          <span className="hidden sm:flex items-center gap-0.5 text-xs text-secondary/70 whitespace-nowrap" title={`${averageRating.toFixed(1)} average from ${ratingCount} rating${ratingCount !== 1 ? 's' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-accent/70" aria-hidden="true">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-            </svg>
-            {averageRating.toFixed(1)}
-            <span className="text-secondary/40 ml-0.5">({ratingCount})</span>
-          </span>
-        )}
-        <button
-          onClick={toggleLike}
-          className={`opacity-0 group-hover:opacity-100 transition-opacity ${isLiked ? 'opacity-100' : ''}`}
-          aria-label={isLiked ? 'Unlike' : 'Like'}
-        >
-          {isLiked ? (
-            <HeartSolid className="w-4 h-4 text-accent" />
+      <div
+        className="grid grid-cols-[32px_50px_32px] sm:grid-cols-[80px_32px_50px_32px] items-center gap-1.5 sm:gap-2 justify-end w-[114px] sm:w-[194px] ml-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Rating slot (Col 1 on desktop) */}
+        <div className="hidden sm:block">
+          {ratingCount > 0 ? (
+            <span
+              className="flex items-center gap-0.5 text-xs text-secondary/70 whitespace-nowrap"
+              title={`${averageRating.toFixed(1)} average from ${ratingCount} rating${ratingCount !== 1 ? 's' : ''}`}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 text-accent/70" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              {averageRating.toFixed(1)}
+              <span className="text-secondary/40 ml-0.5">({ratingCount})</span>
+            </span>
           ) : (
-            <HeartIcon className="w-4 h-4 text-secondary hover:text-primary" />
+            <div className="w-[80px]" />
           )}
-        </button>
-        <span className="text-sm text-secondary">{formatMs(track.durationMs)}</span>
-        <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} />
+        </div>
+
+        {/* Like button slot (Col 2 on desktop / Col 1 on mobile) */}
+        <div className="flex justify-center">
+          <button
+            onClick={toggleLike}
+            className={`opacity-0 group-hover:opacity-100 transition-opacity ${isLiked ? 'opacity-100' : ''}`}
+            aria-label={isLiked ? 'Unlike' : 'Like'}
+          >
+            {isLiked ? (
+              <HeartSolid className="w-4 h-4 text-accent" />
+            ) : (
+              <HeartIcon className="w-4 h-4 text-secondary hover:text-primary" />
+            )}
+          </button>
+        </div>
+
+        {/* Duration slot (Col 3 on desktop / Col 2 on mobile) */}
+        <div className="text-right text-sm text-secondary pr-1">
+          {formatMs(track.durationMs)}
+        </div>
+
+        {/* Menu slot (Col 4 on desktop / Col 3 on mobile) */}
+        <div className="flex justify-center">
+          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} />
+        </div>
       </div>
     </div>
   )

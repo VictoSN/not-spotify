@@ -1,0 +1,39 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# .NET tooling
+*.swp
+*.*~
+project.lock.json
+.DS_Store
+*.pyc
+
+# Coverage / test results
+coverage*.xml
+*.coverage
+*.coveragexml
+TestResults/
+
+# Rider
+.idea/
+
+# Secrets — should never be in the repo, but belt-and-braces
+secrets.json
+appsettings.Local.json
+appsettings.*.Local.json
+*.pfx
+.env
+.env.*
+
+# Local media uploads — keep folder structure (.gitkeep) but not the files
+src/NotSpotify.Api/wwwroot/uploads/**/*
+!src/NotSpotify.Api/wwwroot/uploads/**/.gitkeep

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Main/Project/Cloud/not-spotify/backend/**)",
+      "Bash(dotnet restore *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet tool *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet user-secrets *)",
+      "Bash(dotnet run *)",
+      "Bash(curl -sk https://localhost:7080/genres)",
+      "Bash(curl -sk https://localhost:7080/tracks/featured)",
+      "Bash(curl -sk -X POST https://localhost:7080/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"alex@example.com\",\"password\":\"Password123!\"}' -c /tmp/cookies.txt)",
+      "Bash(curl -sk -X POST https://localhost:7080/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"alex@example.com\",\"password\":\"Password123!\"}')"
+    ]
+  }
+}

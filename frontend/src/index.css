@@ -1,0 +1,247 @@
+@import "tailwindcss";
+
+/*
+ * Theme tokens are mapped (inline) to runtime CSS variables (--c-*) so the
+ * whole UI re-themes by toggling `data-theme` on <html>. See themeStore.ts.
+ */
+@theme inline {
+  /* Backgrounds */
+  --color-base: var(--c-base);
+  --color-page: var(--c-page);
+  --color-surface: var(--c-surface);
+  --color-elevated: var(--c-elevated);
+  --color-sidebar: var(--c-sidebar);
+
+  /* Accent */
+  --color-accent: var(--c-accent);
+  --color-accent-dark: var(--c-accent-dark);
+  --color-accent-dim: var(--c-accent-dim);
+
+  /* Text */
+  --color-primary: var(--c-primary);
+  --color-secondary: var(--c-secondary);
+  --color-muted: var(--c-muted);
+
+  /* Fonts */
+  --font-sans: "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ── Dark theme (default) — Spotify green ─────────────────────── */
+:root,
+html[data-theme="dark"] {
+  --c-base: #000000;
+  --c-page: #121212;
+  --c-surface: #181818;
+  --c-elevated: #282828;
+  --c-sidebar: #121212;
+
+  --c-accent: #1ed760;
+  --c-accent-dark: #1db954;
+  --c-accent-dim: #16341f;
+
+  --c-primary: #ffffff;
+  --c-secondary: #b3b3b3;
+  --c-muted: #6a6a6a;
+
+  color-scheme: dark;
+  background-color: var(--c-base);
+}
+
+/* ── Light theme ───────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --c-base: #e9edeb;
+  --c-page: #fbfcfb;
+  --c-surface: #ffffff;
+  --c-elevated: #edf1ef;
+  --c-sidebar: #ffffff;
+
+  --c-accent: #1ed760;
+  --c-accent-dark: #1db954;
+  --c-accent-dim: #dff4e7;
+
+  --c-primary: #171717;
+  --c-secondary: #5f6561;
+  --c-muted: #8a918d;
+
+  color-scheme: light;
+  background-color: var(--c-base);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--c-base);
+  color: var(--c-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Spotify-style tighter tracking on bold display text */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Smooth the theme transition on broad surfaces (not on transforms) */
+body,
+.theme-transition {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Scrollbar styling (theme-neutral translucent thumb) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.5);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.8);
+}
+
+/* Hide scrollbar for horizontal rails (used by HorizontalScroller) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Content fade-in (e.g. library expand/collapse) — smooth without reflow glitches */
+@keyframes ns-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: ns-fade-in 0.22s ease-out;
+}
+
+@keyframes auth-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes auth-overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes auth-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes auth-card-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+}
+
+@keyframes auth-art-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes mini-player-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-auth-overlay-in {
+  animation: auth-overlay-in 0.18s ease-out both;
+}
+
+.animate-auth-overlay-out {
+  animation: auth-overlay-out 0.16s ease-in both;
+  pointer-events: none;
+}
+
+.animate-auth-card-in {
+  animation: auth-card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-auth-card-out {
+  animation: auth-card-out 0.16s ease-in both;
+}
+
+.animate-auth-art-in {
+  animation: auth-art-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-auth-art-out {
+  animation: auth-card-out 0.16s ease-in both;
+}
+
+.animate-mini-player-in {
+  animation: mini-player-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-auth-overlay-in,
+  .animate-auth-overlay-out,
+  .animate-auth-card-in,
+  .animate-auth-card-out,
+  .animate-auth-art-in,
+  .animate-auth-art-out,
+  .animate-mini-player-in {
+    animation: none;
+  }
+}

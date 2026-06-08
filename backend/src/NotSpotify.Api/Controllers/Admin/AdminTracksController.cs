@@ -30,11 +30,12 @@ public class AdminTracksController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TrackDto>>> List(CancellationToken ct = default)
+    public async Task<ActionResult<IEnumerable<TrackDto>>> List([FromQuery] string? status = null, CancellationToken ct = default)
     {
-        var tracks = await BaseQuery()
-            .OrderBy(t => t.Album.Title).ThenBy(t => t.TrackNumber)
-            .ToListAsync(ct);
+        var q = BaseQuery().AsQueryable();
+        if (!string.IsNullOrEmpty(status))
+            q = q.Where(t => t.Status == status);
+        var tracks = await q.OrderBy(t => t.Album.Title).ThenBy(t => t.TrackNumber).ToListAsync(ct);
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
 

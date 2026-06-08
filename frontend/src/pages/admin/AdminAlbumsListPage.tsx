@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 
-type Tab = 'all' | 'pending'
+type Tab = 'pending' | 'approved' | 'rejected' | 'all'
 
 type SortDir = 'asc' | 'desc'
 type ArtistSort = { field: 'name' | 'albums'; dir: SortDir }
@@ -106,7 +106,12 @@ export function AdminAlbumsListPage() {
     setTrackCache(new Map())
     setPlayingId(null)
     try {
-      setAlbums(t === 'pending' ? await adminService.listPendingAlbums() : await adminService.listAlbums())
+      setAlbums(
+        t === 'pending'  ? await adminService.listPendingAlbums() :
+        t === 'approved' ? await adminService.listAlbums('approved') :
+        t === 'rejected' ? await adminService.listAlbums('rejected') :
+                           await adminService.listAlbums()
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load albums')
     } finally {
@@ -190,9 +195,9 @@ export function AdminAlbumsListPage() {
         const updated = action === 'approve'
           ? await adminService.approveAlbum(id, note || undefined)
           : await adminService.rejectAlbum(id, note || undefined)
-        setAlbums((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)))
-        // Remove from pending view
-        if (tab === 'pending') setAlbums((prev) => prev.filter((a) => a.id !== id))
+        // Remove from any single-status tab since status changed
+        if (tab !== 'all') setAlbums((prev) => prev.filter((a) => a.id !== id))
+        else setAlbums((prev) => prev.map((a) => (a.id === id ? { ...a, ...updated } : a)))
       } else {
         // track
         if (action === 'approve') await adminService.approveTrack(id, note || undefined)
@@ -299,13 +304,18 @@ export function AdminAlbumsListPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
-        {(['pending', 'all'] as Tab[]).map((t) => (
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {([
+          ['pending',  'Pending'],
+          ['approved', 'Approved'],
+          ['rejected', 'Rejected'],
+          ['all',      'All'],
+        ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
               tab === t ? 'bg-accent text-white' : 'bg-elevated text-secondary hover:text-primary'
             }`}>
-            {t === 'pending' ? 'Pending review' : 'All albums'}
+            {label}
           </button>
         ))}
       </div>
@@ -321,7 +331,7 @@ export function AdminAlbumsListPage() {
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : sortedArtists.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary text-sm">
-          {tab === 'pending' ? 'No albums awaiting review.' : 'No albums yet.'}
+          {tab === 'pending' ? 'No albums awaiting review.' : tab === 'approved' ? 'No approved albums.' : tab === 'rejected' ? 'No rejected albums.' : 'No albums yet.'}
         </div>
       ) : (
         <div className="space-y-3">

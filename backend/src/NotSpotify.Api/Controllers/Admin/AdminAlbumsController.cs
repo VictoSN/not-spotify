@@ -30,12 +30,12 @@ public class AdminAlbumsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<AlbumDto>>> List(CancellationToken ct = default)
+    public async Task<ActionResult<IEnumerable<AlbumDto>>> List([FromQuery] string? status = null, CancellationToken ct = default)
     {
-        var albums = await _db.Albums
-            .Include(a => a.Artist)
-            .OrderByDescending(a => a.ReleaseDate)
-            .ToListAsync(ct);
+        var q = _db.Albums.Include(a => a.Artist).AsQueryable();
+        if (!string.IsNullOrEmpty(status))
+            q = q.Where(a => a.Status == status);
+        var albums = await q.OrderByDescending(a => a.ReleaseDate).ToListAsync(ct);
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
 

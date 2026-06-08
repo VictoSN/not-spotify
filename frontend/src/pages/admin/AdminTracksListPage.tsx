@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 
-type Tab = 'all' | 'pending'
+type Tab = 'pending' | 'approved' | 'rejected' | 'all'
 
 function fmtDuration(ms: number) {
   const s = Math.floor(ms / 1000)
@@ -33,7 +33,12 @@ export function AdminTracksListPage() {
     setError(null)
     setPlayingId(null)
     try {
-      setTracks(t === 'pending' ? await adminService.listPendingTracks() : await adminService.listTracks())
+      setTracks(
+        t === 'pending'  ? await adminService.listPendingTracks() :
+        t === 'approved' ? await adminService.listTracks('approved') :
+        t === 'rejected' ? await adminService.listTracks('rejected') :
+                           await adminService.listTracks()
+      )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tracks')
     } finally {
@@ -98,16 +103,19 @@ export function AdminTracksListPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
-        {(['all', 'pending'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize transition-colors ${
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {([
+          ['pending',  'Pending'],
+          ['approved', 'Approved'],
+          ['rejected', 'Rejected'],
+          ['all',      'All'],
+        ] as [Tab, string][]).map(([t, label]) => (
+          <button key={t} onClick={() => setTab(t)}
+            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
               tab === t ? 'bg-accent text-white' : 'bg-elevated text-secondary hover:text-primary'
             }`}
           >
-            {t === 'pending' ? 'Pending review' : 'All tracks'}
+            {label}
           </button>
         ))}
       </div>
@@ -136,7 +144,7 @@ export function AdminTracksListPage() {
             <tbody>
               {tracks.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-secondary">
-                  {tab === 'pending' ? 'No tracks awaiting review.' : 'No tracks yet.'}
+                  {tab === 'pending' ? 'No tracks awaiting review.' : tab === 'approved' ? 'No approved tracks.' : tab === 'rejected' ? 'No rejected tracks.' : 'No tracks yet.'}
                 </td></tr>
               )}
               {tracks.map((t) => (
@@ -184,7 +192,7 @@ export function AdminTracksListPage() {
                           <span className="text-xs text-muted italic mr-1">No audio</span>
                         )}
 
-                        {tab === 'pending' ? (
+                        {t.status === 'pending' ? (
                           <>
                             <Button size="sm" onClick={() => startReview(t, 'approve')} disabled={!!actingId}>
                               <CheckCircleIcon className="w-4 h-4" />

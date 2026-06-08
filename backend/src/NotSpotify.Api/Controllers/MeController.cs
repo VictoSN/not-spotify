@@ -741,6 +741,66 @@ public class MeController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("artist-albums/{id:guid}/resubmit")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<AlbumDto>> ResubmitArtistAlbum(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id && a.ArtistId == user.ArtistId, ct);
+        if (album is null) return NotFound();
+        if (album.Status != "rejected")
+            return Conflict(new { message = "Only rejected releases can be resubmitted." });
+
+        album.Status = "pending";
+        album.ReviewNote = null;
+
+        // Also resubmit rejected tracks in this album
+        var rejectedTracks = await _db.Tracks
+            .Where(t => t.AlbumId == id && t.Status == "rejected")
+            .ToListAsync(ct);
+        foreach (var t in rejectedTracks)
+        {
+            t.Status = "pending";
+            t.ReviewNote = null;
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(album));
+    }
+
+    [HttpPost("artist-tracks/{id:guid}/resubmit")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TrackDto>> ResubmitArtistTrack(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var track = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album).ThenInclude(a => a.Artist)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (track is null) return NotFound();
+        if (track.Status != "rejected")
+            return Conflict(new { message = "Only rejected tracks can be resubmitted." });
+
+        track.Status = "pending";
+        track.ReviewNote = null;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await _mapper.ToDtoAsync(track, ct));
+    }
+
     // ──────────────────────────────────────────────
     // Saved tracks (liked songs)
     // ──────────────────────────────────────────────

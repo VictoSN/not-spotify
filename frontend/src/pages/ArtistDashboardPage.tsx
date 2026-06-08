@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   MusicalNoteIcon, CloudArrowUpIcon, CheckCircleIcon, ClockIcon,
   XCircleIcon, PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
-  PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon,
+  PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon, ArrowPathIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
@@ -214,6 +214,29 @@ export function ArtistDashboardPage() {
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Failed to delete release.')
+    }
+  }
+
+  const handleResubmitAlbum = async (album: AlbumWithTracks) => {
+    try {
+      const res = await api.post<Album>(`/me/artist-albums/${album.id}/resubmit`)
+      setAlbums((prev) => prev.map((a) => a.id === album.id ? { ...a, ...res.data, trackList: a.trackList.map((t) => ({ ...t, status: t.status === 'rejected' ? 'pending' : t.status, reviewNote: t.status === 'rejected' ? null : t.reviewNote })) } : a))
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? 'Failed to resubmit release.')
+    }
+  }
+
+  const handleResubmitTrack = async (track: Track, albumId: string) => {
+    try {
+      const res = await api.post<Track>(`/me/artist-tracks/${track.id}/resubmit`)
+      setAlbums((prev) => prev.map((a) => a.id === albumId
+        ? { ...a, trackList: a.trackList.map((t) => t.id === track.id ? { ...t, ...res.data } : t) }
+        : a
+      ))
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? 'Failed to resubmit track.')
     }
   }
 
@@ -499,6 +522,16 @@ export function ArtistDashboardPage() {
                   </div>
                   {album.status !== 'approved' && (
                     <>
+                      {album.status === 'rejected' && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleResubmitAlbum(album) }}
+                          className="p-1.5 rounded hover:bg-green-500/20 text-muted hover:text-green-400 transition-colors shrink-0"
+                          title="Resubmit for review"
+                        >
+                          <ArrowPathIcon className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={(e) => startEditAlbum(album, e)}
@@ -692,16 +725,28 @@ export function ArtistDashboardPage() {
                                 <td className="px-4 py-2.5 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
                                 <td className="px-4 py-2.5"><StatusBadge status={t.status ?? 'pending'} /></td>
                                 <td className="px-4 py-2.5">
-                                  {canEdit && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteTrack(t, album.id)}
-                                      className="p-1 rounded hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors"
-                                      title="Delete track"
-                                    >
-                                      <TrashIcon className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                  <div className="flex gap-1 items-center">
+                                    {t.status === 'rejected' && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleResubmitTrack(t, album.id)}
+                                        className="p-1 rounded hover:bg-green-500/20 text-muted hover:text-green-400 transition-colors"
+                                        title="Resubmit for review"
+                                      >
+                                        <ArrowPathIcon className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    {canEdit && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteTrack(t, album.id)}
+                                        className="p-1 rounded hover:bg-red-500/20 text-muted hover:text-red-400 transition-colors"
+                                        title="Delete track"
+                                      >
+                                        <TrashIcon className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             )

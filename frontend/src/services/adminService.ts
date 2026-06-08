@@ -95,8 +95,8 @@ export const adminService = {
   },
 
   // Albums
-  async listAlbums(): Promise<Album[]> {
-    const res = await api.get<Album[]>('/admin/albums')
+  async listAlbums(status?: string): Promise<Album[]> {
+    const res = await api.get<Album[]>('/admin/albums', { params: status ? { status } : undefined })
     return res.data
   },
 
@@ -144,8 +144,8 @@ export const adminService = {
   },
 
   // Tracks
-  async listTracks(): Promise<Track[]> {
-    const res = await api.get<Track[]>('/admin/tracks')
+  async listTracks(status?: string): Promise<Track[]> {
+    const res = await api.get<Track[]>('/admin/tracks', { params: status ? { status } : undefined })
     return res.data
   },
 

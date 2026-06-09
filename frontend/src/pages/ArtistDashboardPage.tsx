@@ -112,7 +112,7 @@ export function ArtistDashboardPage() {
       const [tracksRes, albumsRes, profileRes] = await Promise.all([
         api.get<Track[]>('/me/artist-tracks'),
         api.get<Album[]>('/me/artist-albums'),
-        api.get<{ isRevoked?: boolean; revocationNote?: string | null }>('/me/artist-profile').catch(() => ({ data: {} })),
+        api.get<{ isRevoked?: boolean; revocationNote?: string | null }>('/me/artist-profile').catch(() => ({ data: {} as { isRevoked?: boolean; revocationNote?: string | null } })),
       ])
       setIsRevoked(profileRes.data.isRevoked ?? false)
       setRevocationNote(profileRes.data.revocationNote ?? null)

@@ -61,7 +61,7 @@ export interface ReviewHistoryEntry {
   id: string
   entityType: string
   entityId: string
-  action: 'approved' | 'rejected'
+  action: 'approved' | 'rejected' | 'resubmitted'
   note: string | null
   reviewedByName: string | null
   reviewedAt: string

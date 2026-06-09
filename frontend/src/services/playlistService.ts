@@ -1,4 +1,4 @@
-import type { Playlist } from '@/types/playlist'
+import type { Playlist, PlaylistVisibility } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import { api } from './api'
 
@@ -27,14 +27,20 @@ export const playlistService = {
     return res.data
   },
 
-  async updateVisibility(playlistId: string, isPublic: boolean): Promise<Playlist> {
-    const res = await api.patch<Playlist>(`/playlists/${playlistId}`, { isPublic })
+  /** Three-state visibility setter. Use this for all new code. */
+  async setVisibility(playlistId: string, visibility: PlaylistVisibility): Promise<Playlist> {
+    const res = await api.patch<Playlist>(`/playlists/${playlistId}`, { visibility })
     return res.data
+  },
+
+  /** @deprecated Use setVisibility instead. */
+  async updateVisibility(playlistId: string, isPublic: boolean): Promise<Playlist> {
+    return this.setVisibility(playlistId, isPublic ? 'public' : 'private')
   },
 
   async update(
     playlistId: string,
-    payload: { name?: string; description?: string | null; isPublic?: boolean },
+    payload: { name?: string; description?: string | null; isPublic?: boolean; visibility?: PlaylistVisibility },
   ): Promise<Playlist> {
     const res = await api.patch<Playlist>(`/playlists/${playlistId}`, payload)
     return res.data

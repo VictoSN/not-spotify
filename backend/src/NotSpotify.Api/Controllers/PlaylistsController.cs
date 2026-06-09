@@ -105,11 +105,26 @@ public class PlaylistsController : ControllerBase
         var wasPublic = p.IsPublic;
         if (req.Name is not null) p.Name = req.Name;
         if (req.Description is not null) p.Description = req.Description;
-        if (req.IsPublic is not null) p.IsPublic = req.IsPublic.Value;
+
+        // Accept either the legacy IsPublic flag or the new 3-state Visibility field.
+        if (req.Visibility is not null)
+        {
+            var vis = req.Visibility.ToLowerInvariant();
+            if (vis is not ("public" or "friends" or "private"))
+                return BadRequest(new { message = "Visibility must be 'public', 'friends', or 'private'." });
+            p.Visibility = vis;
+            p.IsPublic = vis == "public";
+        }
+        else if (req.IsPublic is not null)
+        {
+            p.IsPublic = req.IsPublic.Value;
+            p.Visibility = req.IsPublic.Value ? "public" : "private";
+        }
+
         if (req.CoverUrl is not null) p.CoverUrl = req.CoverUrl;
         p.UpdatedAt = DateTime.UtcNow;
 
-        // When a playlist transitions from public -> private, revoke everyone else's
+        // When a playlist transitions from public -> private/friends, revoke everyone else's
         // saved reference so it disappears from their libraries on next refresh.
         if (wasPublic && !p.IsPublic)
         {

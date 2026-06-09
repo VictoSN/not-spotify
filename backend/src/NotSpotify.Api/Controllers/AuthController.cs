@@ -98,17 +98,35 @@ public class AuthController : ControllerBase
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+
         if (Request.Cookies.TryGetValue(RefreshCookieName, out var raw) && !string.IsNullOrEmpty(raw))
         {
             var hash = TokenService.HashRefreshToken(raw);
             var token = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
             if (token is not null && token.RevokedAt is null)
-            {
                 token.RevokedAt = DateTime.UtcNow;
-                await _db.SaveChangesAsync();
+        }
+
+        // Only clear LastSeenAt (go offline) when this is the user's LAST active session.
+        // If they're logged in on another device or tab, that device's heartbeat will
+        // keep LastSeenAt fresh and they'll stay online.
+        if (Guid.TryParse(userId, out var uid))
+        {
+            var hasOtherActiveSessions = await _db.RefreshTokens
+                .AnyAsync(t => t.UserId == uid
+                               && t.RevokedAt == null
+                               && t.ExpiresAt > DateTime.UtcNow);
+
+            if (!hasOtherActiveSessions)
+            {
+                var user = await _db.Users.FindAsync(uid);
+                if (user is not null)
+                    user.LastSeenAt = null;
             }
         }
 
+        await _db.SaveChangesAsync();
         Response.Cookies.Delete(RefreshCookieName);
         return NoContent();
     }

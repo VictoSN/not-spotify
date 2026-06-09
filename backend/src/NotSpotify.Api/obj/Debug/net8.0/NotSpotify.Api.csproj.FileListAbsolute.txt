@@ -256,3 +256,4 @@ C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\re
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\NotSpotify.Api.pdb
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\NotSpotify.Api.genruntimeconfig.cache
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\ref\NotSpotify.Api.dll
+C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\bin\Debug\net8.0\NotSpotify.Api.staticwebassets.runtime.json

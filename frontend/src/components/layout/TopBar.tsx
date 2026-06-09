@@ -13,12 +13,15 @@ import {
   ArrowDownTrayIcon,
   ClockIcon,
   SparklesIcon,
+  UsersIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useFriendStore } from '@/stores/friendStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { Avatar } from '@/components/ui/Avatar'
+import { FriendPanel } from '@/components/friends/FriendPanel'
 
 export function TopBar() {
   const navigate = useNavigate()
@@ -33,7 +36,9 @@ export function TopBar() {
   const isArtist = user?.roles?.includes('Artist') ?? false
 
   const [showMenu, setShowMenu] = useState(false)
+  const [showFriends, setShowFriends] = useState(false)
   const [showSearchRecents, setShowSearchRecents] = useState(false)
+  const pendingCount = useFriendStore((s) => s.requests.length)
   const [recents, setRecents] = useState<RecentSearch[]>([])
   const [searchValue, setSearchValue] = useState(currentQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -199,10 +204,38 @@ export function TopBar() {
         </Link>
       )}
 
+      {/* Friends panel toggle */}
+      <div className="relative">
+        <button
+          onClick={() => {
+            setShowFriends((v) => !v)
+            setShowMenu(false)
+          }}
+          aria-label="Friends"
+          className="relative flex items-center justify-center w-10 h-10 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 transition-all text-secondary hover:text-primary"
+        >
+          <UsersIcon className="w-5 h-5" />
+          {pendingCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              {pendingCount > 9 ? '9+' : pendingCount}
+            </span>
+          )}
+        </button>
+        {showFriends && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowFriends(false)} />
+            <FriendPanel onClose={() => setShowFriends(false)} />
+          </>
+        )}
+      </div>
+
       {/* Right: user menu */}
       <div className="relative">
         <button
-          onClick={() => setShowMenu((v) => !v)}
+          onClick={() => {
+            setShowMenu((v) => !v)
+            setShowFriends(false)
+          }}
           className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-3 py-1 transition-colors"
           aria-label="User menu"
         >

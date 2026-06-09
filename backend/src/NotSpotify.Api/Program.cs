@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using NotSpotify.Api.Data;
+using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
@@ -51,6 +52,22 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
             ClockSkew = TimeSpan.FromSeconds(30),
         };
+
+        // SignalR WebSocket connections cannot send custom headers in browsers,
+        // so the JWT arrives as ?access_token= on /hubs/* routes instead.
+        opt.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"].ToString();
+                if (!string.IsNullOrEmpty(token) &&
+                    ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    ctx.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -84,6 +101,7 @@ builder.Services.AddCors(opt =>
         .AllowCredentials());
 });
 
+builder.Services.AddSignalR();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -123,6 +141,7 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<PresenceHub>("/hubs/presence");
 
 using (var scope = app.Services.CreateScope())
 {

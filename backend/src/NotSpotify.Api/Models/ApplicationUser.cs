@@ -20,7 +20,12 @@ public class ApplicationUser : IdentityUser<Guid>
     // Set when the user is approved as an artist; null for regular users.
     public Guid? ArtistId { get; set; }
 
+    // Updated on heartbeat / track play — used to derive online status.
+    public DateTime? LastSeenAt { get; set; }
+
     public ICollection<Playlist> Playlists { get; set; } = new List<Playlist>();
+    public ICollection<Friendship> SentFriendRequests { get; set; } = new List<Friendship>();
+    public ICollection<Friendship> ReceivedFriendRequests { get; set; } = new List<Friendship>();
     public ICollection<UserSavedPlaylist> SavedPlaylists { get; set; } = new List<UserSavedPlaylist>();
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public ICollection<RecentSearch> RecentSearches { get; set; } = new List<RecentSearch>();

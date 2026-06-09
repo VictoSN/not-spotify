@@ -33,6 +33,7 @@ import { AdminTracksListPage } from '@/pages/admin/AdminTracksListPage'
 import { AdminTrackFormPage } from '@/pages/admin/AdminTrackFormPage'
 import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
+import { UserProfilePage } from '@/pages/UserProfilePage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -63,6 +64,7 @@ export const router = createBrowserRouter([
           { path: 'playlists', element: <RecommendedPlaylistsPage /> },
           { path: 'popular-artists', element: <PopularArtistsPage /> },
           { path: 'new-releases', element: <NewReleasesPage /> },
+          { path: 'user/:userId', element: <UserProfilePage /> },
           {
             element: <ProtectedRoute />,
             children: [

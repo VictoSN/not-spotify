@@ -8,6 +8,12 @@ public class Playlist
     public string? CoverUrl { get; set; }
     public string? CoverKey { get; set; }
     public bool IsPublic { get; set; } = true;
+
+    /// <summary>
+    /// Three-state visibility: "public" | "friends" | "private".
+    /// Kept in sync with IsPublic: public=true/true, friends=false/friends, private=false/private.
+    /// </summary>
+    public string Visibility { get; set; } = "public";
     public long FollowerCount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

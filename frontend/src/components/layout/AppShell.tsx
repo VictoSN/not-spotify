@@ -10,6 +10,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
+import { useFriendPolling } from '@/hooks/useFriendPolling'
+import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 
 export function AppShell() {
   const isMobile = useIsMobile()
@@ -18,6 +20,11 @@ export function AppShell() {
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const prevAuth = useRef(isAuthenticated)
+
+  // Real-time presence via WebSocket — instant online/offline updates.
+  usePresenceSocket()
+  // Social data (now-playing, requests, friends list) on a slower poll.
+  useFriendPolling()
 
   useEffect(() => {
     if (prevAuth.current && !isAuthenticated) {

@@ -85,6 +85,7 @@ public record PlaylistDto(
     string? Description,
     string? CoverUrl,
     bool IsPublic,
+    string Visibility,
     UserRefDto Owner,
     IEnumerable<PlaylistTrackDto> Tracks,
     long FollowerCount,
@@ -101,6 +102,7 @@ public record PlaylistSummaryDto(
     string? Description,
     string? CoverUrl,
     bool IsPublic,
+    string Visibility,
     UserRefDto Owner,
     int TrackCount,
     long FollowerCount,
@@ -112,7 +114,13 @@ public record PlaylistSummaryDto(
 
 public record CreatePlaylistRequest(string Name, string? Description, bool IsPublic = true);
 
-public record UpdatePlaylistRequest(string? Name, string? Description, bool? IsPublic, string? CoverUrl);
+public record UpdatePlaylistRequest(
+    string? Name,
+    string? Description,
+    bool? IsPublic,
+    string? Visibility,   // "public" | "friends" | "private"
+    string? CoverUrl
+);
 
 public record AddPlaylistTrackRequest(Guid TrackId);
 

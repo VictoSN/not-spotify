@@ -25,6 +25,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
     public DbSet<ReviewHistory> ReviewHistories => Set<ReviewHistory>();
+    public DbSet<Friendship> Friendships => Set<Friendship>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -232,6 +233,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // Most queries are "give me this user's recents, newest first" — index supports that.
             e.HasIndex(x => new { x.UserId, x.PlayedAt });
+        });
+
+        b.Entity<Friendship>(e =>
+        {
+            // Prevent duplicate friend requests in either direction at the DB level.
+            e.HasIndex(x => new { x.RequesterId, x.AddresseeId }).IsUnique();
+
+            e.HasOne(x => x.Requester)
+                .WithMany(u => u.SentFriendRequests)
+                .HasForeignKey(x => x.RequesterId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Addressee)
+                .WithMany(u => u.ReceivedFriendRequests)
+                .HasForeignKey(x => x.AddresseeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Fast lookup: "all friendships involving user X" (both as requester and addressee).
+            e.HasIndex(x => new { x.AddresseeId, x.Status });
+            e.HasIndex(x => new { x.RequesterId, x.Status });
         });
     }
 }

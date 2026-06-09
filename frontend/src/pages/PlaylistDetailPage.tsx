@@ -6,17 +6,21 @@ import {
   TrashIcon,
   GlobeAltIcon,
   LockClosedIcon,
+  UsersIcon,
   PencilSquareIcon,
   PhotoIcon,
   ArrowsRightLeftIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   XMarkIcon,
+  UserPlusIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import type { Playlist } from '@/types/playlist'
+import type { Playlist, PlaylistVisibility } from '@/types/playlist'
 import type { Track } from '@/types/track'
+import type { UserRef } from '@/types/user'
 import { playlistService } from '@/services/playlistService'
+import { collaboratorService } from '@/services/collaboratorService'
 import { trackService } from '@/services/trackService'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -27,6 +31,8 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
+import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { cn } from '@/utils/cn'
@@ -41,6 +47,8 @@ export function PlaylistDetailPage() {
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [collaborators, setCollaborators] = useState<UserRef[]>([])
+  const [inviteOpen, setInviteOpen] = useState(false)
   const [findPanelOpen, setFindPanelOpen] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Track[]>([])
@@ -69,6 +77,8 @@ export function PlaylistDetailPage() {
       setLoading(false)
       syncPlaylistTracks(p.id, p.tracks)
     })
+    // Fetch collaborators in parallel (silently ignore if endpoint not yet live).
+    collaboratorService.list(id).then(setCollaborators).catch(() => {})
   }, [id])
 
   // Keep local playlist state in sync with the store so that add/remove operations
@@ -83,13 +93,13 @@ export function PlaylistDetailPage() {
   // Fetch recommendations once the playlist (and its tracks/genres) are loaded — they
   // refresh after every add so newly-added tracks drop off the list.
   useEffect(() => {
-    if (!playlist?.isOwner) return
+    if (!playlist?.isOwner && !playlist?.isCollaborator) return
     playlistService.getRecommendations(playlist.id, 10).then(setRecommendations).catch(() => setRecommendations([]))
-  }, [playlist?.id, playlist?.isOwner])
+  }, [playlist?.id, playlist?.isOwner, playlist?.isCollaborator])
 
   // Live-search the catalog as the user types. Clearing the box restores recommendations.
   useEffect(() => {
-    if (!playlist?.isOwner) return
+    if (!playlist?.isOwner && !playlist?.isCollaborator) return
     const q = debouncedQuery.trim()
     if (!q) {
       setSearchResults([])
@@ -102,7 +112,7 @@ export function PlaylistDetailPage() {
       if (!cancelled) setSearchResults([])
     })
     return () => { cancelled = true }
-  }, [debouncedQuery, playlist?.isOwner])
+  }, [debouncedQuery, playlist?.isOwner, playlist?.isCollaborator])
 
   // Tracks already in the playlist (or in-flight) should never appear in the find panel.
   const findCandidates = useMemo(() => {
@@ -147,13 +157,24 @@ export function PlaylistDetailPage() {
     }
   }
 
+  const VISIBILITY_CYCLE: PlaylistVisibility[] = ['public', 'friends', 'private']
+
+  const currentVisibility = (): PlaylistVisibility => {
+    if (!playlist) return 'public'
+    const v = playlist.visibility
+    if (v === 'public' || v === 'friends' || v === 'private') return v
+    // Fallback: empty string from migration default or missing field
+    return playlist.isPublic ? 'public' : 'private'
+  }
+
   const handleVisibilityToggle = async () => {
     if (!playlist) return
-    const next = !playlist.isPublic
+    const cur = currentVisibility()
+    const next = VISIBILITY_CYCLE[(VISIBILITY_CYCLE.indexOf(cur) + 1) % VISIBILITY_CYCLE.length]
     setBusy(true)
     try {
       await setPlaylistVisibility(playlist.id, next)
-      setPlaylist({ ...playlist, isPublic: next })
+      setPlaylist({ ...playlist, visibility: next, isPublic: next === 'public' })
     } finally {
       setBusy(false)
     }
@@ -238,7 +259,7 @@ export function PlaylistDetailPage() {
         </div>
         <div className="min-w-0 pb-2">
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
-            {playlist.isPublic ? 'Public playlist' : 'Private playlist'}
+            {{ public: 'Public playlist', friends: 'Friends only', private: 'Private playlist' }[currentVisibility()]}
           </p>
           <h1 className="text-4xl sm:text-5xl font-black text-primary mt-1 mb-3">{playlist.name}</h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
@@ -290,20 +311,12 @@ export function PlaylistDetailPage() {
             <button
               onClick={handleVisibilityToggle}
               disabled={busy}
-              title={playlist.isPublic ? 'Make private' : 'Make public'}
+              title="Change visibility"
               className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
             >
-              {playlist.isPublic ? (
-                <>
-                  <GlobeAltIcon className="w-5 h-5" />
-                  Public
-                </>
-              ) : (
-                <>
-                  <LockClosedIcon className="w-5 h-5" />
-                  Private
-                </>
-              )}
+              {currentVisibility() === 'public' && <><GlobeAltIcon className="w-5 h-5" />Public</>}
+              {currentVisibility() === 'friends' && <><UsersIcon className="w-5 h-5" />Friends Only</>}
+              {currentVisibility() === 'private' && <><LockClosedIcon className="w-5 h-5" />Private</>}
             </button>
             <button
               onClick={handleDelete}
@@ -324,6 +337,34 @@ export function PlaylistDetailPage() {
                 Add songs
               </button>
             )}
+
+            {/* Collaborator strip */}
+            {collaborators.length > 0 && (
+              <div className="flex items-center gap-1 ml-2">
+                {collaborators.slice(0, 5).map((c) => (
+                  <Avatar
+                    key={c.id}
+                    src={c.avatarUrl}
+                    alt={c.name}
+                    size="sm"
+                    round
+                    className="ring-2 ring-base -ml-2 first:ml-0"
+                  />
+                ))}
+                {collaborators.length > 5 && (
+                  <span className="text-xs text-secondary ml-1">+{collaborators.length - 5}</span>
+                )}
+              </div>
+            )}
+
+            <button
+              onClick={() => setInviteOpen(true)}
+              title="Invite collaborator"
+              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+            >
+              <UserPlusIcon className="w-5 h-5" />
+              Invite
+            </button>
           </>
         )}
 
@@ -441,8 +482,8 @@ export function PlaylistDetailPage() {
         ))}
       </div>
 
-      {/* "Let's find something for your playlist" panel — owner only */}
-      {playlist.isOwner && findPanelOpen && (
+      {/* "Let's find something for your playlist" panel — owner & collaborators */}
+      {(playlist.isOwner || playlist.isCollaborator) && findPanelOpen && (
         <div className="px-6 pt-6 pb-10 border-t border-elevated/30 mt-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold text-primary">Let's find something for your playlist</h2>
@@ -484,6 +525,16 @@ export function PlaylistDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Invite collaborator modal */}
+      {inviteOpen && playlist && (
+        <InviteCollaboratorModal
+          playlistId={playlist.id}
+          existingCollaborators={collaborators}
+          onInvited={(user) => setCollaborators((prev) => [...prev, user])}
+          onClose={() => setInviteOpen(false)}
+        />
       )}
     </div>
   )

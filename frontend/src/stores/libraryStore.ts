@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
-import type { Playlist, PlaylistTrack } from '@/types/playlist'
+import type { Playlist, PlaylistTrack, PlaylistVisibility } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
 import { useAuthStore } from './authStore'
@@ -32,7 +32,7 @@ interface LibraryState {
   deletePlaylist: (playlistId: string) => Promise<void>
   savePlaylist: (playlist: Playlist) => Promise<void>
   unsavePlaylist: (playlistId: string) => Promise<void>
-  setPlaylistVisibility: (playlistId: string, isPublic: boolean) => Promise<void>
+  setPlaylistVisibility: (playlistId: string, visibility: PlaylistVisibility) => Promise<void>
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -186,10 +186,12 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set((s) => ({ savedPlaylists: s.savedPlaylists.filter((p) => p.id !== playlistId) }))
   },
 
-  setPlaylistVisibility: async (playlistId, isPublic) => {
-    await playlistService.updateVisibility(playlistId, isPublic)
+  setPlaylistVisibility: async (playlistId, visibility) => {
+    await playlistService.setVisibility(playlistId, visibility)
     set((s) => ({
-      savedPlaylists: s.savedPlaylists.map((p) => (p.id === playlistId ? { ...p, isPublic } : p)),
+      savedPlaylists: s.savedPlaylists.map((p) =>
+        p.id === playlistId ? { ...p, visibility, isPublic: visibility === 'public' } : p,
+      ),
     }))
   },
 

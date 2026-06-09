@@ -244,6 +244,12 @@ public class MeController : ControllerBase
             TrackId = req.TrackId,
             PlayedAt = DateTime.UtcNow,
         });
+
+        // Update LastSeenAt so friends can see this user is online.
+        var player = await _db.Users.FindAsync(new object[] { me.Value }, ct);
+        if (player is not null)
+            player.LastSeenAt = DateTime.UtcNow;
+
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }

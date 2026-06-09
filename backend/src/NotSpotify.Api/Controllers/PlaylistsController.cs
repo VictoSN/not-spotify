@@ -65,7 +65,26 @@ public class PlaylistsController : ControllerBase
         var p = await LoadFullPlaylist(id, ct);
         if (p is null) return NotFound();
         var me = CurrentUserId();
-        if (!p.IsPublic && p.OwnerId != me) return StatusCode(StatusCodes.Status403Forbidden);
+
+        // Access control:
+        //   public   → anyone
+        //   friends  → owner or accepted friend
+        //   private  → owner only
+        if (!p.IsPublic && p.OwnerId != me)
+        {
+            if (p.Visibility == "friends" && me != null)
+            {
+                var isFriend = await _db.Friendships.AnyAsync(f =>
+                    f.Status == FriendshipStatus.Accepted &&
+                    ((f.RequesterId == me && f.AddresseeId == p.OwnerId) ||
+                     (f.AddresseeId == me && f.RequesterId == p.OwnerId)), ct);
+                if (!isFriend) return StatusCode(StatusCodes.Status403Forbidden);
+            }
+            else
+            {
+                return StatusCode(StatusCodes.Status403Forbidden);
+            }
+        }
 
         var isOwner = me != null && p.OwnerId == me;
         var isSaved = me != null && await _db.UserSavedPlaylists.AnyAsync(s => s.UserId == me && s.PlaylistId == id, ct);

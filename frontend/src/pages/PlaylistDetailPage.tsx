@@ -41,6 +41,7 @@ export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
+  const [loadError, setLoadError] = useState<'notfound' | 'forbidden' | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -70,13 +71,19 @@ export function PlaylistDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    playlistService.getById(id).then((p) => {
-      setPlaylist(p)
-      setEditName(p.name)
-      setEditDescription(p.description ?? '')
-      setLoading(false)
-      syncPlaylistTracks(p.id, p.tracks)
-    })
+    playlistService.getById(id)
+      .then((p) => {
+        setPlaylist(p)
+        setEditName(p.name)
+        setEditDescription(p.description ?? '')
+        syncPlaylistTracks(p.id, p.tracks)
+      })
+      .catch((err) => {
+        const status = err?.response?.status
+        setLoadError(status === 403 ? 'forbidden' : 'notfound')
+        setPlaylist(null)
+      })
+      .finally(() => setLoading(false))
     // Fetch collaborators in parallel (silently ignore if endpoint not yet live).
     collaboratorService.list(id).then(setCollaborators).catch(() => {})
   }, [id])
@@ -129,7 +136,18 @@ export function PlaylistDetailPage() {
         <Spinner size="lg" />
       </div>
     )
-  if (!playlist) return <div className="p-8 text-secondary">Playlist not found.</div>
+  if (!playlist) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-2 text-center p-8">
+      {loadError === 'forbidden' ? (
+        <>
+          <p className="text-lg font-semibold text-primary">This playlist is private</p>
+          <p className="text-sm text-secondary">Only friends of the owner can view this playlist.</p>
+        </>
+      ) : (
+        <p className="text-secondary">Playlist not found.</p>
+      )}
+    </div>
+  )
 
   const tracks = playlist.tracks.map((pt) => pt.track)
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
+import { HeartIcon, StarIcon } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { albumService } from '@/services/albumService'
@@ -76,6 +77,24 @@ export function AlbumDetailPage() {
             <Badge variant="accent">{album.type.toUpperCase()}</Badge>
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-primary mb-2">{album.title}</h1>
+          {/* Stats row */}
+          <div className="flex items-center gap-4 mb-2 flex-wrap">
+            {(album.ratingCount ?? 0) > 0 && (
+              <span className="flex items-center gap-1 text-sm text-yellow-400 font-semibold">
+                <StarSolid className="w-4 h-4" />
+                {(album.averageRating ?? 0).toFixed(1)}
+                <span className="text-secondary font-normal ml-0.5">({(album.ratingCount ?? 0).toLocaleString()})</span>
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-sm text-secondary">
+              <PlayIcon className="w-4 h-4" />
+              {(album.totalPlays ?? 0).toLocaleString()} plays
+            </span>
+            <span className="flex items-center gap-1 text-sm text-secondary">
+              <HeartSolid className="w-4 h-4 text-accent" />
+              {(album.totalSaves ?? 0).toLocaleString()} saves
+            </span>
+          </div>
           <div className="flex items-center gap-2 text-sm">
             {album.artist.imageUrl && (
               <img src={album.artist.imageUrl} alt={album.artist.name} className="w-6 h-6 rounded-full object-cover" />
@@ -97,9 +116,18 @@ export function AlbumDetailPage() {
         <Button onClick={() => tracks.length && playWithGate(tracks[0], tracks)} size="lg" className="gap-2">
           <PlayIcon className="w-5 h-5" /> Play
         </Button>
-        <Button variant="outline" onClick={toggleSave}>
+        <button
+          onClick={toggleSave}
+          title={isSaved ? 'Remove from library' : 'Save to library'}
+          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+            isSaved
+              ? 'border-accent text-accent hover:border-red-400 hover:text-red-400'
+              : 'border-elevated/60 text-secondary hover:border-primary hover:text-primary'
+          }`}
+        >
+          {isSaved ? <HeartSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
           {isSaved ? 'Saved' : 'Save to library'}
-        </Button>
+        </button>
       </div>
 
       <div className="px-4">

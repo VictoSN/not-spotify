@@ -39,6 +39,7 @@ public class AlbumsController : ControllerBase
         var album = await _db.Albums
             .Where(a => a.Status == "approved")
             .Include(a => a.Artist)
+            .Include(a => a.Tracks)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
         if (album is null) return NotFound();
 
@@ -48,7 +49,8 @@ public class AlbumsController : ControllerBase
             .Distinct()
             .ToListAsync(ct);
 
-        return Ok(_mapper.ToDto(album, genres));
+        var saveCount = await _db.UserSavedAlbums.CountAsync(s => s.AlbumId == id, ct);
+        return Ok(_mapper.ToDto(album, genres, totalSaves: saveCount));
     }
 
     [HttpGet("{id:guid}/tracks")]

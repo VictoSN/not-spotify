@@ -48,7 +48,14 @@ public class AdminTracksController : ControllerBase
             q = q.Where(t => t.Status == status);
         }
         var tracks = await q.OrderBy(t => t.Album.Title).ThenBy(t => t.TrackNumber).ToListAsync(ct);
-        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+        var dtos = await _mapper.ToDtoListAsync(tracks, ct);
+        var ids = tracks.Select(t => t.Id).ToList();
+        var saveCounts = await _db.UserSavedTracks
+            .Where(s => ids.Contains(s.TrackId))
+            .GroupBy(s => s.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TrackId, x => x.Count, ct);
+        return Ok(dtos.Select(d => d with { SavedCount = saveCounts.GetValueOrDefault(d.Id, 0) }));
     }
 
     private IQueryable<Track> BaseQuery() => _db.Tracks

@@ -25,4 +25,8 @@ export interface Album {
   popularity: number
   status?: 'approved' | 'pending' | 'rejected'
   reviewNote?: string | null
+  totalPlays?: number
+  averageRating?: number
+  ratingCount?: number
+  totalSaves?: number
 }

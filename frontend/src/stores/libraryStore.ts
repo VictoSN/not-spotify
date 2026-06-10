@@ -5,6 +5,7 @@ import type { Album } from '@/types/album'
 import type { Playlist, PlaylistTrack, PlaylistVisibility } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
+import { albumService } from '@/services/albumService'
 import { useAuthStore } from './authStore'
 
 interface LibraryState {
@@ -49,9 +50,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   fetchLibrary: async () => {
     set({ isLoading: true, savedPlaylists: [], likedSongs: [], likedTrackIds: new Set(), followedArtists: [], followedArtistIds: new Set() })
     try {
-      const [playlists, savedRows] = await Promise.all([
+      const [playlists, savedRows, savedAlbums] = await Promise.all([
         playlistService.getUserPlaylists(),
         trackService.getLikedSongs(),
+        albumService.getSavedAlbums(),
       ])
       const likedTracks = savedRows.map((r) => r.track)
       const likedAtMap: Record<string, string> = {}
@@ -70,6 +72,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         likedSongs: likedTracks,
         likedAtMap,
         likedTrackIds: likedIds,
+        savedAlbums,
+        savedAlbumIds: new Set(savedAlbums.map((a) => a.id)),
         followedArtists,
         followedArtistIds: followedIds,
         isLoading: false,
@@ -144,6 +148,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       savedAlbums: [album, ...prev],
       savedAlbumIds: new Set([...prevIds, album.id]),
     })
+    try {
+      await albumService.saveToLibrary(album.id)
+    } catch {
+      set({ savedAlbums: prev, savedAlbumIds: prevIds })
+    }
   },
 
   unsaveAlbum: async (albumId) => {
@@ -155,6 +164,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       savedAlbums: prev.filter((a) => a.id !== albumId),
       savedAlbumIds: newIds,
     })
+    try {
+      await albumService.unsaveFromLibrary(albumId)
+    } catch {
+      set({ savedAlbums: prev, savedAlbumIds: prevIds })
+    }
   },
 
   createPlaylist: async (name, description, isPublic = true) => {

@@ -16,4 +16,17 @@ export const albumService = {
     const res = await api.get<{ albums: Album[] }>('/search', { params: { q: query, type: 'album' } })
     return res.data.albums
   },
+
+  async getSavedAlbums(): Promise<Album[]> {
+    const res = await api.get<Album[]>('/me/saved-albums')
+    return res.data
+  },
+
+  async saveToLibrary(albumId: string): Promise<void> {
+    await api.post(`/me/saved-albums/${albumId}`)
+  },
+
+  async unsaveFromLibrary(albumId: string): Promise<void> {
+    await api.delete(`/me/saved-albums/${albumId}`)
+  },
 }

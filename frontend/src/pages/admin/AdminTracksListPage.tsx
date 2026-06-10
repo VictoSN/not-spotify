@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckCircleIcon, XCircleIcon,
-  PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ClockIcon,
+  PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ClockIcon, StarIcon, HeartIcon,
 } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
@@ -187,14 +187,31 @@ export function AdminTracksListPage() {
                             {t.status === 'rejected' ? 'Rejection' : t.status === 'approved' ? 'Approval' : 'Prior rejection'} note: {t.reviewNote}
                           </span>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => toggleHistory(t.id)}
-                          className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
-                        >
-                          <ClockIcon className="w-3.5 h-3.5" />
-                          History
-                        </button>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {t.ratingCount > 0 && (
+                            <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                              <StarIcon className="w-3 h-3" />
+                              {t.averageRating.toFixed(1)}
+                              <span className="text-muted ml-0.5">({t.ratingCount})</span>
+                            </span>
+                          )}
+                          <span className="flex items-center gap-0.5 text-xs text-muted">
+                            <PlayIcon className="w-3 h-3" />
+                            {t.playCount.toLocaleString()}
+                          </span>
+                          <span className="flex items-center gap-0.5 text-xs text-muted">
+                            <HeartIcon className="w-3 h-3" />
+                            {(t.savedCount ?? 0).toLocaleString()}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => toggleHistory(t.id)}
+                            className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
+                          >
+                            <ClockIcon className="w-3.5 h-3.5" />
+                            History
+                          </button>
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-secondary text-sm">{t.artist.name}</td>

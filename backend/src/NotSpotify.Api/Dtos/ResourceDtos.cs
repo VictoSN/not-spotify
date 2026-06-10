@@ -24,7 +24,8 @@ public record TrackDto(
     double AverageRating,
     int? MyRating,
     string? Status = null,
-    string? ReviewNote = null
+    string? ReviewNote = null,
+    int SavedCount = 0
 );
 
 public record ArtistDto(
@@ -70,7 +71,11 @@ public record AlbumDto(
     string? Copyright,
     int Popularity,
     string Status,
-    string? ReviewNote = null
+    string? ReviewNote = null,
+    long TotalPlays = 0,
+    double AverageRating = 0.0,
+    int RatingCount = 0,
+    int TotalSaves = 0
 );
 
 public record GenreDto(Guid Id, string Name, string Slug, string Color, string? ImageUrl);

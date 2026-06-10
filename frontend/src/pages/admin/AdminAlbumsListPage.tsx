@@ -4,7 +4,7 @@ import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon,
   CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon,
   PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ChevronRightIcon, Bars3Icon,
-  ClockIcon,
+  ClockIcon, StarIcon, HeartIcon,
 } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -439,6 +439,29 @@ export function AdminAlbumsListPage() {
                                   ? <img src={album.coverUrl} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
                                   : <div className="w-8 h-8 rounded bg-elevated shrink-0" />}
                                 <span className="text-sm font-medium text-primary truncate">{album.title}</span>
+                                {tab === 'rejected' && album.status === 'pending' && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold shrink-0">
+                                    Resubmitted
+                                  </span>
+                                )}
+                              </div>
+                              {/* Album-level stats — always visible from DTO */}
+                              <div className="ml-7 flex items-center gap-2.5 flex-wrap">
+                                {(album.ratingCount ?? 0) > 0 && (
+                                  <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                                    <StarIcon className="w-3 h-3" />
+                                    {(album.averageRating ?? 0).toFixed(1)}
+                                    <span className="text-muted ml-0.5">({album.ratingCount})</span>
+                                  </span>
+                                )}
+                                <span className="flex items-center gap-0.5 text-xs text-muted">
+                                  <PlayIcon className="w-3 h-3" />
+                                  {(album.totalPlays ?? 0).toLocaleString()}
+                                </span>
+                                <span className="flex items-center gap-0.5 text-xs text-muted">
+                                  <HeartIcon className="w-3 h-3" />
+                                  {(album.totalSaves ?? 0).toLocaleString()}
+                                </span>
                               </div>
                               {album.reviewNote && (
                                 <p className={`ml-7 text-xs italic truncate ${album.status === 'rejected' ? 'text-red-400' : album.status === 'approved' ? 'text-green-400' : 'text-amber-400'}`} title={album.reviewNote}>
@@ -459,11 +482,6 @@ export function AdminAlbumsListPage() {
                             <span className="text-xs text-secondary capitalize">{album.type}</span>
                             <span className="text-xs text-secondary">{String(album.releaseDate)}</span>
                             <StatusBadge status={album.status} />
-                            {tab === 'rejected' && album.status === 'pending' && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-semibold">
-                                Resubmitted
-                              </span>
-                            )}
                             <div className="flex gap-1.5 justify-end flex-wrap items-center">
                               <Button
                                 size="sm"
@@ -605,15 +623,32 @@ export function AdminAlbumsListPage() {
                                                   {t.status === 'rejected' ? 'Rejection' : t.status === 'approved' ? 'Approval' : 'Prior rejection'} note: {t.reviewNote}
                                                 </span>
                                               )}
-                                              <button
-                                                type="button"
-                                                onClick={() => toggleHistory(t.id, 'track')}
-                                                className="inline-flex items-center gap-0.5 text-xs text-muted hover:text-secondary transition-colors"
-                                                title="View review history"
-                                              >
-                                                <ClockIcon className="w-3 h-3" />
-                                                History
-                                              </button>
+                                              <div className="flex items-center gap-2.5 flex-wrap">
+                                                {t.ratingCount > 0 && (
+                                                  <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                                                    <StarIcon className="w-3 h-3" />
+                                                    {t.averageRating.toFixed(1)}
+                                                    <span className="text-muted ml-0.5">({t.ratingCount})</span>
+                                                  </span>
+                                                )}
+                                                <span className="flex items-center gap-0.5 text-xs text-muted">
+                                                  <PlayIcon className="w-3 h-3" />
+                                                  {t.playCount.toLocaleString()}
+                                                </span>
+                                                <span className="flex items-center gap-0.5 text-xs text-muted">
+                                                  <HeartIcon className="w-3 h-3" />
+                                                  {(t.savedCount ?? 0).toLocaleString()}
+                                                </span>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => toggleHistory(t.id, 'track')}
+                                                  className="inline-flex items-center gap-0.5 text-xs text-muted hover:text-secondary transition-colors"
+                                                  title="View review history"
+                                                >
+                                                  <ClockIcon className="w-3 h-3" />
+                                                  History
+                                                </button>
+                                              </div>
                                             </div>
                                           </td>
                                           <td className="px-3 py-2 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>

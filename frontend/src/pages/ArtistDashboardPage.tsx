@@ -5,6 +5,7 @@ import {
   XCircleIcon, PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
   PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon, ArrowPathIcon,
   UserCircleIcon, GlobeAltIcon, LinkIcon, PlayIcon, StopCircleIcon, ArrowDownTrayIcon,
+  StarIcon, HeartIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
@@ -398,15 +399,26 @@ export function ArtistDashboardPage() {
 
   const commitEditTrackNum = async (track: Track, albumId: string, trackList: Track[]) => {
     setEditTrackId(null)
-    if (editTrackNum === track.trackNumber) return
     const clamped = Math.max(1, Math.min(trackList.length, editTrackNum))
+    if (clamped === track.trackNumber) return
+
+    // If another track already occupies the target number, swap it
+    const displaced = trackList.find((t) => t.id !== track.id && t.trackNumber === clamped)
+
     setSavingTrackId(track.id)
     try {
       await api.patch(`/me/artist-tracks/${track.id}`, { trackNumber: clamped })
+      if (displaced) {
+        await api.patch(`/me/artist-tracks/${displaced.id}`, { trackNumber: track.trackNumber })
+      }
       setAlbums((prev) => prev.map((a) => {
         if (a.id !== albumId) return a
         const updated = a.trackList
-          .map((t) => (t.id === track.id ? { ...t, trackNumber: clamped } : t))
+          .map((t) => {
+            if (t.id === track.id) return { ...t, trackNumber: clamped }
+            if (displaced && t.id === displaced.id) return { ...t, trackNumber: track.trackNumber }
+            return t
+          })
           .sort((x, y) => x.trackNumber - y.trackNumber)
         return { ...a, trackList: updated }
       }))
@@ -486,13 +498,19 @@ export function ArtistDashboardPage() {
   if (!isArtist) return null
 
   // Derived stats (computed from loaded data)
-  const totalTracks = albums.reduce((n, a) => n + a.trackList.length, 0)
-  const liveAlbums  = albums.filter((a) => a.status === 'approved').length
-  const liveTracks  = albums.flatMap((a) => a.trackList).filter((t) => t.status === 'approved').length
-  const pendingCount = albums.filter((a) => a.status === 'pending').length +
-    albums.flatMap((a) => a.trackList).filter((t) => t.status === 'pending').length
-  const rejectedCount = albums.filter((a) => a.status === 'rejected').length +
-    albums.flatMap((a) => a.trackList).filter((t) => t.status === 'rejected').length
+  const allTracks = albums.flatMap((a) => a.trackList)
+  const albumStats = {
+    total:    albums.length,
+    live:     albums.filter((a) => a.status === 'approved').length,
+    pending:  albums.filter((a) => a.status === 'pending').length,
+    rejected: albums.filter((a) => a.status === 'rejected').length,
+  }
+  const trackStats = {
+    total:    allTracks.length,
+    live:     allTracks.filter((t) => t.status === 'approved').length,
+    pending:  allTracks.filter((t) => t.status === 'pending').length,
+    rejected: allTracks.filter((t) => t.status === 'rejected').length,
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -688,17 +706,26 @@ export function ArtistDashboardPage() {
 
       {/* ── Stats strip ───────────────────────────────────────────────────── */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {[
-            { label: 'Albums',   value: albums.length,  color: 'text-primary' },
-            { label: 'Tracks',   value: totalTracks,    color: 'text-primary' },
-            { label: 'Live',     value: liveTracks,     color: 'text-green-400' },
-            { label: 'Pending',  value: pendingCount,   color: 'text-yellow-400' },
-            { label: 'Rejected', value: rejectedCount,  color: 'text-red-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-surface border border-elevated/40 rounded-lg px-4 py-3 flex flex-col gap-0.5">
-              <span className={`text-2xl font-bold ${color}`}>{value}</span>
-              <span className="text-xs text-muted font-medium">{label}</span>
+            { label: 'Albums', stats: albumStats },
+            { label: 'Tracks', stats: trackStats },
+          ].map(({ label, stats }) => (
+            <div key={label} className="bg-surface border border-elevated/40 rounded-lg px-5 py-4">
+              <p className="text-xs font-semibold text-muted uppercase tracking-wider mb-3">{label}</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {[
+                  { key: 'total',    val: stats.total,    color: 'text-primary',       lbl: 'Total' },
+                  { key: 'live',     val: stats.live,     color: 'text-green-400',     lbl: 'Live' },
+                  { key: 'pending',  val: stats.pending,  color: 'text-yellow-400',    lbl: 'Pending' },
+                  { key: 'rejected', val: stats.rejected, color: 'text-red-400',       lbl: 'Rejected' },
+                ].map(({ key, val, color, lbl }) => (
+                  <div key={key}>
+                    <p className={`text-xl font-bold ${color}`}>{val}</p>
+                    <p className="text-xs text-muted">{lbl}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -831,6 +858,24 @@ export function ArtistDashboardPage() {
                     <p className="text-xs text-muted mt-0.5">
                       {album.trackList.length} track{album.trackList.length !== 1 ? 's' : ''}
                     </p>
+                    {(album.totalPlays !== undefined || album.averageRating !== undefined) && (
+                      <div className="flex items-center gap-3 mt-0.5">
+                        {(album.ratingCount ?? 0) > 0 && (
+                          <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                            <StarIcon className="w-3 h-3" />
+                            {(album.averageRating ?? 0).toFixed(1)}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-0.5 text-xs text-muted">
+                          <PlayIcon className="w-3 h-3" />
+                          {(album.totalPlays ?? 0).toLocaleString()}
+                        </span>
+                        <span className="flex items-center gap-0.5 text-xs text-muted">
+                          <HeartIcon className="w-3 h-3" />
+                          {(album.totalSaves ?? 0).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                     {album.reviewNote && (
                       <p className={`text-xs mt-1 px-2 py-1 rounded italic ${album.status === 'rejected'
                           ? 'bg-red-500/10 text-red-400'
@@ -1130,15 +1175,32 @@ export function ArtistDashboardPage() {
                                           {t.status === 'rejected' ? 'Rejection note' : t.status === 'approved' ? 'Approval note' : 'Previous rejection'}: {t.reviewNote}
                                         </span>
                                       )}
+                                      <div className="flex items-center gap-3 flex-wrap">
+                                      {t.ratingCount > 0 && (
+                                        <span className="flex items-center gap-0.5 text-xs text-yellow-400">
+                                          <StarIcon className="w-3 h-3" />
+                                          {t.averageRating.toFixed(1)}
+                                          <span className="text-muted ml-0.5">({t.ratingCount})</span>
+                                        </span>
+                                      )}
+                                      <span className="flex items-center gap-0.5 text-xs text-muted">
+                                        <PlayIcon className="w-3 h-3" />
+                                        {t.playCount.toLocaleString()}
+                                      </span>
+                                      <span className="flex items-center gap-0.5 text-xs text-muted">
+                                        <HeartIcon className="w-3 h-3" />
+                                        {(t.savedCount ?? 0).toLocaleString()}
+                                      </span>
                                       <button
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); toggleHistory(t.id, 'track') }}
-                                        className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors w-fit"
+                                        className="inline-flex items-center gap-1 text-xs text-muted hover:text-secondary transition-colors"
                                       >
                                         <ClockIcon className="w-3 h-3" />
                                         {historyOpen.has(t.id) ? 'Hide history' : 'History'}
                                       </button>
                                     </div>
+                                  </div>
                                   </td>
                                   <td className="px-4 py-2.5 text-secondary text-sm">{fmtDuration(t.durationMs)}</td>
                                   <td className="px-4 py-2.5"><StatusBadge status={t.status ?? 'pending'} /></td>

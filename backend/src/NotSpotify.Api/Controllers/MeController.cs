@@ -551,7 +551,15 @@ public class MeController : ControllerBase
             .OrderByDescending(t => t.CreatedAt)
             .ToListAsync(ct);
 
-        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+        var dtos = await _mapper.ToDtoListAsync(tracks, ct);
+        var ids = tracks.Select(t => t.Id).ToList();
+        var saveCounts = await _db.UserSavedTracks
+            .Where(s => ids.Contains(s.TrackId))
+            .GroupBy(s => s.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TrackId, x => x.Count, ct);
+
+        return Ok(dtos.Select(d => d with { SavedCount = saveCounts.GetValueOrDefault(d.Id, 0) }));
     }
 
     [HttpPost("artist-tracks")]
@@ -760,10 +768,20 @@ public class MeController : ControllerBase
         var albums = await _db.Albums
             .Where(a => a.ArtistId == user.ArtistId)
             .Include(a => a.Artist)
+            .Include(a => a.Tracks)
             .OrderByDescending(a => a.ReleaseDate)
             .ToListAsync(ct);
 
-        return Ok(albums.Select(a => _mapper.ToDto(a)));
+        var albumIds = albums.Select(a => a.Id).ToList();
+        var albumSaves = albumIds.Count > 0
+            ? await _db.UserSavedAlbums
+                .Where(s => albumIds.Contains(s.AlbumId))
+                .GroupBy(s => s.AlbumId)
+                .Select(g => new { AlbumId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.AlbumId, x => x.Count, ct)
+            : new Dictionary<Guid, int>();
+
+        return Ok(albums.Select(a => _mapper.ToDto(a, totalSaves: albumSaves.GetValueOrDefault(a.Id))));
     }
 
     [HttpPatch("artist-albums/{id:guid}")]
@@ -1021,6 +1039,65 @@ public class MeController : ControllerBase
 
     // ──────────────────────────────────────────────
     // Track ratings
+    // ──────────────────────────────────────────────
+    // Saved albums
+    // ──────────────────────────────────────────────
+
+    [HttpGet("saved-albums")]
+    public async Task<ActionResult<IEnumerable<AlbumDto>>> GetSavedAlbums(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var rows = await _db.UserSavedAlbums
+            .Where(s => s.UserId == me)
+            .OrderByDescending(s => s.SavedAt)
+            .Include(s => s.Album).ThenInclude(a => a.Artist)
+            .Include(s => s.Album).ThenInclude(a => a.Tracks)
+            .ToListAsync(ct);
+
+        var albumIds = rows.Select(r => r.AlbumId).ToList();
+        var saveCounts = albumIds.Count > 0
+            ? await _db.UserSavedAlbums
+                .Where(s => albumIds.Contains(s.AlbumId))
+                .GroupBy(s => s.AlbumId)
+                .Select(g => new { AlbumId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.AlbumId, x => x.Count, ct)
+            : new Dictionary<Guid, int>();
+
+        return Ok(rows.Select(r => _mapper.ToDto(r.Album, totalSaves: saveCounts.GetValueOrDefault(r.AlbumId))));
+    }
+
+    [HttpPost("saved-albums/{albumId:guid}")]
+    public async Task<IActionResult> SaveAlbum(Guid albumId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var exists = await _db.Albums.AnyAsync(a => a.Id == albumId && a.Status == "approved", ct);
+        if (!exists) return NotFound();
+
+        if (await _db.UserSavedAlbums.AnyAsync(s => s.UserId == me && s.AlbumId == albumId, ct))
+            return NoContent();
+
+        _db.UserSavedAlbums.Add(new Models.UserSavedAlbum { UserId = me.Value, AlbumId = albumId });
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpDelete("saved-albums/{albumId:guid}")]
+    public async Task<IActionResult> UnsaveAlbum(Guid albumId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var row = await _db.UserSavedAlbums.FirstOrDefaultAsync(s => s.UserId == me && s.AlbumId == albumId, ct);
+        if (row is null) return NoContent();
+        _db.UserSavedAlbums.Remove(row);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     // ──────────────────────────────────────────────
 
     /// <summary>Returns all ratings the current user has submitted, as a map of trackId → rating.</summary>

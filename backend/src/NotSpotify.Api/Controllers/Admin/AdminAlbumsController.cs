@@ -33,16 +33,12 @@ public class AdminAlbumsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<AlbumDto>>> List([FromQuery] string? status = null, CancellationToken ct = default)
     {
-        var q = _db.Albums.Include(a => a.Artist).AsQueryable();
+        var q = _db.Albums.Include(a => a.Artist).Include(a => a.Tracks).AsQueryable();
         if (status == "rejected")
         {
-            // Include currently-rejected AND previously-rejected albums that the artist has resubmitted
-            // (status == "pending" but has at least one rejection in history)
             var resubmittedIds = await _db.ReviewHistories
                 .Where(h => h.EntityType == "album" && h.Action == "rejected")
-                .Select(h => h.EntityId)
-                .Distinct()
-                .ToListAsync(ct);
+                .Select(h => h.EntityId).Distinct().ToListAsync(ct);
             q = q.Where(a => a.Status == "rejected" || (a.Status == "pending" && resubmittedIds.Contains(a.Id)));
         }
         else if (!string.IsNullOrEmpty(status))
@@ -50,7 +46,8 @@ public class AdminAlbumsController : ControllerBase
             q = q.Where(a => a.Status == status);
         }
         var albums = await q.OrderByDescending(a => a.ReleaseDate).ToListAsync(ct);
-        return Ok(albums.Select(a => _mapper.ToDto(a)));
+        var saveCounts = await AlbumSaveCountsAsync(albums, ct);
+        return Ok(albums.Select(a => _mapper.ToDto(a, totalSaves: saveCounts.GetValueOrDefault(a.Id))));
     }
 
     [HttpGet("pending")]
@@ -59,9 +56,23 @@ public class AdminAlbumsController : ControllerBase
         var albums = await _db.Albums
             .Where(a => a.Status == "pending")
             .Include(a => a.Artist)
+            .Include(a => a.Tracks)
             .OrderByDescending(a => a.ReleaseDate)
             .ToListAsync(ct);
-        return Ok(albums.Select(a => _mapper.ToDto(a)));
+        var saveCounts = await AlbumSaveCountsAsync(albums, ct);
+        return Ok(albums.Select(a => _mapper.ToDto(a, totalSaves: saveCounts.GetValueOrDefault(a.Id))));
+    }
+
+    private async Task<Dictionary<Guid, int>> AlbumSaveCountsAsync(List<Album> albums, CancellationToken ct)
+    {
+        var albumIds = albums.Select(a => a.Id).ToList();
+        if (albumIds.Count == 0) return new Dictionary<Guid, int>();
+
+        return await _db.UserSavedAlbums
+            .Where(s => albumIds.Contains(s.AlbumId))
+            .GroupBy(s => s.AlbumId)
+            .Select(g => new { AlbumId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.AlbumId, x => x.Count, ct);
     }
 
     [HttpPatch("{id:guid}/approve")]
@@ -202,7 +213,18 @@ public class AdminAlbumsController : ControllerBase
             .OrderBy(t => t.TrackNumber)
             .ToListAsync(ct);
 
-        return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+        var dtos = await _mapper.ToDtoListAsync(tracks, ct);
+
+        var trackIds = tracks.Select(t => t.Id).ToList();
+        var saveCounts = trackIds.Count > 0
+            ? await _db.UserSavedTracks
+                .Where(s => trackIds.Contains(s.TrackId))
+                .GroupBy(s => s.TrackId)
+                .Select(g => new { TrackId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.TrackId, x => x.Count, ct)
+            : new Dictionary<Guid, int>();
+
+        return Ok(dtos.Select(d => d with { SavedCount = saveCounts.GetValueOrDefault(d.Id, 0) }));
     }
 
     [HttpPatch("{id:guid}")]

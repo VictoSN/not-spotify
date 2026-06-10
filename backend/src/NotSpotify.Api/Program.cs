@@ -147,6 +147,27 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    // Ensure UserSavedAlbums table exists — the EF migration for this was stamped
+    // as applied while empty (stale binary), so we guarantee the schema here.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UserSavedAlbums"" (
+            ""UserId""  uuid NOT NULL,
+            ""AlbumId"" uuid NOT NULL,
+            ""SavedAt"" timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_UserSavedAlbums""
+                PRIMARY KEY (""UserId"", ""AlbumId""),
+            CONSTRAINT ""FK_UserSavedAlbums_Albums_AlbumId""
+                FOREIGN KEY (""AlbumId"") REFERENCES ""Albums""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_UserSavedAlbums_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_UserSavedAlbums_AlbumId""
+            ON ""UserSavedAlbums""(""AlbumId"");
+        CREATE INDEX IF NOT EXISTS ""IX_UserSavedAlbums_UserId_SavedAt""
+            ON ""UserSavedAlbums""(""UserId"", ""SavedAt"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

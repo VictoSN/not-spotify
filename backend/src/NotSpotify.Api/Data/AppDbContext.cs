@@ -21,6 +21,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<RecentSearch> RecentSearches => Set<RecentSearch>();
     public DbSet<TrackRating> TrackRatings => Set<TrackRating>();
     public DbSet<UserSavedTrack> UserSavedTracks => Set<UserSavedTrack>();
+    public DbSet<UserSavedAlbum> UserSavedAlbums => Set<UserSavedAlbum>();
     public DbSet<ArtistApplication> ArtistApplications => Set<ArtistApplication>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
@@ -214,6 +215,23 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(x => x.Track)
                 .WithMany()
                 .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.UserId, x.SavedAt });
+        });
+
+        b.Entity<UserSavedAlbum>(e =>
+        {
+            e.HasKey(x => new { x.UserId, x.AlbumId });
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Album)
+                .WithMany()
+                .HasForeignKey(x => x.AlbumId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             e.HasIndex(x => new { x.UserId, x.SavedAt });

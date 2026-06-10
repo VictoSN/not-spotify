@@ -14,6 +14,7 @@ export interface Track {
   ratingCount: number
   averageRating: number
   myRating?: number | null
+  savedCount?: number
   artist: ArtistRef
   album: AlbumRef
   genres: string[]

@@ -102,22 +102,36 @@ public class MediaMapper
         a.RevokedAt
     );
 
-    public AlbumDto ToDto(Album a, IEnumerable<string>? genres = null) => new(
-        a.Id,
-        a.Title,
-        a.Type,
-        ResolveImage(a.CoverKey, a.CoverUrl) ?? string.Empty,
-        a.ReleaseDate,
-        a.TotalTracks,
-        a.DurationMs,
-        ToRef(a.Artist),
-        genres ?? Array.Empty<string>(),
-        a.Label,
-        a.Copyright,
-        a.Popularity,
-        a.Status,
-        a.ReviewNote
-    );
+    public AlbumDto ToDto(Album a, IEnumerable<string>? genres = null, int totalSaves = 0)
+    {
+        var tracks = a.Tracks.ToList();
+        var totalPlays = tracks.Sum(t => t.PlayCount);
+        var ratingCount = tracks.Sum(t => t.RatingCount);
+        var avgRating = ratingCount > 0
+            ? tracks.Where(t => t.RatingCount > 0)
+                    .Sum(t => (double)t.RatingSum / t.RatingCount) / tracks.Count(t => t.RatingCount > 0)
+            : 0.0;
+        return new AlbumDto(
+            a.Id,
+            a.Title,
+            a.Type,
+            ResolveImage(a.CoverKey, a.CoverUrl) ?? string.Empty,
+            a.ReleaseDate,
+            a.TotalTracks,
+            a.DurationMs,
+            ToRef(a.Artist),
+            genres ?? Array.Empty<string>(),
+            a.Label,
+            a.Copyright,
+            a.Popularity,
+            a.Status,
+            a.ReviewNote,
+            totalPlays,
+            Math.Round(avgRating, 1),
+            ratingCount,
+            totalSaves
+        );
+    }
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);
 

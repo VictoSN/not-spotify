@@ -249,3 +249,16 @@ export const adminService = {
     return res.data
   },
 }
+
+/** Download all tracks in an album as a ZIP file. Works for any authenticated user. */
+export async function downloadAlbumZip(albumId: string, albumTitle: string): Promise<void> {
+  const res = await api.get(`/albums/${albumId}/download-zip`, { responseType: 'blob' })
+  const url = URL.createObjectURL(res.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${albumTitle}.zip`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}

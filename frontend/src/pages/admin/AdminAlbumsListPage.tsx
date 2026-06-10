@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
-import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
+import { adminService, downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
@@ -79,6 +79,7 @@ export function AdminAlbumsListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actingId, setActingId] = useState<string | null>(null)
+  const [downloadingAlbumId, setDownloadingAlbumId] = useState<string | null>(null)
 
   // Expansion state
   const [openArtists, setOpenArtists] = useState<Set<string>>(new Set())
@@ -463,7 +464,22 @@ export function AdminAlbumsListPage() {
                                 Resubmitted
                               </span>
                             )}
-                            <div className="flex gap-1.5 justify-end flex-wrap">
+                            <div className="flex gap-1.5 justify-end flex-wrap items-center">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={downloadingAlbumId === album.id}
+                                onClick={async () => {
+                                  setDownloadingAlbumId(album.id)
+                                  try { await downloadAlbumZip(album.id, album.title) }
+                                  finally { setDownloadingAlbumId(null) }
+                                }}
+                              >
+                                {downloadingAlbumId === album.id
+                                  ? <Spinner size="sm" />
+                                  : <ArrowDownTrayIcon className="w-4 h-4" />}
+                                ZIP
+                              </Button>
                               {album.status === 'pending' ? (
                                 <>
                                   <Button size="sm" onClick={() => startReview(album.id, 'album', 'approve')} disabled={!!actingId}>

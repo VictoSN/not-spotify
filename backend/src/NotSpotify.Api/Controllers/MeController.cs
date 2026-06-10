@@ -654,6 +654,58 @@ public class MeController : ControllerBase
         return Ok(_mapper.ToDto(artist));
     }
 
+    [HttpPatch("artist-profile")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<ArtistDto>> UpdateArtistProfile([FromBody] ArtistUpdateProfileRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+        var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == user.ArtistId, ct);
+        if (artist is null) return NotFound();
+
+        if (req.Name is not null) artist.Name = req.Name.Trim();
+        if (req.Bio is not null) artist.Bio = req.Bio == "" ? null : req.Bio;
+        if (req.Instagram is not null) artist.Instagram = req.Instagram == "" ? null : req.Instagram;
+        if (req.Twitter is not null) artist.Twitter = req.Twitter == "" ? null : req.Twitter;
+        if (req.Website is not null) artist.Website = req.Website == "" ? null : req.Website;
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(artist));
+    }
+
+    [HttpPost("artist-profile/image")]
+    [Authorize(Roles = "Artist")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<ArtistDto>> UploadArtistProfileImage([FromForm] ArtistImageUploadRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+        var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == user.ArtistId, ct);
+        if (artist is null) return NotFound();
+
+        var file = req.File;
+        if (file is null || file.Length == 0)
+            return BadRequest(new { message = "No file provided." });
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        string[] allowed = [".jpg", ".jpeg", ".png", ".webp"];
+        if (!allowed.Contains(ext))
+            return BadRequest(new { message = $"Unsupported file type '{ext}'." });
+
+        var key = $"images/artists/{Guid.NewGuid()}{ext}";
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        artist.ImageKey = key;
+        artist.ImageUrl = null;
+        await _db.SaveChangesAsync(ct);
+        return Ok(_mapper.ToDto(artist));
+    }
+
     [HttpGet("artist-albums/{id:guid}/review-history")]
     [Authorize(Roles = "Artist")]
     public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetArtistAlbumHistory(Guid id, CancellationToken ct = default)

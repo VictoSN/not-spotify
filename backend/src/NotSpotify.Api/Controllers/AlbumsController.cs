@@ -1,3 +1,5 @@
+using System.IO.Compression;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -12,11 +14,13 @@ public class AlbumsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly IStorageService _storage;
 
-    public AlbumsController(AppDbContext db, MediaMapper mapper)
+    public AlbumsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
     {
         _db = db;
         _mapper = mapper;
+        _storage = storage;
     }
 
     [HttpGet]
@@ -58,5 +62,64 @@ public class AlbumsController : ControllerBase
             .OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber)
             .ToListAsync(ct);
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
+    [HttpGet("{id:guid}/download-zip")]
+    [Authorize]
+    public async Task<IActionResult> DownloadZip(
+        Guid id,
+        [FromServices] IHttpClientFactory httpFactory,
+        CancellationToken ct = default)
+    {
+        var album = await _db.Albums
+            .Include(a => a.Artist)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+        if (album is null) return NotFound();
+
+        var tracks = await _db.Tracks
+            .Where(t => t.AlbumId == id)
+            .OrderBy(t => t.DiscNumber).ThenBy(t => t.TrackNumber)
+            .ToListAsync(ct);
+
+        var http = httpFactory.CreateClient();
+        var ms = new MemoryStream();
+
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var track in tracks)
+            {
+                var url = !string.IsNullOrEmpty(track.AudioKey)
+                    ? _storage.GetPublicUrl(track.AudioKey)
+                    : track.AudioUrl;
+
+                if (string.IsNullOrEmpty(url)) continue;
+
+                // Infer extension from the key/url path (strip query string first)
+                var urlPath = url.Split('?')[0];
+                var ext = Path.GetExtension(urlPath);
+                if (string.IsNullOrEmpty(ext)) ext = ".mp3";
+
+                var safeName = string.Concat(
+                    track.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+                var entryName = $"{track.TrackNumber:D2} - {safeName}{ext}";
+
+                try
+                {
+                    var bytes = await http.GetByteArrayAsync(url, ct);
+                    var entry = zip.CreateEntry(entryName, CompressionLevel.NoCompression);
+                    await using var entryStream = entry.Open();
+                    await entryStream.WriteAsync(bytes, ct);
+                }
+                catch
+                {
+                    // Skip tracks whose audio can't be fetched
+                }
+            }
+        }
+
+        ms.Position = 0;
+        var safeAlbum = string.Concat(
+            album.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        return File(ms.ToArray(), "application/zip", $"{safeAlbum}.zip");
     }
 }

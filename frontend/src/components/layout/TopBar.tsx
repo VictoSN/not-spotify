@@ -307,7 +307,7 @@ export function TopBar() {
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
                 >
                   <Cog6ToothIcon className="w-4 h-4" />
-                  Admin
+                  Admin Dashboard
                 </Link>
               )}
               <button

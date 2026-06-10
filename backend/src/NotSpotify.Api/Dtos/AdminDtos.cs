@@ -103,6 +103,14 @@ public record ReviewApplicationRequest(string? Note);
 
 public record RevokeArtistRequest(string? Note);
 
+public record ArtistUpdateProfileRequest(
+    string? Name,
+    string? Bio,
+    string? Instagram,
+    string? Twitter,
+    string? Website
+);
+
 public record ResubmitRequest(string? Note);
 
 // ── Artist — album submission ─────────────────────────────────────────────────

@@ -4,12 +4,14 @@ import {
   MusicalNoteIcon, CloudArrowUpIcon, CheckCircleIcon, ClockIcon,
   XCircleIcon, PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
   PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon, ArrowPathIcon,
+  UserCircleIcon, GlobeAltIcon, LinkIcon, PlayIcon, StopCircleIcon, ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
-import type { ReviewHistoryEntry } from '@/services/adminService'
+import type { Artist as ArtistProfile } from '@/types/artist'
+import { downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 
@@ -47,6 +49,18 @@ export function ArtistDashboardPage() {
   const [revocationNote, setRevocationNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Artist profile
+  const [artistProfile, setArtistProfile] = useState<ArtistProfile | null>(null)
+  const [editingProfile, setEditingProfile] = useState(false)
+  const [profileName, setProfileName] = useState('')
+  const [profileBio, setProfileBio] = useState('')
+  const [profileInstagram, setProfileInstagram] = useState('')
+  const [profileTwitter, setProfileTwitter] = useState('')
+  const [profileWebsite, setProfileWebsite] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileImageUploading, setProfileImageUploading] = useState(false)
+
   // Resubmit form state
   const [resubmitAlbumId, setResubmitAlbumId] = useState<string | null>(null)
   const [resubmitTrackId, setResubmitTrackId] = useState<string | null>(null)
@@ -80,6 +94,10 @@ export function ArtistDashboardPage() {
   const [editAlbumSaving, setEditAlbumSaving] = useState(false)
   const [editAlbumError, setEditAlbumError] = useState<string | null>(null)
 
+  // Inline audio player
+  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null)
+  const [downloadingAlbumId, setDownloadingAlbumId] = useState<string | null>(null)
+
   // Drag-to-reorder state
   const [dragId, setDragId] = useState<string | null>(null)
   const [dropId, setDropId] = useState<string | null>(null)
@@ -112,10 +130,13 @@ export function ArtistDashboardPage() {
       const [tracksRes, albumsRes, profileRes] = await Promise.all([
         api.get<Track[]>('/me/artist-tracks'),
         api.get<Album[]>('/me/artist-albums'),
-        api.get<{ isRevoked?: boolean; revocationNote?: string | null }>('/me/artist-profile').catch(() => ({ data: {} as { isRevoked?: boolean; revocationNote?: string | null } })),
+        api.get<ArtistProfile>('/me/artist-profile').catch(() => ({ data: null as unknown as ArtistProfile })),
       ])
-      setIsRevoked(profileRes.data.isRevoked ?? false)
-      setRevocationNote(profileRes.data.revocationNote ?? null)
+      if (profileRes.data) {
+        setArtistProfile(profileRes.data)
+        setIsRevoked(profileRes.data.isRevoked ?? false)
+        setRevocationNote(profileRes.data.revocationNote ?? null)
+      }
       const tracksByAlbum = new Map<string, Track[]>()
       for (const t of tracksRes.data) {
         const list = tracksByAlbum.get(t.album.id) ?? []
@@ -397,6 +418,62 @@ export function ArtistDashboardPage() {
     }
   }
 
+  // ── Profile editing ───────────────────────────────────────────────────────
+
+  const startEditProfile = () => {
+    if (!artistProfile) return
+    setProfileName(artistProfile.name)
+    setProfileBio(artistProfile.bio ?? '')
+    setProfileInstagram(artistProfile.socialLinks?.instagram ?? '')
+    setProfileTwitter(artistProfile.socialLinks?.twitter ?? '')
+    setProfileWebsite(artistProfile.socialLinks?.website ?? '')
+    setProfileError(null)
+    setEditingProfile(true)
+  }
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!profileName.trim()) return
+    setProfileSaving(true)
+    setProfileError(null)
+    try {
+      const res = await api.patch<ArtistProfile>('/me/artist-profile', {
+        name: profileName.trim(),
+        bio: profileBio,
+        instagram: profileInstagram,
+        twitter: profileTwitter,
+        website: profileWebsite,
+      })
+      setArtistProfile(res.data)
+      setEditingProfile(false)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setProfileError(msg ?? 'Failed to save profile.')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
+  const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setProfileImageUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post<ArtistProfile>('/me/artist-profile/image', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setArtistProfile(res.data)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? 'Failed to upload image.')
+    } finally {
+      setProfileImageUploading(false)
+      e.target.value = ''
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
 
   const openTrackForm = (albumId: string, trackCount: number) => {
@@ -408,24 +485,33 @@ export function ArtistDashboardPage() {
 
   if (!isArtist) return null
 
+  // Derived stats (computed from loaded data)
+  const totalTracks = albums.reduce((n, a) => n + a.trackList.length, 0)
+  const liveAlbums  = albums.filter((a) => a.status === 'approved').length
+  const liveTracks  = albums.flatMap((a) => a.trackList).filter((t) => t.status === 'approved').length
+  const pendingCount = albums.filter((a) => a.status === 'pending').length +
+    albums.flatMap((a) => a.trackList).filter((t) => t.status === 'pending').length
+  const rejectedCount = albums.filter((a) => a.status === 'rejected').length +
+    albums.flatMap((a) => a.trackList).filter((t) => t.status === 'rejected').length
+
   return (
-    <div>
+    <div className="flex flex-col gap-6">
+      {/* ── Revocation banner ─────────────────────────────────────────────── */}
       {isRevoked && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4">
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4">
           <p className="font-semibold text-red-400">Your artist account has been revoked.</p>
-          <p className="text-sm text-red-400/80 mt-0.5">
-            You cannot submit or resubmit content. Contact support to appeal.
-          </p>
+          <p className="text-sm text-red-400/80 mt-0.5">You cannot submit or resubmit content. Contact support to appeal.</p>
           {revocationNote && (
             <p className="text-sm text-red-400/70 italic mt-1">Admin note: {revocationNote}</p>
           )}
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-8">
+      {/* ── Page header ───────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-primary">Artist Dashboard</h1>
-          <p className="text-secondary text-sm mt-1">Submit albums and tracks for admin review. Approved releases go live.</p>
+          <p className="text-secondary text-sm mt-1">Manage your profile, releases, and submissions.</p>
         </div>
         {!isRevoked && (
           <Button onClick={() => { setShowAlbumForm((v) => !v); setAlbumFormError(null) }}>
@@ -435,9 +521,192 @@ export function ArtistDashboardPage() {
         )}
       </div>
 
-      {/* Create album form */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
+          <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* ── Profile card ──────────────────────────────────────────────────── */}
+      <div className="bg-surface border border-elevated/40 rounded-xl overflow-hidden">
+        {/* Header / banner strip */}
+        <div className="h-24 bg-gradient-to-r from-accent/30 via-accent/10 to-transparent" />
+
+        <div className="px-6 pb-6">
+          {/* Avatar row */}
+          <div className="flex items-end justify-between -mt-10 mb-4">
+            <label className="relative cursor-pointer group shrink-0">
+              <div className="w-20 h-20 rounded-full border-4 border-surface bg-elevated overflow-hidden flex items-center justify-center">
+                {profileImageUploading ? (
+                  <Spinner size="sm" />
+                ) : artistProfile?.imageUrl ? (
+                  <img src={artistProfile.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <UserCircleIcon className="w-12 h-12 text-muted" />
+                )}
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <PhotoIcon className="w-5 h-5 text-white" />
+                </div>
+              </div>
+              <input type="file" accept="image/*" onChange={handleProfileImageChange} className="hidden" disabled={profileImageUploading} />
+            </label>
+
+            {!editingProfile && (
+              <Button variant="ghost" size="sm" onClick={startEditProfile}>
+                <PencilSquareIcon className="w-4 h-4" />
+                Edit profile
+              </Button>
+            )}
+          </div>
+
+          {editingProfile ? (
+            /* ── Edit form ── */
+            <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
+              {profileError && <p className="text-sm text-red-400">{profileError}</p>}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-primary mb-1">Artist name</label>
+                  <input
+                    required
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none"
+                    placeholder="Your artist name"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-primary mb-1">Bio <span className="text-muted font-normal">(optional)</span></label>
+                  <textarea
+                    rows={3}
+                    value={profileBio}
+                    onChange={(e) => setProfileBio(e.target.value)}
+                    className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm resize-none focus:outline-none"
+                    placeholder="Tell listeners about yourself…"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-primary mb-1">Instagram</label>
+                  <div className="flex items-center gap-2 bg-elevated border border-elevated/50 focus-within:border-accent rounded-md px-3 py-2">
+                    <span className="text-muted text-sm">@</span>
+                    <input
+                      value={profileInstagram}
+                      onChange={(e) => setProfileInstagram(e.target.value)}
+                      className="flex-1 bg-transparent text-primary placeholder:text-muted text-sm focus:outline-none"
+                      placeholder="username"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-primary mb-1">Twitter / X</label>
+                  <div className="flex items-center gap-2 bg-elevated border border-elevated/50 focus-within:border-accent rounded-md px-3 py-2">
+                    <span className="text-muted text-sm">@</span>
+                    <input
+                      value={profileTwitter}
+                      onChange={(e) => setProfileTwitter(e.target.value)}
+                      className="flex-1 bg-transparent text-primary placeholder:text-muted text-sm focus:outline-none"
+                      placeholder="username"
+                    />
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-primary mb-1">Website</label>
+                  <div className="flex items-center gap-2 bg-elevated border border-elevated/50 focus-within:border-accent rounded-md px-3 py-2">
+                    <GlobeAltIcon className="w-4 h-4 text-muted shrink-0" />
+                    <input
+                      value={profileWebsite}
+                      onChange={(e) => setProfileWebsite(e.target.value)}
+                      className="flex-1 bg-transparent text-primary placeholder:text-muted text-sm focus:outline-none"
+                      placeholder="https://yourwebsite.com"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setEditingProfile(false)}
+                  className="px-4 py-1.5 rounded text-sm font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors">
+                  Cancel
+                </button>
+                <Button type="submit" size="sm" disabled={profileSaving}>
+                  {profileSaving ? <Spinner size="sm" /> : 'Save changes'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            /* ── Display mode ── */
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-primary">{artistProfile?.name ?? user?.name}</h2>
+                {artistProfile?.verified && (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
+                    <CheckCircleIcon className="w-3.5 h-3.5" /> Verified
+                  </span>
+                )}
+              </div>
+              {artistProfile?.bio ? (
+                <p className="text-sm text-secondary leading-relaxed max-w-xl">{artistProfile.bio}</p>
+              ) : (
+                <p className="text-sm text-muted italic">No bio yet — click Edit profile to add one.</p>
+              )}
+              {/* Social links */}
+              {(artistProfile?.socialLinks?.instagram || artistProfile?.socialLinks?.twitter || artistProfile?.socialLinks?.website) && (
+                <div className="flex flex-wrap gap-3 mt-1">
+                  {artistProfile.socialLinks.instagram && (
+                    <a href={`https://instagram.com/${artistProfile.socialLinks.instagram}`} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors">
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      @{artistProfile.socialLinks.instagram}
+                    </a>
+                  )}
+                  {artistProfile.socialLinks.twitter && (
+                    <a href={`https://twitter.com/${artistProfile.socialLinks.twitter}`} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors">
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      @{artistProfile.socialLinks.twitter}
+                    </a>
+                  )}
+                  {artistProfile.socialLinks.website && (
+                    <a href={artistProfile.socialLinks.website} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-secondary hover:text-accent transition-colors">
+                      <GlobeAltIcon className="w-3.5 h-3.5" />
+                      {artistProfile.socialLinks.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  )}
+                </div>
+              )}
+              {/* Follower / listener count row */}
+              <div className="flex gap-4 mt-2 text-xs text-muted">
+                <span><span className="font-semibold text-secondary">{artistProfile?.followerCount?.toLocaleString() ?? 0}</span> followers</span>
+                <span><span className="font-semibold text-secondary">{artistProfile?.monthlyListeners?.toLocaleString() ?? 0}</span> monthly listeners</span>
+                {artistProfile?.createdAt && (
+                  <span>Member since <span className="text-secondary">{new Date(artistProfile.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}</span></span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Stats strip ───────────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: 'Albums',   value: albums.length,  color: 'text-primary' },
+            { label: 'Tracks',   value: totalTracks,    color: 'text-primary' },
+            { label: 'Live',     value: liveTracks,     color: 'text-green-400' },
+            { label: 'Pending',  value: pendingCount,   color: 'text-yellow-400' },
+            { label: 'Rejected', value: rejectedCount,  color: 'text-red-400' },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="bg-surface border border-elevated/40 rounded-lg px-4 py-3 flex flex-col gap-0.5">
+              <span className={`text-2xl font-bold ${color}`}>{value}</span>
+              <span className="text-xs text-muted font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── New release form ──────────────────────────────────────────────── */}
       {showAlbumForm && (
-        <form onSubmit={handleCreateAlbum} className="bg-surface border border-elevated/40 rounded-lg p-6 mb-6 flex flex-col gap-4">
+        <form onSubmit={handleCreateAlbum} className="bg-surface border border-elevated/40 rounded-xl p-6 flex flex-col gap-4">
           <h2 className="text-lg font-bold text-primary">New release</h2>
 
           <div className="flex gap-4">
@@ -519,11 +788,9 @@ export function ArtistDashboardPage() {
         </form>
       )}
 
-      {error && (
-        <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
-          <p className="text-red-400 text-sm">{error}</p>
-        </div>
-      )}
+      {/* ── Releases section header ───────────────────────────────────────── */}
+      <div>
+        <h2 className="text-xl font-bold text-primary mb-3">Releases</h2>
 
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
@@ -583,6 +850,25 @@ export function ArtistDashboardPage() {
                       {historyOpen.has(album.id) ? 'Hide history' : 'Review history'}
                     </button>
                   </div>
+                  {/* Download ZIP — always available if album has tracks with audio */}
+                  {album.trackList.some((t) => t.audioUrl) && (
+                    <button
+                      type="button"
+                      disabled={downloadingAlbumId === album.id}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        setDownloadingAlbumId(album.id)
+                        try { await downloadAlbumZip(album.id, album.title) }
+                        finally { setDownloadingAlbumId(null) }
+                      }}
+                      className="p-1.5 rounded hover:bg-elevated/60 text-muted hover:text-primary transition-colors shrink-0"
+                      title="Download album as ZIP"
+                    >
+                      {downloadingAlbumId === album.id
+                        ? <Spinner size="sm" />
+                        : <ArrowDownTrayIcon className="w-4 h-4" />}
+                    </button>
+                  )}
                   {album.status !== 'approved' && (
                     <>
                       {album.status === 'rejected' && (
@@ -858,6 +1144,29 @@ export function ArtistDashboardPage() {
                                   <td className="px-4 py-2.5"><StatusBadge status={t.status ?? 'pending'} /></td>
                                   <td className="px-4 py-2.5">
                                     <div className="flex gap-1 items-center">
+                                      {t.audioUrl && (
+                                        <>
+                                          <button
+                                            type="button"
+                                            onClick={() => setPlayingTrackId(playingTrackId === t.id ? null : t.id)}
+                                            className={`p-1 rounded transition-colors ${playingTrackId === t.id ? 'bg-accent/20 text-accent' : 'hover:bg-elevated/60 text-muted hover:text-primary'}`}
+                                            title={playingTrackId === t.id ? 'Stop' : 'Play'}
+                                          >
+                                            {playingTrackId === t.id
+                                              ? <StopCircleIcon className="w-3.5 h-3.5" />
+                                              : <PlayIcon className="w-3.5 h-3.5" />}
+                                          </button>
+                                          <a
+                                            href={t.audioUrl}
+                                            download
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="p-1 rounded hover:bg-elevated/60 text-muted hover:text-primary transition-colors"
+                                            title="Download"
+                                          >
+                                            <ArrowDownTrayIcon className="w-3.5 h-3.5" />
+                                          </a>
+                                        </>
+                                      )}
                                       {t.status === 'rejected' && (
                                         <button
                                           type="button"
@@ -884,7 +1193,7 @@ export function ArtistDashboardPage() {
                                 {/* Inline track resubmit form */}
                                 {resubmitTrackId === t.id && (
                                   <tr className="border-b border-elevated/20 bg-green-500/5">
-                                    <td colSpan={5} className="px-4 py-3">
+                                    <td colSpan={6} className="px-4 py-3">
                                       <div className="flex flex-col gap-2 max-w-lg">
                                         <p className="text-xs font-semibold text-green-400">Resubmit track for review</p>
                                         <textarea
@@ -934,6 +1243,21 @@ export function ArtistDashboardPage() {
                                     </td>
                                   </tr>
                                 )}
+                              {/* Inline audio player row */}
+                              {playingTrackId === t.id && t.audioUrl && (
+                                <tr className="bg-elevated/10 border-b border-elevated/20">
+                                  <td colSpan={6} className="px-4 py-2">
+                                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                                    <audio
+                                      controls
+                                      autoPlay
+                                      src={t.audioUrl}
+                                      className="w-full h-9"
+                                      onEnded={() => setPlayingTrackId(null)}
+                                    />
+                                  </td>
+                                </tr>
+                              )}
                               </React.Fragment>
                             )
                           })}
@@ -1027,6 +1351,7 @@ export function ArtistDashboardPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

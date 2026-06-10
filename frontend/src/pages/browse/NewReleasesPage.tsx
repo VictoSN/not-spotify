@@ -3,8 +3,10 @@ import type { Album } from '@/types/album'
 import { albumService } from '@/services/albumService'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { Spinner } from '@/components/ui/Spinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export function NewReleasesPage() {
+  useDocumentTitle('New Releases')
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
 

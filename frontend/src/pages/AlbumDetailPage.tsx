@@ -10,6 +10,8 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +23,8 @@ export function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [album, setAlbum] = useState<Album | null>(null)
   const [tracks, setTracks] = useState<Track[]>([])
+  useDocumentTitle(album ? `${album.title} · ${album.artist.name}` : null)
+  const isMobile = useIsMobile()
   const [loading, setLoading] = useState(true)
   const playWithGate = usePlaybackGate()
   const { savedAlbumIds, saveAlbum, unsaveAlbum } = useLibraryStore()
@@ -72,7 +76,7 @@ export function AlbumDetailPage() {
   return (
     <div>
       <div
-        className="flex items-end gap-6 p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
+        className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
         style={{
           background: heroColor
             ? `linear-gradient(to bottom, ${heroColor}b3 0%, ${heroColor}33 60%, transparent 100%)`
@@ -82,13 +86,13 @@ export function AlbumDetailPage() {
         <img
           src={album.coverUrl}
           alt={album.title}
-          className="w-44 h-44 sm:w-56 sm:h-56 rounded-md shadow-2xl flex-shrink-0 object-cover"
+          className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl flex-shrink-0 object-cover self-center sm:self-auto"
         />
         <div className="min-w-0 pb-2">
           <div className="flex items-center gap-2 mb-1">
             <Badge variant="accent">{album.type.toUpperCase()}</Badge>
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-primary mb-2">{album.title}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-2 break-words">{album.title}</h1>
           {/* Stats row */}
           <div className="flex items-center gap-4 mb-2 flex-wrap">
             {(album.ratingCount ?? 0) > 0 && (
@@ -124,7 +128,7 @@ export function AlbumDetailPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 px-6 py-4 flex-wrap">
+      <div className="flex items-center gap-3 px-4 sm:px-6 py-4 flex-wrap">
         <Button onClick={() => tracks.length && playWithGate(tracks[0], tracks)} size="lg" className="gap-2">
           <PlayIcon className="w-5 h-5" /> Play
         </Button>
@@ -166,7 +170,7 @@ export function AlbumDetailPage() {
       <div className="px-4">
         <div
           className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
-          style={{ gridTemplateColumns: '16px 6fr 3fr var(--track-actions-width)' }}
+          style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
         >
           <span className="text-xs text-secondary">#</span>
           <span className="text-xs text-secondary uppercase tracking-wider">Title</span>

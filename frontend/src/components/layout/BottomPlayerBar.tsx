@@ -1,4 +1,6 @@
 import { QueueListIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+import { Link } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
@@ -6,6 +8,7 @@ import { VolumeControl } from '@/components/player/VolumeControl'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { StarRating } from '@/components/player/StarRating'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // Inline SVG: rectangle with small inset rectangle — standard PiP icon
 function PipIcon({ className }: { className?: string }) {
@@ -18,8 +21,51 @@ function PipIcon({ className }: { className?: string }) {
 }
 
 export function BottomPlayerBar() {
-  const { toggleNowPlaying, isNowPlayingOpen, currentTrack } = usePlayerStore()
+  const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const isMobile = useIsMobile()
 
+  // ── Mobile mini-player ───────────────────────────────────────────
+  if (isMobile) {
+    if (!currentTrack) return null
+    return (
+      <div className="shrink-0 bg-base border-t border-elevated/20">
+        {/* Thin progress bar strip at the top */}
+        <div className="h-0.5 bg-elevated/40">
+          <ProgressBarStrip />
+        </div>
+        {/* Mini-player row */}
+        <div
+          className="flex items-center gap-3 px-3 h-16 cursor-pointer"
+          onClick={toggleNowPlaying}
+          role="button"
+          aria-label="Open now playing"
+        >
+          <img
+            src={currentTrack.album.coverUrl}
+            alt={currentTrack.album.title}
+            className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-lg"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-primary truncate leading-tight">{currentTrack.title}</p>
+            <p className="text-xs text-secondary truncate leading-tight">{currentTrack.artist.name}</p>
+          </div>
+          {/* Play/pause only — stop propagation so the row tap doesn't also toggle play */}
+          <button
+            onClick={(e) => { e.stopPropagation(); isPlaying ? pause() : resume() }}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-page hover:scale-105 active:scale-95 transition-all shrink-0"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying
+              ? <PauseIcon className="w-5 h-5" />
+              : <PlayIcon className="w-5 h-5 translate-x-0.5" />
+            }
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Desktop full player bar ──────────────────────────────────────
   return (
     <div className="shrink-0 h-20 sm:h-24 bg-base grid grid-cols-3 items-center gap-2 px-4">
       {/* Left: Now Playing Info */}
@@ -27,7 +73,7 @@ export function BottomPlayerBar() {
         <NowPlayingInfo />
       </div>
 
-      {/* Center: Controls + Progress — equal side columns keep this perfectly centered */}
+      {/* Center: Controls + Progress */}
       <div className="flex flex-col items-center gap-2 w-full max-w-[620px] justify-self-center">
         <PlayerControls />
         <ProgressBar />
@@ -61,5 +107,17 @@ export function BottomPlayerBar() {
         </button>
       </div>
     </div>
+  )
+}
+
+/** Thin accent-coloured progress strip for the mobile mini-player. */
+function ProgressBarStrip() {
+  const { currentTime, duration } = usePlayerStore()
+  const pct = duration > 0 ? (currentTime / duration) * 100 : 0
+  return (
+    <div
+      className="h-full bg-primary transition-[width] duration-500"
+      style={{ width: `${pct}%` }}
+    />
   )
 }

@@ -40,7 +40,7 @@ export function TrackTile({ track, queue }: TrackTileProps) {
         <img src={track.album.coverUrl} alt={track.title} className="w-full h-full object-cover" />
         <button
           onClick={handlePlay}
-          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
+          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
           aria-label={isCurrent && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
         >
           {isCurrent && isPlaying ? (

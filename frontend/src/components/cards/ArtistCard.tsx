@@ -54,7 +54,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
         </div>
         <button
           onClick={handlePlay}
-          className="absolute bottom-1 right-1 z-10 flex h-11 w-11 translate-y-2 items-center justify-center rounded-full bg-accent opacity-0 shadow-lg transition-all duration-200 hover:scale-105 group-hover:translate-y-0 group-hover:opacity-100 disabled:opacity-60"
+          className="absolute bottom-1 right-1 z-10 flex h-11 w-11 translate-y-0 items-center justify-center rounded-full bg-accent opacity-100 shadow-lg transition-all duration-200 hover:scale-105 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 disabled:opacity-60"
           aria-label={`Play ${artist.name}`}
           disabled={loading}
         >

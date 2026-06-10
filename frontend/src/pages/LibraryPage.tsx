@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
@@ -18,6 +20,8 @@ import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
 
 export function LibraryPage() {
+  useDocumentTitle('Your Library')
+  const isMobile = useIsMobile()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, likedAtMap, isLoading, fetchLibrary, createPlaylist } =
     useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -129,13 +133,13 @@ export function LibraryPage() {
         ) : (
           <div>
             {/* Playlist-style header */}
-            <div className="flex items-end gap-6 pb-6 bg-gradient-to-b from-accent-dim/40 to-transparent rounded-lg mb-4 p-4">
-              <div className="w-36 h-36 rounded-md shadow-2xl flex-shrink-0 bg-accent/20 flex items-center justify-center">
-                <HeartSolid className="w-16 h-16 text-accent" />
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 pb-4 sm:pb-6 bg-gradient-to-b from-accent-dim/40 to-transparent rounded-lg mb-4 p-4">
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-md shadow-2xl flex-shrink-0 bg-accent/20 flex items-center justify-center self-center sm:self-auto">
+                <HeartSolid className="w-12 h-12 sm:w-16 sm:h-16 text-accent" />
               </div>
-              <div className="min-w-0 pb-1">
+              <div className="min-w-0 pb-1 text-center sm:text-left">
                 <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Playlist</p>
-                <h2 className="text-4xl font-black text-primary mt-1 mb-2">Liked Songs</h2>
+                <h2 className="text-3xl sm:text-4xl font-black text-primary mt-1 mb-2">Liked Songs</h2>
                 <p className="text-xs text-secondary">{likedSongs.length} songs</p>
               </div>
             </div>
@@ -155,7 +159,7 @@ export function LibraryPage() {
             {/* Column headers */}
             <div
               className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
-              style={{ gridTemplateColumns: '16px 6fr 4fr 3fr var(--track-actions-width)' }}
+              style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 4fr 3fr var(--track-actions-width)' }}
             >
               <span className="text-xs text-secondary">#</span>
               <span className="text-xs text-secondary uppercase tracking-wider">Title</span>

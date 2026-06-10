@@ -3,8 +3,10 @@ import type { Track } from '@/types/track'
 import { trackService } from '@/services/trackService'
 import { TrackTile } from '@/components/cards/TrackTile'
 import { Spinner } from '@/components/ui/Spinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export function TrendingPage() {
+  useDocumentTitle('Trending')
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
 

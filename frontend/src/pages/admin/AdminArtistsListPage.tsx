@@ -85,10 +85,10 @@ export function AdminArtistsListPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Artists</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Artists</h1>
           <p className="text-secondary text-sm mt-1">Manage all artists in the catalogue.</p>
         </div>
         <Button onClick={() => navigate('/admin/artists/new')}>
@@ -106,8 +106,8 @@ export function AdminArtistsListPage() {
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : (
-        <div className="bg-surface rounded-lg overflow-hidden border border-elevated/40">
-          <table className="w-full">
+        <div className="bg-surface rounded-lg border border-elevated/40 overflow-x-auto">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wider text-secondary border-b border-elevated/40">
                 <th className="px-4 py-3"></th>

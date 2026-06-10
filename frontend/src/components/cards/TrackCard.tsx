@@ -50,7 +50,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
     >
       <div className="relative w-10 h-10 flex-shrink-0 rounded overflow-hidden">
         <img src={track.album.coverUrl} alt={track.album.title} className="w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {isCurrent && isPlaying ? (
             <PauseIcon className="w-5 h-5 text-white" />
           ) : (
@@ -69,7 +69,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
       <span className="text-xs text-muted flex-shrink-0">{formatMs(track.durationMs)}</span>
       <button
         onClick={handleLike}
-        className={`opacity-0 group-hover:opacity-100 transition-opacity ${isLiked ? 'opacity-100' : ''}`}
+        className={`transition-opacity ${isLiked ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
         aria-label={isLiked ? 'Unlike' : 'Like'}
       >
         {isLiked ? (

@@ -47,7 +47,7 @@ export function Slider({
       </RadixSlider.Track>
       <RadixSlider.Thumb
         className={cn(
-          'block w-3 h-3 bg-primary rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:opacity-100',
+          'block w-3 h-3 bg-primary rounded-full shadow-md opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus:opacity-100',
           thumbClassName,
         )}
       />

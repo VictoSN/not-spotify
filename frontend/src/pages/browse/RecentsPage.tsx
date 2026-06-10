@@ -65,8 +65,8 @@ function HistoryRow({
       className="group grid w-full grid-cols-[28px_minmax(0,1fr)_70px] items-center gap-4 rounded-md px-4 py-2 text-left transition-colors hover:bg-elevated/60 sm:grid-cols-[28px_minmax(0,1fr)_160px_70px]"
     >
       <span className="flex h-7 w-7 items-center justify-center text-sm text-secondary">
-        <span className="group-hover:hidden">{index + 1}</span>
-        <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
+        <span className="hidden md:inline md:group-hover:hidden">{index + 1}</span>
+        <PlayIcon className="block md:hidden md:group-hover:block h-4 w-4 text-primary" />
       </span>
       <span className="flex min-w-0 items-center gap-3">
         <img src={item.track.album.coverUrl} alt={item.track.album.title} className="h-10 w-10 rounded object-cover" />

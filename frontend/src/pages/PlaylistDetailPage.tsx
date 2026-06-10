@@ -27,6 +27,8 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { TrackRow } from '@/components/cards/TrackRow'
@@ -43,6 +45,7 @@ export function PlaylistDetailPage() {
   const navigate = useNavigate()
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loadError, setLoadError] = useState<'notfound' | 'forbidden' | null>(null)
+  useDocumentTitle(playlist?.name ?? null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -59,6 +62,7 @@ export function PlaylistDetailPage() {
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
   const playWithGate = usePlaybackGate()
+  const isMobile = useIsMobile()
   const { isAuthenticated, user } = useAuthStore()
   const isPremium = user?.plan === 'premium'
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -280,8 +284,8 @@ export function PlaylistDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-end gap-6 p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent">
-        <div className="w-44 h-44 sm:w-56 sm:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated">
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent">
+        <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated self-center sm:self-auto">
           {playlist.coverUrl ? (
             <img src={playlist.coverUrl} alt={playlist.name} className="w-full h-full object-cover" />
           ) : (
@@ -292,7 +296,7 @@ export function PlaylistDetailPage() {
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
             {{ public: 'Public playlist', friends: 'Friends only', private: 'Private playlist' }[currentVisibility()]}
           </p>
-          <h1 className="text-4xl sm:text-5xl font-black text-primary mt-1 mb-3">{playlist.name}</h1>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mt-1 mb-3 break-words">{playlist.name}</h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
           <p className="text-xs text-secondary">
             <span className="font-semibold text-primary">{playlist.owner.name}</span>
@@ -305,7 +309,7 @@ export function PlaylistDetailPage() {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4 px-6 py-4">
+      <div className="flex flex-wrap items-center gap-3 px-4 sm:px-6 py-4">
         <Button onClick={handlePlayAll} size="lg" className="gap-2">
           <PlayIcon className="w-5 h-5" />
           Play
@@ -507,7 +511,7 @@ export function PlaylistDetailPage() {
         {/* Column headers */}
         <div
           className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
-          style={{ gridTemplateColumns: '16px 6fr 4fr 3fr var(--track-actions-width)' }}
+          style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 4fr 3fr var(--track-actions-width)' }}
         >
           <span className="text-xs text-secondary">#</span>
           <span className="text-xs text-secondary uppercase tracking-wider">Title</span>

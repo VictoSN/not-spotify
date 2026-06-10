@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { genreService } from '@/services/genreService'
 import { meService, type RecentSearch } from '@/services/meService'
@@ -68,9 +70,48 @@ export function SearchPage() {
   }, [debouncedQuery, isAuthenticated])
 
   const tabs: Tab[] = ['all', 'songs', 'artists', 'albums', 'playlists']
+  const isMobile = useIsMobile()
+  useDocumentTitle(query.trim() ? `Search: ${query.trim()}` : 'Search')
+  const mobileInputRef = useRef<HTMLInputElement>(null)
+  const [mobileValue, setMobileValue] = useState(query)
+
+  useEffect(() => { setMobileValue(query) }, [query])
+
+  const handleMobileSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value
+    setMobileValue(q)
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`, { replace: true })
+    else navigate('/search', { replace: true })
+  }
 
   return (
-    <div className="px-6 py-6">
+    <div className="px-4 md:px-6 py-4 md:py-6">
+      {/* Mobile-only search bar — the desktop version lives in TopBar */}
+      {isMobile && (
+        <div className="sticky top-0 z-20 bg-page pb-3 -mx-4 px-4">
+          <div className="relative">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+            <input
+              ref={mobileInputRef}
+              autoFocus
+              type="search"
+              placeholder="What do you want to play?"
+              value={mobileValue}
+              onChange={handleMobileSearch}
+              className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-11 rounded-full border border-transparent focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
+            />
+            {mobileValue && (
+              <button
+                onClick={() => { setMobileValue(''); navigate('/search', { replace: true }) }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary"
+                aria-label="Clear search"
+              >
+                <XMarkIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {!query.trim() ? (
         /* Recent searches + browse */
         <>

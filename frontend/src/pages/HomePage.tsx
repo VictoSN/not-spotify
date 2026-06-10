@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import { MusicalNoteIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
@@ -28,6 +29,7 @@ import { Spinner } from '@/components/ui/Spinner'
 const PREVIEW_LIMIT = 10
 
 export function HomePage() {
+  useDocumentTitle('Home')
   const { user, isAuthenticated } = useAuthStore()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const playWithGate = usePlaybackGate()
@@ -218,7 +220,7 @@ export function HomePage() {
                         e.preventDefault()
                         playWithGate(tracks[0], tracks)
                       }}
-                      className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                      className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0 hover:scale-105 active:scale-95 transition-all shadow-lg"
                       aria-label={`Play ${p.name}`}
                     >
                       <PlayIcon className="w-5 h-5 text-white ml-0.5" />

@@ -3,7 +3,9 @@ import { Outlet, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
+import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
+import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -52,6 +54,8 @@ export function AppShell() {
       </div>
 
       {isAuthenticated && <BottomPlayerBar />}
+      {isMobile && <MobileNav />}
+      {isMobile && isAuthenticated && <MobileNowPlayingSheet />}
       {isAuthenticated && <PictureInPicturePlayer />}
       <AuthPromptModal />
     </div>

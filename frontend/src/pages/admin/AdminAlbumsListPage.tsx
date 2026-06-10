@@ -319,10 +319,10 @@ export function AdminAlbumsListPage() {
   const handleTrackDragEnd = () => { setDragId(null); setDropId(null) }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Albums</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary">Albums</h1>
           <p className="text-secondary text-sm mt-1">Sorted by artist · expand an album to review its tracks.</p>
         </div>
         <Button onClick={() => navigate('/admin/albums/new')}>
@@ -407,9 +407,9 @@ export function AdminAlbumsListPage() {
 
                 {/* Albums under this artist */}
                 {isArtistOpen && (
-                  <div className="border-t border-elevated/30">
+                  <div className="border-t border-elevated/30 overflow-x-auto">
                     {/* Album sort header */}
-                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-8 py-2 border-b border-elevated/20 bg-elevated/10">
+                    <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-8 py-2 border-b border-elevated/20 bg-elevated/10 min-w-[640px]">
                       <SortTh label="Title"    active={albumSort.field === 'title'}       dir={albumSort.dir} onClick={() => cycleAlbumSort('title')} />
                       <SortTh label="Type"     active={albumSort.field === 'type'}        dir={albumSort.dir} onClick={() => cycleAlbumSort('type')} />
                       <SortTh label="Released" active={albumSort.field === 'releaseDate'} dir={albumSort.dir} onClick={() => cycleAlbumSort('releaseDate')} />
@@ -425,7 +425,7 @@ export function AdminAlbumsListPage() {
 
                       return (
                         <React.Fragment key={album.id}>
-                          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-center px-8 py-2.5 border-b border-elevated/10 hover:bg-elevated/20 transition-colors">
+                          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 items-center px-8 py-2.5 border-b border-elevated/10 hover:bg-elevated/20 transition-colors min-w-[640px]">
                             {/* Title with expand toggle */}
                             <div className="flex flex-col gap-0.5 min-w-0">
                               <div className="flex items-center gap-2">
@@ -569,7 +569,7 @@ export function AdminAlbumsListPage() {
 
                           {/* Tracks */}
                           {isAlbumOpen && (
-                            <div className="border-b border-elevated/10 bg-elevated/5 pl-14">
+                            <div className="border-b border-elevated/10 bg-elevated/5 pl-14 overflow-x-auto">
                               {tracksLoading ? (
                                 <div className="flex justify-center py-4"><Spinner size="sm" /></div>
                               ) : rawTracks === 'error' ? (
@@ -577,7 +577,7 @@ export function AdminAlbumsListPage() {
                               ) : tracks.length === 0 ? (
                                 <p className="px-4 py-3 text-xs text-secondary italic">No tracks uploaded yet.</p>
                               ) : (
-                                <table className="w-full">
+                                <table className="w-full min-w-[520px]">
                                   <thead>
                                     <tr className="border-b border-elevated/20">
                                       <th className="w-6 px-1 py-2"></th>{/* drag handle */}

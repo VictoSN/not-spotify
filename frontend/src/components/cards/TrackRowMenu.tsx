@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import {
   EllipsisHorizontalIcon,
@@ -40,6 +41,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   // flickering shut.
   const addCloseTimer = useRef<number | null>(null)
   const removeCloseTimer = useRef<number | null>(null)
+  const isMobile = useIsMobile()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isPremium = useAuthStore((s) => s.user?.plan === 'premium')
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -189,7 +191,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
               setRemovePlaylistQuery('')
             }}
             aria-label="More options"
-            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
           >
             <EllipsisHorizontalIcon className="w-4 h-4 text-secondary hover:text-primary" />
           </MenuButton>
@@ -256,7 +258,9 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                     }
                   }}
                   onMouseLeave={scheduleCloseAddSubmenu}
-                  className="absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1"
+                  className={isMobile
+                    ? 'w-full max-h-60 overflow-y-auto bg-elevated/80 border-t border-secondary/10 py-1'
+                    : 'absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1'}
                 >
                   <div className="px-2 pt-1 pb-2">
                     <div className="relative">
@@ -359,7 +363,9 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                       }
                     }}
                     onMouseLeave={scheduleCloseRemoveSubmenu}
-                    className="absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1"
+                    className={isMobile
+                      ? 'w-full max-h-60 overflow-y-auto bg-elevated/80 border-t border-secondary/10 py-1'
+                      : 'absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1'}
                   >
                     <div className="px-2 pt-1 pb-2">
                       <div className="relative">

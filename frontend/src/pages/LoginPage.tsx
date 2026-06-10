@@ -1,5 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { MusicalNoteIcon, ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
@@ -13,6 +14,7 @@ interface FormValues {
 }
 
 export function LoginPage() {
+  useDocumentTitle('Log in')
   const navigate = useNavigate()
   const { login, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()

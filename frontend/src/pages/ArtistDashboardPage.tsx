@@ -562,7 +562,7 @@ export function ArtistDashboardPage() {
                 ) : (
                   <UserCircleIcon className="w-12 h-12 text-muted" />
                 )}
-                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-black/40 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <PhotoIcon className="w-5 h-5 text-white" />
                 </div>
               </div>

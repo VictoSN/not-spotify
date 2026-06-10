@@ -82,7 +82,7 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
       <div className="flex items-center gap-4">
         <label className="group relative cursor-pointer">
           <Avatar src={avatarFile ? URL.createObjectURL(avatarFile) : user?.avatarUrl} alt={name} size="xl" round />
-          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <CameraIcon className="h-6 w-6 text-white" />
           </span>
           <input

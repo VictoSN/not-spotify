@@ -8,6 +8,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { TrackRowMenu } from './TrackRowMenu'
@@ -39,6 +40,7 @@ export function TrackRow({
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const isMobile = useIsMobile()
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
   const { ratingCount, averageRating } = getAggregate(track.id)
@@ -71,7 +73,7 @@ export function TrackRow({
   return (
     <div
       className="group grid items-center gap-4 px-4 py-2 rounded-md hover:bg-elevated/60 cursor-pointer"
-      style={{ gridTemplateColumns: showAlbum ? '16px 6fr 4fr 3fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
+      style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : showAlbum ? '16px 6fr 4fr 3fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
       onClick={handlePlay}
     >
       {/* Index / play indicator */}
@@ -160,7 +162,7 @@ export function TrackRow({
         <div className="flex justify-center">
           <button
             onClick={toggleLike}
-            className={`opacity-0 group-hover:opacity-100 transition-opacity ${isLiked ? 'opacity-100' : ''}`}
+            className={`transition-opacity ${isLiked ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
             aria-label={isLiked ? 'Unlike' : 'Like'}
           >
             {isLiked ? (

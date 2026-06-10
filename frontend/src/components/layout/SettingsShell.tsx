@@ -7,7 +7,11 @@ import {
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Avatar } from '@/components/ui/Avatar'
+import { MobileNav } from './MobileNav'
+import { BottomPlayerBar } from './BottomPlayerBar'
+import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 
 /**
  * Chrome-less shell for account/settings pages — mirrors Spotify's account
@@ -16,6 +20,7 @@ import { Avatar } from '@/components/ui/Avatar'
 export function SettingsShell() {
   const { user, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
+  const isMobile = useIsMobile()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -64,6 +69,10 @@ export function SettingsShell() {
           <Outlet />
         </div>
       </main>
+
+      {isMobile && <BottomPlayerBar />}
+      {isMobile && <MobileNav />}
+      {isMobile && <MobileNowPlayingSheet />}
     </div>
   )
 }

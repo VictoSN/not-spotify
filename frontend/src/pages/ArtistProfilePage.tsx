@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
@@ -21,6 +22,7 @@ import { formatNumber } from '@/utils/formatNumber'
 export function ArtistProfilePage() {
   const { id } = useParams<{ id: string }>()
   const [artist, setArtist] = useState<Artist | null>(null)
+  useDocumentTitle(artist?.name ?? null)
   const [topTracks, setTopTracks] = useState<Track[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,20 +71,20 @@ export function ArtistProfilePage() {
           <div className="w-full h-full bg-gradient-to-b from-accent-dim to-page" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-page via-page/40 to-transparent" />
-        <div className="absolute bottom-6 left-6 flex items-end gap-4">
+        <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3 sm:gap-4 sm:bottom-6 sm:left-6 sm:right-6">
           {artist.imageUrl && (
             <img
               src={artist.imageUrl}
               alt={artist.name}
-              className="w-24 h-24 rounded-full object-cover shadow-2xl border-2 border-elevated"
+              className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-2xl border-2 border-elevated flex-shrink-0"
             />
           )}
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               {artist.verified && <CheckBadgeIcon className="w-5 h-5 text-accent" />}
               <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Artist</span>
             </div>
-            <h1 className="text-5xl sm:text-7xl font-black text-primary drop-shadow-lg">{artist.name}</h1>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-primary drop-shadow-lg truncate">{artist.name}</h1>
             <p className="text-secondary text-sm mt-1">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
           </div>
         </div>

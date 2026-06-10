@@ -80,13 +80,14 @@ export function TopBar() {
 
   if (!isAuthenticated) {
     return (
-      <header className="grid h-16 shrink-0 grid-cols-[1fr_minmax(280px,560px)_1fr] items-center gap-4 bg-base px-4">
+      <header className="grid shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base px-4 h-14 md:h-16">
         <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label="not-spotify home">
-          <MusicalNoteIcon className="w-8 h-8 text-accent" />
+          <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
           <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
         </Link>
 
-        <div className="flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
+        {/* Search bar — hidden on mobile (accessed via Search tab in bottom nav) */}
+        <div className="hidden md:flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
           <button
             onClick={() => navigate('/')}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
@@ -111,20 +112,18 @@ export function TopBar() {
           </div>
         </div>
 
-        <div className="hidden items-center justify-end gap-5 text-sm font-bold text-secondary lg:flex">
+        <div className="flex items-center justify-end gap-5 text-sm font-bold text-secondary">
           <div className="hidden items-center gap-5 2xl:flex">
             <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
             <button className="transition-colors hover:text-primary">Support</button>
-            <button className="transition-colors hover:text-primary">Download</button>
             <div className="h-6 w-px bg-secondary/40" />
-            <button className="transition-colors hover:text-primary">Install App</button>
           </div>
-          <Link to="/signup" className="transition-colors hover:text-primary">
+          <Link to="/signup" className="hidden md:block transition-colors hover:text-primary">
             Sign up
           </Link>
           <Link
             to="/login"
-            className="rounded-full bg-primary px-6 py-3 font-bold text-page transition-transform hover:scale-105 active:scale-95"
+            className="rounded-full bg-primary px-4 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-page transition-transform hover:scale-105 active:scale-95"
           >
             Log in
           </Link>
@@ -134,15 +133,15 @@ export function TopBar() {
   }
 
   return (
-    <header className="flex items-center gap-4 px-4 h-16 shrink-0 bg-base">
+    <header className="flex items-center gap-2 md:gap-4 px-3 md:px-4 h-14 md:h-16 shrink-0 bg-base">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
-        <MusicalNoteIcon className="w-8 h-8 text-accent" />
+        <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
         <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
       </Link>
 
-      {/* Center: home + search + theme toggle */}
-      <div className="flex-1 flex items-center justify-center gap-2">
+      {/* Center: home + search + theme toggle — desktop only */}
+      <div className="hidden md:flex flex-1 items-center justify-center gap-2">
         <button
           onClick={() => navigate('/')}
           className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center transition-all"
@@ -182,7 +181,7 @@ export function TopBar() {
           )}
         </div>
 
-        {/* Theme toggle — sits right beside the search */}
+        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
           className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center text-secondary hover:text-primary transition-all shrink-0"
@@ -193,7 +192,10 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Explore Premium pill — only for free-tier authenticated users */}
+      {/* Mobile: page title area (spacer) */}
+      <div className="flex-1 md:hidden" />
+
+      {/* Explore Premium pill — desktop only, free users */}
       {user?.capabilities?.unlimitedPlayback === false && (
         <Link
           to="/premium"
@@ -204,8 +206,8 @@ export function TopBar() {
         </Link>
       )}
 
-      {/* Friends panel toggle */}
-      <div className="relative">
+      {/* Friends panel toggle — desktop only */}
+      <div className="relative hidden md:block">
         <button
           onClick={() => {
             setShowFriends((v) => !v)
@@ -236,7 +238,7 @@ export function TopBar() {
             setShowMenu((v) => !v)
             setShowFriends(false)
           }}
-          className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-3 py-1 transition-colors"
+          className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-2 md:pr-3 py-1 transition-colors"
           aria-label="User menu"
         >
           <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
@@ -271,6 +273,14 @@ export function TopBar() {
                 <Cog6ToothIcon className="w-4 h-4" />
                 Settings
               </Link>
+              {/* Theme toggle in mobile menu */}
+              <button
+                onClick={() => { toggleTheme(); setShowMenu(false) }}
+                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors md:hidden"
+              >
+                {theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              </button>
               <Link
                 to="/premium"
                 onClick={() => setShowMenu(false)}
@@ -324,6 +334,7 @@ export function TopBar() {
           </>
         )}
       </div>
+
     </header>
   )
 }

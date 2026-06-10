@@ -62,14 +62,14 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
         )}
         <button
           onClick={handlePlay}
-          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
+          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
           aria-label={`Play ${playlist.name}`}
         >
           <PlayIcon className="w-5 h-5 text-white ml-0.5" />
         </button>
         <button
           onClick={handleLike}
-          className={`absolute top-2 right-2 transition-all ${isSaved ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          className={`absolute top-2 right-2 transition-all ${isSaved ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
           aria-label={isSaved ? `Remove ${playlist.name} from library` : `Add ${playlist.name} to library`}
         >
           {isSaved ? (

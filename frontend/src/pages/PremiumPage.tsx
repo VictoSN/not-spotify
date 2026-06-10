@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/Button'
 import { billingService, type BillingPlan, type BillingSubscription } from '@/services/billingService'
@@ -84,6 +85,7 @@ function PlanCard({
 }
 
 export function PremiumPage() {
+  useDocumentTitle('Premium')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { user, isAuthenticated } = useAuthStore()

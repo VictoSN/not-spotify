@@ -35,6 +35,7 @@ import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
 import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
+import { TrackDetailPage } from '@/pages/TrackDetailPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
           { path: 'popular-artists', element: <PopularArtistsPage /> },
           { path: 'new-releases', element: <NewReleasesPage /> },
           { path: 'user/:userId', element: <UserProfilePage /> },
+          { path: 'track/:id', element: <TrackDetailPage /> },
           {
             element: <ProtectedRoute />,
             children: [

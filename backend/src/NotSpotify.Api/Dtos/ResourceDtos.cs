@@ -1,4 +1,19 @@
+using System.Text.Json.Serialization;
+
 namespace NotSpotify.Api.Dtos;
+
+/// <summary>Response from GET /tracks/{id}/lyrics</summary>
+public record LyricsDto(string? Lyrics, string Source);
+
+/// <summary>Shape returned by the Lyrics.ovh public API.</summary>
+public record LyricsOvhResponse([property: JsonPropertyName("lyrics")] string? Lyrics);
+
+/// <summary>Shape returned by the LRCLIB public API.</summary>
+public record LrclibResponse(
+    [property: JsonPropertyName("plainLyrics")] string? PlainLyrics,
+    [property: JsonPropertyName("syncedLyrics")] string? SyncedLyrics,
+    [property: JsonPropertyName("instrumental")] bool Instrumental
+);
 
 public record SavedTrackDto(TrackDto Track, DateTime SavedAt);
 

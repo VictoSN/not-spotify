@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,11 +14,13 @@ public class TracksController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly LyricsService _lyrics;
 
-    public TracksController(AppDbContext db, MediaMapper mapper)
+    public TracksController(AppDbContext db, MediaMapper mapper, LyricsService lyrics)
     {
         _db = db;
         _mapper = mapper;
+        _lyrics = lyrics;
     }
 
     private IQueryable<Models.Track> BaseQuery() => _db.Tracks
@@ -176,6 +179,34 @@ public class TracksController : ControllerBase
     {
         var t = await BaseQuery().FirstOrDefaultAsync(x => x.Id == id, ct);
         return t is null ? NotFound() : Ok(await _mapper.ToDtoAsync(t, ct));
+    }
+
+    /// <summary>
+    /// Returns lyrics for a track. New uploads have lyrics pre-fetched at submission,
+    /// so this is usually just a DB read. For legacy tracks without stored lyrics we
+    /// fall back to LyricsService (LRCLIB → Lyrics.ovh) and cache the result.
+    /// </summary>
+    [HttpGet("{id:guid}/lyrics")]
+    public async Task<ActionResult<LyricsDto>> GetLyrics(Guid id, CancellationToken ct = default)
+    {
+        var track = await _db.Tracks
+            .Include(t => t.Artist)
+            .FirstOrDefaultAsync(t => t.Id == id && t.Status == "approved", ct);
+
+        if (track is null) return NotFound();
+
+        if (!string.IsNullOrWhiteSpace(track.Lyrics))
+            return Ok(new LyricsDto(track.Lyrics, "stored"));
+
+        var fetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
+        if (fetched is not null)
+        {
+            track.Lyrics = fetched.Lyrics;
+            await _db.SaveChangesAsync(ct);
+            return Ok(new LyricsDto(track.Lyrics, fetched.Source));
+        }
+
+        return Ok(new LyricsDto(null, "not_found"));
     }
 
     private async Task<ActionResult<IEnumerable<TrackDto>>> TrendingFallback(int limit, CancellationToken ct)

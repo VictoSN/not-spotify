@@ -22,4 +22,5 @@ export interface Track {
   isSaved?: boolean
   status?: 'approved' | 'pending' | 'rejected'
   reviewNote?: string | null
+  lyrics?: string | null
 }

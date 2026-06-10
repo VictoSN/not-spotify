@@ -73,4 +73,9 @@ export const trackService = {
     const res = await api.delete(`/me/track-ratings/${trackId}`)
     return res.data
   },
+
+  async getLyrics(id: string): Promise<{ lyrics: string | null; source: string }> {
+    const res = await api.get<{ lyrics: string | null; source: string }>(`/tracks/${id}/lyrics`)
+    return res.data
+  },
 }

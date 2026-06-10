@@ -113,6 +113,7 @@ export function ArtistDashboardPage() {
   const [trackTitle, setTrackTitle] = useState('')
   const [trackNumber, setTrackNumber] = useState(1)
   const [trackExplicit, setTrackExplicit] = useState(false)
+  const [trackLyrics, setTrackLyrics] = useState('')
   const [trackAudioFile, setTrackAudioFile] = useState<File | null>(null)
   const [trackDuration, setTrackDuration] = useState(0)
   const [trackSubmitting, setTrackSubmitting] = useState(false)
@@ -226,6 +227,7 @@ export function ArtistDashboardPage() {
     try {
       const trackRes = await api.post<Track>('/me/artist-tracks', {
         title: trackTitle, albumId, durationMs: trackDuration, trackNumber, discNumber: 1, explicit: trackExplicit,
+        lyrics: trackLyrics.trim() || null,
       })
       const fd = new FormData()
       fd.append('file', trackAudioFile)
@@ -233,7 +235,7 @@ export function ArtistDashboardPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setAddingTrackToAlbum(null)
-      setTrackTitle(''); setTrackNumber(1); setTrackExplicit(false); setTrackAudioFile(null); setTrackDuration(0)
+      setTrackTitle(''); setTrackNumber(1); setTrackExplicit(false); setTrackLyrics(''); setTrackAudioFile(null); setTrackDuration(0)
       await reload()
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -1378,6 +1380,18 @@ export function ArtistDashboardPage() {
                           />
                           <span className="text-sm text-primary">Explicit</span>
                         </label>
+                        <div>
+                          <label className="block text-xs font-semibold text-primary mb-1">
+                            Lyrics <span className="font-normal text-muted">(optional)</span>
+                          </label>
+                          <textarea
+                            value={trackLyrics}
+                            onChange={(e) => setTrackLyrics(e.target.value)}
+                            rows={6}
+                            placeholder={"Paste lyrics here…\nLeave blank to auto-fetch from Lyrics.ovh"}
+                            className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
+                          />
+                        </div>
                         {trackFormError && <p className="text-xs text-red-400">{trackFormError}</p>}
                         <div className="flex gap-2">
                           <Button type="submit" size="sm" disabled={trackSubmitting}>

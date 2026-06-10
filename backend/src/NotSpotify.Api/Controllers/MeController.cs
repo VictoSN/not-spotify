@@ -26,13 +26,23 @@ public class MeController : ControllerBase
     private readonly MediaMapper _mapper;
     private readonly UserManager<ApplicationUser> _users;
     private readonly IStorageService _storage;
+    private readonly LyricsService _lyrics;
+    private readonly ILogger<MeController> _logger;
 
-    public MeController(AppDbContext db, MediaMapper mapper, UserManager<ApplicationUser> users, IStorageService storage)
+    public MeController(
+        AppDbContext db,
+        MediaMapper mapper,
+        UserManager<ApplicationUser> users,
+        IStorageService storage,
+        LyricsService lyrics,
+        ILogger<MeController> logger)
     {
         _db = db;
         _mapper = mapper;
         _users = users;
         _storage = storage;
+        _lyrics = lyrics;
+        _logger = logger;
     }
 
     private Guid? CurrentUserId()
@@ -114,8 +124,16 @@ public class MeController : ControllerBase
         var oldKey = user.AvatarKey;
         var key = $"avatars/{user.Id}/{Guid.NewGuid()}{ext}";
 
-        await using var stream = file.OpenReadStream();
-        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Avatar upload failed for user {UserId}", user.Id);
+            return StatusCode(500, new { message = $"Upload failed: {ex.Message}" });
+        }
 
         user.AvatarKey = key;
         user.AvatarUrl = null;
@@ -523,8 +541,16 @@ public class MeController : ControllerBase
             return BadRequest(new { message = $"Unsupported file type '{ext}'. Allowed: jpg, jpeg, png, webp" });
 
         var key = $"covers/{Guid.NewGuid()}{ext}";
-        await using var stream = file.OpenReadStream();
-        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Album cover upload failed for album {AlbumId}", album.Id);
+            return StatusCode(500, new { message = $"Upload failed: {ex.Message}" });
+        }
 
         album.CoverKey = key;
         album.CoverUrl = string.Empty;
@@ -597,6 +623,7 @@ public class MeController : ControllerBase
             TrackNumber = req.TrackNumber,
             DiscNumber = req.DiscNumber,
             Explicit = req.Explicit,
+            Lyrics = string.IsNullOrWhiteSpace(req.Lyrics) ? null : req.Lyrics.Trim(),
             Status = "pending",
             SubmittedByUserId = me.Value,
             AudioUrl = string.Empty,
@@ -604,6 +631,18 @@ public class MeController : ControllerBase
         };
         _db.Tracks.Add(track);
         await _db.SaveChangesAsync(ct);
+
+        // Pre-fetch lyrics so they're ready by the time a listener opens the page.
+        // Only when the artist didn't paste their own; failures are silently ignored.
+        if (track.Lyrics is null && artist is not null)
+        {
+            var fetched = await _lyrics.TryFetchAsync(artist.Name, track.Title, track.DurationMs, ct);
+            if (fetched is not null)
+            {
+                track.Lyrics = fetched.Lyrics;
+                await _db.SaveChangesAsync(ct);
+            }
+        }
 
         var created = await _db.Tracks
             .Include(t => t.Artist)
@@ -640,8 +679,16 @@ public class MeController : ControllerBase
             return BadRequest(new { message = $"Unsupported file type '{ext}'." });
 
         var key = $"audio/{Guid.NewGuid()}{ext}";
-        await using var stream = file.OpenReadStream();
-        await _storage.UploadAsync(key, stream, file.ContentType ?? "audio/mpeg", ct);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            await _storage.UploadAsync(key, stream, file.ContentType ?? "audio/mpeg", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Track audio upload failed for track {TrackId}", track.Id);
+            return StatusCode(500, new { message = $"Upload failed: {ex.Message}" });
+        }
 
         track.AudioKey = key;
         track.AudioUrl = string.Empty;
@@ -709,8 +756,16 @@ public class MeController : ControllerBase
             return BadRequest(new { message = $"Unsupported file type '{ext}'." });
 
         var key = $"images/artists/{Guid.NewGuid()}{ext}";
-        await using var stream = file.OpenReadStream();
-        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Artist image upload failed for artist {ArtistId}", artist.Id);
+            return StatusCode(500, new { message = $"Upload failed: {ex.Message}" });
+        }
 
         artist.ImageKey = key;
         artist.ImageUrl = null;
@@ -860,6 +915,9 @@ public class MeController : ControllerBase
         if (req.TrackNumber.HasValue) track.TrackNumber = req.TrackNumber.Value;
         if (req.Title is not null) track.Title = req.Title;
         if (req.Explicit.HasValue) track.Explicit = req.Explicit.Value;
+        // Lyrics can be set or cleared (empty string → null)
+        if (req.Lyrics is not null)
+            track.Lyrics = string.IsNullOrWhiteSpace(req.Lyrics) ? null : req.Lyrics.Trim();
 
         await _db.SaveChangesAsync(ct);
         return Ok(await _mapper.ToDtoAsync(track, ct));

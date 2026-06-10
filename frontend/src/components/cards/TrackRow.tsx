@@ -99,7 +99,13 @@ export function TrackRow({
         />
         <div className="min-w-0">
           <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
-            {track.title}
+            <Link
+              to={`/track/${track.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline"
+            >
+              {track.title}
+            </Link>
             {track.explicit && <span className="ml-1 text-xs bg-elevated px-1 rounded text-secondary">E</span>}
           </p>
           <p className="text-xs text-secondary truncate">

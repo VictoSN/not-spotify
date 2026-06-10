@@ -138,7 +138,8 @@ public record ArtistUpdateAlbumRequest(
 public record ArtistUpdateTrackRequest(
     int? TrackNumber,
     string? Title,
-    bool? Explicit
+    bool? Explicit,
+    string? Lyrics
 );
 
 // ── Artist — track submission ─────────────────────────────────────────────────
@@ -149,6 +150,7 @@ public record ArtistSubmitTrackRequest(
     [Required, Range(1, long.MaxValue)] long DurationMs,
     int TrackNumber = 1,
     int DiscNumber = 1,
-    bool Explicit = false
+    bool Explicit = false,
+    string? Lyrics = null
 );
 

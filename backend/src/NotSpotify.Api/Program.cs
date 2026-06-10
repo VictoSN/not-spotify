@@ -11,6 +11,12 @@ using NotSpotify.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Load user-secrets explicitly so credentials work regardless of ASPNETCORE_ENVIRONMENT.
+// By default user-secrets only load in Development; this makes them load always.
+builder.Configuration.AddUserSecrets<Program>(optional: true);
+
+Console.WriteLine($"[Env] ASPNETCORE_ENVIRONMENT = {builder.Environment.EnvironmentName}");
+
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 builder.Services.AddSingleton(jwt);
@@ -74,18 +80,22 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 
 var supabaseStorageSection = builder.Configuration.GetSection("SupabaseStorage");
-if (!string.IsNullOrWhiteSpace(supabaseStorageSection["Url"]))
+var supabaseUrl = supabaseStorageSection["Url"];
+if (!string.IsNullOrWhiteSpace(supabaseUrl))
 {
     builder.Services.Configure<SupabaseStorageOptions>(supabaseStorageSection);
     builder.Services.AddHttpClient();
     builder.Services.AddSingleton<IStorageService, SupabaseStorageService>();
+    Console.WriteLine($"[Storage] Using Supabase: {supabaseUrl} (bucket: {supabaseStorageSection["Bucket"]})");
 }
 else
 {
     builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
     builder.Services.AddSingleton<IStorageService, LocalStorageService>();
+    Console.WriteLine("[Storage] Using LocalStorage (Supabase URL is empty — user-secrets not loaded?)");
 }
 builder.Services.AddScoped<MediaMapper>();
+builder.Services.AddScoped<LyricsService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
 

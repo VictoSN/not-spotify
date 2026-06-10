@@ -16,6 +16,12 @@ public class Track
     public int RatingSum { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Optional lyrics text (plain text, line-breaks preserved).
+    /// Null means no lyrics stored yet — the API will attempt a Lyrics.ovh fallback on request.
+    /// </summary>
+    public string? Lyrics { get; set; }
+
     // approved | pending | rejected  (admin-created tracks are approved by default)
     public string Status { get; set; } = "approved";
     public string? ReviewNote { get; set; }

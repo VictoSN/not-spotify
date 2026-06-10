@@ -32,6 +32,7 @@ import { AdminAlbumFormPage } from '@/pages/admin/AdminAlbumFormPage'
 import { AdminTracksListPage } from '@/pages/admin/AdminTracksListPage'
 import { AdminTrackFormPage } from '@/pages/admin/AdminTrackFormPage'
 import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
+import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 
@@ -107,6 +108,7 @@ export const router = createBrowserRouter([
                   { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
                   { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
                   { path: 'admin/applications', element: <AdminApplicationsPage /> },
+                  { path: 'admin/dev', element: <AdminDevPage /> },
                 ],
               },
             ],

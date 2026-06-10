@@ -20,12 +20,13 @@ const PREMIUM_PERKS = [
   'Ad-free, uninterrupted listening',
   'Play any song in any order — no forced shuffle',
   'Shuffle toggle and repeat modes (all / one)',
+  'Download songs, albums & playlists as ZIP files',
   'Stripe-hosted secure checkout',
 ]
 
 const FREE_PERKS = [
   'Listen to all music (shuffle only)',
-  'Save playlists to your library',
+  'Save playlists and albums to your library',
   'Like songs and follow artists',
   'Search and browse the full catalogue',
 ]

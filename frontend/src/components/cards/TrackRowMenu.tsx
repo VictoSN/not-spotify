@@ -41,6 +41,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const addCloseTimer = useRef<number | null>(null)
   const removeCloseTimer = useRef<number | null>(null)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const isPremium = useAuthStore((s) => s.user?.plan === 'premium')
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
   const likeTrack = useLibraryStore((s) => s.likeTrack)
@@ -478,17 +479,33 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
 
             <div className="my-1 h-px bg-secondary/20" />
 
-            <MenuItem>
-              <a
-                href={track.audioUrl}
-                download
-                onClick={stop}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                Download
-              </a>
-            </MenuItem>
+            {isPremium ? (
+              <MenuItem>
+                <a
+                  href={track.audioUrl}
+                  download
+                  onClick={stop}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  Download
+                </a>
+              </MenuItem>
+            ) : (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => { stop(e); navigate('/premium'); close() }}
+                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-secondary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <span className="flex items-center gap-2">
+                    <ArrowDownTrayIcon className="w-4 h-4" />
+                    Download
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+                </button>
+              </MenuItem>
+            )}
 
             <MenuItem>
               <button

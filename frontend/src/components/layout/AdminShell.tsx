@@ -1,5 +1,5 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { MusicalNoteIcon, UserGroupIcon, RectangleStackIcon, ArrowLeftIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline'
+import { MusicalNoteIcon, UserGroupIcon, RectangleStackIcon, ArrowLeftIcon, ClipboardDocumentListIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/admin/albums',       label: 'Albums',        icon: RectangleStackIcon },
   { to: '/admin/tracks',       label: 'Tracks',        icon: MusicalNoteIcon },
   { to: '/admin/applications', label: 'Applications', icon: ClipboardDocumentListIcon },
+  { to: '/admin/dev',          label: 'Dev Tools',    icon: WrenchScrewdriverIcon },
 ]
 
 export function AdminShell() {

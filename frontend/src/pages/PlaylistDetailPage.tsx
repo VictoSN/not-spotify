@@ -14,6 +14,7 @@ import {
   PlusIcon,
   XMarkIcon,
   UserPlusIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility } from '@/types/playlist'
@@ -56,8 +57,10 @@ export function PlaylistDetailPage() {
   const [recommendations, setRecommendations] = useState<Track[]>([])
   const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set())
   const debouncedQuery = useDebounce(searchQuery, 300)
+  const [downloading, setDownloading] = useState(false)
   const playWithGate = usePlaybackGate()
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const { isAuthenticated, user } = useAuthStore()
+  const isPremium = user?.plan === 'premium'
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const savePlaylist = useLibraryStore((s) => s.savePlaylist)
   const unsavePlaylist = useLibraryStore((s) => s.unsavePlaylist)
@@ -153,6 +156,16 @@ export function PlaylistDetailPage() {
 
   const handlePlayAll = () => {
     if (tracks.length > 0) playWithGate(tracks[0], tracks)
+  }
+
+  const handleDownload = async () => {
+    if (!playlist) return
+    setDownloading(true)
+    try {
+      await playlistService.downloadZip(playlist.id, playlist.name)
+    } finally {
+      setDownloading(false)
+    }
   }
 
   const handleSaveToggle = async () => {
@@ -405,6 +418,29 @@ export function PlaylistDetailPage() {
                 Add to Library
               </>
             )}
+          </button>
+        )}
+
+        {/* Download — premium only */}
+        {isPremium ? (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Download playlist as ZIP"
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            {downloading ? 'Downloading…' : 'Download'}
+          </button>
+        ) : (
+          <button
+            onClick={() => navigate('/premium')}
+            title="Download is a Premium feature"
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-accent hover:scale-105 active:scale-95 transition-all"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            Download
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
           </button>
         )}
       </div>

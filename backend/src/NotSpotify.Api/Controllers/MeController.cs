@@ -234,8 +234,12 @@ public class MeController : ControllerBase
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
 
-        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == req.TrackId, ct);
-        if (!trackExists) return NotFound();
+        // Verify track exists
+        if (!await _db.Tracks.AnyAsync(t => t.Id == req.TrackId, ct)) return NotFound();
+
+        // Atomic increment via raw SQL — avoids EF change-tracking races.
+        await _db.Database.ExecuteSqlRawAsync(
+            @"UPDATE ""Tracks"" SET ""PlayCount"" = ""PlayCount"" + 1 WHERE ""Id"" = {0}", req.TrackId);
 
         _db.PlayHistories.Add(new PlayHistory
         {

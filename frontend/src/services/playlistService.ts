@@ -84,4 +84,14 @@ export const playlistService = {
     const res = await api.get<Track[]>(`/playlists/${playlistId}/recommendations`, { params: { limit } })
     return res.data
   },
+
+  async downloadZip(playlistId: string, playlistName: string): Promise<void> {
+    const res = await api.get(`/playlists/${playlistId}/download-zip`, { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${playlistName}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

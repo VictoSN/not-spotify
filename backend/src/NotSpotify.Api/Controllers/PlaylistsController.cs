@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -298,6 +299,68 @@ public class PlaylistsController : ControllerBase
             .Select(r => byId[r.TrackId]);
 
         return Ok(await _mapper.ToDtoListAsync(ordered, ct));
+    }
+
+    [HttpGet("{id:guid}/download-zip")]
+    [Authorize]
+    public async Task<IActionResult> DownloadZip(
+        Guid id,
+        [FromServices] IHttpClientFactory httpFactory,
+        CancellationToken ct = default)
+    {
+        // Premium-only feature
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(uid, out var userGuid)) return Unauthorized();
+        var caller = await _db.Users.FindAsync(new object[] { userGuid }, ct);
+        if (caller is null || caller.Plan != "premium")
+            return StatusCode(403, new { message = "A Premium subscription is required to download music." });
+
+        var playlist = await _db.Playlists
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (playlist is null) return NotFound();
+
+        var http = httpFactory.CreateClient();
+        var ms = new MemoryStream();
+
+        using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var ordered = playlist.PlaylistTracks.OrderBy(pt => pt.AddedAt).Select(pt => pt.Track).ToList();
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var track = ordered[i];
+                var url = !string.IsNullOrEmpty(track.AudioKey)
+                    ? _storage.GetPublicUrl(track.AudioKey)
+                    : track.AudioUrl;
+
+                if (string.IsNullOrEmpty(url)) continue;
+
+                var urlPath = url.Split('?')[0];
+                var ext = Path.GetExtension(urlPath);
+                if (string.IsNullOrEmpty(ext)) ext = ".mp3";
+
+                var safeName = string.Concat(
+                    track.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+                var entryName = $"{i + 1:D2} - {safeName}{ext}";
+
+                try
+                {
+                    var bytes = await http.GetByteArrayAsync(url, ct);
+                    var entry = zip.CreateEntry(entryName, CompressionLevel.NoCompression);
+                    await using var entryStream = entry.Open();
+                    await entryStream.WriteAsync(bytes, ct);
+                }
+                catch
+                {
+                    // Skip tracks whose audio can't be fetched
+                }
+            }
+        }
+
+        ms.Position = 0;
+        var safeName2 = string.Concat(
+            playlist.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        return File(ms.ToArray(), "application/zip", $"{safeName2}.zip");
     }
 
     private Task<Playlist?> LoadFullPlaylist(Guid id, CancellationToken ct) => _db.Playlists

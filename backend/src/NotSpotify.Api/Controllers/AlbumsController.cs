@@ -1,9 +1,11 @@
 using System.IO.Compression;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
+using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Controllers;
@@ -73,6 +75,13 @@ public class AlbumsController : ControllerBase
         [FromServices] IHttpClientFactory httpFactory,
         CancellationToken ct = default)
     {
+        // Premium-only feature
+        var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(uid, out var userGuid)) return Unauthorized();
+        var caller = await _db.Users.FindAsync(new object[] { userGuid }, ct);
+        if (caller is null || caller.Plan != "premium")
+            return StatusCode(403, new { message = "A Premium subscription is required to download music." });
+
         var album = await _db.Albums
             .Include(a => a.Artist)
             .FirstOrDefaultAsync(a => a.Id == id, ct);

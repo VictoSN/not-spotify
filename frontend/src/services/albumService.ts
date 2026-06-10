@@ -29,4 +29,14 @@ export const albumService = {
   async unsaveFromLibrary(albumId: string): Promise<void> {
     await api.delete(`/me/saved-albums/${albumId}`)
   },
+
+  async downloadZip(albumId: string, albumTitle: string): Promise<void> {
+    const res = await api.get(`/albums/${albumId}/download-zip`, { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data as Blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${albumTitle}.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

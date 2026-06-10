@@ -102,7 +102,7 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 
 ## Free vs Premium Tier
 
-### Free Tier Constraints
+### Feature Comparison
 
 | Feature | Free | Premium |
 |---|---|---|
@@ -110,9 +110,23 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 | Shuffle | Always on, cannot be turned off | Toggle on/off |
 | Repeat | Not available (locked) | Repeat all / repeat one |
 | Track selection | Random start — clicking a specific track shuffles the whole playlist | Play any track directly |
+| Downloads | ✗ | Download songs, albums, and playlists as ZIP files |
 | Liked Songs | Full access — like, unlike, view | Full access |
+| Save albums | Full access | Full access |
 | Playlist management | Create, edit, add/remove songs, set cover, visibility | Same |
 | Queue | Add to queue, view next-up | Same |
+
+### Premium capabilities
+
+#### Downloads (`GET /albums/{id}/download-zip` · `GET /playlists/{id}/download-zip`)
+
+Premium users can download music for offline use:
+
+- **Album download** — Download button on every album page. Calls `GET /albums/{id}/download-zip`. Backend fetches each approved track's audio from Supabase storage and bundles them into a ZIP file returned as `application/zip`.
+- **Playlist download** — Download button on every playlist page. Calls `GET /playlists/{id}/download-zip`. Same ZIP bundling logic.
+- **Individual track** — "Download" option in every track's `…` context menu. Links directly to the Supabase audio URL with a `download` attribute.
+
+All three endpoints are gated: the backend checks `user.Plan == "premium"` and returns HTTP 403 for free users. The frontend also shows a "Premium" badge on the button for free users that redirects to `/premium` on click.
 
 ### How free-tier enforcement works (frontend)
 

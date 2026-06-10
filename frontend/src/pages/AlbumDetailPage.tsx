@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PlayIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
-import { HeartIcon, StarIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, StarIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { albumService } from '@/services/albumService'
@@ -24,8 +24,10 @@ export function AlbumDetailPage() {
   const [loading, setLoading] = useState(true)
   const playWithGate = usePlaybackGate()
   const { savedAlbumIds, saveAlbum, unsaveAlbum } = useLibraryStore()
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const { isAuthenticated, user } = useAuthStore()
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const isPremium = user?.plan === 'premium'
+  const [downloading, setDownloading] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -48,6 +50,16 @@ export function AlbumDetailPage() {
 
   const isSaved = savedAlbumIds.has(album.id)
   const totalDuration = tracks.reduce((acc, t) => acc + t.durationMs, 0)
+  const handleDownload = async () => {
+    if (!album) return
+    setDownloading(true)
+    try {
+      await albumService.downloadZip(album.id, album.title)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   const toggleSave = () => {
     if (!isAuthenticated) {
       openAuthPrompt({ title: 'Save music with a free account', imageUrl: album.coverUrl })
@@ -112,7 +124,7 @@ export function AlbumDetailPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 px-6 py-4">
+      <div className="flex items-center gap-4 px-6 py-4 flex-wrap">
         <Button onClick={() => tracks.length && playWithGate(tracks[0], tracks)} size="lg" className="gap-2">
           <PlayIcon className="w-5 h-5" /> Play
         </Button>
@@ -128,6 +140,27 @@ export function AlbumDetailPage() {
           {isSaved ? <HeartSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
           {isSaved ? 'Saved' : 'Save to library'}
         </button>
+        {isPremium ? (
+          <button
+            onClick={handleDownload}
+            disabled={downloading}
+            title="Download album as ZIP"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            {downloading ? 'Downloading…' : 'Download'}
+          </button>
+        ) : (
+          <Link
+            to="/premium"
+            title="Download is a Premium feature"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-accent hover:text-accent transition-colors"
+          >
+            <ArrowDownTrayIcon className="w-5 h-5" />
+            Download
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+          </Link>
+        )}
       </div>
 
       <div className="px-4">

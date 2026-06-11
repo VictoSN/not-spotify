@@ -83,7 +83,8 @@ public class UsersController : ControllerBase
                 u.Name,
                 u.Email ?? string.Empty,
                 _mapper.ToRef(u).AvatarUrl,
-                mutual
+                mutual,
+                u.ArtistId.HasValue
             ));
         }
 

@@ -15,7 +15,7 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { SectionHeader } from '@/components/common/SectionHeader'
-import { Link } from 'react-router-dom'
+import { BrowseCategoryGrid, BrowseFilterPills, type BrowseFilter } from '@/components/common/BrowseCategoryGrid'
 
 type Tab = 'all' | 'songs' | 'artists' | 'albums' | 'playlists'
 
@@ -28,6 +28,7 @@ export function SearchPage() {
   const [genres, setGenres] = useState<Genre[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('all')
   const [recents, setRecents] = useState<RecentSearch[]>([])
+  const [browseFilter, setBrowseFilter] = useState<BrowseFilter>('all')
 
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -98,7 +99,7 @@ export function SearchPage() {
               placeholder="What do you want to play?"
               value={mobileValue}
               onChange={handleMobileSearch}
-              className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-11 rounded-full border border-transparent focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
+              className="h-11 w-full rounded-full border border-transparent bg-elevated pl-10 pr-10 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
             {mobileValue && (
               <button
@@ -156,26 +157,13 @@ export function SearchPage() {
               </div>
             </section>
           )}
-          <h2 className="text-2xl font-bold text-primary mb-6">Browse all</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {genres.map((genre) => (
-              <Link
-                key={genre.id}
-                to={`/genres/${genre.slug}`}
-                className="relative h-28 rounded-xl overflow-hidden cursor-pointer hover:scale-105 transition-transform"
-                style={{ backgroundColor: genre.color }}
-              >
-                {genre.imageUrl && (
-                  <img
-                    src={genre.imageUrl}
-                    alt={genre.name}
-                    className="absolute bottom-0 right-0 w-16 h-16 object-cover rounded-tl-lg opacity-80 rotate-[15deg] translate-x-3 translate-y-2"
-                  />
-                )}
-                <span className="absolute top-4 left-4 text-white font-black text-lg drop-shadow">{genre.name}</span>
-              </Link>
-            ))}
-          </div>
+          <section className="space-y-4">
+            <div className="sticky top-0 z-20 -mx-4 bg-page/95 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
+              <BrowseFilterPills value={browseFilter} onChange={setBrowseFilter} />
+            </div>
+            <h2 className="text-2xl font-black text-primary">Browse all</h2>
+            <BrowseCategoryGrid genres={genres} filter={browseFilter} />
+          </section>
         </>
       ) : (
         /* Search results */

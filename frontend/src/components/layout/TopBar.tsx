@@ -12,18 +12,25 @@ import {
   UserCircleIcon,
   ArrowDownTrayIcon,
   ClockIcon,
-  SparklesIcon,
   UsersIcon,
   ChatBubbleLeftRightIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
+import {
+  ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolid,
+  HomeIcon as HomeSolid,
+  UsersIcon as UsersSolid,
+} from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useChatStore } from '@/stores/chatStore'
 import { meService, type RecentSearch } from '@/services/meService'
+import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
 import { FriendPanel } from '@/components/friends/FriendPanel'
+import { useDebounce } from '@/hooks/useDebounce'
+import { cn } from '@/utils/cn'
 
 export function TopBar() {
   const navigate = useNavigate()
@@ -33,13 +40,14 @@ export function TopBar() {
   const { theme, toggleTheme } = useThemeStore()
 
   const isHome = location.pathname === '/'
+  const isMessagesActive = location.pathname.startsWith('/messages')
   const currentQuery = searchParams.get('q') ?? ''
   const isAdmin = user?.roles?.includes('Admin') ?? false
   const isArtist = user?.roles?.includes('Artist') ?? false
 
   const [showMenu, setShowMenu] = useState(false)
   const [showFriends, setShowFriends] = useState(false)
-  const [showSearchRecents, setShowSearchRecents] = useState(false)
+  const [showSearchPanel, setShowSearchPanel] = useState(false)
   const pendingCount = useFriendStore((s) => s.requests.length)
   const chatUnread = useChatStore((s) => s.conversations.reduce((sum, c) => sum + c.unreadCount, 0))
   const fetchConversations = useChatStore((s) => s.fetchConversations)
@@ -51,6 +59,8 @@ export function TopBar() {
   }, [isAuthenticated, fetchConversations])
   const [recents, setRecents] = useState<RecentSearch[]>([])
   const [searchValue, setSearchValue] = useState(currentQuery)
+  const [suggestionsState, setSuggestionsState] = useState<{ query: string; data: SearchResults } | null>(null)
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
@@ -60,6 +70,19 @@ export function TopBar() {
   }, [isAuthenticated])
   // Guests never show recents (state may hold the previous session's terms).
   const visibleRecents = isAuthenticated ? recents : []
+  const trimmedSearchValue = searchValue.trim()
+  const debouncedSearchValue = useDebounce(trimmedSearchValue, 220)
+  const activeSuggestions = suggestionsState?.query === trimmedSearchValue ? suggestionsState.data : null
+  const matchingRecents = visibleRecents
+    .filter((recent) => !trimmedSearchValue || recent.term.toLowerCase().includes(trimmedSearchValue.toLowerCase()))
+    .slice(0, trimmedSearchValue ? 8 : 20)
+  const hasSuggestionResults =
+    !!activeSuggestions &&
+    (activeSuggestions.tracks.length > 0 ||
+      activeSuggestions.artists.length > 0 ||
+      activeSuggestions.albums.length > 0 ||
+      activeSuggestions.playlists.length > 0)
+  const shouldShowSearchPanel = showSearchPanel && (trimmedSearchValue.length > 0 || matchingRecents.length > 0)
 
   // Keep the input in sync when the URL query changes (e.g. recent-search click)
   // — render-phase adjustment instead of a setState-in-effect.
@@ -72,28 +95,263 @@ export function TopBar() {
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
-        setShowSearchRecents(false)
+        setShowSearchPanel(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = e.target.value
-    setSearchValue(q)
+  useEffect(() => {
+    if (!showSearchPanel || !debouncedSearchValue) {
+      setSuggestionsLoading(false)
+      if (!debouncedSearchValue) setSuggestionsState(null)
+      return
+    }
+
+    let cancelled = false
+    setSuggestionsLoading(true)
+    searchService.search(debouncedSearchValue)
+      .then((data) => {
+        if (!cancelled) setSuggestionsState({ query: debouncedSearchValue, data })
+      })
+      .catch(() => {
+        if (!cancelled) setSuggestionsState(null)
+      })
+      .finally(() => {
+        if (!cancelled) setSuggestionsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [debouncedSearchValue, showSearchPanel])
+
+  const submitSearch = (value = searchValue) => {
+    const q = value.trim()
+    setShowSearchPanel(false)
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
     else navigate('/search')
   }
 
-  const handleRecentClick = (term: string) => {
-    setShowSearchRecents(false)
-    navigate(`/search?q=${encodeURIComponent(term)}`)
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchValue(e.target.value)
+    setShowSearchPanel(true)
   }
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      submitSearch()
+    }
+    if (e.key === 'Escape') setShowSearchPanel(false)
+  }
+
+  const handleRecentClick = (term: string) => {
+    submitSearch(term)
+  }
+
+  const handleBrowseClick = () => {
+    setSearchValue('')
+    setShowSearchPanel(false)
+    navigate('/search')
+  }
+
+  const handleClearSearch = () => {
+    setSearchValue('')
+    setSuggestionsState(null)
+    setShowSearchPanel(visibleRecents.length > 0)
+    searchInputRef.current?.focus()
+  }
+
+  const handleRemoveRecentSearch = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    meService.removeRecentSearch(id)
+      .then(() => {
+        setRecents((rows) => rows.filter((row) => row.id !== id))
+        setShowSearchPanel(true)
+      })
+      .catch(() => {})
+  }
+
+  const handleClearRecentSearches = () => {
+    meService.clearRecentSearches()
+      .then(() => {
+        setRecents([])
+        if (!trimmedSearchValue) setShowSearchPanel(false)
+      })
+      .catch(() => {})
+  }
+
+  const openSuggestion = (path: string) => {
+    setShowSearchPanel(false)
+    navigate(path)
+  }
+
+  const userMenuItemClass =
+    'flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-white/10'
+  const userMenuIconClass = 'h-4 w-4 text-secondary'
+
+  const searchPanel = shouldShowSearchPanel && (
+    <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-[#282828] py-2 shadow-2xl [scrollbar-color:rgba(255,255,255,0.3)_transparent] [scrollbar-width:thin]">
+      <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+        <span>{trimmedSearchValue ? 'Search suggestions' : 'Recent searches'}</span>
+        {trimmedSearchValue && (
+          <span className="flex items-center gap-2 normal-case tracking-normal text-secondary">
+            <kbd className="rounded border border-secondary/40 px-1.5 py-0.5 text-[10px] text-primary">Enter</kbd>
+            Search
+          </span>
+        )}
+      </div>
+
+      {trimmedSearchValue && (
+        <button
+          type="button"
+          onClick={() => submitSearch(trimmedSearchValue)}
+          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
+            Search for "{trimmedSearchValue}"
+          </span>
+        </button>
+      )}
+
+      {matchingRecents.map((recent) => (
+        <div
+          key={recent.id}
+          className="group flex items-center gap-1 px-2 py-1 transition-colors hover:bg-white/10"
+        >
+          <button
+            type="button"
+            onClick={() => handleRecentClick(recent.term)}
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+              <MagnifyingGlassIcon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">{recent.term}</span>
+          </button>
+          <button
+            type="button"
+            onClick={(e) => handleRemoveRecentSearch(e, recent.id)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-70 transition-colors duration-150 hover:text-primary group-hover:opacity-100"
+            aria-label={`Remove ${recent.term} from recent searches`}
+            title="Remove"
+          >
+            <XMarkIcon className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
+
+      {trimmedSearchValue && suggestionsLoading && (
+        <div className="px-4 py-4 text-sm font-semibold text-secondary">Searching...</div>
+      )}
+
+      {trimmedSearchValue && !suggestionsLoading && activeSuggestions && (
+        <>
+          {activeSuggestions.tracks.slice(0, 3).map((track) => (
+            <button
+              key={`track-${track.id}`}
+              type="button"
+              onClick={() => openSuggestion(`/track/${track.id}`)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+            >
+              <img src={track.album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-primary">{track.title}</span>
+                <span className="block truncate text-xs font-semibold text-secondary">
+                  {track.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-black text-[#282828]">E</span>}
+                  Song - {track.artist.name}
+                </span>
+              </span>
+            </button>
+          ))}
+
+          {activeSuggestions.artists.slice(0, 3).map((artist) => (
+            <button
+              key={`artist-${artist.id}`}
+              type="button"
+              onClick={() => openSuggestion(`/artist/${artist.id}`)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+            >
+              {artist.imageUrl ? (
+                <img src={artist.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-secondary">
+                  {artist.name.slice(0, 1).toUpperCase()}
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-primary">{artist.name}</span>
+                <span className="block truncate text-xs font-semibold text-secondary">Artist</span>
+              </span>
+            </button>
+          ))}
+
+          {activeSuggestions.albums.slice(0, 1).map((album) => (
+            <button
+              key={`album-${album.id}`}
+              type="button"
+              onClick={() => openSuggestion(`/album/${album.id}`)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+            >
+              <img src={album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-primary">{album.title}</span>
+                <span className="block truncate text-xs font-semibold text-secondary">Album - {album.artist.name}</span>
+              </span>
+            </button>
+          ))}
+
+          {activeSuggestions.playlists.slice(0, 1).map((playlist) => (
+            <button
+              key={`playlist-${playlist.id}`}
+              type="button"
+              onClick={() => openSuggestion(`/playlist/${playlist.id}`)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+            >
+              {playlist.coverUrl ? (
+                <img src={playlist.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+              ) : (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-white/10 text-secondary">
+                  <MusicalNoteIcon className="h-5 w-5" />
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-primary">{playlist.name}</span>
+                <span className="block truncate text-xs font-semibold text-secondary">Playlist</span>
+              </span>
+            </button>
+          ))}
+        </>
+      )}
+
+      {trimmedSearchValue && !suggestionsLoading && activeSuggestions && !hasSuggestionResults && (
+        <div className="px-4 py-4 text-sm font-semibold text-secondary">
+          No quick matches. Press Enter to search everywhere.
+        </div>
+      )}
+
+      {isAuthenticated && visibleRecents.length > 0 && matchingRecents.length > 0 && (
+        <div className="px-4 pb-1 pt-2">
+          <button
+            type="button"
+            onClick={handleClearRecentSearches}
+            className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-white/10 active:scale-95"
+          >
+            Clear recent searches
+          </button>
+        </div>
+      )}
+    </div>
+  )
 
   if (!isAuthenticated) {
     return (
-      <header className="grid shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base px-4 h-14 md:h-16">
+      <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 border-b border-elevated/30 bg-base/90 px-4 backdrop-blur-xl md:h-16">
         <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label="not-spotify home">
           <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
           <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
@@ -110,18 +368,41 @@ export function TopBar() {
             {isHome ? <HomeSolid className="h-6 w-6 text-primary" /> : <HomeIcon className="h-6 w-6 text-secondary" />}
           </button>
 
-          <div className="relative w-full">
+          <div ref={searchContainerRef} className="relative w-full">
             <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />
             <input
-              type="search"
+              ref={searchInputRef}
+              type="text"
+              inputMode="search"
               placeholder="What do you want to play?"
               value={searchValue}
               onChange={handleSearch}
-              onFocus={() => {
-                if (!location.pathname.startsWith('/search')) navigate('/search')
-              }}
-              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-10 text-sm text-primary transition-colors placeholder:text-muted hover:border-secondary/30 focus:border-primary focus:outline-none"
+              onKeyDown={handleSearchKeyDown}
+              onFocus={() => setShowSearchPanel(true)}
+              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-20 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
+            {searchValue && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+            <div className="pointer-events-none absolute right-14 top-1/2 h-6 w-px -translate-y-1/2 bg-secondary/25" />
+            <button
+              type="button"
+              onClick={handleBrowseClick}
+              className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+              aria-label="Browse all"
+              title="Browse all"
+            >
+              <BrowseTrayIcon />
+            </button>
+            {searchPanel}
           </div>
         </div>
 
@@ -146,7 +427,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="flex items-center gap-2 md:gap-4 px-3 md:px-4 h-14 md:h-16 shrink-0 bg-base">
+    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-4 md:px-4 relative">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
         <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
@@ -154,7 +435,7 @@ export function TopBar() {
       </Link>
 
       {/* Center: home + search + theme toggle — desktop only */}
-      <div className="hidden md:flex flex-1 items-center justify-center gap-2">
+      <div className="absolute left-1/2 top-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 lg:flex">
         <button
           onClick={() => navigate('/')}
           className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center transition-all"
@@ -168,30 +449,37 @@ export function TopBar() {
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
           <input
             ref={searchInputRef}
-            type="search"
+            type="text"
+            inputMode="search"
             placeholder="What do you want to play?"
             value={searchValue}
             onChange={handleSearch}
-            onFocus={() => {
-              if (!location.pathname.startsWith('/search')) navigate('/search')
-              if (visibleRecents.length > 0) setShowSearchRecents(true)
-            }}
-            className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-12 rounded-full border border-transparent hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => setShowSearchPanel(true)}
+            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-20 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
-          {showSearchRecents && visibleRecents.length > 0 && (
-            <div className="absolute top-full mt-2 w-full bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50">
-              {visibleRecents.slice(0, 5).map((recent) => (
-                <button
-                  key={recent.id}
-                  onClick={() => handleRecentClick(recent.term)}
-                  className="w-full px-4 py-2.5 text-left text-sm text-primary hover:bg-surface transition-colors flex items-center gap-3"
-                >
-                  <MagnifyingGlassIcon className="w-4 h-4 text-secondary flex-shrink-0" />
-                  <span>{recent.term}</span>
-                </button>
-              ))}
-            </div>
+          {searchValue && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
+              aria-label="Clear search"
+              title="Clear search"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
           )}
+          <div className="pointer-events-none absolute right-14 top-1/2 h-6 w-px -translate-y-1/2 bg-secondary/25" />
+          <button
+            type="button"
+            onClick={handleBrowseClick}
+            className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+            aria-label="Browse all"
+            title="Browse all"
+          >
+            <BrowseTrayIcon />
+          </button>
+          {searchPanel}
         </div>
 
         {/* Theme toggle */}
@@ -206,27 +494,31 @@ export function TopBar() {
       </div>
 
       {/* Mobile: page title area (spacer) */}
-      <div className="flex-1 md:hidden" />
+      <div className="flex-1" />
 
-      {/* Explore Premium pill — desktop only, free users */}
+      {/* Free-user account links */}
       {user?.capabilities?.unlimitedPlayback === false && (
-        <Link
-          to="/premium"
-          className="hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-xs font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
-        >
-          <SparklesIcon className="h-3.5 w-3.5" />
-          Explore Premium
-        </Link>
+        <div className="hidden shrink-0 items-center gap-4 text-sm font-bold text-secondary sm:flex">
+          <Link to="/premium" className="transition-colors hover:text-primary">
+            Premium
+          </Link>
+          <button type="button" className="transition-colors hover:text-primary">
+            Support
+          </button>
+        </div>
       )}
 
       {/* Messages — red badge shows unread count */}
       <button
-        onClick={() => navigate('/messages')}
+        onClick={() => navigate(isMessagesActive ? '/' : '/messages')}
         aria-label={chatUnread > 0 ? `Messages (${chatUnread} unread)` : 'Messages'}
         title="Messages"
-        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated text-secondary transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary"
+        className={cn(
+          'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+          isMessagesActive ? 'text-primary' : 'text-secondary'
+        )}
       >
-        <ChatBubbleLeftRightIcon className="h-5 w-5" />
+        {isMessagesActive ? <ChatBubbleLeftRightSolid className="h-5 w-5" /> : <ChatBubbleLeftRightIcon className="h-5 w-5" />}
         {chatUnread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
             {chatUnread > 9 ? '9+' : chatUnread}
@@ -242,9 +534,12 @@ export function TopBar() {
             setShowMenu(false)
           }}
           aria-label="Friends"
-          className="relative flex items-center justify-center w-10 h-10 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 transition-all text-secondary hover:text-primary"
+          className={cn(
+            'relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+            showFriends ? 'text-primary' : 'text-secondary'
+          )}
         >
-          <UsersIcon className="w-5 h-5" />
+          {showFriends ? <UsersSolid className="h-5 w-5" /> : <UsersIcon className="h-5 w-5" />}
           {pendingCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center leading-none">
               {pendingCount > 9 ? '9+' : pendingCount}
@@ -276,53 +571,53 @@ export function TopBar() {
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full mt-2 w-52 bg-elevated rounded-md shadow-xl border border-secondary/10 overflow-hidden z-50 py-1">
+            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-1 shadow-xl">
               <Link
                 to="/account"
                 onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <UserIcon className="w-4 h-4" />
+                <UserIcon className={userMenuIconClass} />
                 Account
               </Link>
               <Link
                 to="/profile"
                 onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <UserCircleIcon className="w-4 h-4" />
+                <UserCircleIcon className={userMenuIconClass} />
                 Profile
               </Link>
               <Link
                 to="/settings"
                 onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <Cog6ToothIcon className="w-4 h-4" />
+                <Cog6ToothIcon className={userMenuIconClass} />
                 Settings
               </Link>
               {/* Theme toggle in mobile menu */}
               <button
                 onClick={() => { toggleTheme(); setShowMenu(false) }}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors md:hidden"
+                className={cn(userMenuItemClass, 'md:hidden')}
               >
-                {theme === 'dark' ? <SunIcon className="w-4 h-4" /> : <MoonIcon className="w-4 h-4" />}
+                {theme === 'dark' ? <SunIcon className={userMenuIconClass} /> : <MoonIcon className={userMenuIconClass} />}
                 {theme === 'dark' ? 'Light mode' : 'Dark mode'}
               </button>
               <Link
                 to="/premium"
                 onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <ArrowDownTrayIcon className="w-4 h-4" />
+                <ArrowDownTrayIcon className={userMenuIconClass} />
                 Premium
               </Link>
               <Link
                 to="/history"
                 onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <ClockIcon className="w-4 h-4" />
+                <ClockIcon className={userMenuIconClass} />
                 Listening history
               </Link>
 
@@ -332,9 +627,9 @@ export function TopBar() {
                 <Link
                   to="/artist-dashboard"
                   onClick={() => setShowMenu(false)}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                  className={userMenuItemClass}
                 >
-                  <MusicalNoteIcon className="w-4 h-4" />
+                  <MusicalNoteIcon className={userMenuIconClass} />
                   Artist Dashboard
                 </Link>
               )}
@@ -342,9 +637,9 @@ export function TopBar() {
                 <Link
                   to="/admin"
                   onClick={() => setShowMenu(false)}
-                  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                  className={userMenuItemClass}
                 >
-                  <Cog6ToothIcon className="w-4 h-4" />
+                  <Cog6ToothIcon className={userMenuIconClass} />
                   Admin Dashboard
                 </Link>
               )}
@@ -353,9 +648,9 @@ export function TopBar() {
                   setShowMenu(false)
                   logout()
                 }}
-                className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-secondary hover:text-primary hover:bg-surface transition-colors"
+                className={userMenuItemClass}
               >
-                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                <ArrowRightOnRectangleIcon className={userMenuIconClass} />
                 Log out
               </button>
             </div>
@@ -364,5 +659,25 @@ export function TopBar() {
       </div>
 
     </header>
+  )
+}
+
+function BrowseTrayIcon() {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7" fill="none">
+      <path
+        d="M11 9.5V6.8h10v2.7M7.5 13.2h17l-1.55 10H9.05l-1.55-10Z"
+        stroke="currentColor"
+        strokeWidth="2.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.1 18.25h5.8"
+        stroke="currentColor"
+        strokeWidth="2.45"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }

@@ -6,6 +6,7 @@ import {
   XMarkIcon,
   UserPlusIcon,
 } from '@heroicons/react/24/outline'
+import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { Avatar } from '@/components/ui/Avatar'
 import { useFriendStore } from '@/stores/friendStore'
 import { friendService } from '@/services/friendService'
@@ -59,7 +60,7 @@ function FriendSearch() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder="Search users…"
             className="w-full h-9 rounded-md bg-surface text-sm text-primary placeholder:text-muted pl-8 pr-3 outline-none focus:ring-1 focus:ring-accent/50"
           />
         </div>
@@ -80,14 +81,17 @@ function FriendSearch() {
           <div key={u.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface rounded-md">
             <Avatar src={u.avatarUrl} alt={u.name} size="sm" round />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-primary truncate">{u.name}</p>
-              {u.mutualFriendsCount > 0 ? (
+              <p className="flex items-center gap-1 text-sm font-semibold text-primary truncate">
+                <span className="truncate">{u.name}</span>
+                {u.isArtist && <CheckBadgeIcon className="h-3.5 w-3.5 shrink-0 text-accent" aria-label="Verified artist" />}
+              </p>
+              {u.isArtist ? (
+                <p className="text-xs text-secondary truncate">Artist</p>
+              ) : u.mutualFriendsCount > 0 ? (
                 <p className="text-xs text-secondary truncate">
                   {u.mutualFriendsCount} mutual friend{u.mutualFriendsCount !== 1 ? 's' : ''}
                 </p>
-              ) : (
-                <p className="text-xs text-secondary truncate">{u.email}</p>
-              )}
+              ) : null}
             </div>
             {isFriend ? (
               <span className="text-xs text-secondary shrink-0">Friends</span>

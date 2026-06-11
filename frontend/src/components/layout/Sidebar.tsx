@@ -7,8 +7,6 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ListBulletIcon,
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
   Squares2X2Icon,
   CheckIcon,
 } from '@heroicons/react/24/outline'
@@ -372,11 +370,7 @@ export function Sidebar() {
             aria-label={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
             title={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
           >
-            {libraryExpanded ? (
-              <ArrowsPointingInIcon className="w-5 h-5" />
-            ) : (
-              <ArrowsPointingOutIcon className="w-5 h-5" />
-            )}
+            {libraryExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
           </button>
         </div>
       </div>
@@ -411,9 +405,9 @@ export function Sidebar() {
       </div>
 
       {/* Search + sort */}
-      <div className="flex items-center justify-between px-4 pb-2 h-9 gap-2">
+      <div className="flex h-9 items-center justify-between gap-2 px-4 pb-2">
         {searchOpen ? (
-          <div className="relative flex-1">
+          <div className={cn('relative', libraryExpanded ? 'w-full max-w-sm flex-none' : 'flex-1')}>
             <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
             <input
               autoFocus
@@ -423,7 +417,7 @@ export function Sidebar() {
                 if (!query) setSearchOpen(false)
               }}
               placeholder="Search in Your Library"
-              className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-accent/50"
+              className="h-8 w-full rounded-full bg-elevated pl-8 pr-3 text-xs font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-accent/50"
             />
           </div>
         ) : (
@@ -618,5 +612,33 @@ function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => voi
     >
       <div className="w-px h-full bg-transparent group-hover:bg-accent/50 transition-colors" />
     </div>
+  )
+}
+
+function DiagonalExpandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function DiagonalCollapseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

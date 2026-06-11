@@ -51,6 +51,7 @@ export interface UserSearchResult {
   email: string
   avatarUrl: string | null
   mutualFriendsCount: number
+  isArtist: boolean
 }
 
 export interface PublicUserProfile {

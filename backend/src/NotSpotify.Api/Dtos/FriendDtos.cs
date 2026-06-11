@@ -47,7 +47,8 @@ public record UserSearchResultDto(
     string Name,
     string Email,
     string? AvatarUrl,
-    int MutualFriendsCount
+    int MutualFriendsCount,
+    bool IsArtist
 );
 
 /// <summary>Public profile for a user's profile page.</summary>

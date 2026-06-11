@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import {
   MusicalNoteIcon,
   ArrowLeftIcon,
@@ -18,15 +18,9 @@ import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet
  * subdomain (no library sidebar, no player), just a slim top bar + the page.
  */
 export function SettingsShell() {
-  const { user, logout } = useAuthStore()
+  const { user } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
   const isMobile = useIsMobile()
-  const navigate = useNavigate()
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/login')
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-page text-primary">

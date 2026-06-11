@@ -13,6 +13,7 @@ import { LibraryPage } from '@/pages/LibraryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { AccountSettingsPage } from '@/pages/AccountSettingsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { MessagesPage } from '@/pages/MessagesPage'
 import { PremiumPage } from '@/pages/PremiumPage'
 import { PlaylistDetailPage } from '@/pages/PlaylistDetailPage'
 import { AlbumDetailPage } from '@/pages/AlbumDetailPage'
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
             children: [
               { path: 'profile', element: <ProfilePage /> },
               { path: 'settings', element: <SettingsPage /> },
+              { path: 'messages', element: <MessagesPage /> },
             ],
           },
           { path: '*', element: <Navigate to="/" replace /> },

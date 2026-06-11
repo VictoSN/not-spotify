@@ -5,7 +5,6 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
-import { usePlayerStore } from '@/stores/playerStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -14,7 +13,7 @@ import { TrackRow } from '@/components/cards/TrackRow'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { PlusIcon, PlayIcon, ClockIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PlayIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 
 type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
@@ -27,7 +26,6 @@ export function LibraryPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const playWithGate = usePlaybackGate()
-  const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') as Filter | null
   const filter: Filter = tab && ['playlists', 'albums', 'artists', 'liked'].includes(tab) ? tab : 'playlists'

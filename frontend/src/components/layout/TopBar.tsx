@@ -14,11 +14,13 @@ import {
   ClockIcon,
   SparklesIcon,
   UsersIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline'
 import { HomeIcon as HomeSolid } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { useChatStore } from '@/stores/chatStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { Avatar } from '@/components/ui/Avatar'
 import { FriendPanel } from '@/components/friends/FriendPanel'
@@ -39,22 +41,33 @@ export function TopBar() {
   const [showFriends, setShowFriends] = useState(false)
   const [showSearchRecents, setShowSearchRecents] = useState(false)
   const pendingCount = useFriendStore((s) => s.requests.length)
+  const chatUnread = useChatStore((s) => s.conversations.reduce((sum, c) => sum + c.unreadCount, 0))
+  const fetchConversations = useChatStore((s) => s.fetchConversations)
+
+  // Load conversation summaries once after login so the unread badge is
+  // correct immediately; live updates then arrive over the presence socket.
+  useEffect(() => {
+    if (isAuthenticated) fetchConversations()
+  }, [isAuthenticated, fetchConversations])
   const [recents, setRecents] = useState<RecentSearch[]>([])
   const [searchValue, setSearchValue] = useState(currentQuery)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setRecents([])
-      return
-    }
+    if (!isAuthenticated) return
     meService.getRecentSearches().then(setRecents).catch(() => setRecents([]))
   }, [isAuthenticated])
+  // Guests never show recents (state may hold the previous session's terms).
+  const visibleRecents = isAuthenticated ? recents : []
 
-  useEffect(() => {
+  // Keep the input in sync when the URL query changes (e.g. recent-search click)
+  // — render-phase adjustment instead of a setState-in-effect.
+  const [prevQuery, setPrevQuery] = useState(currentQuery)
+  if (prevQuery !== currentQuery) {
+    setPrevQuery(currentQuery)
     setSearchValue(currentQuery)
-  }, [currentQuery])
+  }
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -161,13 +174,13 @@ export function TopBar() {
             onChange={handleSearch}
             onFocus={() => {
               if (!location.pathname.startsWith('/search')) navigate('/search')
-              if (recents.length > 0) setShowSearchRecents(true)
+              if (visibleRecents.length > 0) setShowSearchRecents(true)
             }}
             className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-10 pr-10 h-12 rounded-full border border-transparent hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50 transition-colors"
           />
-          {showSearchRecents && recents.length > 0 && (
+          {showSearchRecents && visibleRecents.length > 0 && (
             <div className="absolute top-full mt-2 w-full bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50">
-              {recents.slice(0, 5).map((recent) => (
+              {visibleRecents.slice(0, 5).map((recent) => (
                 <button
                   key={recent.id}
                   onClick={() => handleRecentClick(recent.term)}
@@ -205,6 +218,21 @@ export function TopBar() {
           Explore Premium
         </Link>
       )}
+
+      {/* Messages — red badge shows unread count */}
+      <button
+        onClick={() => navigate('/messages')}
+        aria-label={chatUnread > 0 ? `Messages (${chatUnread} unread)` : 'Messages'}
+        title="Messages"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated text-secondary transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary"
+      >
+        <ChatBubbleLeftRightIcon className="h-5 w-5" />
+        {chatUnread > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
+            {chatUnread > 9 ? '9+' : chatUnread}
+          </span>
+        )}
+      </button>
 
       {/* Friends panel toggle — desktop only */}
       <div className="relative hidden md:block">

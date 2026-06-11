@@ -1,6 +1,5 @@
-import { QueueListIcon } from '@heroicons/react/24/outline'
+﻿import { QueueListIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
-import { Link } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
@@ -10,7 +9,7 @@ import { StarRating } from '@/components/player/StarRating'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
-// Inline SVG: rectangle with small inset rectangle — standard PiP icon
+// Inline SVG: rectangle with small inset rectangle â€” standard PiP icon
 function PipIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
@@ -24,7 +23,7 @@ export function BottomPlayerBar() {
   const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const isMobile = useIsMobile()
 
-  // ── Mobile mini-player ───────────────────────────────────────────
+  // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
     if (!currentTrack) return null
     return (
@@ -49,9 +48,13 @@ export function BottomPlayerBar() {
             <p className="text-sm font-semibold text-primary truncate leading-tight">{currentTrack.title}</p>
             <p className="text-xs text-secondary truncate leading-tight">{currentTrack.artist.name}</p>
           </div>
-          {/* Play/pause only — stop propagation so the row tap doesn't also toggle play */}
+          {/* Play/pause only â€” stop propagation so the row tap doesn't also toggle play */}
           <button
-            onClick={(e) => { e.stopPropagation(); isPlaying ? pause() : resume() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (isPlaying) pause()
+              else resume()
+            }}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-page hover:scale-105 active:scale-95 transition-all shrink-0"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
@@ -65,7 +68,7 @@ export function BottomPlayerBar() {
     )
   }
 
-  // ── Desktop full player bar ──────────────────────────────────────
+  // â”€â”€ Desktop full player bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="shrink-0 h-20 sm:h-24 bg-base grid grid-cols-3 items-center gap-2 px-4">
       {/* Left: Now Playing Info */}

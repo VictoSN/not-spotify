@@ -17,6 +17,7 @@ export const mockUser: User = {
     unlimitedPlayback: true,
     customPlaylistPictures: true,
   },
+  artistId: null,
 }
 
 export const mockUserRef: UserRef = {

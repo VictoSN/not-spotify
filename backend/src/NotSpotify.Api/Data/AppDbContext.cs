@@ -27,6 +27,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
     public DbSet<ReviewHistory> ReviewHistories => Set<ReviewHistory>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -271,6 +272,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             // Fast lookup: "all friendships involving user X" (both as requester and addressee).
             e.HasIndex(x => new { x.AddresseeId, x.Status });
             e.HasIndex(x => new { x.RequesterId, x.Status });
+        });
+
+        b.Entity<ChatMessage>(e =>
+        {
+            e.HasOne(x => x.Sender)
+                .WithMany()
+                .HasForeignKey(x => x.SenderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Recipient)
+                .WithMany()
+                .HasForeignKey(x => x.RecipientId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.Property(x => x.Body).HasMaxLength(4000);
+
+            // Thread query: "messages between A and B, newest first".
+            e.HasIndex(x => new { x.SenderId, x.RecipientId, x.SentAt });
+            // Unread badge query: "messages to me that are unread".
+            e.HasIndex(x => new { x.RecipientId, x.ReadAt });
         });
     }
 }

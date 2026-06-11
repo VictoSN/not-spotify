@@ -32,6 +32,7 @@ import { AdminAlbumsListPage } from '@/pages/admin/AdminAlbumsListPage'
 import { AdminAlbumFormPage } from '@/pages/admin/AdminAlbumFormPage'
 import { AdminTracksListPage } from '@/pages/admin/AdminTracksListPage'
 import { AdminTrackFormPage } from '@/pages/admin/AdminTrackFormPage'
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
 import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
@@ -101,7 +102,8 @@ export const router = createBrowserRouter([
               {
                 element: <AdminShell />,
                 children: [
-                  { path: 'admin', element: <Navigate to="/admin/applications" replace /> },
+                  { path: 'admin', element: <Navigate to="/admin/dashboard" replace /> },
+                  { path: 'admin/dashboard', element: <AdminDashboardPage /> },
                   { path: 'admin/artists', element: <AdminArtistsListPage /> },
                   { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
                   { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },

@@ -4,12 +4,30 @@ import { usePlayerStore } from '@/stores/playerStore'
 // Module-level ref so BottomPlayerBar can trigger PiP without prop drilling.
 let _videoEl: HTMLVideoElement | null = null
 
-export function enterPip() {
-  if (!_videoEl || !document.pictureInPictureEnabled) return
-  if (document.pictureInPictureElement === _videoEl) {
-    document.exitPictureInPicture().catch(() => {})
-  } else {
-    _videoEl.requestPictureInPicture().catch(() => {})
+async function playPipVideo(video: HTMLVideoElement) {
+  if (!video.paused) return
+  await video.play()
+}
+
+function setAutoPip(video: HTMLVideoElement, enabled: boolean) {
+  if (enabled) video.setAttribute('autopictureinpicture', '')
+  else video.removeAttribute('autopictureinpicture')
+}
+
+export async function enterPip() {
+  const video = _videoEl
+  if (!video || !document.pictureInPictureEnabled) return
+
+  try {
+    if (document.pictureInPictureElement === video) {
+      await document.exitPictureInPicture()
+      return
+    }
+
+    await playPipVideo(video)
+    await video.requestPictureInPicture()
+  } catch {
+    // Keep app playback unaffected if the browser denies PiP.
   }
 }
 
@@ -99,6 +117,7 @@ export function PictureInPicturePlayer() {
   const coverRef = useRef<HTMLImageElement | null>(null)
   const coverUrlRef = useRef('')
   const rafRef = useRef<number | null>(null)
+  const autoPipSuppressedRef = useRef(false)
 
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
@@ -117,7 +136,7 @@ export function PictureInPicturePlayer() {
     video.autoplay = true
     // autoPictureInPicture: browser automatically enters PiP on tab-hide and
     // exits on tab-show — fixes both the "persists after close" and return-button bugs.
-    video.setAttribute('autopictureinpicture', '')
+    setAutoPip(video, true)
     video.playsInline = true
     Object.assign(video.style, {
       position: 'fixed', top: '0', left: '0',
@@ -131,10 +150,60 @@ export function PictureInPicturePlayer() {
 
     const stream = canvas.captureStream(4)
     video.srcObject = stream
+
+    const onEnterPip = () => {
+      autoPipSuppressedRef.current = false
+    }
+
+    const onLeavePip = () => {
+      if (document.visibilityState === 'hidden') {
+        autoPipSuppressedRef.current = true
+        setAutoPip(video, false)
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        autoPipSuppressedRef.current = false
+        setAutoPip(video, true)
+        if (document.pictureInPictureElement === video) {
+          document.exitPictureInPicture().catch(() => {})
+        }
+        return
+      }
+
+      const { currentTrack, isPlaying } = usePlayerStore.getState()
+      if (!autoPipSuppressedRef.current && currentTrack && isPlaying) {
+        setAutoPip(video, true)
+        enterPip()
+      }
+    }
+
+    const onVideoPlay = () => {
+      const state = usePlayerStore.getState()
+      if (state.currentTrack && !state.isPlaying) state.resume()
+    }
+
+    const onVideoPause = () => {
+      if (document.pictureInPictureElement !== video || document.visibilityState === 'visible') return
+      const state = usePlayerStore.getState()
+      if (state.isPlaying) state.pause()
+    }
+
+    video.addEventListener('enterpictureinpicture', onEnterPip)
+    video.addEventListener('leavepictureinpicture', onLeavePip)
+    video.addEventListener('play', onVideoPlay)
+    video.addEventListener('pause', onVideoPause)
+    document.addEventListener('visibilitychange', onVisibilityChange)
     video.play().catch(() => {/* autoplay blocked — PiP won't work but app still plays audio */})
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
+      video.removeEventListener('enterpictureinpicture', onEnterPip)
+      video.removeEventListener('leavepictureinpicture', onLeavePip)
+      video.removeEventListener('play', onVideoPlay)
+      video.removeEventListener('pause', onVideoPause)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       if (document.pictureInPictureElement === video) {
         document.exitPictureInPicture().catch(() => {})
       }
@@ -174,6 +243,18 @@ export function PictureInPicturePlayer() {
     img.onerror = () => { coverRef.current = null }
     img.src = currentTrack.album.coverUrl
   }, [currentTrack])
+
+  // Keep the hidden PiP video in step with the real audio player so native
+  // PiP controls do not become detached from the app state.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !currentTrack) return
+    if (isPlaying && video.paused) {
+      playPipVideo(video).catch(() => {})
+    } else if (!isPlaying && !video.paused) {
+      video.pause()
+    }
+  }, [currentTrack, isPlaying])
 
   // mediaSession metadata — populates the native PiP title / artwork / OS widget
   useEffect(() => {

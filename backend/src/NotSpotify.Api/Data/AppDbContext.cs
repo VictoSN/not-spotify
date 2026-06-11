@@ -28,6 +28,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ReviewHistory> ReviewHistories => Set<ReviewHistory>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
+    public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -292,6 +294,37 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(x => new { x.SenderId, x.RecipientId, x.SentAt });
             // Unread badge query: "messages to me that are unread".
             e.HasIndex(x => new { x.RecipientId, x.ReadAt });
+        });
+
+        b.Entity<SiteVisit>(e =>
+        {
+            e.Property(x => x.Path).HasMaxLength(512);
+            e.Property(x => x.Method).HasMaxLength(16);
+            e.Property(x => x.UserAgent).HasMaxLength(512);
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.VisitedAt);
+            e.HasIndex(x => new { x.UserId, x.VisitedAt });
+        });
+
+        b.Entity<ActivePlaybackSession>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => x.UserId).IsUnique();
+            e.HasIndex(x => new { x.LastSeenAt, x.TrackId });
         });
     }
 }

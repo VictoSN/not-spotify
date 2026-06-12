@@ -74,8 +74,8 @@ export const trackService = {
     return res.data
   },
 
-  async getLyrics(id: string): Promise<{ lyrics: string | null; source: string }> {
-    const res = await api.get<{ lyrics: string | null; source: string }>(`/tracks/${id}/lyrics`)
+  async getLyrics(id: string): Promise<{ lyrics: string | null; syncedLyrics: string | null; source: string }> {
+    const res = await api.get<{ lyrics: string | null; syncedLyrics: string | null; source: string }>(`/tracks/${id}/lyrics`)
     return res.data
   },
 }

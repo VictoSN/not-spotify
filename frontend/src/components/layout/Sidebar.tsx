@@ -238,7 +238,7 @@ export function Sidebar() {
               aria-label="Collapse Your Library"
             >
               <ChevronDoubleLeftIcon className="w-5 h-5" />
-              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-left">Collapse Your Library</span>
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">Collapse Your Library</span>
             </button>
             <span className="truncate pl-0 text-sm font-bold leading-5 text-primary transition-all duration-200 group-hover/library-header:pl-7">
               Your Library
@@ -251,7 +251,7 @@ export function Sidebar() {
           >
             <PlusIcon className="w-4 h-4" />
             Create
-            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-right">
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
               Create a playlist, folder, or Jam
             </span>
           </button>
@@ -351,7 +351,7 @@ export function Sidebar() {
               aria-label="Collapse Your Library"
             >
               <ChevronDoubleLeftIcon className="w-5 h-5" />
-              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-left">Collapse Your Library</span>
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">Collapse Your Library</span>
             </button>
           )}
           <span
@@ -371,7 +371,7 @@ export function Sidebar() {
           >
             <PlusIcon className="w-4 h-4" />
             Create
-            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
               Create a playlist, folder, or Jam
             </span>
           </button>
@@ -381,7 +381,7 @@ export function Sidebar() {
             aria-label={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
           >
             {libraryExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
-            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-right">
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
               {libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
             </span>
           </button>

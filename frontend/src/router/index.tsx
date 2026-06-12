@@ -13,6 +13,7 @@ import { LibraryPage } from '@/pages/LibraryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { AccountSettingsPage } from '@/pages/AccountSettingsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { MessagesPage } from '@/pages/MessagesPage'
 import { PremiumPage } from '@/pages/PremiumPage'
 import { PlaylistDetailPage } from '@/pages/PlaylistDetailPage'
 import { AlbumDetailPage } from '@/pages/AlbumDetailPage'
@@ -31,6 +32,7 @@ import { AdminAlbumsListPage } from '@/pages/admin/AdminAlbumsListPage'
 import { AdminAlbumFormPage } from '@/pages/admin/AdminAlbumFormPage'
 import { AdminTracksListPage } from '@/pages/admin/AdminTracksListPage'
 import { AdminTrackFormPage } from '@/pages/admin/AdminTrackFormPage'
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { AdminApplicationsPage } from '@/pages/admin/AdminApplicationsPage'
 import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
@@ -73,6 +75,7 @@ export const router = createBrowserRouter([
             children: [
               { path: 'profile', element: <ProfilePage /> },
               { path: 'settings', element: <SettingsPage /> },
+              { path: 'messages', element: <MessagesPage /> },
             ],
           },
           { path: '*', element: <Navigate to="/" replace /> },
@@ -99,7 +102,8 @@ export const router = createBrowserRouter([
               {
                 element: <AdminShell />,
                 children: [
-                  { path: 'admin', element: <Navigate to="/admin/applications" replace /> },
+                  { path: 'admin', element: <Navigate to="/admin/dashboard" replace /> },
+                  { path: 'admin/dashboard', element: <AdminDashboardPage /> },
                   { path: 'admin/artists', element: <AdminArtistsListPage /> },
                   { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
                   { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },

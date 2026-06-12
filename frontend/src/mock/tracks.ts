@@ -2,7 +2,7 @@ import type { Track } from '@/types/track'
 import { mockArtistRefs } from './artists'
 import { mockAlbumRefs } from './albums'
 
-export const mockTracks: Track[] = [
+const rawTracks = [
   {
     id: 'track-1',
     title: 'Tidal Drift',
@@ -184,3 +184,6 @@ export const mockTracks: Track[] = [
     createdAt: '2024-02-14T00:00:00Z',
   },
 ]
+
+// Mock data predates the ratings fields — fill them with defaults here.
+export const mockTracks: Track[] = rawTracks.map((t) => ({ ...t, ratingCount: 0, averageRating: 0 }))

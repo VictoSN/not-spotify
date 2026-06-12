@@ -44,10 +44,12 @@ class AudioEngine {
 
     this.unsubscribe = usePlayerStore.subscribe((state) => {
       const { currentTrack, isPlaying, volume, isMuted, currentTime, duration } = state
+      let trackChanged = false
 
       // Track changed — load new source
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {
+          trackChanged = true
           const src = currentTrack.audioUrl
           if (src !== this.currentSrc) {
             this.audio.src = src
@@ -78,6 +80,8 @@ class AudioEngine {
           this.audio.pause()
         }
         prevIsPlaying = isPlaying
+      } else if (trackChanged && isPlaying) {
+        this.audio.play().catch(() => usePlayerStore.getState().pause())
       }
 
       // Volume / mute

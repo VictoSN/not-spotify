@@ -9,7 +9,8 @@ export function RecommendedTracksPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    trackService.getRecommended(50).then(setTracks).finally(() => setLoading(false))
+    // Recommendation algorithm is a later phase — trending is the stand-in.
+    trackService.getTrending(50).then(setTracks).finally(() => setLoading(false))
   }, [])
 
   return (

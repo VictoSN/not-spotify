@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
@@ -14,12 +14,17 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 import { useFriendPolling } from '@/hooks/useFriendPolling'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
+import { analyticsService } from '@/services/analyticsService'
 
 export function AppShell() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
+  const location = useLocation()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const prevAuth = useRef(isAuthenticated)
 
@@ -34,6 +39,23 @@ export function AppShell() {
     }
     prevAuth.current = isAuthenticated
   }, [isAuthenticated, navigate])
+
+  useEffect(() => {
+    const path = `${location.pathname}${location.search}`
+    analyticsService.recordVisit(path).catch(() => { })
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentTrackId || !isPlaying) return
+
+    const ping = () => {
+      analyticsService.playbackHeartbeat(currentTrackId).catch(() => { })
+    }
+
+    ping()
+    const intervalId = window.setInterval(ping, 30_000)
+    return () => window.clearInterval(intervalId)
+  }, [currentTrackId, isAuthenticated, isPlaying])
 
   return (
     <div className="flex flex-col h-screen bg-base text-primary">

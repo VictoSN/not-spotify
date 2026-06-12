@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import * as signalR from '@microsoft/signalr'
 import { useAuthStore } from '@/stores/authStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { useChatStore } from '@/stores/chatStore'
+import type { ChatMessage } from '@/types/chat'
 
 /**
  * Opens a SignalR WebSocket connection to /hubs/presence.
@@ -54,6 +56,24 @@ export function usePresenceSocket() {
           a.userId === userId ? { ...a, isOnline: false } : a,
         ),
       }))
+    })
+
+    // ── Chat events (pushed by ChatController via this same hub) ──────────────
+
+    // A new direct message — either inbound from a friend, or an echo of my own
+    // send (for multi-tab sync). If E2E encryption is enabled later, decrypt here.
+    connection.on('ChatMessage', (message: ChatMessage) => {
+      useChatStore.getState().receiveMessage(message)
+    })
+
+    // A friend read my messages — update ✓✓ read receipts live.
+    connection.on('ChatRead', (readerUserId: string, readAt: string) => {
+      useChatStore.getState().applyRead(readerUserId, readAt)
+    })
+
+    // Another of my own tabs marked a conversation read — clear badges here too.
+    connection.on('ChatReadSelf', (partnerUserId: string) => {
+      useChatStore.getState().applyReadSelf(partnerUserId)
     })
 
     // ── Lifecycle ──────────────────────────────────────────────────────────

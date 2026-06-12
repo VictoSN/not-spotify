@@ -152,6 +152,36 @@ namespace NotSpotify.Api.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.ActivePlaybackSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("TrackId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TrackId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.HasIndex("LastSeenAt", "TrackId");
+
+                    b.ToTable("ActivePlaybackSessions");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.Album", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +468,38 @@ namespace NotSpotify.Api.Migrations
                     b.ToTable("ArtistApplications");
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.ChatMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RecipientId", "ReadAt");
+
+                    b.HasIndex("SenderId", "RecipientId", "SentAt");
+
+                    b.ToTable("ChatMessages");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.Friendship", b =>
                 {
                     b.Property<Guid>("Id")
@@ -684,6 +746,41 @@ namespace NotSpotify.Api.Migrations
                     b.ToTable("ReviewHistories");
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.SiteVisit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("VisitedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VisitedAt");
+
+                    b.HasIndex("UserId", "VisitedAt");
+
+                    b.ToTable("SiteVisits");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.StripeWebhookEvent", b =>
                 {
                     b.Property<string>("Id")
@@ -732,13 +829,13 @@ namespace NotSpotify.Api.Migrations
                     b.Property<bool>("Explicit")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("Lyrics")
+                        .HasColumnType("text");
+
                     b.Property<long>("PlayCount")
                         .HasColumnType("bigint");
 
                     b.Property<string>("PreviewUrl")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Lyrics")
                         .HasColumnType("text");
 
                     b.Property<int>("RatingCount")
@@ -926,6 +1023,25 @@ namespace NotSpotify.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NotSpotify.Api.Models.ActivePlaybackSession", b =>
+                {
+                    b.HasOne("NotSpotify.Api.Models.Track", "Track")
+                        .WithMany()
+                        .HasForeignKey("TrackId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Track");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("NotSpotify.Api.Models.Album", b =>
                 {
                     b.HasOne("NotSpotify.Api.Models.Artist", "Artist")
@@ -960,6 +1076,25 @@ namespace NotSpotify.Api.Migrations
                     b.Navigation("ReviewedBy");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NotSpotify.Api.Models.ChatMessage", b =>
+                {
+                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "Recipient")
+                        .WithMany()
+                        .HasForeignKey("RecipientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Recipient");
+
+                    b.Navigation("Sender");
                 });
 
             modelBuilder.Entity("NotSpotify.Api.Models.Friendship", b =>
@@ -1056,6 +1191,16 @@ namespace NotSpotify.Api.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("NotSpotify.Api.Models.SiteVisit", b =>
+                {
+                    b.HasOne("NotSpotify.Api.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });

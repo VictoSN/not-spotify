@@ -163,26 +163,25 @@ export function HomePage() {
           </div>
         )}
 
-        {/* Free-plan nudge + promo combined */}
-        {isAuthenticated && user?.capabilities?.unlimitedPlayback === false && (
-          <div className="mb-8 rounded-xl bg-surface ring-1 ring-accent/30 overflow-hidden">
-            <div className="flex items-center justify-between gap-4 px-5 py-3.5">
-              <div className="min-w-0">
-                <p className="text-sm font-black text-primary">You're on the Free plan</p>
-                <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls.</p>
+          {/* Free-plan nudge + promo combined */}
+          {isAuthenticated && user?.capabilities?.unlimitedPlayback === false && (
+            <div className="mb-8 overflow-hidden rounded-xl bg-surface ring-1 ring-accent/30">
+              <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-primary">You're on the Free plan</p>
+                  <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls.</p>
+                </div>
+                <Link
+                  to="/premium"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-black text-page transition-all hover:scale-105 active:scale-95"
+                >
+                  Claim offer
+                </Link>
               </div>
-              <Link
-                to="/premium"
-                className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
-              >
-                <SparklesIcon className="h-4 w-4" />
-                Explore Premium
-              </Link>
-            </div>
-            <div className="flex items-center gap-2.5 px-5 py-2.5 border-t border-elevated/30 bg-elevated/20">
-              <span className="text-base shrink-0">🎉</span>
-              <p className="text-xs text-secondary">
-                First month 5% off — use code{' '}
+              <div className="flex items-center gap-2.5 border-t border-elevated/30 bg-elevated/20 px-5 py-2.5">
+                <span className="text-base shrink-0">🎉</span>
+                <p className="text-xs text-secondary">
+                  First month 5% off — use code{' '}
                 <strong className="font-black text-accent">5OFF</strong>
                 {' '}at checkout.{' '}
                 <span className="text-muted">Expires Aug 1.</span>

@@ -9,10 +9,12 @@ import {
   WrenchScrewdriverIcon,
   Bars3Icon,
   XMarkIcon,
+  ChartBarSquareIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 
 const navItems = [
+  { to: '/admin/dashboard',    label: 'Dashboard',    icon: ChartBarSquareIcon },
   { to: '/admin/artists',      label: 'Artists',      icon: UserGroupIcon },
   { to: '/admin/albums',       label: 'Albums',        icon: RectangleStackIcon },
   { to: '/admin/tracks',       label: 'Tracks',        icon: MusicalNoteIcon },

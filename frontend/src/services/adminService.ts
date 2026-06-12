@@ -17,6 +17,57 @@ export interface ArtistApplication {
   reviewNote: string | null
 }
 
+export interface AdminTrendPoint {
+  date: string
+  count: number
+}
+
+export interface AdminTopTrack {
+  id: string
+  title: string
+  artistName: string
+  albumTitle: string
+  coverUrl: string | null
+  playCount: number
+  playsInWindow: number
+  uniqueListeners: number
+}
+
+export interface AdminActiveTrack {
+  id: string
+  title: string
+  artistName: string
+  coverUrl: string | null
+  activeListeners: number
+}
+
+export interface AdminRecentVisit {
+  path: string
+  userName: string | null
+  visitedAt: string
+}
+
+export interface AdminDashboardStats {
+  totalVisits: number
+  visitsToday: number
+  activeListeners: number
+  totalUsers: number
+  premiumUsers: number
+  totalTracks: number
+  totalArtists: number
+  totalAlbums: number
+  pendingApplications: number
+  pendingAlbums: number
+  pendingTracks: number
+  playsToday: number
+  playsLast7Days: number
+  visitsTrend: AdminTrendPoint[]
+  playsTrend: AdminTrendPoint[]
+  topTracks: AdminTopTrack[]
+  activeTracks: AdminActiveTrack[]
+  recentVisits: AdminRecentVisit[]
+}
+
 // ── Artist ────────────────────────────────────────────────────────────────────
 
 export interface CreateArtistPayload {
@@ -70,6 +121,11 @@ export interface ReviewHistoryEntry {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const adminService = {
+  async getDashboardStats(): Promise<AdminDashboardStats> {
+    const res = await api.get<AdminDashboardStats>('/admin/dashboard')
+    return res.data
+  },
+
   // Artists
   async listArtists(): Promise<Artist[]> {
     const res = await api.get<Artist[]>('/artists')

@@ -32,6 +32,63 @@ const FREE_PERKS = [
   'Search and browse the full catalogue',
 ]
 
+const PAYMENT_METHODS = ['Mastercard', 'American Express', 'UnionPay', 'Visa']
+
+function PaymentBadge({ method }: { method: string }) {
+  if (method === 'Mastercard') {
+    return (
+      <span className="premium-payment-badge" aria-label="Mastercard accepted">
+        <svg viewBox="0 0 48 30" aria-hidden="true" className="h-5 w-8">
+          <circle cx="19" cy="15" r="11" fill="#eb001b" />
+          <circle cx="29" cy="15" r="11" fill="#f79e1b" />
+          <path
+            d="M24 6.4A10.95 10.95 0 0 1 29 15a10.95 10.95 0 0 1-5 8.6A10.95 10.95 0 0 1 19 15a10.95 10.95 0 0 1 5-8.6Z"
+            fill="#ff5f00"
+          />
+        </svg>
+      </span>
+    )
+  }
+
+  if (method === 'UnionPay') {
+    return (
+      <span className="premium-payment-badge gap-1" aria-label="UnionPay accepted">
+        <span className="h-5 w-3 rounded-sm bg-[#0b4ea2]" />
+        <span className="-ml-2 h-5 w-3 rounded-sm bg-[#0a8f46]" />
+        <span className="-ml-2 h-5 w-3 rounded-sm bg-[#d71920]" />
+        <span className="text-[10px] font-black text-[#19458f]">UnionPay</span>
+      </span>
+    )
+  }
+
+  if (method === 'American Express') {
+    return (
+      <span className="premium-payment-badge bg-[#2e77bc] text-white" aria-label="American Express accepted">
+        <span className="text-[10px] font-black leading-none">AMEX</span>
+      </span>
+    )
+  }
+
+  return (
+    <span className="premium-payment-badge" aria-label="Visa accepted">
+      <span className="text-sm font-black italic tracking-tight text-[#1434cb]">VISA</span>
+    </span>
+  )
+}
+
+function PaymentLogos() {
+  return (
+    <div className="premium-payments" aria-label="Accepted payment methods">
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {PAYMENT_METHODS.map((method) => (
+          <PaymentBadge key={method} method={method} />
+        ))}
+      </div>
+      <p className="mt-2 text-xs font-bold text-white/70">Secure checkout powered by Stripe</p>
+    </div>
+  )
+}
+
 function PlanCard({
   eyebrow,
   name,
@@ -52,7 +109,7 @@ function PlanCard({
   badge?: string | null
 }) {
   return (
-    <section className="flex flex-col overflow-hidden rounded-xl bg-surface ring-1 ring-elevated/40">
+    <section className="premium-plan-card flex flex-col overflow-hidden rounded-xl bg-surface ring-1 ring-elevated/40">
       <div className={cn('flex items-start justify-between gap-2 px-5 py-4', headerClass)}>
         <div>
           <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-90">
@@ -93,6 +150,7 @@ export function PremiumPage() {
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [busyInterval, setBusyInterval] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [plansFocused, setPlansFocused] = useState(false)
 
   useEffect(() => {
     billingService.getPlans().then(setPlans).catch(() => setPlans([]))
@@ -135,32 +193,53 @@ export function PremiumPage() {
     }
   }
 
+  const scrollToPlans = () => {
+    document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setPlansFocused(true)
+    window.setTimeout(() => setPlansFocused(false), 900)
+  }
+
   const status = searchParams.get('checkout')
   const hasMissingBillingConfig = plans.some((plan) => !plan.isConfigured)
   const isPremium = subscription?.plan === 'premium' || user?.plan === 'premium'
 
   return (
-    <div className="pb-12">
+    <div className="premium-page pb-12">
       {/* Hero */}
-      <div className="bg-gradient-to-b from-accent-dim to-page px-6 py-14 text-center sm:py-20">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-sm font-bold uppercase tracking-wider text-accent">not-spotify Premium</p>
-          <h1 className="mt-3 text-4xl font-black leading-tight text-primary sm:text-5xl">
-            Get more out of your music with Premium.
+      <div className="premium-hero relative overflow-hidden px-6 py-14 text-center sm:py-20">
+        <div className="premium-glow premium-glow-left" />
+        <div className="premium-glow premium-glow-right" />
+        <div className="relative mx-auto max-w-4xl">
+          <p className="premium-reveal text-sm font-bold uppercase tracking-wider text-accent">not-spotify Premium</p>
+          <h1
+            className="premium-reveal mt-3 text-4xl font-black leading-tight text-white sm:text-6xl"
+            style={{ animationDelay: '70ms' }}
+          >
+            Affordable plans for any situation
           </h1>
-          <p className="mt-4 text-secondary">Enjoy ad-free, uninterrupted listening. Cancel anytime.</p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
-            <a
-              href="#plans"
-              className="rounded-full bg-accent px-8 py-3 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+          <p
+            className="premium-reveal mx-auto mt-4 max-w-2xl text-sm font-semibold leading-relaxed text-white/80 sm:text-base"
+            style={{ animationDelay: '140ms' }}
+          >
+            Choose a Premium plan and listen ad-free with more control on your phone, speaker, and other devices.
+            Pay in various ways. Cancel anytime.
+          </p>
+          <div className="premium-reveal mt-8" style={{ animationDelay: '210ms' }}>
+            <PaymentLogos />
+          </div>
+          <div className="premium-reveal mt-8 flex flex-wrap justify-center gap-3" style={{ animationDelay: '280ms' }}>
+            <button
+              type="button"
+              onClick={scrollToPlans}
+              className="premium-cta rounded-full bg-white px-8 py-3 text-sm font-black text-black transition-all hover:scale-105 active:scale-95"
             >
               View all plans
-            </a>
+            </button>
             {isPremium && (
               <button
                 onClick={manageBilling}
                 disabled={busyInterval === 'portal'}
-                className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-8 py-3 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
+                className="inline-flex items-center gap-2 rounded-full border border-white/35 px-8 py-3 text-sm font-bold text-white transition-all hover:scale-105 hover:border-white active:scale-95"
               >
                 <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                 {busyInterval === 'portal' ? 'Opening…' : 'Manage billing'}
@@ -190,7 +269,7 @@ export function PremiumPage() {
         )}
 
         {/* Comparison */}
-        <section className="mx-auto mt-14 max-w-2xl">
+        <section className="premium-reveal mx-auto mt-14 max-w-2xl" style={{ animationDelay: '340ms' }}>
           <h2 className="text-center text-2xl font-black text-primary">Experience the difference</h2>
           <p className="mt-1 text-center text-sm text-secondary">Go Premium and enjoy full control of your listening.</p>
           <div className="mt-6 overflow-hidden rounded-lg bg-surface">
@@ -217,7 +296,7 @@ export function PremiumPage() {
         </section>
 
         {/* Promo banner */}
-        <div className="mx-auto mt-10 max-w-5xl">
+        <div className="premium-reveal mx-auto mt-10 max-w-5xl" style={{ animationDelay: '410ms' }}>
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface ring-1 ring-accent/40 px-5 py-4">
             <div className="flex items-center gap-3">
               <span className="text-2xl shrink-0">🎉</span>
@@ -232,18 +311,23 @@ export function PremiumPage() {
                 </p>
               </div>
             </div>
-            <a
-              href="#plans"
+            <button
+              type="button"
+              onClick={scrollToPlans}
               className="shrink-0 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
             >
               Claim offer
-            </a>
+            </button>
           </div>
         </div>
 
         {/* Plans */}
-        <section id="plans" className="mx-auto mt-10 max-w-5xl scroll-mt-6">
-          <h2 className="text-center text-2xl font-black text-primary">Affordable plans for any situation</h2>
+        <section
+          id="plans"
+          className={cn('premium-reveal mx-auto mt-10 max-w-5xl scroll-mt-6', plansFocused && 'premium-plans-focus')}
+          style={{ animationDelay: '480ms' }}
+        >
+          <h2 className="text-center text-2xl font-black text-primary">Pick the plan that fits you</h2>
           <p className="mt-1 text-center text-sm text-secondary">Choose a plan and listen ad-free. Cancel anytime.</p>
 
           <div className="mt-7 grid gap-4 lg:grid-cols-3">

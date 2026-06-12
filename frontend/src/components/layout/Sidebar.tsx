@@ -7,8 +7,6 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   ListBulletIcon,
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
   Squares2X2Icon,
   CheckIcon,
 } from '@heroicons/react/24/outline'
@@ -236,24 +234,26 @@ export function Sidebar() {
           <div className="relative flex min-w-0 items-center">
             <button
               onClick={() => setWidth(RAIL)}
-              className="absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
+              className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
               aria-label="Collapse Your Library"
-              title="Collapse Your Library"
             >
               <ChevronDoubleLeftIcon className="w-5 h-5" />
+              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-left">Collapse Your Library</span>
             </button>
-            <span className="truncate pl-0 font-bold text-primary transition-all duration-200 group-hover/library-header:pl-7">
+            <span className="truncate pl-0 text-sm font-bold leading-5 text-primary transition-all duration-200 group-hover/library-header:pl-7">
               Your Library
             </span>
           </div>
           <button
             onClick={handleCreate}
-            className="flex items-center gap-1.5 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 active:scale-95 text-primary text-sm font-semibold pl-2.5 pr-3.5 py-1.5 transition-all shrink-0"
+            className="spotify-tooltip-anchor relative flex shrink-0 items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
             aria-label="Create playlist"
-            title="Create playlist"
           >
             <PlusIcon className="w-4 h-4" />
             Create
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-right">
+              Create a playlist, folder, or Jam
+            </span>
           </button>
         </div>
 
@@ -344,39 +344,46 @@ export function Sidebar() {
       {/* Header */}
       <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2">
         <div className="relative flex min-w-0 items-center">
-          <button
-            onClick={() => setWidth(RAIL)}
-            className="absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
-            aria-label="Collapse Your Library"
-            title="Collapse Your Library"
+          {!libraryExpanded && (
+            <button
+              onClick={() => setWidth(RAIL)}
+              className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
+              aria-label="Collapse Your Library"
+            >
+              <ChevronDoubleLeftIcon className="w-5 h-5" />
+              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-left">Collapse Your Library</span>
+            </button>
+          )}
+          <span
+            className={cn(
+              'truncate pl-0 text-sm font-bold leading-5 text-primary transition-all duration-200',
+              !libraryExpanded && 'group-hover/library-header:pl-7',
+            )}
           >
-            <ChevronDoubleLeftIcon className="w-5 h-5" />
-          </button>
-          <span className="truncate pl-0 font-bold text-primary transition-all duration-200 group-hover/library-header:pl-7">
             Your Library
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={handleCreate}
-            className="flex items-center gap-1.5 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 active:scale-95 text-primary text-sm font-semibold pl-2.5 pr-3.5 py-1.5 transition-all"
+            className="spotify-tooltip-anchor relative flex items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
             aria-label="Create playlist"
-            title="Create playlist"
           >
             <PlusIcon className="w-4 h-4" />
             Create
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+              Create a playlist, folder, or Jam
+            </span>
           </button>
           <button
             onClick={() => setLibraryExpanded(!libraryExpanded)}
-            className="p-1.5 rounded-full text-secondary hover:text-primary hover:bg-elevated hover:scale-110 active:scale-90 transition-all"
+            className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
             aria-label={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
-            title={libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
           >
-            {libraryExpanded ? (
-              <ArrowsPointingInIcon className="w-5 h-5" />
-            ) : (
-              <ArrowsPointingOutIcon className="w-5 h-5" />
-            )}
+            {libraryExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-right">
+              {libraryExpanded ? 'Minimize Your Library' : 'Expand Your Library'}
+            </span>
           </button>
         </div>
       </div>
@@ -411,9 +418,11 @@ export function Sidebar() {
       </div>
 
       {/* Search + sort */}
-      <div className="flex items-center justify-between px-4 pb-2 h-9 gap-2">
+      <div className="flex h-9 items-center justify-between gap-2 px-4 pb-2">
         {searchOpen ? (
-          <div className="relative flex-1">
+          <div
+            className={cn('library-search-field relative', libraryExpanded ? 'w-full max-w-sm flex-none' : 'flex-1')}
+          >
             <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
             <input
               autoFocus
@@ -423,7 +432,7 @@ export function Sidebar() {
                 if (!query) setSearchOpen(false)
               }}
               placeholder="Search in Your Library"
-              className="w-full bg-elevated text-primary placeholder:text-muted text-sm pl-8 pr-3 py-1.5 rounded-md focus:outline-none focus:ring-1 focus:ring-accent/50"
+              className="h-8 w-full rounded-full border border-transparent bg-elevated pl-8 pr-3 text-xs font-semibold text-primary transition-[background-color,border-color,box-shadow] duration-200 placeholder:font-semibold placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent/70"
             />
           </div>
         ) : (
@@ -618,5 +627,33 @@ function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => voi
     >
       <div className="w-px h-full bg-transparent group-hover:bg-accent/50 transition-colors" />
     </div>
+  )
+}
+
+function DiagonalExpandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function DiagonalCollapseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

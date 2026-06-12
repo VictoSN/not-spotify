@@ -196,17 +196,29 @@ public class TracksController : ControllerBase
         if (track is null) return NotFound();
 
         if (!string.IsNullOrWhiteSpace(track.Lyrics))
-            return Ok(new LyricsDto(track.Lyrics, "stored"));
+        {
+            // Tracks cached before synced-lyrics support have SyncedLyrics == null.
+            // Backfill once; "" marks "provider has no timed version" so we never re-query.
+            if (track.SyncedLyrics is null)
+            {
+                var refetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
+                track.SyncedLyrics = refetched?.SyncedLyrics ?? "";
+                await _db.SaveChangesAsync(ct);
+            }
+            var synced = string.IsNullOrWhiteSpace(track.SyncedLyrics) ? null : track.SyncedLyrics;
+            return Ok(new LyricsDto(track.Lyrics, synced, "stored"));
+        }
 
         var fetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
         if (fetched is not null)
         {
             track.Lyrics = fetched.Lyrics;
+            track.SyncedLyrics = fetched.SyncedLyrics ?? "";
             await _db.SaveChangesAsync(ct);
-            return Ok(new LyricsDto(track.Lyrics, fetched.Source));
+            return Ok(new LyricsDto(track.Lyrics, fetched.SyncedLyrics, fetched.Source));
         }
 
-        return Ok(new LyricsDto(null, "not_found"));
+        return Ok(new LyricsDto(null, null, "not_found"));
     }
 
     private async Task<ActionResult<IEnumerable<TrackDto>>> TrendingFallback(int limit, CancellationToken ct)

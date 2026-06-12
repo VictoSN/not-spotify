@@ -22,6 +22,13 @@ public class Track
     /// </summary>
     public string? Lyrics { get; set; }
 
+    /// <summary>
+    /// Time-synced lyrics in LRC format ("[mm:ss.xx] line"), used by the karaoke view.
+    /// Null = never looked up; empty string = looked up but the provider had no synced
+    /// version (sentinel so we don't re-query LRCLIB on every lyrics request).
+    /// </summary>
+    public string? SyncedLyrics { get; set; }
+
     // approved | pending | rejected  (admin-created tracks are approved by default)
     public string Status { get; set; } = "approved";
     public string? ReviewNote { get; set; }

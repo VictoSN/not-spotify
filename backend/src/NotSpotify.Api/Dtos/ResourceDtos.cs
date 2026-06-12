@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace NotSpotify.Api.Dtos;
 
 /// <summary>Response from GET /tracks/{id}/lyrics</summary>
-public record LyricsDto(string? Lyrics, string Source);
+public record LyricsDto(string? Lyrics, string? SyncedLyrics, string Source);
 
 /// <summary>Shape returned by the Lyrics.ovh public API.</summary>
 public record LyricsOvhResponse([property: JsonPropertyName("lyrics")] string? Lyrics);

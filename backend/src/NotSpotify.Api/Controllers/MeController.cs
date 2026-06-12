@@ -640,6 +640,7 @@ public class MeController : ControllerBase
             if (fetched is not null)
             {
                 track.Lyrics = fetched.Lyrics;
+                track.SyncedLyrics = fetched.SyncedLyrics ?? "";
                 await _db.SaveChangesAsync(ct);
             }
         }
@@ -930,6 +931,7 @@ public class MeController : ControllerBase
             if (fetched is not null)
             {
                 track.Lyrics = fetched.Lyrics;
+                track.SyncedLyrics = fetched.SyncedLyrics ?? "";
                 await _db.SaveChangesAsync(ct);
             }
         }

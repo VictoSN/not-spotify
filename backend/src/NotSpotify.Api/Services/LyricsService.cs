@@ -19,7 +19,8 @@ public class LyricsService
         _logger = logger;
     }
 
-    public record FetchResult(string Lyrics, string Source);
+    /// <summary>SyncedLyrics is raw LRC text when LRCLIB has a timed version, otherwise null.</summary>
+    public record FetchResult(string Lyrics, string? SyncedLyrics, string Source);
 
     public async Task<FetchResult?> TryFetchAsync(string artistName, string title, long durationMs, CancellationToken ct = default)
     {
@@ -46,7 +47,7 @@ public class LyricsService
             http.Timeout = TimeSpan.FromSeconds(8);
             var resp = await http.GetFromJsonAsync<LyricsOvhResponse>(url, ct);
             if (!string.IsNullOrWhiteSpace(resp?.Lyrics))
-                return new FetchResult(resp.Lyrics.Trim(), "lyrics_ovh");
+                return new FetchResult(resp.Lyrics.Trim(), null, "lyrics_ovh");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
@@ -71,13 +72,29 @@ public class LyricsService
             if (!response.IsSuccessStatusCode) return null;
 
             var lrclib = await response.Content.ReadFromJsonAsync<LrclibResponse>(cancellationToken: ct);
-            if (lrclib is { Instrumental: false } && !string.IsNullOrWhiteSpace(lrclib.PlainLyrics))
-                return new FetchResult(lrclib.PlainLyrics.Trim(), "lrclib");
+            if (lrclib is { Instrumental: false })
+            {
+                var synced = string.IsNullOrWhiteSpace(lrclib.SyncedLyrics) ? null : lrclib.SyncedLyrics.Trim();
+                // Some LRCLIB entries are synced-only; derive the plain text from the LRC.
+                var plain = !string.IsNullOrWhiteSpace(lrclib.PlainLyrics)
+                    ? lrclib.PlainLyrics.Trim()
+                    : synced is not null ? StripLrcTimestamps(synced) : null;
+                if (plain is not null)
+                    return new FetchResult(plain, synced, "lrclib");
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException)
         {
             _logger.LogDebug(ex, "LRCLIB fetch failed");
         }
         return null;
+    }
+
+    private static string StripLrcTimestamps(string lrc)
+    {
+        var lines = lrc
+            .Split('\n')
+            .Select(l => System.Text.RegularExpressions.Regex.Replace(l, @"\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]", "").Trim());
+        return string.Join("\n", lines).Trim();
     }
 }

@@ -55,7 +55,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
   fetchConversations: async () => {
     try {
       const conversations = await chatService.getConversations()
-      set({ conversations })
+      // The thread I'm looking at is read by definition. The server may still
+      // report unread > 0 here when this fetch races the mark-read POST (e.g.
+      // first message from a "Start a chat" partner) — without this clamp the
+      // stale count would overwrite the optimistic zero and the badge would
+      // stick until the conversation is clicked again.
+      const { activeUserId } = get()
+      const clamped =
+        activeUserId && document.visibilityState === 'visible'
+          ? conversations.map((c) => (c.userId === activeUserId ? { ...c, unreadCount: 0 } : c))
+          : conversations
+      set({ conversations: clamped })
     } catch {
       /* network blip — keep current state */
     }

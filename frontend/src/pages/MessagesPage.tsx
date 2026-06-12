@@ -43,7 +43,7 @@ export function MessagesPage() {
   const threads = useChatStore((s) => s.threads)
   const activeUserId = useChatStore((s) => s.activeUserId)
   const isLoading = useChatStore((s) => s.isLoading)
-  const { fetchConversations, openThread, closeThread, sendMessage, loadOlder } = useChatStore()
+  const { fetchConversations, openThread, closeThread, sendMessage, loadOlder, markRead } = useChatStore()
   const friends = useFriendStore((s) => s.friends)
   const activity = useFriendStore((s) => s.activity)
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
@@ -62,6 +62,17 @@ export function MessagesPage() {
     if (deepLink) openThread(deepLink)
     return () => closeThread()
   }, [deepLink, openThread, closeThread])
+
+  // Messages that arrived while the tab was hidden badge up; coming back to
+  // the tab with this thread open means they're read now — clear immediately.
+  useEffect(() => {
+    if (!activeUserId) return
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') markRead(activeUserId)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [activeUserId, markRead])
 
   const thread = activeUserId ? (threads[activeUserId] ?? []) : []
 

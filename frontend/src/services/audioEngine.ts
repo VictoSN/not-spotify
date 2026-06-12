@@ -41,9 +41,10 @@ class AudioEngine {
     let prevVolume = 0.8
     let prevIsMuted = false
     let prevSeek = 0
+    let prevRate = 1
 
     this.unsubscribe = usePlayerStore.subscribe((state) => {
-      const { currentTrack, isPlaying, volume, isMuted, currentTime, duration } = state
+      const { currentTrack, isPlaying, volume, isMuted, currentTime, duration, playbackRate } = state
       let trackChanged = false
 
       // Track changed — load new source
@@ -89,6 +90,12 @@ class AudioEngine {
         this.audio.volume = isMuted ? 0 : volume
         prevVolume = volume
         prevIsMuted = isMuted
+      }
+
+      // Playback speed — reapplied on track change since load() can reset it.
+      if (playbackRate !== prevRate || trackChanged) {
+        this.audio.playbackRate = playbackRate
+        prevRate = playbackRate
       }
 
       this.updateMediaSession({ currentTrack, isPlaying, currentTime, duration })

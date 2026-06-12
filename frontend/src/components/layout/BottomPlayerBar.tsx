@@ -4,6 +4,7 @@ import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
+import { PlaybackSpeedButton, SleepTimerButton } from '@/components/player/PlayerExtras'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -81,8 +82,10 @@ export function BottomPlayerBar() {
         <ProgressBar />
       </div>
 
-      {/* Right: Karaoke + Volume + PiP + Now Playing panel toggle */}
+      {/* Right: Speed + Sleep + Karaoke + Volume + PiP + Now Playing panel toggle */}
       <div className="flex items-center gap-3 justify-self-end">
+        <PlaybackSpeedButton />
+        <SleepTimerButton />
         {currentTrack && (
           <button
             onClick={toggleKaraoke}

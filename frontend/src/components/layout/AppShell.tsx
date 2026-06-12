@@ -15,6 +15,7 @@ import { useUiStore } from '@/stores/uiStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 import { useFriendPolling } from '@/hooks/useFriendPolling'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
 
@@ -37,6 +38,8 @@ export function AppShell() {
   usePresenceSocket()
   // Social data (now-playing, requests, friends list) on a slower poll.
   useFriendPolling()
+  // Space/arrows/M/L player shortcuts.
+  useKeyboardShortcuts()
 
   useEffect(() => {
     if (prevAuth.current && !isAuthenticated) {

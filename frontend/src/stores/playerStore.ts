@@ -23,6 +23,16 @@ function isFreeUser(): boolean {
 
 export type RepeatMode = 'off' | 'one' | 'all'
 
+/** Settings page persists this under ns-pref-autoplay (default true). */
+function autoplayEnabled(): boolean {
+  try {
+    const raw = window.localStorage.getItem('ns-pref-autoplay')
+    return raw == null ? true : JSON.parse(raw) === true
+  } catch {
+    return true
+  }
+}
+
 interface PlayerState {
   currentTrack: Track | null
   isPlaying: boolean
@@ -35,6 +45,9 @@ interface PlayerState {
   isMuted: boolean
   shuffleEnabled: boolean
   repeatMode: RepeatMode
+  playbackRate: number
+  /** Epoch ms when playback should pause, or null when no sleep timer is set. */
+  sleepTimerEndsAt: number | null
   isNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
   isKaraokeOpen: boolean
@@ -52,8 +65,11 @@ interface PlayerState {
   cycleRepeat: () => void
   setQueue: (tracks: Track[], startIndex?: number) => void
   addToQueue: (track: Track) => void
+  playNext: (track: Track) => void
   removeFromQueue: (index: number) => void
   reorderQueue: (fromIndex: number, toIndex: number) => void
+  setPlaybackRate: (rate: number) => void
+  setSleepTimer: (minutes: number | null) => void
   toggleNowPlaying: () => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
   toggleKaraoke: () => void
@@ -74,6 +90,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isMuted: false,
   shuffleEnabled: false,
   repeatMode: 'off',
+  playbackRate: 1,
+  sleepTimerEndsAt: null,
   isNowPlayingOpen: true,
   isNowPlayingCollapsed: false,
   isKaraokeOpen: false,
@@ -129,6 +147,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     if (nextIndex >= queue.length) {
       if (repeatMode === 'all') nextIndex = 0
+      else if (autoplayEnabled() && currentTrack && !isFreeUser()) {
+        // Autoplay: queue ran out — keep going with more from the same artist.
+        // Dynamic import avoids a store→service→store cycle at module load.
+        void import('@/services/artistService').then(async ({ artistService }) => {
+          try {
+            const more = await artistService.getTopTracks(currentTrack.artist.id, 10)
+            const base = get().queue
+            const seen = new Set(base.map((t) => t.id))
+            const fresh = more.filter((t) => !seen.has(t.id))
+            if (fresh.length === 0) { set({ isPlaying: false }); return }
+            const next = fresh[0]
+            set({ queue: [...base, ...fresh], queueIndex: base.length, currentTrack: next, currentTime: 0, isPlaying: true })
+            recordPlay(next.id)
+          } catch {
+            set({ isPlaying: false })
+          }
+        })
+        return
+      }
       else { set({ isPlaying: false }); return }
     }
     const next = queue[nextIndex]
@@ -192,6 +229,18 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
 
+  playNext: (track) =>
+    set((s) => {
+      // Nothing playing — just start it.
+      if (!s.currentTrack) {
+        recordPlay(track.id)
+        return { currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0 }
+      }
+      const newQueue = [...s.queue]
+      newQueue.splice(s.queueIndex + 1, 0, track)
+      return { queue: newQueue }
+    }),
+
   removeFromQueue: (index) =>
     set((s) => {
       const newQueue = s.queue.filter((_, i) => i !== index)
@@ -215,11 +264,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       return { queue: newQueue, queueIndex: newQueueIndex }
     }),
 
+  setPlaybackRate: (rate) => set({ playbackRate: Math.max(0.25, Math.min(3, rate)) }),
+
+  setSleepTimer: (minutes) =>
+    set({ sleepTimerEndsAt: minutes == null ? null : Date.now() + minutes * 60_000 }),
+
   toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen, isNowPlayingCollapsed: false })),
   setNowPlayingCollapsed: (collapsed) => set({ isNowPlayingCollapsed: collapsed }),
   toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
 
-  tick: (currentTime, duration) => set({ currentTime, duration }),
+  tick: (currentTime, duration) => {
+    const { sleepTimerEndsAt } = get()
+    // Sleep timer fires on the playback clock so it only triggers while playing.
+    if (sleepTimerEndsAt != null && Date.now() >= sleepTimerEndsAt) {
+      set({ currentTime, duration, isPlaying: false, sleepTimerEndsAt: null })
+      return
+    }
+    set({ currentTime, duration })
+  },
 }))
 
 // Subscribe to auth state changes to pause and reset playback on logout

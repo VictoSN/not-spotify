@@ -8,6 +8,7 @@ import {
   MinusCircleIcon,
   HeartIcon as HeartOutlineIcon,
   QueueListIcon,
+  ForwardIcon,
   UserIcon,
   MusicalNoteIcon,
   ShareIcon,
@@ -54,6 +55,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const createPlaylist = useLibraryStore((s) => s.createPlaylist)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const addToQueue = usePlayerStore((s) => s.addToQueue)
+  const playNext = usePlayerStore((s) => s.playNext)
   const queue = usePlayerStore((s) => s.queue)
 
   const isLiked = likedTrackIds.has(track.id)
@@ -142,6 +144,9 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const handleAddToQueue = () =>
     gate('Add to queue with a free account', () => addToQueue(track))
 
+  const handlePlayNext = () =>
+    gate('Queue songs with a free account', () => playNext(track))
+
   const handleAddToPlaylist = async (playlistId: string) => {
     try {
       await addTrackToPlaylist(playlistId, track)
@@ -165,7 +170,16 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   }
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/album/${track.album.id}`
+    const url = `${window.location.origin}/track/${track.id}`
+    // Native share sheet where available (mobile), clipboard otherwise.
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: track.title, text: `${track.title} · ${track.artist.name}`, url })
+        return
+      } catch {
+        /* cancelled or unsupported — fall through to clipboard */
+      }
+    }
     try {
       await navigator.clipboard.writeText(url)
     } catch {
@@ -435,20 +449,36 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
             </MenuItem>
 
             {!isInQueue && (
-              <MenuItem>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    stop(e)
-                    handleAddToQueue()
-                    close()
-                  }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
-                >
-                  <QueueListIcon className="w-4 h-4" />
-                  Add to queue
-                </button>
-              </MenuItem>
+              <>
+                <MenuItem>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      stop(e)
+                      handlePlayNext()
+                      close()
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  >
+                    <ForwardIcon className="w-4 h-4" />
+                    Play next
+                  </button>
+                </MenuItem>
+                <MenuItem>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      stop(e)
+                      handleAddToQueue()
+                      close()
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  >
+                    <QueueListIcon className="w-4 h-4" />
+                    Add to queue
+                  </button>
+                </MenuItem>
+              </>
             )}
 
             <div className="my-1 h-px bg-secondary/20" />

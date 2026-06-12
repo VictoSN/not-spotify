@@ -78,7 +78,7 @@ export function PlaylistDetailPage() {
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
   // Tint the header from the playlist cover; playlists without one fall back
   // to the first track's album art (matches what the placeholder tile shows).
-  const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.album.coverUrl)
+  const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.track.album.coverUrl)
 
   useEffect(() => {
     if (!id) return

@@ -26,6 +26,7 @@ import { RecentsPage } from '@/pages/browse/RecentsPage'
 import { RecommendedPlaylistsPage } from '@/pages/browse/RecommendedPlaylistsPage'
 import { PopularArtistsPage } from '@/pages/browse/PopularArtistsPage'
 import { NewReleasesPage } from '@/pages/browse/NewReleasesPage'
+import { AdminLoginPage } from '@/pages/admin/AdminLoginPage'
 import { AdminArtistsListPage } from '@/pages/admin/AdminArtistsListPage'
 import { AdminArtistFormPage } from '@/pages/admin/AdminArtistFormPage'
 import { AdminAlbumsListPage } from '@/pages/admin/AdminAlbumsListPage'
@@ -42,6 +43,7 @@ import { TrackDetailPage } from '@/pages/TrackDetailPage'
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
+  { path: '/admin/login', element: <AdminLoginPage /> },
   {
     errorElement: (
       <ErrorBoundary>
@@ -94,29 +96,27 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <ProtectedRoute />,
+        // AdminRoute handles auth itself: unauthenticated → /admin/login,
+        // authenticated non-admins → /. (No ProtectedRoute wrapper — it would
+        // intercept first and send admins to the member /login instead.)
+        element: <AdminRoute />,
         children: [
           {
-            element: <AdminRoute />,
+            element: <AdminShell />,
             children: [
-              {
-                element: <AdminShell />,
-                children: [
-                  { path: 'admin', element: <Navigate to="/admin/dashboard" replace /> },
-                  { path: 'admin/dashboard', element: <AdminDashboardPage /> },
-                  { path: 'admin/artists', element: <AdminArtistsListPage /> },
-                  { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
-                  { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },
-                  { path: 'admin/albums', element: <AdminAlbumsListPage /> },
-                  { path: 'admin/albums/new', element: <AdminAlbumFormPage /> },
-                  { path: 'admin/albums/:id/edit', element: <AdminAlbumFormPage /> },
-                  { path: 'admin/tracks', element: <AdminTracksListPage /> },
-                  { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
-                  { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
-                  { path: 'admin/applications', element: <AdminApplicationsPage /> },
-                  { path: 'admin/dev', element: <AdminDevPage /> },
-                ],
-              },
+              { path: 'admin', element: <Navigate to="/admin/dashboard" replace /> },
+              { path: 'admin/dashboard', element: <AdminDashboardPage /> },
+              { path: 'admin/artists', element: <AdminArtistsListPage /> },
+              { path: 'admin/artists/new', element: <AdminArtistFormPage /> },
+              { path: 'admin/artists/:id/edit', element: <AdminArtistFormPage /> },
+              { path: 'admin/albums', element: <AdminAlbumsListPage /> },
+              { path: 'admin/albums/new', element: <AdminAlbumFormPage /> },
+              { path: 'admin/albums/:id/edit', element: <AdminAlbumFormPage /> },
+              { path: 'admin/tracks', element: <AdminTracksListPage /> },
+              { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
+              { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
+              { path: 'admin/applications', element: <AdminApplicationsPage /> },
+              { path: 'admin/dev', element: <AdminDevPage /> },
             ],
           },
         ],

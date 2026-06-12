@@ -45,7 +45,7 @@ export function usePresenceSocket() {
         return {
           activity: exists
             ? s.activity.map((a) => (a.userId === userId ? { ...a, isOnline: true } : a))
-            : [...s.activity, { userId, isOnline: true, nowPlaying: null }],
+            : [...s.activity, { userId, isOnline: true, nowPlaying: null, playedAt: null, isListeningNow: false }],
         }
       })
     })

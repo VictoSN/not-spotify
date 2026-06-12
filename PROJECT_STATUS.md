@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-12 by Account 3 (friend activity feed + dynamic theming)
+Last updated: 2026-06-12 by Account 2 (dedicated /admin/login route + guards)
 
 ---
 
@@ -49,7 +49,7 @@ Last updated: 2026-06-12 by Account 3 (friend activity feed + dynamic theming)
   - [ ] Migrate: Approval table
   - [ ] Migrate: Revoke artist status
   - [ ] Migrate: Rejection history
-- [ ] Task 2: Move admin login to dedicated `/admin/login` route + guard middleware
+- [x] Task 2: Move admin login to dedicated `/admin/login` route + guard middleware ✅ (2026-06-12)
 
 ### Account 3 — Stretch Features
 - [x] Task 1: "What your friends are listening to" feed ✅ (2026-06-12)
@@ -80,7 +80,25 @@ Last updated: 2026-06-12 by Account 3 (friend activity feed + dynamic theming)
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
-### 2026-06-12 — Account 3 — Friend Activity feed + dynamic cover-art theming
+### 2026-06-12 — Account 2 — Dedicated admin login at /admin/login (Task 2)
+
+**Completed this session:**
+- **New page** [AdminLoginPage.tsx](frontend/src/pages/admin/AdminLoginPage.tsx) at **`/admin/login`** — minimal console-style sign-in (brand row matching AdminShell, email/password card, no social buttons/signup). If signed in as a non-admin it shows a "no admin access" panel with Switch account / Back to app instead of redirect-looping.
+- **Guard changes** [AdminRoute.tsx](frontend/src/components/common/AdminRoute.tsx): unauthenticated visits to any `/admin/*` now redirect to `/admin/login` (was `/login`), carrying the attempted URL in `location.state.from` so login returns you there. Authenticated non-admins still bounce to `/`.
+- **Router** [index.tsx](frontend/src/router/index.tsx): registered `/admin/login` top-level; removed the redundant `ProtectedRoute` wrapper around the admin branch (it intercepted first and sent admins to the member `/login`).
+- Repaired two unrelated build breakers from in-flight work: `usePresenceSocket` missing new `FriendActivity` fields (`playedAt`/`isListeningNow`) and `PlaylistDetailPage` reading `.album` off a `PlaylistTrack` instead of `.track.album`.
+- Verified in browser as guest: `/admin` and `/admin/tracks` both land on `/admin/login` and render the form; build + lint clean on touched files.
+
+**Still incomplete:**
+- Post-login return-to-`from` not browser-verified with real admin credentials (code path in place) — one manual admin login recommended.
+- Task 1 sub-checkboxes (inventory/migrations) look mostly done in code (AdminShell topbar + Dashboard/Applications/etc. all migrated) but are unchecked above — owner should confirm and tick.
+
+**New bugs found:**
+- None in this slice. (Pre-existing lint errors elsewhere remain, e.g. PlaylistDetailPage effect patterns.)
+
+**Notes for next session:**
+- `/admin/login` deliberately keeps NO dev-shortcut buttons (unlike member LoginPage) — admin area stays credential-only.
+- If an admin-only "remember last admin page" is wanted later, the `from` state in AdminRoute is the hook point.
 
 **Completed:**
 - **Friend Activity feed (Task 1)** — Spotify-style right rail showing what friends are listening to.

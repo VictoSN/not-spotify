@@ -27,12 +27,14 @@ public class SearchController : ControllerBase
                 Array.Empty<TrackDto>(),
                 Array.Empty<ArtistDto>(),
                 Array.Empty<AlbumDto>(),
-                Array.Empty<PlaylistSummaryDto>()));
+                Array.Empty<PlaylistSummaryDto>(),
+                Array.Empty<TrackDto>()));
 
         var like = $"%{q}%";
         var wantAll = string.IsNullOrEmpty(type);
 
         IEnumerable<TrackDto> tracks = Array.Empty<TrackDto>();
+        IEnumerable<TrackDto> tracksByLyrics = Array.Empty<TrackDto>();
         if (wantAll || type == "track")
         {
             var rows = await _db.Tracks
@@ -41,6 +43,19 @@ public class SearchController : ControllerBase
                 .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
                 .Take(20).ToListAsync(ct);
             tracks = await _mapper.ToDtoListAsync(rows, ct);
+
+            // Lyrics search — only for queries long enough to be a lyric phrase,
+            // excluding tracks the title search already found.
+            if (q.Trim().Length >= 3)
+            {
+                var titleIds = rows.Select(r => r.Id).ToList();
+                var lyricRows = await _db.Tracks
+                    .Where(t => t.Lyrics != null && EF.Functions.ILike(t.Lyrics, like) && !titleIds.Contains(t.Id))
+                    .Include(t => t.Artist).Include(t => t.Album)
+                    .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+                    .Take(10).ToListAsync(ct);
+                tracksByLyrics = await _mapper.ToDtoListAsync(lyricRows, ct);
+            }
         }
 
         IEnumerable<ArtistDto> artists = Array.Empty<ArtistDto>();
@@ -73,6 +88,6 @@ public class SearchController : ControllerBase
             playlists = rows.Select(p => _mapper.ToSummary(p));
         }
 
-        return Ok(new SearchResultsDto(tracks, artists, albums, playlists));
+        return Ok(new SearchResultsDto(tracks, artists, albums, playlists, tracksByLyrics));
     }
 }

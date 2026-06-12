@@ -50,6 +50,51 @@ public class TracksController : ControllerBase
     }
 
     /// <summary>
+    /// Charts: pure ranking by plays in the last 7 days (falls back to all-time
+    /// play count as a tiebreaker). Returns rank + weekly play count per entry.
+    /// </summary>
+    [HttpGet("charts")]
+    public async Task<ActionResult<IEnumerable<ChartEntryDto>>> Charts([FromQuery] int limit = 50, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 100);
+        var cutoff = DateTime.UtcNow.AddDays(-7);
+
+        var weeklyCounts = await _db.PlayHistories
+            .Where(h => h.PlayedAt >= cutoff)
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        var ids = weeklyCounts.Select(w => w.TrackId).ToList();
+        var tracks = await BaseQuery().Where(t => ids.Contains(t.Id)).ToListAsync(ct);
+        var trackById = tracks.ToDictionary(t => t.Id);
+
+        var entries = new List<ChartEntryDto>(weeklyCounts.Count);
+        var rank = 1;
+        foreach (var w in weeklyCounts)
+        {
+            if (!trackById.TryGetValue(w.TrackId, out var track)) continue; // unapproved/deleted
+            entries.Add(new ChartEntryDto(rank++, w.Count, await _mapper.ToDtoAsync(track, ct)));
+        }
+
+        // Pad with all-time top tracks if the week is quiet.
+        if (entries.Count < limit)
+        {
+            var have = entries.Select(e => e.Track.Id).ToHashSet();
+            var fillers = await BaseQuery()
+                .OrderByDescending(t => t.PlayCount)
+                .Take(limit * 2)
+                .ToListAsync(ct);
+            foreach (var t in fillers.Where(t => !have.Contains(t.Id)).Take(limit - entries.Count))
+                entries.Add(new ChartEntryDto(rank++, 0, await _mapper.ToDtoAsync(t, ct)));
+        }
+
+        return Ok(entries);
+    }
+
+    /// <summary>
     /// Trending: score = (plays in last 7 days × 3) + (all-time play count × 0.01).
     /// Recent activity is weighted 300× more than historical play count to surface
     /// currently popular tracks rather than all-time favourites.

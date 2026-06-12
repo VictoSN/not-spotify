@@ -205,6 +205,17 @@ export function SearchPage() {
                 </section>
               )}
 
+              {(activeTab === 'all' || activeTab === 'songs') && (results.tracksByLyrics?.length ?? 0) > 0 && (
+                <section className="mb-8">
+                  <SectionHeader title="Found in lyrics" subtitle={`Songs whose lyrics mention "${query.trim()}"`} />
+                  <div className="flex flex-col gap-1">
+                    {results.tracksByLyrics.slice(0, activeTab === 'songs' ? 20 : 5).map((track) => (
+                      <TrackCard key={track.id} track={track} queue={results.tracksByLyrics} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {(activeTab === 'all' || activeTab === 'artists') && results.artists.length > 0 && (
                 <section className="mb-8">
                   <SectionHeader title="Artists" />
@@ -239,7 +250,8 @@ export function SearchPage() {
               )}
 
               {results.tracks.length === 0 && results.artists.length === 0 &&
-                results.albums.length === 0 && results.playlists.length === 0 && (
+                results.albums.length === 0 && results.playlists.length === 0 &&
+                (results.tracksByLyrics?.length ?? 0) === 0 && (
                 <div className="text-center py-16">
                   <MagnifyingGlassIcon className="w-16 h-16 text-muted mx-auto mb-4" />
                   <p className="text-primary font-semibold text-lg">No results for "{query}"</p>

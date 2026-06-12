@@ -1,6 +1,12 @@
 import type { Track } from '@/types/track'
 import { api } from './api'
 
+export interface ChartEntry {
+  rank: number
+  playsThisWeek: number
+  track: Track
+}
+
 export const trackService = {
   async getById(id: string): Promise<Track> {
     const res = await api.get<Track>(`/tracks/${id}`)
@@ -9,6 +15,11 @@ export const trackService = {
 
   async getTrending(limit = 10): Promise<Track[]> {
     const res = await api.get<Track[]>('/tracks/trending', { params: { limit } })
+    return res.data
+  },
+
+  async getCharts(limit = 50): Promise<ChartEntry[]> {
+    const res = await api.get<ChartEntry[]>('/tracks/charts', { params: { limit } })
     return res.data
   },
 

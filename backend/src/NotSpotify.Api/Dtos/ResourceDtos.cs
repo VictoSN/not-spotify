@@ -146,9 +146,14 @@ public record UpdatePlaylistRequest(
 
 public record AddPlaylistTrackRequest(Guid TrackId);
 
+/// <summary>One row of the weekly Top 50 chart.</summary>
+public record ChartEntryDto(int Rank, int PlaysThisWeek, TrackDto Track);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,
     IEnumerable<AlbumDto> Albums,
-    IEnumerable<PlaylistSummaryDto> Playlists
+    IEnumerable<PlaylistSummaryDto> Playlists,
+    // Tracks whose lyrics (not title) matched the query.
+    IEnumerable<TrackDto> TracksByLyrics
 );

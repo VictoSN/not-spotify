@@ -258,7 +258,7 @@ export function HomePage() {
         {/* Trending now */}
         {trending.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Trending now" />
+            <SectionHeader title="Trending now" href="/charts" />
             <HorizontalScroller>
               {trending.map((track) => (
                 <TrackTile key={track.id} track={track} queue={trending} />

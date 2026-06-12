@@ -9,6 +9,8 @@ export interface SearchResults {
   artists: Artist[]
   albums: Album[]
   playlists: Playlist[]
+  /** Tracks whose lyrics (not title) matched the query. */
+  tracksByLyrics: Track[]
 }
 
 export const searchService = {

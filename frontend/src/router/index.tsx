@@ -21,6 +21,7 @@ import { ArtistProfilePage } from '@/pages/ArtistProfilePage'
 import { GenreBrowsePage } from '@/pages/GenreBrowsePage'
 import { GenreDetailPage } from '@/pages/GenreDetailPage'
 import { TrendingPage } from '@/pages/browse/TrendingPage'
+import { ChartsPage } from '@/pages/browse/ChartsPage'
 import { RecommendedTracksPage } from '@/pages/browse/RecommendedTracksPage'
 import { RecentsPage } from '@/pages/browse/RecentsPage'
 import { RecommendedPlaylistsPage } from '@/pages/browse/RecommendedPlaylistsPage'
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
           { path: 'genres', element: <GenreBrowsePage /> },
           { path: 'genres/:slug', element: <GenreDetailPage /> },
           { path: 'trending', element: <TrendingPage /> },
+          { path: 'charts', element: <ChartsPage /> },
           { path: 'recommended-tracks', element: <RecommendedTracksPage /> },
           { path: 'recents', element: <RecentsPage /> },
           { path: 'history', element: <RecentsPage /> },

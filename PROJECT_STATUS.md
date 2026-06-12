@@ -105,6 +105,11 @@ Each session appends an entry here (most recent on top).
 **New bugs found:**
 - None in the karaoke scope. (The DB/secret drift above was config, not code.)
 
+**UX rework (same session, commit ab561f58, user-requested):**
+- Track detail page now shows **static** lyrics always; karaoke moved to a **fullscreen view** (Spotify-style) opened by a **mic button beside the volume control** (accent-colored while open, X or mic again to close). Backdrop is a gradient from the album cover's dominant color; it fills the main card only (right rail + player bar stay visible); the page underneath stays mounted. New [KaraokeView.tsx](frontend/src/components/player/KaraokeView.tsx), `isKaraokeOpen`/`toggleKaraoke` in playerStore, lyrics fetching extracted to [useLyrics.ts](frontend/src/hooks/useLyrics.ts), `variant="full"` in LyricsView.
+- **Star rating moved** from the player bar's right cluster to under the song title/artist on the left (`NowPlayingInfo`).
+- All verified in-browser against the live backend (play → mic → synced fullscreen lyrics on purple Vaundy gradient → close restores page; no new console errors).
+
 **Notes for next session:**
 - `/dev/karaoke` (DEV builds only) is a no-backend harness for the lyrics UI — useful for styling tweaks.
 - If an artist pastes/edits plain lyrics manually, `SyncedLyrics` is left as-is; a stale timed version could theoretically mismatch hand-edited text. Edge case, not handled.

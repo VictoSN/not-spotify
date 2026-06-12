@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-12 by Account 2 (dedicated /admin/login route + guards)
+Last updated: 2026-06-12 by Account 1 (bug fixes: download cascade, album delete, chat badge, library tooltip)
 
 ---
 
@@ -35,11 +35,11 @@ Last updated: 2026-06-12 by Account 2 (dedicated /admin/login route + guards)
 ## 🔄 IN PROGRESS
 
 ### Account 1 — Bug Fixes
-- [ ] Bug 1: Premium playlist/album download doesn't cascade to individual tracks
-- [ ] Bug 2: Cannot delete album without deleting tracks first
-- [ ] Bug 3: Chat notification badge appears even when conversation is open (admin)
-- [ ] UI Bug 4: Artist dashboard tab padding inconsistent
-- [ ] UI Bug 5: Header blocks library tooltip
+- [x] Bug 1: Premium playlist/album download doesn't cascade to individual tracks ✅ (2026-06-12, commit 3592fb0d)
+- [x] Bug 2: Cannot delete album without deleting tracks first ✅ (2026-06-12, commit 27610f0f)
+- [x] Bug 3: Chat notification badge appears even when conversation is open (admin) ✅ (2026-06-12, commit 5b5636e5)
+- [ ] UI Bug 4: Artist dashboard tab padding inconsistent — **blocked on repro**: no tab component exists in ArtistDashboardPage (searched current + historical versions); reporter needs to point at the exact screen/element (screenshot)
+- [x] UI Bug 5: Header blocks library tooltip ✅ (2026-06-12, commit 0d45c82f)
 
 ### Account 2 — Admin Restructure
 - [ ] Task 1: Restructure admin site into sidebar/topbar admin panel layout
@@ -69,16 +69,34 @@ Last updated: 2026-06-12 by Account 2 (dedicated /admin/login route + guards)
 ## 🐛 CURRENT BUGS
 | # | Bug | Status | Owner |
 |---|-----|--------|-------|
-| 1 | Premium download doesn't cascade to individual songs in playlist/album | Open | Account 1 |
-| 2 | Can't delete album without deleting tracks first | Open | Account 1 |
-| 3 | Notification still appears when chat/messages already open (admin) | Open | Account 1 |
-| 4 | Artist dashboard tabs have inconsistent padding/width | Open | Account 1 |
-| 5 | Header blocks library tooltip | Open | Account 1 |
+| 1 | Premium download doesn't cascade to individual songs in playlist/album | **Fixed** 2026-06-12 (3592fb0d) | Account 1 |
+| 2 | Can't delete album without deleting tracks first | **Fixed** 2026-06-12 (27610f0f) | Account 1 |
+| 3 | Notification still appears when chat/messages already open (admin) | **Fixed** 2026-06-12 (5b5636e5) | Account 1 |
+| 4 | Artist dashboard tabs have inconsistent padding/width | Open — needs repro/screenshot (no tab component found in code) | Account 1 |
+| 5 | Header blocks library tooltip | **Fixed** 2026-06-12 (0d45c82f) | Account 1 |
 
 ---
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-12 — Account 1 — Bug fixes 1, 2, 3, 5 (one commit each)
+
+**Completed this session:**
+- **Bug 1 (3592fb0d)** — zip endpoints HTTP-fetched our own `GetPublicUrl` per track; in LocalStorage mode that URL points at dead port 7080 → every fetch threw → silently-empty zips. Added `IStorageService.ReadAsync` (disk read for local, authed object fetch for Supabase), controllers use it with an absolute-URL fallback for seeded tracks, all-failed downloads now return 502 instead of an empty archive, and `LocalStorage.PublicBaseUrl` corrected to `http://localhost:5166`.
+- **Bug 2 (27610f0f)** — `PlaylistTracks → Tracks` is ON DELETE RESTRICT. Admin album delete now removes playlist links + tracks first (rest cascades), single-track delete clears its playlist links too, confirm dialog states the cascade.
+- **Bug 3 (5b5636e5)** — `fetchConversations` could land a stale unread>0 snapshot after the optimistic zero whenever it raced the mark-read POST (repro: first message from a "Start a chat" partner). It now clamps the active visible thread's unread to 0; MessagesPage also marks read on tab-visible return.
+- **Bug 5 (0d45c82f)** — sidebar header tooltips (Collapse/Create/Expand) opened upward out of the `overflow-hidden` aside and were clipped at the card edge under the TopBar. Flipped to `spotify-tooltip-bottom` (+ right-aligned Create), matching Spotify.
+
+**Still incomplete:**
+- **Bug 4 (tab padding)** — could not locate any tab component in ArtistDashboardPage (searched current code and git history; no `border-b-2`/tab arrays/segmented controls). Needs the reporter's screenshot or the exact page/element before it can be fixed.
+
+**New bugs found:**
+- Single-track admin delete had the same playlist-FK failure as Bug 2 (fixed in the same commit).
+
+**Notes for next session:**
+- Backend changes (Bugs 1+2) need a backend restart to take effect — `dotnet run` was left running during this session, so restart it.
+- Verification was build-level + code-trace; end-to-end checks (premium zip download, album delete with playlisted tracks, two-account chat badge) still want a manual pass since they need logged-in premium/admin accounts.
 
 ### 2026-06-12 — Account 2 — Dedicated admin login at /admin/login (Task 2)
 

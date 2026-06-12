@@ -116,9 +116,10 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
     )
   }
 
-  // Static fallback — plain lyrics, or timed lyrics for a track that isn't playing
-  // (strip the karaoke chrome, just show the text).
-  const staticText = lyrics ?? lines!.map((l) => l.text).join('\n')
+  // Static fallback — prefer text derived from the timed lyrics so the static view
+  // always matches what karaoke shows (cached plain lyrics can come from a different
+  // provider lookup, e.g. a romanized entry while the synced one is in the original script).
+  const staticText = lines ? lines.map((l) => l.text).join('\n') : lyrics
   return (
     <div
       className={cn(

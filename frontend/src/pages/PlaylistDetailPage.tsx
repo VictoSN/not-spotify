@@ -15,6 +15,7 @@ import {
   XMarkIcon,
   UserPlusIcon,
   ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility } from '@/types/playlist'
@@ -104,7 +105,9 @@ export function PlaylistDetailPage() {
   useEffect(() => {
     if (!playlist) return
     const storePlaylist = savedPlaylists.find((p) => p.id === playlist.id)
-    if (!storePlaylist) return
+    // Store entries are summaries until syncPlaylistTracks runs — mirroring an
+    // unsynced entry would wipe local tracks to undefined and crash the memos.
+    if (!storePlaylist?.tracks) return
     setPlaylist((prev) => prev ? { ...prev, tracks: storePlaylist.tracks, totalDurationMs: storePlaylist.totalDurationMs } : prev)
   }, [savedPlaylists])
 
@@ -174,6 +177,30 @@ export function PlaylistDetailPage() {
     } finally {
       setDownloading(false)
     }
+  }
+
+  // Export the playlist as portable JSON (metadata only — no audio).
+  const handleExport = () => {
+    if (!playlist) return
+    const data = {
+      name: playlist.name,
+      description: playlist.description ?? null,
+      exportedAt: new Date().toISOString(),
+      tracks: playlist.tracks.map((pt, i) => ({
+        position: i + 1,
+        title: pt.track.title,
+        artist: pt.track.artist.name,
+        album: pt.track.album.title,
+        durationMs: pt.track.durationMs,
+      })),
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${playlist.name.replace(/[^\w\- ]+/g, '').trim() || 'playlist'}.json`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   const handleSaveToggle = async () => {
@@ -456,6 +483,18 @@ export function PlaylistDetailPage() {
             <ArrowDownTrayIcon className="w-5 h-5" />
             Download
             <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+          </button>
+        )}
+
+        {/* Export metadata as JSON — free for everyone */}
+        {tracks.length > 0 && (
+          <button
+            onClick={handleExport}
+            title="Export playlist as JSON (titles and artists, no audio)"
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+          >
+            <ArrowUpTrayIcon className="w-5 h-5" />
+            Export
           </button>
         )}
       </div>

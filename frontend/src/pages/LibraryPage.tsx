@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -17,6 +17,15 @@ import { PlusIcon, PlayIcon, ClockIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 
 type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
+type SortKey = 'recent' | 'az' | 'za'
+
+/** 'recent' keeps API order (most recently added/updated first). */
+function sortBy<T>(items: T[], sort: SortKey, name: (item: T) => string): T[] {
+  if (sort === 'recent') return items
+  return [...items].sort((a, b) =>
+    sort === 'az' ? name(a).localeCompare(name(b)) : name(b).localeCompare(name(a)),
+  )
+}
 
 export function LibraryPage() {
   useDocumentTitle('Your Library')
@@ -30,6 +39,12 @@ export function LibraryPage() {
   const tab = searchParams.get('tab') as Filter | null
   const filter: Filter = tab && ['playlists', 'albums', 'artists', 'liked'].includes(tab) ? tab : 'playlists'
   const setFilter = (f: Filter) => setSearchParams(f === 'playlists' ? {} : { tab: f })
+  const [sort, setSort] = useState<SortKey>('recent')
+
+  const sortedPlaylists = sortBy(savedPlaylists, sort, (p) => p.name)
+  const sortedAlbums = sortBy(savedAlbums, sort, (a) => a.title)
+  const sortedArtists = sortBy(followedArtists, sort, (a) => a.name)
+  const sortedLiked = sortBy(likedSongs, sort, (t) => t.title)
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -67,8 +82,8 @@ export function LibraryPage() {
         </Button>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex gap-2 mb-6 flex-wrap">
+      {/* Filter chips + sort */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
         {filters.map(({ key, label, count }) => (
           <button
             key={key}
@@ -81,6 +96,16 @@ export function LibraryPage() {
             {count > 0 && <span className="ml-1 opacity-70">({count})</span>}
           </button>
         ))}
+        <select
+          aria-label="Sort library"
+          value={sort}
+          onChange={(e) => setSort(e.target.value as SortKey)}
+          className="ml-auto rounded-md border border-secondary/20 bg-elevated px-3 py-1.5 text-sm font-medium text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
+        >
+          <option value="recent">Recently added</option>
+          <option value="az">A to Z</option>
+          <option value="za">Z to A</option>
+        </select>
       </div>
 
       {/* Content */}
@@ -97,7 +122,7 @@ export function LibraryPage() {
           />
         ) : (
           <div className="flex flex-wrap gap-4">
-            {savedPlaylists.map((p) => (
+            {sortedPlaylists.map((p) => (
               <PlaylistCard key={p.id} playlist={p} />
             ))}
           </div>
@@ -108,7 +133,7 @@ export function LibraryPage() {
           <EmptyState title="No saved albums" description="Save albums to find them here later." />
         ) : (
           <div className="flex flex-wrap gap-4">
-            {savedAlbums.map((a) => (
+            {sortedAlbums.map((a) => (
               <AlbumCard key={a.id} album={a} />
             ))}
           </div>
@@ -119,7 +144,7 @@ export function LibraryPage() {
           <EmptyState title="No followed artists" description="Follow your favourite artists to find them here." />
         ) : (
           <div className="flex flex-wrap gap-4">
-            {followedArtists.map((a) => (
+            {sortedArtists.map((a) => (
               <ArtistCard key={a.id} artist={a} />
             ))}
           </div>
@@ -173,12 +198,12 @@ export function LibraryPage() {
               </div>
             </div>
 
-            {likedSongs.map((track, i) => (
+            {sortedLiked.map((track, i) => (
               <TrackRow
                 key={track.id}
                 track={track}
                 index={i}
-                queue={likedSongs}
+                queue={sortedLiked}
                 showAlbum
                 addedAt={likedAtMap[track.id]}
               />

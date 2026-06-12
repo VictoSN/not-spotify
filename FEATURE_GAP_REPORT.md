@@ -2,6 +2,8 @@
 
 Date: 2026-06-13. Based on a page-by-page pass of the actual codebase (router, all pages, player stack, stores, backend controllers) — not on PROJECT_STATUS alone.
 
+> **Updated 2026-06-13 (same day):** the entire "quick wins" tier was implemented and verified right after this report was written — sleep timer, playback speed, play next, autoplay radio-lite, keyboard shortcuts, share fix, search-by-lyrics, weekly Top 50 charts, library sorting, playlist JSON export. Affected rows below are marked **✅ DONE**, and the roadmap section reflects what's actually left.
+
 Constraint applied throughout: **no paid APIs, licensing, or subscription services**. Anything that requires them is flagged, with free/self-hosted alternatives noted where they exist.
 
 Effort scale: **Low** = under a session · **Medium** = 1–3 sessions · **High** = multi-session/multi-account.

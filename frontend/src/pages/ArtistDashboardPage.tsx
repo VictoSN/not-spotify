@@ -108,6 +108,14 @@ export function ArtistDashboardPage() {
   const [editTrackNum, setEditTrackNum] = useState(1)
   const [savingTrackId, setSavingTrackId] = useState<string | null>(null)
 
+  // Full track edit (title/explicit/lyrics) state
+  const [fullEditTrackId, setFullEditTrackId] = useState<string | null>(null)
+  const [fullEditTitle, setFullEditTitle] = useState('')
+  const [fullEditExplicit, setFullEditExplicit] = useState(false)
+  const [fullEditLyrics, setFullEditLyrics] = useState('')
+  const [fullEditSaving, setFullEditSaving] = useState(false)
+  const [fullEditError, setFullEditError] = useState<string | null>(null)
+
   // Add track form (per album)
   const [addingTrackToAlbum, setAddingTrackToAlbum] = useState<string | null>(null)
   const [trackTitle, setTrackTitle] = useState('')
@@ -297,6 +305,42 @@ export function ArtistDashboardPage() {
       setReviewHistory((prev) => ({ ...prev, [id]: res.data }))
     } finally {
       setHistoryLoading((s) => { const n = new Set(s); n.delete(id); return n })
+    }
+  }
+
+  const startFullEditTrack = (track: Track) => {
+    setFullEditTrackId(track.id)
+    setFullEditTitle(track.title)
+    setFullEditExplicit(track.explicit)
+    setFullEditLyrics(track.lyrics ?? '')
+    setFullEditError(null)
+  }
+
+  const cancelFullEditTrack = () => {
+    setFullEditTrackId(null)
+    setFullEditError(null)
+  }
+
+  const handleSaveFullEditTrack = async (track: Track, albumId: string) => {
+    setFullEditSaving(true)
+    setFullEditError(null)
+    try {
+      const res = await api.patch<Track>(`/me/artist-tracks/${track.id}`, {
+        title: fullEditTitle.trim() || track.title,
+        explicit: fullEditExplicit,
+        lyrics: fullEditLyrics, // empty string clears + triggers refetch when title changed
+      })
+      setAlbums((prev) => prev.map((a) =>
+        a.id === albumId
+          ? { ...a, trackList: a.trackList.map((t) => t.id === track.id ? { ...t, ...res.data } : t) }
+          : a
+      ))
+      setFullEditTrackId(null)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setFullEditError(msg ?? 'Failed to save changes.')
+    } finally {
+      setFullEditSaving(false)
     }
   }
 
@@ -1241,6 +1285,14 @@ export function ArtistDashboardPage() {
                                           <ArrowPathIcon className="w-3.5 h-3.5" />
                                         </button>
                                       )}
+                                      <button
+                                        type="button"
+                                        onClick={() => fullEditTrackId === t.id ? cancelFullEditTrack() : startFullEditTrack(t)}
+                                        className={`p-1 rounded transition-colors ${fullEditTrackId === t.id ? 'bg-accent/20 text-accent' : 'hover:bg-accent/20 text-muted hover:text-accent'}`}
+                                        title="Edit title & lyrics"
+                                      >
+                                        <PencilSquareIcon className="w-3.5 h-3.5" />
+                                      </button>
                                       {canEdit && (
                                         <button
                                           type="button"
@@ -1254,6 +1306,55 @@ export function ArtistDashboardPage() {
                                     </div>
                                   </td>
                                 </tr>
+                                {/* Inline full track edit form (title / explicit / lyrics) */}
+                                {fullEditTrackId === t.id && (
+                                  <tr className="border-b border-elevated/20 bg-accent/5">
+                                    <td colSpan={6} className="px-4 py-3">
+                                      <div className="flex flex-col gap-3 max-w-2xl">
+                                        <p className="text-xs font-semibold text-accent">Edit track</p>
+                                        <div>
+                                          <label className="block text-xs font-semibold text-primary mb-1">Title</label>
+                                          <input
+                                            value={fullEditTitle}
+                                            onChange={(e) => setFullEditTitle(e.target.value)}
+                                            className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none"
+                                            placeholder="Track title"
+                                          />
+                                        </div>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                          <input
+                                            type="checkbox"
+                                            checked={fullEditExplicit}
+                                            onChange={(e) => setFullEditExplicit(e.target.checked)}
+                                            className="accent-accent w-4 h-4"
+                                          />
+                                          <span className="text-sm text-primary">Explicit</span>
+                                        </label>
+                                        <div>
+                                          <label className="block text-xs font-semibold text-primary mb-1">
+                                            Lyrics <span className="font-normal text-muted">(leave blank to auto-fetch on title change)</span>
+                                          </label>
+                                          <textarea
+                                            value={fullEditLyrics}
+                                            onChange={(e) => setFullEditLyrics(e.target.value)}
+                                            rows={8}
+                                            placeholder="Paste lyrics here, or leave blank to auto-fetch from LRCLIB / Lyrics.ovh after changing the title"
+                                            className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-3 py-2 text-sm focus:outline-none resize-y"
+                                          />
+                                        </div>
+                                        {fullEditError && <p className="text-xs text-red-400">{fullEditError}</p>}
+                                        <div className="flex gap-2">
+                                          <Button type="button" size="sm" onClick={() => handleSaveFullEditTrack(t, album.id)} disabled={fullEditSaving}>
+                                            {fullEditSaving ? <Spinner size="sm" /> : 'Save changes'}
+                                          </Button>
+                                          <Button type="button" size="sm" variant="ghost" onClick={cancelFullEditTrack} disabled={fullEditSaving}>
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
                                 {/* Inline track resubmit form */}
                                 {resubmitTrackId === t.id && (
                                   <tr className="border-b border-elevated/20 bg-green-500/5">

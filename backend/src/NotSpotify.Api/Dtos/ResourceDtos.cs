@@ -40,7 +40,8 @@ public record TrackDto(
     int? MyRating,
     string? Status = null,
     string? ReviewNote = null,
-    int SavedCount = 0
+    int SavedCount = 0,
+    string? Lyrics = null
 );
 
 public record ArtistDto(

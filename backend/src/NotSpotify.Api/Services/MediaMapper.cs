@@ -70,7 +70,8 @@ public class MediaMapper
             avg,
             myRating,
             t.Status,
-            t.ReviewNote
+            t.ReviewNote,
+            Lyrics: t.Lyrics
         );
     }
 

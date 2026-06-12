@@ -909,8 +909,8 @@ public class MeController : ControllerBase
             .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
             .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
         if (track is null) return NotFound();
-        if (track.Status == "approved")
-            return Conflict(new { message = "Cannot edit a live track." });
+
+        var titleChanged = req.Title is not null && req.Title != track.Title;
 
         if (req.TrackNumber.HasValue) track.TrackNumber = req.TrackNumber.Value;
         if (req.Title is not null) track.Title = req.Title;
@@ -920,6 +920,20 @@ public class MeController : ControllerBase
             track.Lyrics = string.IsNullOrWhiteSpace(req.Lyrics) ? null : req.Lyrics.Trim();
 
         await _db.SaveChangesAsync(ct);
+
+        // If title changed and lyrics ended up empty, try to fetch fresh lyrics
+        // for the new title (common case: artist corrects a romanized title to the
+        // original script so LRCLIB can find the song).
+        if (titleChanged && string.IsNullOrWhiteSpace(track.Lyrics))
+        {
+            var fetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
+            if (fetched is not null)
+            {
+                track.Lyrics = fetched.Lyrics;
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+
         return Ok(await _mapper.ToDtoAsync(track, ct));
     }
 

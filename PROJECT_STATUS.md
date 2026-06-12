@@ -110,6 +110,8 @@ Each session appends an entry here (most recent on top).
 - **Star rating moved** from the player bar's right cluster to under the song title/artist on the left (`NowPlayingInfo`).
 - All verified in-browser against the live backend (play → mic → synced fullscreen lyrics on purple Vaundy gradient → close restores page; no new console errors).
 
+**LRCLIB script roulette fixed (commit 00a3ac38):** LRCLIB keeps duplicate entries per song in different scripts (kanji vs romanized) and durations; `/api/get` returns whichever duplicate the upload's duration lands on (a re-upload of 怪獣の花唄 at 3:44 matched the 225s **romanized** entry). LyricsService now uses `/api/search` and scores all candidates: synced lyrics +4, lyrics script matches the title's script (CJK check) +3, duration within 2s +2 / 10s +1. The lyrics endpoint also treats stored synced lyrics that fail the script check as suspect and re-picks (self-heals poisoned rows; keeps them if LRCLIB truly has nothing better — note: that rare case re-queries once per lyrics view). Verified: re-uploaded Vaundy track healed romaji → kanji; English tracks unaffected.
+
 **Lyrics consistency (commits a27b559d, 86c38f62):** when a track has synced lyrics, they are now **canonical everywhere** — new fetches derive plain text from the LRC, the lyrics endpoint self-heals mismatched cached rows on read, and the frontend prefers synced-derived text. Fixes romaji-plain vs kanji-synced mismatches (e.g. Vaundy). **Policy note:** this also means artist-pasted plain lyrics get overwritten by the provider's timed transcription on first view if LRCLIB has one for that artist+title — accepted for now, revisit if artists complain.
 
 **Notes for next session:**

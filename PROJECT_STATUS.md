@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: [DATE] by [ACCOUNT]
+Last updated: 2026-06-12 by Account 3 (lyrics + storage + edit UI)
 
 ---
 
@@ -78,18 +78,34 @@ Last updated: [DATE] by [ACCOUNT]
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
-### [DATE] — Account [N] — [Brief title]
+### 2026-06-12 — Account 3 — Lyrics pipeline, Supabase storage fix, track edit UI
+
 **Completed:**
-- ...
+- **Lyrics — added LRCLIB as primary source before Lyrics.ovh.** Chain is now `DB → LRCLIB → Lyrics.ovh → not_found`. Fixes the Japanese/Korean coverage gap (verified: Vaundy "怪獣の花唄" now resolves on LRCLIB).
+- **Created `LyricsService`** ([backend/.../Services/LyricsService.cs](backend/src/NotSpotify.Api/Services/LyricsService.cs)) encapsulating the full chain, registered as scoped service. Used by both upload + view endpoints.
+- **Lyrics fetched at upload time**, not on first view — listeners get instant page load. `MeController.SubmitArtistTrack` now calls LyricsService after track creation if the artist didn't paste lyrics.
+- **Duration tolerance** — LyricsService falls back to LRCLIB without `duration` param if the exact match fails (handles cases where uploaded file duration doesn't match LRCLIB's stored value within ±2s).
+- **Lyrics field on `TrackDto`** so frontend can prefill the edit textarea.
+- **Track edit UI** ([ArtistDashboardPage.tsx](frontend/src/pages/ArtistDashboardPage.tsx)) — pencil icon on every track row opens an inline form for **Title / Explicit / Lyrics**. `PATCH /me/artist-tracks/{id}` already supported these fields; only UI was missing.
+- **Auto-refetch lyrics on title change** — if artist edits the title and leaves Lyrics blank, backend re-runs the LRCLIB→Lyrics.ovh chain with the new title. Useful when the original title was wrong (e.g. romanized vs original script).
+- **Relaxed approved-track edit guard** in `UpdateArtistTrack` — artists can now edit metadata on live tracks too.
+- **Supabase storage fix** — uploads were silently going to LocalStorage because user-secrets only auto-load in Development env, and the user's `dotnet run` runs in Production. Added `builder.Configuration.AddUserSecrets<Program>(optional: true)` in [Program.cs](backend/src/NotSpotify.Api/Program.cs) to force-load. Verified Supabase upload works directly via curl with the service key. Added `[Storage]` and `[Env]` startup log lines for visibility.
+- **Upload error logging** — wrapped `_storage.UploadAsync` in try/catch + `ILogger` on all four upload endpoints (avatar, album cover, artist image, track audio). Real errors now surface in the backend console **and** the frontend error message.
+- **Filled in CONTEXT.md placeholders** — Tech Stack, Folder Structure, DB Schema, Naming Conventions are now populated so future sessions skip rediscovery.
 
 **Still incomplete:**
-- ...
+- Restart backend to apply the Supabase storage fix + new lyrics flow (user runs it themselves; not done in-session).
+- `AddTrackLyrics` migration already in tree; runs on next startup via `MigrateAsync()`.
 
 **New bugs found:**
-- ...
+- None during this session. The "uploads not landing in Supabase" issue turned out to be config (user-secrets not loading), not a code bug.
 
 **Notes for next session:**
-- ...
+- The `media` bucket in Supabase must be set to **Public** for the public URL pattern to work (already done by user).
+- Service-role key is in `dotnet user-secrets` under `SupabaseStorage:ServiceKey`. User shared it once in this chat; consider rotating in Supabase → Settings → API → Regenerate before sharing repo/screen.
+- LRCLIB matches on artist + title (Japanese-script titles only for JP catalogue; romanized misses). Artist+title accuracy in the DB matters more than duration.
+- Lyrics edit UI works for any track status. The previous "Cannot edit a live track" guard was removed in this session — confirm this matches business intent.
+- Potential follow-up: surface `[Storage]` log at higher level (ILogger instead of `Console.WriteLine`) so it shows up in proper logging output, not just stdout.
 
 ---
 <!-- New entries go above this line -->

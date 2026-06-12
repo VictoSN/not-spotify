@@ -90,13 +90,20 @@ Each session appends an entry here (most recent on top).
 - **Config fix ([Program.cs](backend/src/NotSpotify.Api/Program.cs)):** restored standard .NET config precedence (env vars > user-secrets). The earlier force-load of user-secrets had appended them last, silently overriding env vars, making per-run overrides (e.g. `ConnectionStrings__Postgres`) impossible.
 
 **Still incomplete:**
-- Backend lyrics endpoint not exercised against a live DB this session — see warning below. The synced-lyrics flow needs one manual pass on the real DB: play a track whose lyrics were cached before today (backfill path), and one fresh track.
+- Nothing — live-DB verification completed later the same session (below).
 
-**⚠️ ENVIRONMENT WARNING (pre-existing, affects ANY backend restart on this machine):**
-- The long-running backend process (PID 27780, locking the build) was stopped this session. **It cannot be restarted as-is**: this machine's `dotnet user-secrets` `ConnectionStrings:Postgres` points at `localhost:5432/notspotify`, which is an **empty, abandoned scaffold DB** whose migration history diverged from the current migration files (`AddFriendshipGraph` fails on missing `Albums.Status`). It contains zero rows in every table — it is NOT the real database. The real DB is the shared Supabase session pooler (per the Program.cs pool comment); its connection string is not on this machine (the secrets file was overwritten 2026-06-10 22:47). **Fix: re-set the secret** — `dotnet user-secrets set ConnectionStrings:Postgres "<supabase pooler connection string>"` — or export `ConnectionStrings__Postgres` (env override works again as of this session).
+**Live verification against the real DB (same session, after the user supplied the Supabase pooler connection string):**
+- User-secret `ConnectionStrings:Postgres` re-set to the Supabase session pooler; backend starts cleanly.
+- **Backfill path verified:** Vaundy 怪獣の花唄 had plain lyrics cached pre-feature; first `GET /tracks/{id}/lyrics` fetched + persisted 1443 chars of synced LRC from LRCLIB.
+- **Full in-app karaoke verified in browser** (logged in as alex): track page + now-playing rail card both render synced lines, active line highlights in time with **real audio**, card is tinted with the cover's dominant color, clicking a lyric line seeks the actual audio (active line follows). Screenshot-confirmed.
+- ⚠️ **Unexplained observation:** on first connect, the shared DB reported `AddTrackSyncedLyrics` (this session's migration, exact ID `20260612122839_...`) as **already applied** — before this machine ever connected to that DB. Either another account ran an identical migration today or someone applied this one. **Other accounts: check for a duplicate/conflicting karaoke implementation before building on this.**
+
+**~~ENVIRONMENT WARNING~~ (RESOLVED same session):**
+- This machine's user-secrets had pointed at `localhost:5432/notspotify` — an **empty, abandoned scaffold DB** with drifted migration history (any backend start crashed in `MigrateAsync`). Re-set to the Supabase pooler string; backend now starts fine. The stale localhost DB still exists untouched if anyone wants to inspect/drop it.
+- The Supabase **database password was pasted in chat** this session (like the service key before it) — consider rotating it in Supabase → Settings → Database.
 
 **New bugs found:**
-- None in the karaoke scope. (The DB/secret drift above is config, not code.)
+- None in the karaoke scope. (The DB/secret drift above was config, not code.)
 
 **Notes for next session:**
 - `/dev/karaoke` (DEV builds only) is a no-backend harness for the lyrics UI — useful for styling tweaks.

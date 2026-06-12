@@ -94,43 +94,55 @@ public class AlbumsController : ControllerBase
 
         var http = httpFactory.CreateClient();
         var ms = new MemoryStream();
+        var added = 0;
 
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
             foreach (var track in tracks)
             {
-                var url = !string.IsNullOrEmpty(track.AudioKey)
-                    ? _storage.GetPublicUrl(track.AudioKey)
-                    : track.AudioUrl;
+                // Read uploaded audio via the storage service (disk / authed Supabase) —
+                // never by HTTP-fetching our own public URL, which the server may not
+                // be able to reach. Absolute legacy/seeded URLs are fetched directly.
+                var bytes = await FetchAudioBytes(track.AudioKey, track.AudioUrl, http, ct);
+                if (bytes is null) continue;
 
-                if (string.IsNullOrEmpty(url)) continue;
-
-                // Infer extension from the key/url path (strip query string first)
-                var urlPath = url.Split('?')[0];
-                var ext = Path.GetExtension(urlPath);
+                var sourcePath = (track.AudioKey ?? track.AudioUrl ?? string.Empty).Split('?')[0];
+                var ext = Path.GetExtension(sourcePath);
                 if (string.IsNullOrEmpty(ext)) ext = ".mp3";
 
                 var safeName = string.Concat(
                     track.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-                var entryName = $"{track.TrackNumber:D2} - {safeName}{ext}";
-
-                try
-                {
-                    var bytes = await http.GetByteArrayAsync(url, ct);
-                    var entry = zip.CreateEntry(entryName, CompressionLevel.NoCompression);
-                    await using var entryStream = entry.Open();
-                    await entryStream.WriteAsync(bytes, ct);
-                }
-                catch
-                {
-                    // Skip tracks whose audio can't be fetched
-                }
+                var entry = zip.CreateEntry($"{track.TrackNumber:D2} - {safeName}{ext}", CompressionLevel.NoCompression);
+                await using var entryStream = entry.Open();
+                await entryStream.WriteAsync(bytes, ct);
+                added++;
             }
         }
+
+        // An empty archive means every fetch failed — surface it instead of
+        // handing the user a zip with no songs inside.
+        if (added == 0 && tracks.Count > 0)
+            return StatusCode(502, new { message = "None of the tracks' audio files could be fetched for download." });
 
         ms.Position = 0;
         var safeAlbum = string.Concat(
             album.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
         return File(ms.ToArray(), "application/zip", $"{safeAlbum}.zip");
+    }
+
+    private async Task<byte[]?> FetchAudioBytes(string? audioKey, string? audioUrl, HttpClient http, CancellationToken ct)
+    {
+        if (!string.IsNullOrEmpty(audioKey))
+        {
+            var bytes = await _storage.ReadAsync(audioKey, ct);
+            if (bytes is not null) return bytes;
+        }
+        if (!string.IsNullOrEmpty(audioUrl) && Uri.TryCreate(audioUrl, UriKind.Absolute, out var abs)
+            && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps))
+        {
+            try { return await http.GetByteArrayAsync(abs, ct); }
+            catch { /* unreachable external audio — skip this track */ }
+        }
+        return null;
     }
 }

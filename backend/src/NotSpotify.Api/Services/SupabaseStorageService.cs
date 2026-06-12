@@ -54,4 +54,19 @@ public class SupabaseStorageService : IStorageService
 
         await _http.SendAsync(req, ct);
     }
+
+    public async Task<byte[]?> ReadAsync(string key, CancellationToken ct = default)
+    {
+        // Authenticated object endpoint — works even if the bucket isn't public.
+        var normalized = key.TrimStart('/');
+        var url = $"{_opt.Url.TrimEnd('/')}/storage/v1/object/{_opt.Bucket}/{normalized}";
+
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Add("apikey", _opt.ServiceKey);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _opt.ServiceKey);
+
+        var res = await _http.SendAsync(req, ct);
+        if (!res.IsSuccessStatusCode) return null;
+        return await res.Content.ReadAsByteArrayAsync(ct);
+    }
 }

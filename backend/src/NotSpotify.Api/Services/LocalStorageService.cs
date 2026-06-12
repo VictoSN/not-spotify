@@ -35,6 +35,13 @@ public class LocalStorageService : IStorageService
         return Task.CompletedTask;
     }
 
+    public async Task<byte[]?> ReadAsync(string key, CancellationToken ct = default)
+    {
+        var path = ResolvePath(key);
+        if (!File.Exists(path)) return null;
+        return await File.ReadAllBytesAsync(path, ct);
+    }
+
     private string BuildUrl(string key)
     {
         var normalized = key.Replace('\\', '/').TrimStart('/');

@@ -32,6 +32,15 @@ import { FriendPanel } from '@/components/friends/FriendPanel'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
 
+const SEARCH_SKELETON_ROWS = [
+  ['w-[84%]', 'w-[45%]'],
+  ['w-[75%]', 'w-[37%]'],
+  ['w-[63%]', 'w-[40%]'],
+  ['w-[60%]', 'w-[28%]'],
+  ['w-[57%]', 'w-[37%]'],
+  ['w-[72%]', 'w-[34%]'],
+] as const
+
 export function TopBar() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -191,67 +200,68 @@ export function TopBar() {
   const userMenuItemClass =
     'flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-white/10'
   const userMenuIconClass = 'h-4 w-4 text-secondary'
+  const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
 
   const searchPanel = shouldShowSearchPanel && (
     <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-[#282828] py-2 shadow-2xl [scrollbar-color:rgba(255,255,255,0.3)_transparent] [scrollbar-width:thin]">
-      <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
-        <span>{trimmedSearchValue ? 'Search suggestions' : 'Recent searches'}</span>
-        {trimmedSearchValue && (
-          <span className="flex items-center gap-2 normal-case tracking-normal text-secondary">
-            <kbd className="rounded border border-secondary/40 px-1.5 py-0.5 text-[10px] text-primary">Enter</kbd>
-            Search
-          </span>
-        )}
-      </div>
-
-      {trimmedSearchValue && (
-        <button
-          type="button"
-          onClick={() => submitSearch(trimmedSearchValue)}
-          className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
-            <MagnifyingGlassIcon className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
-            Search for "{trimmedSearchValue}"
-          </span>
-        </button>
-      )}
-
-      {matchingRecents.map((recent) => (
-        <div
-          key={recent.id}
-          className="group flex items-center gap-1 px-2 py-1 transition-colors hover:bg-white/10"
-        >
-          <button
-            type="button"
-            onClick={() => handleRecentClick(recent.term)}
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left"
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
-              <MagnifyingGlassIcon className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">{recent.term}</span>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => handleRemoveRecentSearch(e, recent.id)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-70 transition-colors duration-150 hover:text-primary group-hover:opacity-100"
-            aria-label={`Remove ${recent.term} from recent searches`}
-            title="Remove"
-          >
-            <XMarkIcon className="h-4 w-4" />
-          </button>
-        </div>
-      ))}
-
-      {trimmedSearchValue && suggestionsLoading && (
-        <div className="px-4 py-4 text-sm font-semibold text-secondary">Searching...</div>
-      )}
-
-      {trimmedSearchValue && !suggestionsLoading && activeSuggestions && (
+      {showSuggestionSkeleton ? (
+        <SearchSuggestionsSkeleton />
+      ) : (
         <>
+          <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+            <span>{trimmedSearchValue ? 'Search suggestions' : 'Recent searches'}</span>
+            {trimmedSearchValue && (
+              <span className="flex items-center gap-2 normal-case tracking-normal text-secondary">
+                <kbd className="rounded border border-secondary/40 px-1.5 py-0.5 text-[10px] text-primary">Enter</kbd>
+                Search
+              </span>
+            )}
+          </div>
+
+          {trimmedSearchValue && (
+            <button
+              type="button"
+              onClick={() => submitSearch(trimmedSearchValue)}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+                <MagnifyingGlassIcon className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
+                Search for "{trimmedSearchValue}"
+              </span>
+            </button>
+          )}
+
+          {matchingRecents.map((recent) => (
+            <div
+              key={recent.id}
+              className="group flex items-center gap-1 px-2 py-1 transition-colors hover:bg-white/10"
+            >
+              <button
+                type="button"
+                onClick={() => handleRecentClick(recent.term)}
+                className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+                  <MagnifyingGlassIcon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">{recent.term}</span>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleRemoveRecentSearch(e, recent.id)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-70 transition-colors duration-150 hover:text-primary group-hover:opacity-100"
+                aria-label={`Remove ${recent.term} from recent searches`}
+                title="Remove"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+
+          {trimmedSearchValue && activeSuggestions && (
+            <>
           {activeSuggestions.tracks.slice(0, 3).map((track) => (
             <button
               key={`track-${track.id}`}
@@ -326,25 +336,27 @@ export function TopBar() {
               </span>
             </button>
           ))}
+            </>
+          )}
+
+          {trimmedSearchValue && activeSuggestions && !hasSuggestionResults && (
+            <div className="px-4 py-4 text-sm font-semibold text-secondary">
+              No quick matches. Press Enter to search everywhere.
+            </div>
+          )}
+
+          {isAuthenticated && visibleRecents.length > 0 && matchingRecents.length > 0 && (
+            <div className="px-4 pb-1 pt-2">
+              <button
+                type="button"
+                onClick={handleClearRecentSearches}
+                className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-white/10 active:scale-95"
+              >
+                Clear recent searches
+              </button>
+            </div>
+          )}
         </>
-      )}
-
-      {trimmedSearchValue && !suggestionsLoading && activeSuggestions && !hasSuggestionResults && (
-        <div className="px-4 py-4 text-sm font-semibold text-secondary">
-          No quick matches. Press Enter to search everywhere.
-        </div>
-      )}
-
-      {isAuthenticated && visibleRecents.length > 0 && matchingRecents.length > 0 && (
-        <div className="px-4 pb-1 pt-2">
-          <button
-            type="button"
-            onClick={handleClearRecentSearches}
-            className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-white/10 active:scale-95"
-          >
-            Clear recent searches
-          </button>
-        </div>
       )}
     </div>
   )
@@ -512,13 +524,13 @@ export function TopBar() {
       <button
         onClick={() => navigate(isMessagesActive ? '/' : '/messages')}
         aria-label={chatUnread > 0 ? `Messages (${chatUnread} unread)` : 'Messages'}
-        title="Messages"
         className={cn(
-          'relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+          'spotify-tooltip-anchor relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
           isMessagesActive ? 'text-primary' : 'text-secondary'
         )}
       >
         {isMessagesActive ? <ChatBubbleLeftRightSolid className="h-5 w-5" /> : <ChatBubbleLeftRightIcon className="h-5 w-5" />}
+        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Messages</span>
         {chatUnread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
             {chatUnread > 9 ? '9+' : chatUnread}
@@ -535,11 +547,12 @@ export function TopBar() {
           }}
           aria-label="Friends"
           className={cn(
-            'relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+            'spotify-tooltip-anchor relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
             showFriends ? 'text-primary' : 'text-secondary'
           )}
         >
           {showFriends ? <UsersSolid className="h-5 w-5" /> : <UsersIcon className="h-5 w-5" />}
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Friends</span>
           {pendingCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center leading-none">
               {pendingCount > 9 ? '9+' : pendingCount}
@@ -659,6 +672,23 @@ export function TopBar() {
       </div>
 
     </header>
+  )
+}
+
+function SearchSuggestionsSkeleton() {
+  return (
+    <div className="px-1 pb-1 pt-1" role="status" aria-label="Loading search suggestions">
+      {SEARCH_SKELETON_ROWS.map(([titleWidth, subtitleWidth], index) => (
+        <div key={index} className="flex items-center gap-3 px-1.5 py-1.5">
+          <span className="search-skeleton-shimmer h-12 w-12 shrink-0 rounded" />
+          <span className="flex min-w-0 flex-1 flex-col gap-2.5">
+            <span className={cn('search-skeleton-shimmer h-4 rounded-full', titleWidth)} />
+            <span className={cn('search-skeleton-shimmer h-2.5 rounded-full', subtitleWidth)} />
+          </span>
+        </div>
+      ))}
+      <span className="sr-only">Loading search suggestions</span>
+    </div>
   )
 }
 

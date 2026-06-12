@@ -80,6 +80,31 @@ Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see sessio
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Feature-gap report + 12 quick-win features
+
+**Completed (commits e2c14cd, 278a291, 3932361, f86e7b8):**
+- **[FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md)** — page-by-page inventory + gap analysis vs Spotify/Apple Music/SoundCloud/YTM with feasibility (free-only constraint) and a prioritized roadmap. Read it before picking new features.
+- **Sleep timer** — moon icon in player bar (15/30/45/60 min), pauses playback when it elapses (checked on the playback clock in `tick`).
+- **Playback speed** — cycler button (1 → 1.25 → 1.5 → 2 → 0.75×) wired through audioEngine; reapplied on track change.
+- **Play next** — new queue-front insert in the track ⋯ menu (above Add to queue).
+- **Autoplay radio-lite** — when the queue runs out (premium, repeat off), playback continues with same-artist top tracks; honors the previously-dead `ns-pref-autoplay` Settings toggle.
+- **Keyboard shortcuts** ([useKeyboardShortcuts.ts](frontend/src/hooks/useKeyboardShortcuts.ts)) — Space play/pause, ←/→ seek ±5 s, Ctrl+←/→ skip, Shift+↑/↓ volume, M mute, L like; disabled while typing.
+- **Share fix** — track menu Share now copies the *track* URL (was album) and uses the native Web Share sheet on mobile.
+- **Search by lyrics** — `/search` returns `tracksByLyrics` (ILIKE over cached lyrics, ≥3 chars, title matches excluded); SearchPage shows a "Found in lyrics" section. Verified: "you" finds ALL I CAN TAKE via lyrics only.
+- **Weekly Top 50 charts** — `GET /tracks/charts` (rank + plays-this-week from PlayHistories, padded with all-time tops) + `/charts` page with ranked rows; linked from Home's "Trending now" header.
+- **Library sorting** — Recently added / A-Z / Z-A select on the Library page, all four tabs.
+- **Playlist JSON export** — free Export button on playlist pages (metadata only, no audio).
+- **SectionHeader** gained an optional `subtitle` prop.
+
+**Bug found & fixed:** PlaylistDetailPage crashed (`undefined.map` in findCandidates memo) when the store-mirror effect copied an *unsynced* summary (no `tracks`) over local state — e.g. navigating Library → playlist. Now skipped until `syncPlaylistTracks` has run.
+
+**Notes for next session:**
+- All four commits verified in browser (charts page, lyrics search section, speed/sleep/space-shortcut behavior, library sort reorder, export blob).
+- Settings toggles still dead: crossfade, normalize, quality, compact, language (autoplay is now live). Candidates per the gap report: stats page/Wrapped, notifications center, crossfade via Web Audio, smart playlists.
+- PowerShell 5.1 mangles quotes in `git commit -m` here-strings — use `git commit -F <file>` (ASCII encoding, not utf8 — BOM ends up in the subject).
+
+---
+
 ### 2026-06-12 — Karaoke synced lyrics (Spotify-style)
 
 **Completed this session:**

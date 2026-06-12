@@ -110,9 +110,10 @@ Each session appends an entry here (most recent on top).
 - **Star rating moved** from the player bar's right cluster to under the song title/artist on the left (`NowPlayingInfo`).
 - All verified in-browser against the live backend (play → mic → synced fullscreen lyrics on purple Vaundy gradient → close restores page; no new console errors).
 
+**Lyrics consistency (commits a27b559d, 86c38f62):** when a track has synced lyrics, they are now **canonical everywhere** — new fetches derive plain text from the LRC, the lyrics endpoint self-heals mismatched cached rows on read, and the frontend prefers synced-derived text. Fixes romaji-plain vs kanji-synced mismatches (e.g. Vaundy). **Policy note:** this also means artist-pasted plain lyrics get overwritten by the provider's timed transcription on first view if LRCLIB has one for that artist+title — accepted for now, revisit if artists complain.
+
 **Notes for next session:**
 - `/dev/karaoke` (DEV builds only) is a no-backend harness for the lyrics UI — useful for styling tweaks.
-- If an artist pastes/edits plain lyrics manually, `SyncedLyrics` is left as-is; a stale timed version could theoretically mismatch hand-edited text. Edge case, not handled.
 - audioEngine ignores seeks within 1.5 s of the current position, so clicking the currently-active lyric line may not re-snap audio — harmless.
 - Free users can seek via lyrics clicks (same as the progress bar, which is also ungated). Confirm against business intent for the free tier.
 

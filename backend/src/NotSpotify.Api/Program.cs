@@ -15,6 +15,11 @@ var builder = WebApplication.CreateBuilder(args);
 // By default user-secrets only load in Development; this makes them load always.
 builder.Configuration.AddUserSecrets<Program>(optional: true);
 
+// Re-add environment variables AFTER user-secrets to restore the standard .NET
+// precedence (env vars > user-secrets). Appending user-secrets above had silently
+// inverted it, so e.g. ConnectionStrings__Postgres could not be overridden per-run.
+builder.Configuration.AddEnvironmentVariables();
+
 Console.WriteLine($"[Env] ASPNETCORE_ENVIRONMENT = {builder.Environment.EnvironmentName}");
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()

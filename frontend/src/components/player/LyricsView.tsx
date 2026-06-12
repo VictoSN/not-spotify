@@ -45,7 +45,7 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
     programmaticScrollUntil.current = Date.now() + 800
     container.scrollTo({
       top: el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2,
-      behavior: 'smooth',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     })
   }, [activeIndex, isSynced])
 

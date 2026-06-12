@@ -197,25 +197,36 @@ public class TracksController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(track.Lyrics))
         {
-            // Tracks cached before synced-lyrics support have SyncedLyrics == null.
-            // Backfill once; "" marks "provider has no timed version" so we never re-query.
-            // Also repair rows where a romanized LRCLIB duplicate was cached for a
-            // CJK-titled song (the candidate scoring now prefers the matching script).
+            // Decide whether to (re)probe LRCLIB for synced lyrics:
+            //  - null  → never looked up (pre-synced rows)
+            //  - ""    → previously looked up and missed. But the old lookup used
+            //            /api/get with strict duration matching and frequently
+            //            missed candidates that the new search-based scoring would
+            //            find. Re-probe once and update the marker, or upgrade to
+            //            a one-time "checked by scoring" sentinel.
+            //  - CJK title with non-CJK synced text → poisoned by a romanized
+            //            LRCLIB duplicate; the new scoring prefers script match.
+            const string ScoredMissMarker = "__none__";
+            var neverLookedUp = track.SyncedLyrics is null;
+            var oldMissNeedsRecheck = track.SyncedLyrics == "";
             var scriptMismatch = !string.IsNullOrWhiteSpace(track.SyncedLyrics)
+                && track.SyncedLyrics != ScoredMissMarker
                 && LyricsService.ContainsCjk(track.Title)
                 && !LyricsService.ContainsCjk(track.SyncedLyrics);
-            if (track.SyncedLyrics is null || scriptMismatch)
+
+            if (neverLookedUp || oldMissNeedsRecheck || scriptMismatch)
             {
                 var refetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
                 if (refetched?.SyncedLyrics is not null) track.SyncedLyrics = refetched.SyncedLyrics;
-                else if (track.SyncedLyrics is null) track.SyncedLyrics = "";
-                // mismatch + no better candidate → keep what we have
+                else if (neverLookedUp || oldMissNeedsRecheck) track.SyncedLyrics = ScoredMissMarker;
+                // script mismatch + no better candidate → keep what we have
             }
 
             // The timed version is canonical: keep cached plain text derived from it so
             // every consumer sees the same transcription (also repairs rows cached from
             // a different provider lookup, e.g. romanized vs original script).
-            var synced = string.IsNullOrWhiteSpace(track.SyncedLyrics) ? null : track.SyncedLyrics;
+            var hasReal = !string.IsNullOrWhiteSpace(track.SyncedLyrics) && track.SyncedLyrics != ScoredMissMarker;
+            var synced = hasReal ? track.SyncedLyrics : null;
             if (synced is not null)
             {
                 var derived = LyricsService.StripLrcTimestamps(synced);

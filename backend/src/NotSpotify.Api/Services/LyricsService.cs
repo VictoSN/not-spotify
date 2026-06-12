@@ -75,10 +75,12 @@ public class LyricsService
             if (lrclib is { Instrumental: false })
             {
                 var synced = string.IsNullOrWhiteSpace(lrclib.SyncedLyrics) ? null : lrclib.SyncedLyrics.Trim();
-                // Some LRCLIB entries are synced-only; derive the plain text from the LRC.
-                var plain = !string.IsNullOrWhiteSpace(lrclib.PlainLyrics)
-                    ? lrclib.PlainLyrics.Trim()
-                    : synced is not null ? StripLrcTimestamps(synced) : null;
+                // When a timed version exists it is canonical: derive plain text from it so the
+                // two never diverge (LRCLIB's plainLyrics can be a different transcription,
+                // e.g. romanized while the synced one is in the original script).
+                var plain = synced is not null
+                    ? StripLrcTimestamps(synced)
+                    : !string.IsNullOrWhiteSpace(lrclib.PlainLyrics) ? lrclib.PlainLyrics.Trim() : null;
                 if (plain is not null)
                     return new FetchResult(plain, synced, "lrclib");
             }
@@ -90,7 +92,7 @@ public class LyricsService
         return null;
     }
 
-    private static string StripLrcTimestamps(string lrc)
+    public static string StripLrcTimestamps(string lrc)
     {
         var lines = lrc
             .Split('\n')

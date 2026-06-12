@@ -203,9 +203,19 @@ public class TracksController : ControllerBase
             {
                 var refetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
                 track.SyncedLyrics = refetched?.SyncedLyrics ?? "";
-                await _db.SaveChangesAsync(ct);
             }
+
+            // The timed version is canonical: keep cached plain text derived from it so
+            // every consumer sees the same transcription (also repairs rows cached from
+            // a different provider lookup, e.g. romanized vs original script).
             var synced = string.IsNullOrWhiteSpace(track.SyncedLyrics) ? null : track.SyncedLyrics;
+            if (synced is not null)
+            {
+                var derived = LyricsService.StripLrcTimestamps(synced);
+                if (!string.IsNullOrWhiteSpace(derived)) track.Lyrics = derived;
+            }
+
+            if (_db.ChangeTracker.HasChanges()) await _db.SaveChangesAsync(ct);
             return Ok(new LyricsDto(track.Lyrics, synced, "stored"));
         }
 

@@ -186,7 +186,7 @@ function FriendListItem({ friend, onClose }: { friend: FriendWithActivity; onClo
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-primary truncate">{friend.name}</p>
-        {friend.nowPlaying ? (
+        {friend.nowPlaying && friend.isListeningNow ? (
           <p className="text-xs text-accent truncate">
             ▶ {friend.nowPlaying.title}
             {' · '}

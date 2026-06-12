@@ -37,12 +37,17 @@ export interface MutualFriend {
 export interface FriendActivity {
   userId: string
   isOnline: boolean
+  /** Live track when isListeningNow, otherwise the most recently played track. */
   nowPlaying: Track | null
+  playedAt: string | null
+  isListeningNow: boolean
 }
 
 export interface FriendWithActivity extends Friend {
   isOnline: boolean
   nowPlaying: Track | null
+  playedAt: string | null
+  isListeningNow: boolean
 }
 
 export interface UserSearchResult {

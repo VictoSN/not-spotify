@@ -5,6 +5,7 @@ import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
+import { FriendActivityPanel } from '@/components/friends/FriendActivityPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -26,6 +27,7 @@ export function AppShell() {
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
+  const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
   const prevAuth = useRef(isAuthenticated)
 
   // Real-time presence via WebSocket — instant online/offline updates.
@@ -72,7 +74,10 @@ export function AppShell() {
           </main>
         )}
 
-        {!isMobile && isAuthenticated && isNowPlayingOpen && <NowPlayingPanel />}
+        {/* Right rail: Friend Activity takes the slot while open, Now Playing otherwise */}
+        {!isMobile && isAuthenticated && (
+          friendActivityOpen ? <FriendActivityPanel /> : isNowPlayingOpen && <NowPlayingPanel />
+        )}
       </div>
 
       {isAuthenticated && <BottomPlayerBar />}

@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-12 by Account 3 (lyrics + storage + edit UI)
+Last updated: 2026-06-12 by Account 3 (friend activity feed + dynamic theming)
 
 ---
 
@@ -27,6 +27,8 @@ Last updated: 2026-06-12 by Account 3 (lyrics + storage + edit UI)
 - Admin can revoke artist status
 - History log for rejected albums/tracks/applications
 - Lyrics transcription (non-AI)
+- "Friend Activity" feed (Spotify-style right rail: listening-now + recently-played per friend)
+- Dynamic theming from cover art on album/playlist/track pages (incl. fix for broken gradient on album/track)
 
 ---
 
@@ -50,8 +52,8 @@ Last updated: 2026-06-12 by Account 3 (lyrics + storage + edit UI)
 - [ ] Task 2: Move admin login to dedicated `/admin/login` route + guard middleware
 
 ### Account 3 — Stretch Features
-- [ ] Task 1: "What your friends are listening to" feed
-- [ ] Task 2: Dynamic theming from album art dominant color
+- [x] Task 1: "What your friends are listening to" feed ✅ (2026-06-12)
+- [x] Task 2: Dynamic theming from album art dominant color ✅ (2026-06-12)
 
 ---
 
@@ -77,6 +79,34 @@ Last updated: 2026-06-12 by Account 3 (lyrics + storage + edit UI)
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-12 — Account 3 — Friend Activity feed + dynamic cover-art theming
+
+**Completed:**
+- **Friend Activity feed (Task 1)** — Spotify-style right rail showing what friends are listening to.
+  - Backend: reworked `GET /friends/activity` ([FriendsController.cs](backend/src/NotSpotify.Api/Controllers/FriendsController.cs)). "Listening now" comes from `ActivePlaybackSessions` (heartbeat fresh within 90 s); offline/idle friends fall back to their latest `PlayHistories` row (last 7 days). `FriendActivityDto` gained `PlayedAt` + `IsListeningNow`.
+  - Frontend: new [FriendActivityPanel.tsx](frontend/src/components/friends/FriendActivityPanel.tsx) — avatar + online dot, name, track · artist, album line, "x min/hr/d" timestamp or animated equalizer bars for live listening. Sorted live-first then most recent. Empty states for no-friends / no-activity.
+  - Toggle button (RSS icon) in TopBar next to the Friends menu; the panel shares the right-rail slot with Now Playing (friend activity takes priority while open, closing it restores Now Playing). New `friendActivityOpen` state in uiStore. New util [formatRelativeTime.ts](frontend/src/utils/formatRelativeTime.ts).
+  - FriendPanel dropdown now only shows the ▶ live line for `isListeningNow` (since `nowPlaying` can be a recent track now).
+  - Verified end-to-end: created a throwaway user via API, friended alex, sent playback-heartbeat → appeared at top with equalizer; real friends (genzyy 21 hr, Nomnom 1 d) showed recently-played. Test friendship removed afterwards.
+- **Dynamic theming from cover art (Task 2)** — mostly existed via `useDominantColor` (node-vibrant) but was **silently broken** on album/track pages: code appended hex alpha (`b3`/`33`/`cc`/`26`) to `hsl()` strings → invalid CSS → browser dropped the style and every page showed the generic accent gradient.
+  - Added `withAlpha(color, alpha)` (uses `color-mix(in srgb, …)`) to [useDominantColor.ts](frontend/src/hooks/useDominantColor.ts); fixed AlbumDetailPage, TrackDetailPage, NowPlayingPanel, MobileNowPlayingSheet.
+  - Added the missing dominant-color hero gradient to **PlaylistDetailPage** (was static accent before); falls back to first track's album art when the playlist has no cover, and to the existing Tailwind accent gradient when no color can be extracted.
+  - Verified in browser: album (green from SWAG cover), playlist (olive from Night Drive photo), track (blue from Drive Forever) all render distinct cover-derived gradients.
+
+**Still incomplete:**
+- Nothing from this session's scope.
+
+**New bugs found (pre-existing, not from this session):**
+- React "empty string passed to src" warnings on Home — tracks/covers with empty `coverUrl` render `<img src="">` (e.g. "asdf", "1234" test tracks). Cosmetic console noise.
+- SignalR presence socket logs "connection stopped during negotiation" bursts on page reload — reconnect race, presence still works afterwards.
+
+**Notes for next session:**
+- A throwaway account `fable-test@example.com` (name "Fable Test", password `Password123!`) exists in the DB from feed verification — friendship with alex was removed; account is inert. Delete it if/when an admin user-delete endpoint exists.
+- Friend activity polls every 20 s via the existing `useFriendPolling`; the relative timestamps re-render every 30 s client-side.
+- `withAlpha` relies on CSS `color-mix` (all evergreen browsers since 2023). If older browser support is ever needed, change `normalizeHue` to emit hex instead.
+
+---
 
 ### 2026-06-12 — Account 3 — Lyrics pipeline, Supabase storage fix, track edit UI
 

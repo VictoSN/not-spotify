@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { PlayerControls } from './PlayerControls'
 import { ProgressBar } from './ProgressBar'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
-import { useDominantColor } from '@/hooks/useDominantColor'
+import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { TrackCard } from '@/components/cards/TrackCard'
 
 export function MobileNowPlayingSheet() {
@@ -36,7 +36,7 @@ export function MobileNowPlayingSheet() {
         className="pointer-events-none absolute inset-x-0 top-0 h-72 opacity-70"
         style={{
           background: heroColor
-            ? `linear-gradient(180deg, ${heroColor}cc 0%, transparent 100%)`
+            ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.8)} 0%, transparent 100%)`
             : 'linear-gradient(180deg, var(--c-accent-dim) 0%, transparent 100%)',
         }}
       />

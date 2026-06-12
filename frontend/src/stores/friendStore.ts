@@ -101,6 +101,8 @@ export const useFriendStore = create<FriendState>((set, get) => ({
         ...f,
         isOnline: a?.isOnline ?? false,
         nowPlaying: a?.nowPlaying ?? null,
+        playedAt: a?.playedAt ?? null,
+        isListeningNow: a?.isListeningNow ?? false,
       }
     })
   },

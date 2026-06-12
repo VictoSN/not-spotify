@@ -14,7 +14,7 @@ import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
-import { useDominantColor } from '@/hooks/useDominantColor'
+import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { cn } from '@/utils/cn'
 
 const NP_KEY = 'ns-nowplaying-width'
@@ -212,7 +212,7 @@ export function NowPlayingPanel() {
           className="pointer-events-none absolute inset-x-0 top-0 h-80 transition-opacity duration-700"
           style={{
             background: heroColor
-              ? `linear-gradient(180deg, ${heroColor}b3 0%, ${heroColor}26 50%, transparent 100%)`
+              ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.15)} 50%, transparent 100%)`
               : undefined,
           }}
         />

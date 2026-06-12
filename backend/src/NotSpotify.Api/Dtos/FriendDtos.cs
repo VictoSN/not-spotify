@@ -19,11 +19,17 @@ public record FriendRequestDto(
     DateTime CreatedAt
 );
 
-/// <summary>Online status and currently-playing track for a friend.</summary>
+/// <summary>
+/// Online status and listening activity for a friend.
+/// NowPlaying is the live track when IsListeningNow, otherwise the most
+/// recently played track (PlayedAt tells the frontend how long ago).
+/// </summary>
 public record FriendActivityDto(
     string UserId,
     bool IsOnline,
-    TrackDto? NowPlaying
+    TrackDto? NowPlaying,
+    DateTime? PlayedAt,
+    bool IsListeningNow
 );
 
 /// <summary>A suggested friend — 2nd-degree connection ranked by mutual count.</summary>

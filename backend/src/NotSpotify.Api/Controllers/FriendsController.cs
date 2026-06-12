@@ -296,45 +296,68 @@ public class FriendsController : ControllerBase
         // 1-minute window: frontend sends a heartbeat every 10 s when the tab is
         // visible, so a 1-minute gap means the tab was genuinely closed/hidden.
         var onlineThreshold = DateTime.UtcNow.AddMinutes(-1);
-        // Keep now-playing a little wider so a track finishing doesn't instantly drop it.
-        var nowPlayingThreshold = DateTime.UtcNow.AddMinutes(-2);
+        // Playback heartbeats arrive every 30 s while a track plays, so a session
+        // touched within 90 s means the friend is actively listening right now.
+        var listeningThreshold = DateTime.UtcNow.AddSeconds(-90);
+        // "Recently played" history shown up to a week back.
+        var historyThreshold = DateTime.UtcNow.AddDays(-7);
 
         // Load friend users (for online status).
         var friendUsers = await _db.Users
             .Where(u => myFriendIds.Contains(u.Id))
             .ToListAsync(ct);
 
-        // Load most recent play per friend within the last 5 minutes.
-        var recentPlays = await _db.PlayHistories
-            .Where(ph => myFriendIds.Contains(ph.UserId) && ph.PlayedAt > nowPlayingThreshold)
-            .Include(ph => ph.Track)
-                .ThenInclude(t => t.Artist)
-            .Include(ph => ph.Track)
-                .ThenInclude(t => t.Album)
-            .Include(ph => ph.Track)
-                .ThenInclude(t => t.TrackGenres)
-                    .ThenInclude(tg => tg.Genre)
-            .OrderByDescending(ph => ph.PlayedAt)
+        // Live playback sessions — one row per user, refreshed by playback-heartbeat.
+        var liveSessions = await _db.ActivePlaybackSessions
+            .Where(s => myFriendIds.Contains(s.UserId) && s.LastSeenAt > listeningThreshold)
             .ToListAsync(ct);
+        var liveByUser = liveSessions.ToDictionary(s => s.UserId);
 
-        // Group by user — take the most recent play per user.
-        var latestPlayByUser = recentPlays
-            .GroupBy(ph => ph.UserId)
+        // Latest history row per friend = the play with no later play by the same user.
+        var latestPlays = await _db.PlayHistories
+            .Where(ph => myFriendIds.Contains(ph.UserId) && ph.PlayedAt > historyThreshold)
+            .Where(ph => !_db.PlayHistories.Any(p2 => p2.UserId == ph.UserId && p2.PlayedAt > ph.PlayedAt))
+            .ToListAsync(ct);
+        var latestPlayByUser = latestPlays
+            .GroupBy(ph => ph.UserId) // PlayedAt ties can return two rows — keep one
             .ToDictionary(g => g.Key, g => g.First());
+
+        // One batched track load for both live + recent activity.
+        var trackIds = liveByUser.Values.Select(s => s.TrackId)
+            .Concat(latestPlayByUser.Values.Select(ph => ph.TrackId))
+            .Distinct()
+            .ToList();
+        var trackById = await _db.Tracks
+            .Where(t => trackIds.Contains(t.Id))
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres)
+                .ThenInclude(tg => tg.Genre)
+            .ToDictionaryAsync(t => t.Id, ct);
 
         var result = new List<FriendActivityDto>(friendUsers.Count);
         foreach (var f in friendUsers)
         {
             var isOnline = f.LastSeenAt.HasValue && f.LastSeenAt.Value > onlineThreshold;
-            TrackDto? nowPlaying = null;
+            TrackDto? trackDto = null;
+            DateTime? playedAt = null;
+            var isListeningNow = false;
 
-            if (latestPlayByUser.TryGetValue(f.Id, out var ph))
+            if (liveByUser.TryGetValue(f.Id, out var session) &&
+                trackById.TryGetValue(session.TrackId, out var liveTrack))
             {
-                // Use a sync mapping for speed (no audio URL signing needed for activity feed).
-                nowPlaying = await _mapper.ToDtoAsync(ph.Track, ct);
+                trackDto = await _mapper.ToDtoAsync(liveTrack, ct);
+                playedAt = session.LastSeenAt;
+                isListeningNow = true;
+            }
+            else if (latestPlayByUser.TryGetValue(f.Id, out var ph) &&
+                     trackById.TryGetValue(ph.TrackId, out var recentTrack))
+            {
+                trackDto = await _mapper.ToDtoAsync(recentTrack, ct);
+                playedAt = ph.PlayedAt;
             }
 
-            result.Add(new FriendActivityDto(f.Id.ToString(), isOnline, nowPlaying));
+            result.Add(new FriendActivityDto(f.Id.ToString(), isOnline, trackDto, playedAt, isListeningNow));
         }
 
         return Ok(result);

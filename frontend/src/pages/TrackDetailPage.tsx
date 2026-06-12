@@ -13,7 +13,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useDominantColor } from '@/hooks/useDominantColor'
+import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { Spinner } from '@/components/ui/Spinner'
 import { LyricsView } from '@/components/player/LyricsView'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
@@ -111,7 +111,7 @@ export function TrackDetailPage() {
         className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
         style={{
           background: heroColor
-            ? `linear-gradient(to bottom, ${heroColor}b3 0%, ${heroColor}33 60%, transparent 100%)`
+            ? `linear-gradient(to bottom, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.2)} 60%, transparent 100%)`
             : undefined,
         }}
       >

@@ -28,6 +28,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -75,6 +76,9 @@ export function PlaylistDetailPage() {
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
+  // Tint the header from the playlist cover; playlists without one fall back
+  // to the first track's album art (matches what the placeholder tile shows).
+  const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.album.coverUrl)
 
   useEffect(() => {
     if (!id) return
@@ -284,7 +288,14 @@ export function PlaylistDetailPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent">
+      <div
+        className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
+        style={{
+          background: heroColor
+            ? `linear-gradient(to bottom, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.2)} 60%, transparent 100%)`
+            : undefined,
+        }}
+      >
         <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated self-center sm:self-auto">
           {playlist.coverUrl ? (
             <img src={playlist.coverUrl} alt={playlist.name} className="w-full h-full object-cover" />

@@ -46,6 +46,15 @@ function normalizeHue(hex: string | null): string | null {
   return `hsl(${Math.round(h)} ${Math.min(s * 80, 48).toFixed(0)}% ${Math.min(l * 55, 34).toFixed(0)}%)`
 }
 
+/**
+ * Translucent version of an extracted colour for gradient stops.
+ * getDominantColor returns hsl() strings, so hex-alpha suffixes ("b3") are
+ * invalid CSS — color-mix works for any colour format.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  return `color-mix(in srgb, ${color} ${Math.round(alpha * 100)}%, transparent)`
+}
+
 export async function getDominantColor(url: string): Promise<string | null> {
   const cached = cache.get(url)
   if (cached !== undefined) return cached

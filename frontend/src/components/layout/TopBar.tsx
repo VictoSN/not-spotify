@@ -15,6 +15,7 @@ import {
   UsersIcon,
   ChatBubbleLeftRightIcon,
   XMarkIcon,
+  RssIcon,
 } from '@heroicons/react/24/outline'
 import {
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolid,
@@ -24,6 +25,7 @@ import {
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { searchService, type SearchResults } from '@/services/searchService'
@@ -58,6 +60,8 @@ export function TopBar() {
   const [showFriends, setShowFriends] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
   const pendingCount = useFriendStore((s) => s.requests.length)
+  const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
+  const toggleFriendActivity = useUiStore((s) => s.toggleFriendActivity)
   const chatUnread = useChatStore((s) => s.conversations.reduce((sum, c) => sum + c.unreadCount, 0))
   const fetchConversations = useChatStore((s) => s.fetchConversations)
 
@@ -536,6 +540,24 @@ export function TopBar() {
             {chatUnread > 9 ? '9+' : chatUnread}
           </span>
         )}
+      </button>
+
+      {/* Friend activity feed toggle — desktop only */}
+      <button
+        onClick={() => {
+          toggleFriendActivity()
+          setShowFriends(false)
+          setShowMenu(false)
+        }}
+        aria-label="Friend activity"
+        aria-pressed={friendActivityOpen}
+        className={cn(
+          'spotify-tooltip-anchor relative hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary md:flex',
+          friendActivityOpen ? 'text-accent' : 'text-secondary'
+        )}
+      >
+        <RssIcon className="h-5 w-5" />
+        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Friend activity</span>
       </button>
 
       {/* Friends panel toggle — desktop only */}

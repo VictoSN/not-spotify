@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 import { usePlayerStore } from '@/stores/playerStore'
 import { parseLrc, activeLineIndex } from '@/utils/parseLrc'
@@ -31,31 +31,67 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   const isSynced = usePlayerStore((s) => !!lines && !!trackId && s.currentTrack?.id === trackId)
   const seek = usePlayerStore((s) => s.seek)
 
+  const isFull = variant === 'full'
+
   const containerRef = useRef<HTMLDivElement>(null)
   const lineRefs = useRef<(HTMLButtonElement | null)[]>([])
   // Timestamps guarding the auto-scroll vs. user-scroll tug-of-war.
   const programmaticScrollUntil = useRef(0)
   const userScrollUntil = useRef(0)
+  // Fullscreen karaoke only: shown after the user scrolls away; clicking it re-centres.
+  const [showSync, setShowSync] = useState(false)
 
-  // Keep the active line vertically centred, unless the user just scrolled by hand.
-  useEffect(() => {
-    if (!isSynced || activeIndex < 0) return
+  // Scroll the active line to the vertical centre of the container.
+  const centerActiveLine = () => {
     const container = containerRef.current
     const el = lineRefs.current[activeIndex]
     if (!container || !el) return
-    if (Date.now() < userScrollUntil.current) return
-
     programmaticScrollUntil.current = Date.now() + 800
     container.scrollTo({
       top: el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     })
+  }
+
+  // Keep the active line vertically centred, unless the user just scrolled by hand.
+  useEffect(() => {
+    if (!isSynced || activeIndex < 0) return
+    if (Date.now() < userScrollUntil.current) return
+    centerActiveLine()
+    setShowSync(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIndex, isSynced])
 
+  // Reset the scroll tug-of-war when the track changes.
+  useEffect(() => {
+    userScrollUntil.current = 0
+    setShowSync(false)
+  }, [trackId])
+
   const onScroll = () => {
-    if (Date.now() > programmaticScrollUntil.current) {
+    // Ignore the scroll events our own smooth-scroll animation generates.
+    if (Date.now() < programmaticScrollUntil.current) return
+    if (isFull) {
+      // Pause auto-scroll until the user taps Sync, and surface the button.
+      userScrollUntil.current = Number.MAX_SAFE_INTEGER
+      setShowSync(true)
+    } else {
       userScrollUntil.current = Date.now() + USER_SCROLL_GRACE_MS
     }
+  }
+
+  // Re-snap to the current line and resume following playback.
+  const resync = () => {
+    userScrollUntil.current = 0
+    setShowSync(false)
+    centerActiveLine()
+  }
+
+  // Clicking a lyric line seeks there and also resumes following.
+  const seekToLine = (timeMs: number) => {
+    userScrollUntil.current = 0
+    setShowSync(false)
+    seek(timeMs / 1000)
   }
 
   if (loading) {
@@ -77,8 +113,7 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   // Karaoke mode — timed lines exist and this track is the one playing.
   if (lines && isSynced) {
     const isCard = variant === 'card'
-    const isFull = variant === 'full'
-    return (
+    const scroller = (
       <div
         ref={containerRef}
         onScroll={onScroll}
@@ -97,7 +132,7 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
             <button
               key={`${line.timeMs}-${i}`}
               ref={(el) => { lineRefs.current[i] = el }}
-              onClick={() => seek(line.timeMs / 1000)}
+              onClick={() => seekToLine(line.timeMs)}
               className={cn(
                 'text-left font-bold transition-all duration-300 hover:text-primary',
                 isCard ? 'text-base leading-6' : isFull ? 'text-3xl leading-snug lg:text-4xl' : 'text-2xl leading-9',
@@ -112,6 +147,25 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
             </button>
           ))}
         </div>
+      </div>
+    )
+
+    if (!isFull) return scroller
+
+    // Fullscreen karaoke: wrap so the "Sync" pill can float bottom-centre.
+    return (
+      <div className="relative h-full">
+        {scroller}
+        {showSync && (
+          <button
+            onClick={resync}
+            className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-page shadow-xl transition-all hover:scale-105 active:scale-95"
+            aria-label="Sync lyrics to playback"
+          >
+            <EqualizerIcon className="h-4 w-4" />
+            Sync
+          </button>
+        )}
       </div>
     )
   }
@@ -133,5 +187,19 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
     >
       {staticText}
     </div>
+  )
+}
+
+/** Small equalizer/waveform glyph for the Sync pill. */
+function EqualizerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="5" y1="9" x2="5" y2="15" />
+        <line x1="9.67" y1="6" x2="9.67" y2="18" />
+        <line x1="14.33" y1="8" x2="14.33" y2="16" />
+        <line x1="19" y1="5" x2="19" y2="19" />
+      </g>
+    </svg>
   )
 }

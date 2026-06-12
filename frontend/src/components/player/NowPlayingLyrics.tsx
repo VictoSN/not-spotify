@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
 import type { Track } from '@/types/track'
-import { trackService } from '@/services/trackService'
 import { LyricsView } from './LyricsView'
 import { withAlpha } from '@/hooks/useDominantColor'
+import { useLyrics } from '@/hooks/useLyrics'
 
 interface NowPlayingLyricsProps {
   track: Track
@@ -10,32 +9,15 @@ interface NowPlayingLyricsProps {
   accentColor?: string | null
 }
 
-type LyricsData = { trackId: string; lyrics: string | null; syncedLyrics: string | null }
-
 /**
  * Spotify-style lyrics card for the now-playing panel / mobile sheet.
  * Fetches lyrics itself and renders nothing when the track has none.
  */
 export function NowPlayingLyrics({ track, accentColor }: NowPlayingLyricsProps) {
-  const [data, setData] = useState<LyricsData | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    trackService
-      .getLyrics(track.id)
-      .then((res) => {
-        if (!cancelled) setData({ trackId: track.id, lyrics: res.lyrics, syncedLyrics: res.syncedLyrics })
-      })
-      .catch(() => {
-        if (!cancelled) setData({ trackId: track.id, lyrics: null, syncedLyrics: null })
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [track.id])
+  const data = useLyrics(track.id)
 
   // Hide the card entirely while loading or when the track has no lyrics.
-  if (!data || data.trackId !== track.id || (!data.lyrics && !data.syncedLyrics)) return null
+  if (!data || (!data.lyrics && !data.syncedLyrics)) return null
 
   return (
     <section className="px-4 pb-4">

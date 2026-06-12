@@ -37,6 +37,7 @@ interface PlayerState {
   repeatMode: RepeatMode
   isNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
+  isKaraokeOpen: boolean
 
   play: (track: Track, queue?: Track[]) => void
   pause: () => void
@@ -55,6 +56,7 @@ interface PlayerState {
   reorderQueue: (fromIndex: number, toIndex: number) => void
   toggleNowPlaying: () => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
+  toggleKaraoke: () => void
   tick: (currentTime: number, duration: number) => void
 }
 
@@ -74,6 +76,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   repeatMode: 'off',
   isNowPlayingOpen: true,
   isNowPlayingCollapsed: false,
+  isKaraokeOpen: false,
 
   play: (track, queue) => {
     let newQueue = queue ?? [track]
@@ -214,6 +217,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen, isNowPlayingCollapsed: false })),
   setNowPlayingCollapsed: (collapsed) => set({ isNowPlayingCollapsed: collapsed }),
+  toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
 
   tick: (currentTime, duration) => set({ currentTime, duration }),
 }))
@@ -229,6 +233,7 @@ useAuthStore.subscribe((state) => {
       queue: [],
       queueIndex: -1,
       history: [],
+      isKaraokeOpen: false,
     })
   }
 })

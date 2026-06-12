@@ -3,6 +3,7 @@ import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { StarRating } from './StarRating'
 
 export function NowPlayingInfo() {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -27,16 +28,19 @@ export function NowPlayingInfo() {
       <div className="min-w-0 flex-1">
         <Link
           to={`/album/${currentTrack.album.id}`}
-          className="text-sm font-medium text-primary hover:underline truncate block"
+          className="text-sm font-medium text-primary hover:underline truncate block leading-tight"
         >
           {currentTrack.title}
         </Link>
         <Link
           to={`/artist/${currentTrack.artist.id}`}
-          className="text-xs text-secondary hover:text-primary hover:underline truncate block"
+          className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight"
         >
           {currentTrack.artist.name}
         </Link>
+        <div className="mt-1 hidden md:block">
+          <StarRating track={currentTrack} />
+        </div>
       </div>
       <button onClick={toggleLike} aria-label={isLiked ? 'Unlike' : 'Like'}>
         {isLiked ? (

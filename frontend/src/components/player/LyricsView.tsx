@@ -10,8 +10,11 @@ interface LyricsViewProps {
   /** Track these lyrics belong to — karaoke sync only runs while it is the playing track. */
   trackId?: string
   loading?: boolean
-  /** 'page' = large text on track page, 'card' = compact for the now-playing rail/sheet. */
-  variant?: 'page' | 'card'
+  /**
+   * 'page' = large text on track page, 'card' = compact for the now-playing rail/sheet,
+   * 'full' = fullscreen karaoke view (huge text, fills the parent's height).
+   */
+  variant?: 'page' | 'card' | 'full'
 }
 
 // How long after a manual scroll before auto-scroll takes over again.
@@ -74,13 +77,22 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   // Karaoke mode — timed lines exist and this track is the one playing.
   if (lines && isSynced) {
     const isCard = variant === 'card'
+    const isFull = variant === 'full'
     return (
       <div
         ref={containerRef}
         onScroll={onScroll}
-        className={cn('relative overflow-y-auto scrollbar-hide', isCard ? 'max-h-72' : 'max-h-[28rem]')}
+        className={cn(
+          'relative overflow-y-auto scrollbar-hide',
+          isCard ? 'max-h-72' : isFull ? 'h-full' : 'max-h-[28rem]',
+        )}
       >
-        <div className={cn('flex flex-col items-start', isCard ? 'gap-1 py-3' : 'gap-2 py-6')}>
+        <div
+          className={cn(
+            'flex flex-col items-start',
+            isCard ? 'gap-1 py-3' : isFull ? 'gap-5 py-[30vh]' : 'gap-2 py-6',
+          )}
+        >
           {lines.map((line, i) => (
             <button
               key={`${line.timeMs}-${i}`}
@@ -88,7 +100,7 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
               onClick={() => seek(line.timeMs / 1000)}
               className={cn(
                 'text-left font-bold transition-all duration-300 hover:text-primary',
-                isCard ? 'text-base leading-6' : 'text-2xl leading-9',
+                isCard ? 'text-base leading-6' : isFull ? 'text-3xl leading-snug lg:text-4xl' : 'text-2xl leading-9',
                 i === activeIndex
                   ? 'text-primary scale-[1.02] origin-left'
                   : i < activeIndex
@@ -111,7 +123,11 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
     <div
       className={cn(
         'whitespace-pre-wrap text-primary',
-        variant === 'card' ? 'max-h-72 overflow-y-auto text-sm leading-7' : 'text-sm leading-8',
+        variant === 'card'
+          ? 'max-h-72 overflow-y-auto text-sm leading-7'
+          : variant === 'full'
+            ? 'h-full overflow-y-auto scrollbar-hide py-10 text-3xl font-bold leading-snug lg:text-4xl'
+            : 'text-sm leading-8',
       )}
     >
       {staticText}

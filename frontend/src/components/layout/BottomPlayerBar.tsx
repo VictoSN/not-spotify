@@ -1,11 +1,10 @@
-﻿import { QueueListIcon } from '@heroicons/react/24/outline'
+﻿import { QueueListIcon, MicrophoneIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
-import { StarRating } from '@/components/player/StarRating'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
@@ -20,7 +19,7 @@ function PipIcon({ className }: { className?: string }) {
 }
 
 export function BottomPlayerBar() {
-  const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
   const isMobile = useIsMobile()
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -82,12 +81,18 @@ export function BottomPlayerBar() {
         <ProgressBar />
       </div>
 
-      {/* Right: Stars + Volume + PiP + Now Playing panel toggle */}
+      {/* Right: Karaoke + Volume + PiP + Now Playing panel toggle */}
       <div className="flex items-center gap-3 justify-self-end">
         {currentTrack && (
-          <div className="hidden md:flex">
-            <StarRating track={currentTrack} />
-          </div>
+          <button
+            onClick={toggleKaraoke}
+            className={`transition-all hover:scale-110 active:scale-90 ${isKaraokeOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+            aria-label="Lyrics"
+            aria-pressed={isKaraokeOpen}
+            title="Lyrics"
+          >
+            <MicrophoneIcon className="w-5 h-5" />
+          </button>
         )}
         <VolumeControl />
         {currentTrack && (

@@ -8,6 +8,7 @@ import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
 import { FriendActivityPanel } from '@/components/friends/FriendActivityPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
+import { KaraokeView } from '@/components/player/KaraokeView'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -28,6 +29,8 @@ export function AppShell() {
   const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
+  const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
+  const karaokeVisible = isKaraokeOpen && !!currentTrack
   const prevAuth = useRef(isAuthenticated)
 
   // Real-time presence via WebSocket — instant online/offline updates.
@@ -69,8 +72,16 @@ export function AppShell() {
 
         {/* The expanded library fills the middle (main hidden) but leaves the right panel in place */}
         {!libraryExpanded && (
-          <main className="flex-1 min-w-0 rounded-lg bg-page overflow-y-auto">
-            <Outlet />
+          <main className="flex-1 min-w-0 rounded-lg bg-page overflow-hidden flex flex-col">
+            {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
+            <div className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}>
+              <Outlet />
+            </div>
+            {karaokeVisible && (
+              <div className="flex-1 min-h-0">
+                <KaraokeView />
+              </div>
+            )}
           </main>
         )}
 

@@ -211,7 +211,8 @@ export function TrackDetailPage() {
         {/* Left: Lyrics */}
         <section>
           <h2 className="text-2xl font-bold text-primary mb-4">Lyrics</h2>
-          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} trackId={track.id} loading={lyricsLoading} />
+          {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
+          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
         </section>
 
         {/* Right: Artist card */}

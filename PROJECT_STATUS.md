@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-12 by Account 1 (bug fixes: download cascade, album delete, chat badge, library tooltip)
+Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see session log for an important DB/environment warning)
 
 ---
 
@@ -29,6 +29,7 @@ Last updated: 2026-06-12 by Account 1 (bug fixes: download cascade, album delete
 - Lyrics transcription (non-AI)
 - "Friend Activity" feed (Spotify-style right rail: listening-now + recently-played per friend)
 - Dynamic theming from cover art on album/playlist/track pages (incl. fix for broken gradient on album/track)
+- Karaoke synced lyrics (Spotify-style: highlight + auto-scroll + seek-on-click; LRC from LRCLIB; plain-text fallback)
 
 ---
 
@@ -58,7 +59,6 @@ Last updated: 2026-06-12 by Account 1 (bug fixes: download cascade, album delete
 ---
 
 ## ❌ NOT STARTED
-- Karaoke feature (like Spotify)
 - Desktop app wrapper
 - "Listen with friends" LIVE synced playback
 - Expanded premium customization options
@@ -79,6 +79,30 @@ Last updated: 2026-06-12 by Account 1 (bug fixes: download cascade, album delete
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-12 — Karaoke synced lyrics (Spotify-style)
+
+**Completed this session:**
+- **Karaoke feature, end to end (commits 50fcd83e, e30772d7, 72db3584, 2aa5287c).** Key insight: LRCLIB (already our primary lyrics source) returns time-synced lyrics in LRC format in its `syncedLyrics` field — the backend DTO parsed it and threw it away. No manual timestamping needed.
+  - **Backend:** new `Tracks.SyncedLyrics` column (migration `AddTrackSyncedLyrics`; null = never looked up, `""` = provider has no timed version, so we never re-query per view). `LyricsService.FetchResult` now carries `SyncedLyrics`; synced-only LRCLIB entries derive plain text by stripping LRC tags. `GET /tracks/{id}/lyrics` returns `syncedLyrics` and backfills legacy tracks once on first view. Upload + title-change refetch paths store it too.
+  - **Frontend:** [parseLrc.ts](frontend/src/utils/parseLrc.ts) (multi-tag lines, 1–3 digit fractions, ♪ for instrumental gaps; <2 timed lines → fallback). [LyricsView.tsx](frontend/src/components/player/LyricsView.tsx) reworked: karaoke mode (active line bright/bold/slightly scaled, past medium-dim, upcoming dimmest, auto-scroll keeps active line centered with a 3 s user-scroll grace period, click a line to seek, respects prefers-reduced-motion) activates only when the viewed track is the playing track AND timed lyrics exist; otherwise static text exactly as before. New [NowPlayingLyrics.tsx](frontend/src/components/player/NowPlayingLyrics.tsx) self-fetching card (tinted with the dominant cover color from Account 3's theming) wired into NowPlayingPanel + MobileNowPlayingSheet; TrackDetailPage passes synced lyrics through.
+  - **Verified** via DEV-only harness at `/dev/karaoke` (real Coldplay LRC payload, simulated playback clock): highlight index correct at jumped timestamps, past/future dimming correct, seek-on-click sets currentTime to the line timestamp, auto-scroll computes the exact centered target, fallback static for untimed lyrics. Backend compiles; migration generated.
+- **Config fix ([Program.cs](backend/src/NotSpotify.Api/Program.cs)):** restored standard .NET config precedence (env vars > user-secrets). The earlier force-load of user-secrets had appended them last, silently overriding env vars, making per-run overrides (e.g. `ConnectionStrings__Postgres`) impossible.
+
+**Still incomplete:**
+- Backend lyrics endpoint not exercised against a live DB this session — see warning below. The synced-lyrics flow needs one manual pass on the real DB: play a track whose lyrics were cached before today (backfill path), and one fresh track.
+
+**⚠️ ENVIRONMENT WARNING (pre-existing, affects ANY backend restart on this machine):**
+- The long-running backend process (PID 27780, locking the build) was stopped this session. **It cannot be restarted as-is**: this machine's `dotnet user-secrets` `ConnectionStrings:Postgres` points at `localhost:5432/notspotify`, which is an **empty, abandoned scaffold DB** whose migration history diverged from the current migration files (`AddFriendshipGraph` fails on missing `Albums.Status`). It contains zero rows in every table — it is NOT the real database. The real DB is the shared Supabase session pooler (per the Program.cs pool comment); its connection string is not on this machine (the secrets file was overwritten 2026-06-10 22:47). **Fix: re-set the secret** — `dotnet user-secrets set ConnectionStrings:Postgres "<supabase pooler connection string>"` — or export `ConnectionStrings__Postgres` (env override works again as of this session).
+
+**New bugs found:**
+- None in the karaoke scope. (The DB/secret drift above is config, not code.)
+
+**Notes for next session:**
+- `/dev/karaoke` (DEV builds only) is a no-backend harness for the lyrics UI — useful for styling tweaks.
+- If an artist pastes/edits plain lyrics manually, `SyncedLyrics` is left as-is; a stale timed version could theoretically mismatch hand-edited text. Edge case, not handled.
+- audioEngine ignores seeks within 1.5 s of the current position, so clicking the currently-active lyric line may not re-snap audio — harmless.
+- Free users can seek via lyrics clicks (same as the progress bar, which is also ungated). Confirm against business intent for the free tier.
 
 ### 2026-06-12 — Account 1 — Bug fixes 1, 2, 3, 5 (one commit each)
 

@@ -199,10 +199,17 @@ public class TracksController : ControllerBase
         {
             // Tracks cached before synced-lyrics support have SyncedLyrics == null.
             // Backfill once; "" marks "provider has no timed version" so we never re-query.
-            if (track.SyncedLyrics is null)
+            // Also repair rows where a romanized LRCLIB duplicate was cached for a
+            // CJK-titled song (the candidate scoring now prefers the matching script).
+            var scriptMismatch = !string.IsNullOrWhiteSpace(track.SyncedLyrics)
+                && LyricsService.ContainsCjk(track.Title)
+                && !LyricsService.ContainsCjk(track.SyncedLyrics);
+            if (track.SyncedLyrics is null || scriptMismatch)
             {
                 var refetched = await _lyrics.TryFetchAsync(track.Artist.Name, track.Title, track.DurationMs, ct);
-                track.SyncedLyrics = refetched?.SyncedLyrics ?? "";
+                if (refetched?.SyncedLyrics is not null) track.SyncedLyrics = refetched.SyncedLyrics;
+                else if (track.SyncedLyrics is null) track.SyncedLyrics = "";
+                // mismatch + no better candidate → keep what we have
             }
 
             // The timed version is canonical: keep cached plain text derived from it so

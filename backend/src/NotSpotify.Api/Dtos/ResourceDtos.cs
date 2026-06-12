@@ -8,11 +8,12 @@ public record LyricsDto(string? Lyrics, string? SyncedLyrics, string Source);
 /// <summary>Shape returned by the Lyrics.ovh public API.</summary>
 public record LyricsOvhResponse([property: JsonPropertyName("lyrics")] string? Lyrics);
 
-/// <summary>Shape returned by the LRCLIB public API.</summary>
+/// <summary>Shape returned by the LRCLIB public API (both /api/get and /api/search items).</summary>
 public record LrclibResponse(
     [property: JsonPropertyName("plainLyrics")] string? PlainLyrics,
     [property: JsonPropertyName("syncedLyrics")] string? SyncedLyrics,
-    [property: JsonPropertyName("instrumental")] bool Instrumental
+    [property: JsonPropertyName("instrumental")] bool Instrumental,
+    [property: JsonPropertyName("duration")] double? Duration
 );
 
 public record SavedTrackDto(TrackDto Track, DateTime SavedAt);

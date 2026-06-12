@@ -9,6 +9,7 @@ import { ProgressBar } from './ProgressBar'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { TrackCard } from '@/components/cards/TrackCard'
+import { NowPlayingLyrics } from './NowPlayingLyrics'
 
 export function MobileNowPlayingSheet() {
   const { currentTrack, isNowPlayingOpen, toggleNowPlaying, queue, queueIndex } = usePlayerStore()
@@ -111,6 +112,11 @@ export function MobileNowPlayingSheet() {
           <div className="w-full max-w-xs">
             <PlayerControls />
           </div>
+        </div>
+
+        {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
+        <div className="-mx-4 mb-4">
+          <NowPlayingLyrics track={currentTrack} accentColor={heroColor} />
         </div>
 
         {/* Up next */}

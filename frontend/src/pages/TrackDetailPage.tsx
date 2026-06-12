@@ -25,6 +25,7 @@ export function TrackDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [track, setTrack] = useState<Track | null>(null)
   const [lyrics, setLyrics] = useState<string | null>(null)
+  const [syncedLyrics, setSyncedLyrics] = useState<string | null>(null)
   const [lyricsLoading, setLyricsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
@@ -55,6 +56,7 @@ export function TrackDetailPage() {
       .then(([t, lyricsRes]) => {
         setTrack(t)
         setLyrics(lyricsRes.lyrics)
+        setSyncedLyrics(lyricsRes.syncedLyrics)
       })
       .catch(() => setLoadError(true))
       .finally(() => {
@@ -209,7 +211,7 @@ export function TrackDetailPage() {
         {/* Left: Lyrics */}
         <section>
           <h2 className="text-2xl font-bold text-primary mb-4">Lyrics</h2>
-          <LyricsView lyrics={lyrics} loading={lyricsLoading} />
+          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} trackId={track.id} loading={lyricsLoading} />
         </section>
 
         {/* Right: Artist card */}

@@ -12,6 +12,7 @@ import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
@@ -268,6 +269,9 @@ export function NowPlayingPanel() {
             </div>
           </div>
         </div>
+
+        {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
+        <NowPlayingLyrics track={currentTrack} accentColor={heroColor} />
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (

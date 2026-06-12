@@ -258,9 +258,25 @@ public class AdminAlbumsController : ControllerBase
         var a = await _db.Albums.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound();
 
-        var hasTracks = await _db.Tracks.AnyAsync(t => t.AlbumId == id, ct);
-        if (hasTracks)
-            return Conflict(new { message = "Album has tracks. Delete the tracks first." });
+        // Cascade: delete the album's tracks too (the frontend confirm dialog
+        // spells this out). PlaylistTracks reference Tracks with ON DELETE
+        // RESTRICT, so playlist links must be removed explicitly first —
+        // otherwise the delete fails with an FK violation. Everything else
+        // hanging off Track (ratings, saves, play history, genres) cascades.
+        var trackIds = await _db.Tracks
+            .Where(t => t.AlbumId == id)
+            .Select(t => t.Id)
+            .ToListAsync(ct);
+
+        if (trackIds.Count > 0)
+        {
+            await _db.PlaylistTracks
+                .Where(pt => trackIds.Contains(pt.TrackId))
+                .ExecuteDeleteAsync(ct);
+            await _db.Tracks
+                .Where(t => t.AlbumId == id)
+                .ExecuteDeleteAsync(ct);
+        }
 
         _db.Albums.Remove(a);
         await _db.SaveChangesAsync(ct);

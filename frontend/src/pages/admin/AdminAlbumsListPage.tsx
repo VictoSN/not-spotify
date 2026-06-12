@@ -252,7 +252,7 @@ export function AdminAlbumsListPage() {
   }
 
   const handleDelete = async (album: Album) => {
-    if (!confirm(`Delete "${album.title}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${album.title}"? All of its tracks will also be deleted and removed from every playlist. This cannot be undone.`)) return
     setActingId(album.id)
     try {
       await adminService.deleteAlbum(album.id)

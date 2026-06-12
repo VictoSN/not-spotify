@@ -145,6 +145,9 @@ public class AdminTracksController : ControllerBase
         if (t is null) return NotFound();
 
         var albumId = t.AlbumId;
+        // PlaylistTracks → Tracks is ON DELETE RESTRICT: remove playlist links
+        // first or the delete fails whenever the track sits in any playlist.
+        await _db.PlaylistTracks.Where(pt => pt.TrackId == id).ExecuteDeleteAsync(ct);
         _db.Tracks.Remove(t);
         await _db.SaveChangesAsync(ct);
         await SyncAlbumStatsAsync(albumId, ct);

@@ -61,10 +61,10 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 
 | Feature | Platforms that have it | Complexity | Effort | Free path? | Verdict |
 |---|---|---|---|---|---|
-| Sleep timer | All four | Frontend | Low | n/a | ✅ |
-| Playback speed control | YTM, Spotify (podcasts), SoundCloud | Frontend (`audio.playbackRate`) | Low | n/a | ✅ |
-| "Play next" (insert at queue front vs append) | Spotify, Apple, YTM | Frontend | Low | n/a | ✅ |
-| Autoplay similar music when queue ends | Spotify, Apple, YTM | Both (reuse rec endpoints) | Low–Med | self-built | ✅ — the dead `autoplay` settings toggle already exists |
+| Sleep timer | All four | Frontend | Low | n/a | ✅ **DONE** |
+| Playback speed control | YTM, Spotify (podcasts), SoundCloud | Frontend (`audio.playbackRate`) | Low | n/a | ✅ **DONE** |
+| "Play next" (insert at queue front vs append) | Spotify, Apple, YTM | Frontend | Low | n/a | ✅ **DONE** |
+| Autoplay similar music when queue ends | Spotify, Apple, YTM | Both (reuse rec endpoints) | Low–Med | self-built | ✅ **DONE** — same-artist radio-lite; `autoplay` toggle now live |
 | Crossfade | Spotify, Apple, YTM | Frontend (2nd audio el or Web Audio) | Medium | n/a | ✅ — dead `crossfade` toggle exists |
 | Gapless playback | Spotify, Apple, YTM | Frontend (preload next + Web Audio) | Medium | n/a | ✅ |
 | Volume normalization | Spotify, Apple | Both (ffmpeg loudness scan at upload + gain client-side) | Medium | ffmpeg (free) | ✅ |
@@ -81,8 +81,8 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 
 | Feature | Platforms | Complexity | Effort | Free path? | Verdict |
 |---|---|---|---|---|---|
-| Search by lyrics | Spotify | Backend (lyrics already in DB → full-text query) | **Low** | n/a | ✅ — unusually cheap for you because lyrics are already stored |
-| Charts page (Top 50, weekly) | Spotify, Apple, YTM | Both (aggregate `PlayHistories`) | Low | n/a | ✅ |
+| Search by lyrics | Spotify | Backend (lyrics already in DB → full-text query) | **Low** | n/a | ✅ **DONE** — "Found in lyrics" section on search |
+| Charts page (Top 50, weekly) | Spotify, Apple, YTM | Both (aggregate `PlayHistories`) | Low | n/a | ✅ **DONE** — `/charts` weekly Top 50 |
 | Song/artist radio (endless station from a seed) | All four | Backend (genre + co-listen similarity) | Medium | self-built | ✅ |
 | Daily mixes / Discover Weekly | Spotify, YTM | Backend (collaborative filtering on `PlayHistories`) | Med–High | self-built (small-data CF is fine) | ✅ — won't match Spotify quality, fine at project scale |
 | "Fans also like" related artists | Spotify, Apple | Backend (co-listen matrix) | Medium | self-built | ✅ |
@@ -97,7 +97,7 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 
 | Feature | Platforms | Complexity | Effort | Free path? | Verdict |
 |---|---|---|---|---|---|
-| Share links for track/playlist/artist (currently album-only copy) + Web Share API on mobile | All four | Frontend | **Low** | n/a | ✅ |
+| Share links for track/playlist/artist (currently album-only copy) + Web Share API on mobile | All four | Frontend | **Low** | n/a | ✅ **DONE** — track menu shares track URL + native share sheet (playlist/artist menus still pending) |
 | Share a track into chat (rich card message) | Spotify (to its DMs), others external | Both (new message type) | Low–Med | n/a | ✅ — you already have chat; nobody else in class will have this combo |
 | Link previews (OG meta tags for shared URLs) | All four | Backend (meta endpoint / prerender for crawlers) | Medium | n/a | ✅ |
 | Embeddable mini-player (iframe) | SoundCloud, Spotify, YTM | Both | Medium | n/a | ✅ |
@@ -116,8 +116,8 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 | **Smart playlists (rule-based: genre = X AND rating ≥ 4…)** | iTunes (signature feature) | Both (rules engine + evaluator) | Medium | n/a | ✅ — pairs perfectly with your existing star ratings, which Spotify doesn't even have |
 | Playlist folders | Spotify, iTunes | Both | Low–Med | n/a | ✅ |
 | Pin favourites to top of library | Spotify | Both | Low | n/a | ✅ |
-| Library sorting (A-Z, creator, recently added) | All four | Frontend | Low | n/a | ✅ — partial (recents sort exists in sidebar) |
-| Playlist export/import (JSON/CSV) | iTunes (export) | Both | Low | n/a | ✅ |
+| Library sorting (A-Z, creator, recently added) | All four | Frontend | Low | n/a | ✅ **DONE** — Recently added / A-Z / Z-A on all tabs |
+| Playlist export/import (JSON/CSV) | iTunes (export) | Both | Low | n/a | ✅ **DONE** (export); import still pending |
 | Auto playlist cover mosaic (4 album covers) | Spotify | Frontend (canvas) | Low | n/a | ✅ |
 | Duplicate detection in playlists | iTunes | Backend | Low | n/a | ✅ |
 | Personal uploads to private locker (100k songs) | YTM, iTunes Match | Both | Medium | tech is free | ⚠️ — Supabase free-tier storage (1 GB) is the real cap; demo-scale only |
@@ -127,14 +127,14 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 
 | Feature | Platforms | Complexity | Effort | Free path? | Verdict |
 |---|---|---|---|---|---|
-| Keyboard shortcuts (space = play/pause, arrows = seek/skip) | Spotify desktop, YTM | Frontend | **Low** | n/a | ✅ |
+| Keyboard shortcuts (space = play/pause, arrows = seek/skip) | Spotify desktop, YTM | Frontend | **Low** | n/a | ✅ **DONE** — space/arrows/ctrl-arrows/shift-arrows/M/L |
 | Voice search | YTM | Frontend (Web Speech API) | Low–Med | free in Chromium | ⚠️ Chrome-only, but cheap and flashy |
 | Personal listening stats page (top artists/tracks, minutes) | YTM recap, Spotify (via Wrapped/stats.fm) | Both (you already store everything needed) | Low–Med | n/a | ✅ |
 | PWA (installable, offline shell) | YTM is a PWA | Frontend (vite-plugin-pwa) | Medium | free | ✅ — also the cheapest route to "desktop app" |
 | Desktop app | Spotify, iTunes, YTM (wrapper) | Tauri/Electron shell | Medium | Tauri free | ✅ — already on roadmap |
 | Native mobile apps | All four | — | High | Capacitor free | ⚠️ stretch; responsive web + PWA covers the demo |
 | CarPlay / Android Auto / TV / Watch | All four | — | — | — | ❌ out of scope |
-| Wire the dead settings toggles (autoplay, crossfade, normalize, quality, compact) | — (parity with your own UI) | Both | Low–Med each | n/a | ✅ — currently they silently do nothing, which reads badly in grading |
+| Wire the dead settings toggles (autoplay, crossfade, normalize, quality, compact) | — (parity with your own UI) | Both | Low–Med each | n/a | ⚠️ partial — `autoplay` now live; crossfade/normalize/quality/compact still dead |
 
 ### 2.6 Monetization & business
 
@@ -150,24 +150,18 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 
 ## 3. Prioritized roadmap
 
-### Quick wins (low effort, visible payoff — each ≈ under a session)
-1. **Search by lyrics** — lyrics are already in the DB; one full-text query + a "found in lyrics" result section. Highest wow-per-line-of-code available.
-2. **Share everywhere** — copy-link for track/playlist/artist (today: album only), Web Share API on mobile; then **share-to-chat** rich track cards.
-3. **Keyboard shortcuts** — space/arrows/M/L; graders are desktop users.
-4. **Sleep timer + playback speed** — two tiny player additions.
-5. **"Play next"** queue insert.
-6. **Charts page** — Top 50 by plays this week; aggregation you can already do.
-7. **Playlist cover mosaic + export/import + duplicate detection** — library polish bundle.
-8. **Wire `autoplay` toggle** → when queue ends, continue with recommendation-engine tracks (radio-lite).
+### ✅ Quick wins — DONE (2026-06-13)
+All eight shipped and browser-verified: search by lyrics · share fix (track URL + Web Share) · keyboard shortcuts · sleep timer · playback speed · play next · weekly Top 50 charts · library sorting · playlist JSON export · autoplay radio-lite. (Playlist cover mosaic, duplicate detection, and playlist *import* were the only quick-win items not yet built — small leftovers, folded into medium-term polish below.)
 
-### Medium-term (1–3 sessions each)
-1. **Personal stats page / mini-Wrapped** — top artists/tracks, minutes listened, genre breakdown; reuse admin-dashboard chart components. Build the stats page first, season it into "Wrapped" at end of term.
-2. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards).
-3. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates you from "Spotify clone".
-4. **Notifications center** — table already exists; new-release-from-followed-artist + friend request + approval events, bell in TopBar.
-5. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
-6. **Song radio** ("start radio" on any track/artist) using genre + co-listen similarity.
-7. **Playlist folders + pinning**, library sort options.
+### Medium-term (1–3 sessions each) — IN PROGRESS
+Current focus order (hardest-value first):
+1. **Personal stats page / mini-Wrapped** ← *next up* — top artists/tracks, minutes listened, genre breakdown; reuse admin-dashboard chart components. Build the stats page first, season it into "Wrapped" at end of term.
+2. **Notifications center** — `Notifications` table already exists; surface friend-request + new-release-from-followed-artist + approval events, bell in TopBar.
+3. **Song radio** ("start radio" on any track/artist) using genre + co-listen similarity — also unlocks "Fans also like".
+4. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings).
+5. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle.
+6. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
+7. **Playlist folders + pinning**; small leftovers: cover mosaic, duplicate detection, playlist import.
 8. **House ads on free tier** + Family plan via extra Stripe test prices.
 9. **PWA** — installable + offline cache of downloaded tracks; doubles as your desktop story.
 10. **Asymmetric follows + public profiles** (followers/following, top tracks this month).
@@ -199,4 +193,4 @@ The highest-leverage observations from the code pass:
 2. **Your data already pays for features you haven't built**: lyrics in DB → lyrics search; PlayHistories → charts, stats page, Wrapped, radio; Notifications table → notification center.
 3. **Differentiation beats parity**: timed comments (SoundCloud), smart playlists (iTunes), and share-to-chat exploit assets you uniquely already have, rather than chasing Spotify's ML.
 
-Suggested order: quick wins 1–4 first (one or two sessions total), then stats page → notifications → crossfade/gapless → smart playlists, keeping listen-along as the end-of-term centerpiece if time allows.
+Suggested order: ~~quick wins first~~ (done 2026-06-13), then **stats page → notifications → song radio → smart playlists → crossfade/gapless**, keeping listen-along as the end-of-term centerpiece if time allows.

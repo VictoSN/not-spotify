@@ -20,6 +20,10 @@ set -euo pipefail
 # Repo root = directory this script lives in.
 ROOT_UNIX="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Ensure the tool dirs are on PATH even if the parent shell's PATH is stale.
+#   dotnet -> C:\Program Files\dotnet ; node/npm/stripe -> C:\nvm4w\nodejs
+export PATH="/c/Program Files/dotnet:/c/nvm4w/nodejs:$PATH"
+
 # Convert to a Windows path (C:\...) for cmd.exe; fall back to the unix path.
 to_win() {
   if command -v cygpath >/dev/null 2>&1; then

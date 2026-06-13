@@ -15,6 +15,12 @@ REM ===================================================================
 REM %~dp0 = folder this script lives in, with a trailing backslash.
 set "ROOT=%~dp0"
 
+REM Explorer can launch this with a stale PATH (tools added after it started),
+REM so prepend the known tool dirs. The spawned windows inherit this PATH.
+REM   dotnet -> C:\Program Files\dotnet
+REM   node/npm/stripe -> C:\nvm4w\nodejs (nvm-for-windows current symlink)
+set "PATH=C:\Program Files\dotnet;C:\nvm4w\nodejs;%PATH%"
+
 echo Starting not-spotify dev stack...
 
 echo   -^> Backend   (dotnet run)

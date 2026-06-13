@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see session log for an important DB/environment warning)
+Last updated: 2026-06-13 (compact library setting wired)
 
 ---
 
@@ -80,6 +80,17 @@ Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see sessio
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Feature-gap fix: compact library setting
+
+**Completed:**
+- Wired the previously-dead **Use compact library layout** setting to the actual sidebar library.
+- `SettingsPage` now broadcasts local preference changes in the same tab.
+- `Sidebar` listens for `ns-pref-compact` changes and immediately switches list/grid library items to tighter spacing, smaller artwork, and hidden subtitles in compact mode.
+- Updated `FEATURE_GAP_REPORT.md` so compact is no longer listed as a dead settings toggle.
+
+**Still incomplete:**
+- Remaining dead settings from the feature-gap backlog: crossfade, normalize volume, streaming quality, language.
+
 ### 2026-06-13 — Account 3 — Bug fixes (lyrics nav, PiP/Edge) + cover mosaic + shortcuts help
 
 **Completed (commits a2a57cf, ca241c0, 416debe):**
@@ -147,7 +158,7 @@ Each session appends an entry here (most recent on top).
 
 **Notes for next session:**
 - All four commits verified in browser (charts page, lyrics search section, speed/sleep/space-shortcut behavior, library sort reorder, export blob).
-- Settings toggles still dead: crossfade, normalize, quality, compact, language (autoplay is now live). Candidates per the gap report: stats page/Wrapped, notifications center, crossfade via Web Audio, smart playlists.
+- Settings toggles still dead: crossfade, normalize, quality, language (autoplay and compact library are now live). Candidates per the gap report: notifications center, crossfade via Web Audio, smart playlists.
 - PowerShell 5.1 mangles quotes in `git commit -m` here-strings — use `git commit -F <file>` (ASCII encoding, not utf8 — BOM ends up in the subject).
 
 ---

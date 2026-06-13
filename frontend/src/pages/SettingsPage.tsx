@@ -19,6 +19,7 @@ function usePref<T>(key: string, initial: T): [T, (v: T) => void] {
     setValue(next)
     try {
       window.localStorage.setItem(key, JSON.stringify(next))
+      window.dispatchEvent(new CustomEvent('ns-pref-change', { detail: { key, value: next } }))
     } catch {
       /* ignore */
     }
@@ -207,6 +208,7 @@ export function SettingsPage() {
       <Section title="Your Library">
         <Row
           label="Use compact library layout"
+          sub="Reduce artwork size and row spacing in the sidebar"
           control={<Switch label="Use compact library layout" checked={compactLibrary} onChange={setCompactLibrary} />}
         />
       </Section>

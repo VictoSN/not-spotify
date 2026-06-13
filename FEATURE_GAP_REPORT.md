@@ -46,7 +46,7 @@ Artist application → admin review flow · artist dashboard: create albums/EPs/
 Dashboard (visits, active listeners, plays trend, top tracks, pending counts) · CRUD for artists/albums/tracks · approval queue with sorting · rejection/review history (append-only audit) · revoke artist status · dedicated admin login + route guard.
 
 ### Settings / account
-Light/dark theme · now-playing panel toggle · avatar upload · plan/billing management · artist application status. ⚠️ Quality / normalize / autoplay / crossfade / compact / language toggles exist in the UI but are **localStorage-only — wired to nothing**.
+Light/dark theme · now-playing panel toggle · avatar upload · plan/billing management · artist application status. ⚠️ Quality / normalize / crossfade / language toggles exist in the UI but are **localStorage-only — wired to nothing**. Autoplay and compact library layout are now wired.
 
 ### Platform
 Responsive web (mobile nav, tablet) · document titles · error boundaries. No PWA/service worker, no offline, no native/desktop wrapper (desktop is on the roadmap).
@@ -134,7 +134,7 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 | Desktop app | Spotify, iTunes, YTM (wrapper) | Tauri/Electron shell | Medium | Tauri free | ✅ — already on roadmap |
 | Native mobile apps | All four | — | High | Capacitor free | ⚠️ stretch; responsive web + PWA covers the demo |
 | CarPlay / Android Auto / TV / Watch | All four | — | — | — | ❌ out of scope |
-| Wire the dead settings toggles (autoplay, crossfade, normalize, quality, compact) | — (parity with your own UI) | Both | Low–Med each | n/a | ⚠️ partial — `autoplay` now live; crossfade/normalize/quality/compact still dead |
+| Wire the dead settings toggles (autoplay, crossfade, normalize, quality, compact) | — (parity with your own UI) | Both | Low–Med each | n/a | ⚠️ partial — `autoplay` and `compact` now live; crossfade/normalize/quality still dead |
 
 ### 2.6 Monetization & business
 
@@ -205,7 +205,7 @@ Section 2 is feature-parity oriented. This section is the complementary list: **
 ### 5.1 Things that currently mislead the user (cheap, high embarrassment-risk)
 | Gap | Where | Fix | Effort |
 |---|---|---|---|
-| **Dead settings toggles** — `streamingQuality`, `normalizeVolume`, `compactLibrary`, `crossfade` are `usePref` localStorage values wired to **nothing** (confirmed in [SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx)). A grader who flips them and sees no effect reads it as broken. | Settings | Cheapest win is **`compactLibrary`** — the sidebar already has a list/grid view mode to reuse. `crossfade` is the medium roadmap item. For `quality`/`normalize` (need backend), **hide them behind a "coming soon" disabled state** rather than leaving live switches that lie. | Low (compact/hide) · Med (quality/normalize) |
+| **Dead settings toggles** — `streamingQuality`, `normalizeVolume`, `crossfade` are still `usePref` localStorage values wired to **nothing** (confirmed in [SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx)). A grader who flips them and sees no effect reads it as broken. | Settings | ✅ **`compactLibrary` is now live** in the sidebar. `crossfade` is the medium roadmap item. For `quality`/`normalize` (need backend), **hide them behind a "coming soon" disabled state** rather than leaving live switches that lie. | Low (hide) · Med (quality/normalize/crossfade) |
 | **Share is track-only** — `navigator.share`/copy-link lives only in [TrackRowMenu.tsx](frontend/src/components/cards/TrackRowMenu.tsx); playlist and artist menus have no share. | Playlist/artist menus | Reuse the same share helper on playlist + artist context menus and the album page button. | Low |
 | **Chat is plaintext** — E2E design exists in `chatEncryption.ts` but is inactive; messages sit readable in the shared DB. | Chat | At minimum document it as a known limitation in the UI/README so it's a stated scope decision, not a silent flaw. Activating the designed crypto is the real fix. | Low (disclose) · High (implement) |
 

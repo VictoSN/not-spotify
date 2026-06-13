@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { ClockIcon, MusicalNoteIcon, UserGroupIcon, PlayCircleIcon } from '@heroicons/react/24/outline'
 import { meService, type ListeningStats } from '@/services/meService'
 import { useAuthStore } from '@/stores/authStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -71,7 +70,6 @@ function PlaysByDay({ data }: { data: ListeningStats['byDay'] }) {
 export function StatsPage() {
   useDocumentTitle('Your listening stats')
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const playWithGate = usePlaybackGate()
   const [range, setRange] = useState<Range>(30)
   const [stats, setStats] = useState<ListeningStats | null>(null)
   const [loading, setLoading] = useState(true)

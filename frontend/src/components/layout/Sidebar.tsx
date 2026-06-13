@@ -25,6 +25,7 @@ const MIN_W = 280 // narrowest expanded width before snapping to the rail
 const MAX_W = 420
 const SNAP_THRESHOLD = 220 // drag below this → collapse to the icon rail
 const STORAGE_KEY = 'ns-sidebar-width'
+const COMPACT_LIBRARY_KEY = 'ns-pref-compact'
 
 type Filter = 'all' | 'playlists' | 'artists' | 'albums'
 type Sort = 'recents' | 'recentlyAdded' | 'alpha' | 'creator' | 'custom'
@@ -55,6 +56,15 @@ function getInitialWidth(): number {
   return stored <= RAIL ? RAIL : Math.min(Math.max(stored, MIN_W), MAX_W)
 }
 
+function getInitialCompactLibrary(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return JSON.parse(window.localStorage.getItem(COMPACT_LIBRARY_KEY) ?? 'false') === true
+  } catch {
+    return false
+  }
+}
+
 export function Sidebar() {
   const navigate = useNavigate()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
@@ -71,6 +81,7 @@ export function Sidebar() {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() =>
     typeof window !== 'undefined' && window.localStorage.getItem('ns-library-view') === 'grid' ? 'grid' : 'list',
   )
+  const [compactLibrary, setCompactLibrary] = useState(getInitialCompactLibrary)
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
@@ -98,6 +109,20 @@ export function Sidebar() {
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, String(width))
   }, [width])
+
+  useEffect(() => {
+    const syncFromStorage = () => setCompactLibrary(getInitialCompactLibrary())
+    const handlePrefChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; value?: unknown }>).detail
+      if (detail?.key === COMPACT_LIBRARY_KEY) setCompactLibrary(detail.value === true)
+    }
+    window.addEventListener('storage', syncFromStorage)
+    window.addEventListener('ns-pref-change', handlePrefChange)
+    return () => {
+      window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener('ns-pref-change', handlePrefChange)
+    }
+  }, [])
 
   // ── Drag to resize ──────────────────────────────────────────────
   const [dragging, setDragging] = useState(false)
@@ -504,8 +529,13 @@ export function Sidebar() {
         {grid ? (
           <div
             className={cn(
-              'grid gap-1',
-              libraryExpanded ? '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2' : 'grid-cols-2',
+              'grid',
+              compactLibrary ? 'gap-0.5' : 'gap-1',
+              libraryExpanded
+                ? compactLibrary
+                  ? '[grid-template-columns:repeat(auto-fill,minmax(128px,1fr))] gap-3 p-2'
+                  : '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2'
+                : 'grid-cols-2',
             )}
           >
             {showLiked && (
@@ -513,14 +543,21 @@ export function Sidebar() {
                 to="/library?tab=liked"
                 onClick={() => libraryExpanded && setLibraryExpanded(false)}
                 className={({ isActive }) =>
-                  cn('p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')
+                  cn(
+                    'rounded-md transition-colors',
+                    compactLibrary ? 'p-1.5' : 'p-2',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
                 }
               >
-                <div className="aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center mb-2">
-                  <HeartIcon className="w-8 h-8 text-white" />
+                <div className={cn(
+                  'aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center',
+                  compactLibrary ? 'mb-1.5' : 'mb-2',
+                )}>
+                  <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
                 </div>
                 <p className="text-sm font-medium text-primary truncate">Liked Songs</p>
-                <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>
+                {!compactLibrary && <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>}
               </NavLink>
             )}
             {items.map((item) => (
@@ -529,25 +566,30 @@ export function Sidebar() {
                 to={item.to}
                 onClick={() => libraryExpanded && setLibraryExpanded(false)}
                 className={({ isActive }) =>
-                  cn('p-2 rounded-md transition-colors', isActive ? 'bg-elevated' : 'hover:bg-elevated/50')
+                  cn(
+                    'rounded-md transition-colors',
+                    compactLibrary ? 'p-1.5' : 'p-2',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
                 }
               >
                 <div
                   className={cn(
-                    'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center mb-2',
+                    'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
+                    compactLibrary ? 'mb-1.5' : 'mb-2',
                     item.round ? 'rounded-full' : 'rounded-md',
                   )}
                 >
                   {item.image ? (
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-2xl">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                    <span className={compactLibrary ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
                   )}
                 </div>
                 <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
                   {item.name}
                 </p>
-                <p className="text-xs text-secondary truncate">{item.subtitle}</p>
+                {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
               </NavLink>
             ))}
             {items.length === 0 && !showLiked && (
@@ -561,17 +603,21 @@ export function Sidebar() {
                 to="/library?tab=liked"
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 p-2 rounded-md transition-colors',
+                    'flex items-center rounded-md transition-colors',
+                    compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
                     isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                   )
                 }
               >
-                <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0">
-                  <HeartIcon className="w-5 h-5 text-white" />
+                <div className={cn(
+                  'rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0',
+                  compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
+                )}>
+                  <HeartIcon className={cn('text-white', compactLibrary ? 'h-4 w-4' : 'h-5 w-5')} />
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-primary truncate">Liked Songs</p>
-                  <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>
+                  {!compactLibrary && <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>}
                 </div>
               </NavLink>
             )}
@@ -581,28 +627,30 @@ export function Sidebar() {
                 to={item.to}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 p-2 rounded-md transition-colors',
+                    'flex items-center rounded-md transition-colors',
+                    compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
                     isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                   )
                 }
               >
                 <div
                   className={cn(
-                    'w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+                    'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+                    compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
                     item.round ? 'rounded-full' : 'rounded-md',
                   )}
                 >
                   {item.image ? (
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
-                    <span className="text-lg">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                    <span className={compactLibrary ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
                   )}
                 </div>
                 <div className="min-w-0">
                   <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
                     {item.name}
                   </p>
-                  <p className="text-xs text-secondary truncate">{item.subtitle}</p>
+                  {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
                 </div>
               </NavLink>
             ))}

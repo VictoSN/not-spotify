@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-13 (status overhaul: full feature inventory, current bugs, what's next)
+Last updated: 2026-06-13 (player/PiP/voice-search bug fixes)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -100,9 +100,14 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 | 4 | Artist dashboard album header had inconsistent padding/width | **Fixed** 2026-06-13 (f8baf55) — was invalid `<button>`-in-`<button>` nesting; now an accessible `role="button"` div | Account 3 |
 | 5 | Header blocks library tooltip | **Fixed** 2026-06-12 (0d45c82f) | Account 1 |
 | 6 | Lyrics view blocked navigation (overlay stayed over the new page) | **Fixed** 2026-06-13 (a2a57cf) | Account 3 |
-| 7 | PiP next/prev/seek dead in Edge (only play/pause worked) | **Fixed** 2026-06-13 (a2a57cf) | Account 3 |
+| 7 | PiP next/prev mediaSession handlers nulled per-track (Edge) | **Fixed** 2026-06-13 (a2a57cf) | Account 3 |
+| 8 | Pausing a song then navigating away and back auto-resumed it | **Fixed** 2026-06-13 (682b586) — hidden PiP video fired spurious `play`; now guarded to PiP-only | Account 3 |
+| 9 | PiP closed when switching tabs/windows (defeated the purpose) | **Fixed** 2026-06-13 (682b586) — removed visibility auto-exit; PiP is now manual + persistent | Account 3 |
+| 10 | PiP mute button didn't affect audio | **Fixed** 2026-06-13 (682b586) — video mute now mirrors the store both ways | Account 3 |
+| 11 | Voice search appended a period ("midnight.") → no matches | **Fixed** 2026-06-13 (682b586) — strips leading/trailing punctuation | Account 3 |
 
 ### Known minor issues (cosmetic / low priority — not yet fixed)
+- **PiP fast-forward / rewind-10s buttons do nothing.** They rely on the OS routing PiP seek to the `seekforward`/`seekbackward` mediaSession handlers (which exist in `audioEngine`), but the PiP window renders a live **canvas-stream** video that isn't seekable, so some browsers (incl. Edge) don't surface working seek buttons. A real fix needs a different PiP rendering approach (not the silent canvas video). Play/pause and mute do work.
 - React **"empty string passed to `src`"** console warnings on Home — a few seed tracks have a blank `coverUrl` rendering `<img src="">`. Cosmetic; fix by rendering a placeholder when `coverUrl` is empty.
 - SignalR **"connection stopped during negotiation"** burst on page reload — presence reconnects fine afterward; a reconnect race, not a functional break.
 - Login uses an **in-memory access token** (refreshed via cookie), so a hard browser reload briefly logs out until refresh completes — expected, not a bug.
@@ -111,6 +116,18 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-13 — Account 3 — Player/PiP/voice-search bug fixes
+
+**Completed (commit 682b586):**
+- **Bug 8 — pause then navigate then return auto-resumed.** The hidden canvas-stream PiP video keeps receiving frames and fires spurious `play` events; `onVideoPlay` resumed the audio unconditionally. Guarded `onVideoPlay`/`onVideoPause` to act only while `document.pictureInPictureElement === video`.
+- **Bug 9 — PiP closed on tab/window switch.** Removed the `visibilitychange` auto-enter/auto-exit (it called `exitPictureInPicture()` on tab return). PiP is now manual + persistent — open via the player-bar button, stays floating across tabs/windows until closed. (Auto "tab-away" PiP removed; README note updated.)
+- **Bug 10 — PiP mute button did nothing.** Video mute now mirrors the store both ways (`volumechange` → `toggleMute` while in PiP; store `isMuted` → `video.muted`).
+- **Bug 11 — voice search appended a period** ("midnight." → no match). `VoiceSearchButton` now strips leading/trailing punctuation. Verified the regex against several inputs.
+
+**Verified in the Chromium preview:** pause survives navigate-away-and-back (stays paused); voice-search cleaning regex. PiP persistence/mute/seek can't be exercised in the headless preview (no real PiP window) — changes are structural.
+
+**Still open:** PiP FF/rewind-10s (canvas-stream video isn't seekable; needs a different PiP rendering approach — logged under Known minor issues).
 
 ### 2026-06-13 — Account 3 — Status doc overhaul + artist-dashboard Bug 4 fix
 

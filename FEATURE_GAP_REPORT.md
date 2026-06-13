@@ -157,10 +157,10 @@ All eight shipped and browser-verified: search by lyrics · share fix (track URL
 1. ✅ **Personal stats page / mini-Wrapped** — DONE (2026-06-13). `/stats`: minutes/plays/unique counts, plays-per-day chart, top artists/genres/tracks, 7/30/365-day toggle. Can be seasoned into a year-end "Wrapped" view later.
 2. ✅ **Song radio** — DONE (2026-06-13). `GET /tracks/{id}/radio` blends co-listen similarity + genre overlap + same-artist boost; "Go to song radio" in the track menu. The co-listen matrix here also makes "Fans also like" cheap to add next.
 3. ✅ **Playlist import** — DONE (2026-06-13). Library → Import reads an exported JSON and rebuilds the playlist by matching titles to the catalog. (Pairs with the export quick win.)
-4. **Notifications center** ← *next up* — ⚠️ no `Notifications` table actually exists yet (the earlier note was wrong); needs a new entity + **migration** (coordinate — migrations on the shared Supabase DB have conflicted before). Surface friend-request + new-release-from-followed-artist + approval events, bell in TopBar.
-5. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings). Needs a rules-storage column → migration.
-6. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle. Frontend-only but reworks the singleton audio engine; verify carefully.
-7. **"Fans also like" related artists** — cheap now that the co-listen matrix exists (radio).
+4. ✅ **"Fans also like" related artists** — DONE (2026-06-13). `GET /artists/{id}/related` ranks by shared listeners (co-listen) with a shared-genre fallback; carousel on the artist page.
+5. **Notifications center** ← *next up* — ⚠️ no `Notifications` table actually exists yet (the earlier note was wrong); needs a new entity + **migration** (coordinate — migrations on the shared Supabase DB have conflicted before). Surface friend-request + new-release-from-followed-artist + approval events, bell in TopBar.
+6. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings). Needs a rules-storage column → migration.
+7. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle. Frontend-only but reworks the singleton audio engine; verify carefully.
 8. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
 9. **Playlist folders + pinning**; small leftovers: cover mosaic, duplicate detection.
 10. **House ads on free tier** + Family plan via extra Stripe test prices.

@@ -80,6 +80,23 @@ Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see sessio
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Dev launcher + CORS fix + "Fans also like"
+
+**Completed (commits 936009c, e539bd1, f0a19b8, 46121a2, c25e29b9):**
+- **Dev launcher** — [dev.cmd](dev.cmd) (double-click in Explorer) and [dev.sh](dev.sh) (Git Bash) open three terminals: backend `dotnet run`, `stripe listen --forward-to https://localhost:7045/stripe/webhook`, and frontend `npm run dev`. Both prepend the tool dirs (`C:\Program Files\dotnet`, `C:\nvm4w\nodejs`) to PATH because a double-clicked window inherits Explorer's possibly-stale PATH. `.gitattributes` forces LF on `*.sh`.
+- **CORS fix (the "blank home / login network error")** — backend only allowed `http://localhost:5173`; when Vite fell back to **:5174** (5173 was busy) every credentialed request was blocked by CORS. Widened `Cors:AllowedOrigins` in [appsettings.json](backend/src/NotSpotify.Api/appsettings.json) to 5173–5176 + 127.0.0.1 variants. **Requires a backend restart to take effect.**
+- **"Fans also like" related artists** — `GET /artists/{id}/related` ranks artists by shared listeners (co-listen frequency) with a shared-genre fallback; carousel added to the artist page (loads independently). Verified: Justin Bieber → 7 related artists rendered.
+
+**Stopped here intentionally (budget).** Remaining medium features each have a real blocker for a safe end-of-session:
+- Notifications center, Smart playlists, Waveform+timed comments → all need a **new EF migration**, which has conflicted on the shared Supabase DB before — coordinate before adding.
+- Crossfade/gapless → reworks the singleton `audioEngine` and can't be verified audibly in the preview harness; do it when you can listen.
+
+**Notes for next session:**
+- If login still fails after pulling: restart the backend so the new CORS origins load. The frontend may open on 5174 — that's now allowed.
+- A throwaway `fable-test@example.com` (Password123!) may still exist from earlier feed testing; inert.
+
+---
+
 ### 2026-06-13 — Account 3 — Medium-term features: stats page, song radio, playlist import
 
 **Completed (commits 7b5e33a, 020075b, 5c792ce; report update 131ff1f):**

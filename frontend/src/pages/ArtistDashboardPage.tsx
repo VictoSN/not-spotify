@@ -880,11 +880,22 @@ export function ArtistDashboardPage() {
 
             return (
               <div key={album.id} className="bg-surface border border-elevated/40 rounded-lg overflow-hidden">
-                {/* Album header */}
-                <button
-                  type="button"
+                {/* Album header — a clickable row (not a <button>) because it
+                    contains nested action buttons; nesting buttons is invalid
+                    HTML and made the browser restructure the row, breaking the
+                    layout/padding. */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isOpen}
                   onClick={() => setExpandedAlbum(isOpen ? null : album.id)}
-                  className="w-full flex items-center gap-4 px-4 py-3 hover:bg-elevated/30 transition-colors text-left"
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      setExpandedAlbum(isOpen ? null : album.id)
+                    }
+                  }}
+                  className="w-full flex items-center gap-4 px-4 py-3 hover:bg-elevated/30 transition-colors text-left cursor-pointer"
                 >
                   {album.coverUrl ? (
                     <img src={album.coverUrl} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
@@ -995,7 +1006,7 @@ export function ArtistDashboardPage() {
                   ) : (
                     <ChevronDownIcon className="w-4 h-4 text-secondary shrink-0" />
                   )}
-                </button>
+                </div>
 
                 {/* Inline album edit form */}
                 {editAlbumId === album.id && (

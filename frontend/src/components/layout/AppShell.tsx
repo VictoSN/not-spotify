@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
+import { KeyboardShortcutsHelp } from '@/components/common/KeyboardShortcutsHelp'
 import { useFriendPolling } from '@/hooks/useFriendPolling'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
@@ -107,6 +108,7 @@ export function AppShell() {
       {isMobile && isAuthenticated && <MobileNowPlayingSheet />}
       {isAuthenticated && <PictureInPicturePlayer />}
       <AuthPromptModal />
+      <KeyboardShortcutsHelp />
     </div>
   )
 }

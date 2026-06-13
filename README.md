@@ -90,7 +90,7 @@ Ensure you have the following installed:
    - `@fontsource-variable/montserrat` for the local Montserrat font.
    - `node-vibrant` for cover-art colour extraction.
 
-   The Spotify-style tab-away mini-player uses browser APIs (`documentPictureInPicture` and Media Session). It does not require an npm dependency, but it works best in Chrome or Edge on `localhost`/HTTPS.
+   The Picture-in-Picture mini-player (opened from the player bar's PiP button) uses browser APIs (Picture-in-Picture + Media Session). It does not require an npm dependency, but works best in Chrome or Edge on `localhost`/HTTPS. Once opened it persists as a floating window across tabs/windows until you close it.
 
 3. Verify or configure your local environment settings in `frontend/.env.development`:
    ```env

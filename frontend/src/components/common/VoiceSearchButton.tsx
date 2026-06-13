@@ -51,7 +51,10 @@ export function VoiceSearchButton({ onResult, className }: VoiceSearchButtonProp
     rec.interimResults = false
     rec.maxAlternatives = 1
     rec.onresult = (e) => {
-      const transcript = e.results?.[0]?.[0]?.transcript?.trim()
+      // Speech recognition appends sentence punctuation (e.g. "midnight."),
+      // which never matches a title — strip leading/trailing punctuation.
+      const raw = e.results?.[0]?.[0]?.transcript ?? ''
+      const transcript = raw.trim().replace(/^[\s.,!?;:。、，！？]+|[\s.,!?;:。、，！？]+$/gu, '').trim()
       if (transcript) onResult(transcript)
     }
     rec.onend = () => setListening(false)

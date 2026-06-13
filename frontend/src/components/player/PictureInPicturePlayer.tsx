@@ -9,11 +9,6 @@ async function playPipVideo(video: HTMLVideoElement) {
   await video.play()
 }
 
-function setAutoPip(video: HTMLVideoElement, enabled: boolean) {
-  if (enabled) video.setAttribute('autopictureinpicture', '')
-  else video.removeAttribute('autopictureinpicture')
-}
-
 export async function enterPip() {
   const video = _videoEl
   if (!video || !document.pictureInPictureEnabled) return
@@ -117,12 +112,12 @@ export function PictureInPicturePlayer() {
   const coverRef = useRef<HTMLImageElement | null>(null)
   const coverUrlRef = useRef('')
   const rafRef = useRef<number | null>(null)
-  const autoPipSuppressedRef = useRef(false)
 
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTime = usePlayerStore((s) => s.currentTime)
   const duration = usePlayerStore((s) => s.duration)
+  const isMuted = usePlayerStore((s) => s.isMuted)
 
   // Create the hidden canvas + video element once on mount
   useEffect(() => {
@@ -132,11 +127,9 @@ export function PictureInPicturePlayer() {
     canvasRef.current = canvas
 
     const video = document.createElement('video')
-    video.muted = true
+    // Reflect the app's mute state so the PiP window's mute icon is honest.
+    video.muted = usePlayerStore.getState().isMuted
     video.autoplay = true
-    // autoPictureInPicture: browser automatically enters PiP on tab-hide and
-    // exits on tab-show — fixes both the "persists after close" and return-button bugs.
-    setAutoPip(video, true)
     video.playsInline = true
     Object.assign(video.style, {
       position: 'fixed', top: '0', left: '0',
@@ -151,59 +144,39 @@ export function PictureInPicturePlayer() {
     const stream = canvas.captureStream(4)
     video.srcObject = stream
 
-    const onEnterPip = () => {
-      autoPipSuppressedRef.current = false
-    }
-
-    const onLeavePip = () => {
-      if (document.visibilityState === 'hidden') {
-        autoPipSuppressedRef.current = true
-        setAutoPip(video, false)
-      }
-    }
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        autoPipSuppressedRef.current = false
-        setAutoPip(video, true)
-        if (document.pictureInPictureElement === video) {
-          document.exitPictureInPicture().catch(() => {})
-        }
-        return
-      }
-
-      const { currentTrack, isPlaying } = usePlayerStore.getState()
-      if (!autoPipSuppressedRef.current && currentTrack && isPlaying) {
-        setAutoPip(video, true)
-        enterPip()
-      }
-    }
+    // Mirror the PiP window's play / pause / mute buttons to the real audio,
+    // but ONLY while actually in PiP. The hidden canvas-stream video fires
+    // spurious 'play' events (the live MediaStream keeps feeding frames even
+    // after we pause it — e.g. on navigation); without this guard those events
+    // would wrongly resume a track the user paused.
+    const inPip = () => document.pictureInPictureElement === video
 
     const onVideoPlay = () => {
-      const state = usePlayerStore.getState()
-      if (state.currentTrack && !state.isPlaying) state.resume()
+      if (!inPip()) return
+      const s = usePlayerStore.getState()
+      if (s.currentTrack && !s.isPlaying) s.resume()
     }
-
     const onVideoPause = () => {
-      if (document.pictureInPictureElement !== video || document.visibilityState === 'visible') return
-      const state = usePlayerStore.getState()
-      if (state.isPlaying) state.pause()
+      if (!inPip()) return
+      const s = usePlayerStore.getState()
+      if (s.isPlaying) s.pause()
+    }
+    const onVolumeChange = () => {
+      if (!inPip()) return
+      const s = usePlayerStore.getState()
+      if (video.muted !== s.isMuted) s.toggleMute()
     }
 
-    video.addEventListener('enterpictureinpicture', onEnterPip)
-    video.addEventListener('leavepictureinpicture', onLeavePip)
     video.addEventListener('play', onVideoPlay)
     video.addEventListener('pause', onVideoPause)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    video.addEventListener('volumechange', onVolumeChange)
     video.play().catch(() => {/* autoplay blocked — PiP won't work but app still plays audio */})
 
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      video.removeEventListener('enterpictureinpicture', onEnterPip)
-      video.removeEventListener('leavepictureinpicture', onLeavePip)
       video.removeEventListener('play', onVideoPlay)
       video.removeEventListener('pause', onVideoPause)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      video.removeEventListener('volumechange', onVolumeChange)
       if (document.pictureInPictureElement === video) {
         document.exitPictureInPicture().catch(() => {})
       }
@@ -255,6 +228,12 @@ export function PictureInPicturePlayer() {
       video.pause()
     }
   }, [currentTrack, isPlaying])
+
+  // Reflect app mute state on the PiP video so its mute icon stays honest.
+  useEffect(() => {
+    const video = videoRef.current
+    if (video && video.muted !== isMuted) video.muted = isMuted
+  }, [isMuted])
 
   // mediaSession metadata — populates the native PiP title / artwork / OS widget.
   // NOTE: the action handlers (play/pause/next/prev/seek) are owned solely by

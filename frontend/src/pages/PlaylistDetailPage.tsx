@@ -18,7 +18,7 @@ import {
   ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import type { Playlist, PlaylistVisibility } from '@/types/playlist'
+import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import type { UserRef } from '@/types/user'
 import { playlistService } from '@/services/playlistService'
@@ -43,6 +43,38 @@ import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { cn } from '@/utils/cn'
 
+type TrackSort = 'custom' | 'title' | 'artist' | 'album' | 'duration' | 'added'
+
+const TRACK_SORT_OPTIONS: { value: TrackSort; label: string }[] = [
+  { value: 'custom', label: 'Custom order' },
+  { value: 'title', label: 'Title' },
+  { value: 'artist', label: 'Artist' },
+  { value: 'album', label: 'Album' },
+  { value: 'added', label: 'Date added' },
+  { value: 'duration', label: 'Duration' },
+]
+
+/** Returns a sorted copy of the playlist's tracks. 'custom' keeps server order. */
+function sortPlaylistTracks(tracks: PlaylistTrack[], key: TrackSort): PlaylistTrack[] {
+  if (key === 'custom') return tracks
+  const copy = [...tracks]
+  switch (key) {
+    case 'title':
+      return copy.sort((a, b) => a.track.title.localeCompare(b.track.title))
+    case 'artist':
+      return copy.sort((a, b) => a.track.artist.name.localeCompare(b.track.artist.name))
+    case 'album':
+      return copy.sort((a, b) => a.track.album.title.localeCompare(b.track.album.title))
+    case 'duration':
+      return copy.sort((a, b) => a.track.durationMs - b.track.durationMs)
+    case 'added':
+      // Most recently added first.
+      return copy.sort((a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime())
+    default:
+      return copy
+  }
+}
+
 export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -64,6 +96,7 @@ export function PlaylistDetailPage() {
   const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set())
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
+  const [trackSort, setTrackSort] = useState<TrackSort>('custom')
   const playWithGate = usePlaybackGate()
   const isMobile = useIsMobile()
   const { isAuthenticated, user } = useAuthStore()
@@ -164,7 +197,9 @@ export function PlaylistDetailPage() {
     </div>
   )
 
-  const tracks = playlist.tracks.map((pt) => pt.track)
+  // Displayed (and play-queue) order follows the chosen sort; 'custom' = server order.
+  const sortedPlaylistTracks = sortPlaylistTracks(playlist.tracks, trackSort)
+  const tracks = sortedPlaylistTracks.map((pt) => pt.track)
 
   const handlePlayAll = () => {
     if (tracks.length > 0) playWithGate(tracks[0], tracks)
@@ -555,6 +590,25 @@ export function PlaylistDetailPage() {
 
       {/* Track list */}
       <div className="px-4">
+        {/* Sort control */}
+        {playlist.tracks.length > 1 && (
+          <div className="flex items-center justify-end pb-1">
+            <label className="flex items-center gap-2 text-xs text-secondary">
+              Sort by
+              <select
+                aria-label="Sort tracks"
+                value={trackSort}
+                onChange={(e) => setTrackSort(e.target.value as TrackSort)}
+                className="rounded-md border border-secondary/20 bg-elevated px-2.5 py-1.5 text-sm font-medium text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
+              >
+                {TRACK_SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
+
         {/* Column headers */}
         <div
           className="grid items-center gap-4 px-4 py-2 border-b border-elevated/30 mb-2"
@@ -574,7 +628,7 @@ export function PlaylistDetailPage() {
           </div>
         </div>
 
-        {playlist.tracks.map((pt, i) => (
+        {sortedPlaylistTracks.map((pt, i) => (
           <TrackRow
             key={pt.track.id}
             track={pt.track}

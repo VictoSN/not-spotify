@@ -343,6 +343,97 @@ public class MeController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Personal listening stats ("mini-Wrapped") over a rolling window.
+    /// Aggregates the caller's PlayHistories into totals, top tracks/artists/genres,
+    /// and a per-day play count for the trend chart. Minutes are estimated by summing
+    /// each played track's duration (assumes plays are roughly complete).
+    /// </summary>
+    [HttpGet("stats")]
+    public async Task<ActionResult<ListeningStatsDto>> Stats([FromQuery] int days = 30, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        days = Math.Clamp(days, 1, 365);
+        var since = DateTime.UtcNow.Date.AddDays(-(days - 1));
+
+        // Pull the window's plays with just the fields we aggregate on.
+        var plays = await _db.PlayHistories
+            .Where(h => h.UserId == me && h.PlayedAt >= since)
+            .Select(h => new
+            {
+                h.TrackId,
+                h.PlayedAt,
+                h.Track.DurationMs,
+                ArtistId = h.Track.ArtistId,
+                ArtistName = h.Track.Artist.Name,
+                Genres = h.Track.TrackGenres.Select(tg => tg.Genre.Name),
+            })
+            .ToListAsync(ct);
+
+        if (plays.Count == 0)
+            return Ok(new ListeningStatsDto(
+                days, 0, 0, 0, 0,
+                Array.Empty<StatTrackDto>(),
+                Array.Empty<StatArtistDto>(),
+                Array.Empty<StatGenreDto>(),
+                Array.Empty<StatDayDto>()));
+
+        var totalPlays = plays.Count;
+        var totalMinutes = (int)Math.Round(plays.Sum(p => p.DurationMs) / 60000.0);
+        var uniqueTracks = plays.Select(p => p.TrackId).Distinct().Count();
+        var uniqueArtists = plays.Select(p => p.ArtistId).Distinct().Count();
+
+        // Top tracks by play count.
+        var topTrackIds = plays
+            .GroupBy(p => p.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(10)
+            .ToList();
+        var trackEntities = await _db.Tracks
+            .Where(t => topTrackIds.Select(x => x.TrackId).Contains(t.Id))
+            .Include(t => t.Artist).Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+        var trackById = trackEntities.ToDictionary(t => t.Id);
+        var topTracks = new List<StatTrackDto>();
+        foreach (var x in topTrackIds)
+            if (trackById.TryGetValue(x.TrackId, out var t))
+                topTracks.Add(new StatTrackDto(await _mapper.ToDtoAsync(t, ct), x.Count));
+
+        // Top artists by play count.
+        var topArtists = plays
+            .GroupBy(p => new { p.ArtistId, p.ArtistName })
+            .Select(g => new StatArtistDto(g.Key.ArtistId.ToString(), g.Key.ArtistName, g.Count()))
+            .OrderByDescending(a => a.PlayCount)
+            .Take(10)
+            .ToList();
+
+        // Top genres by play count (a play counts once per genre it carries).
+        var topGenres = plays
+            .SelectMany(p => p.Genres)
+            .GroupBy(name => name)
+            .Select(g => new StatGenreDto(g.Key, g.Count()))
+            .OrderByDescending(g => g.PlayCount)
+            .Take(6)
+            .ToList();
+
+        // Per-day play counts, dense across the whole window (zero-filled).
+        var playsByDay = plays
+            .GroupBy(p => p.PlayedAt.Date)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var byDay = Enumerable.Range(0, days)
+            .Select(i => since.AddDays(i))
+            .Select(d => new StatDayDto(d.ToString("yyyy-MM-dd"), playsByDay.GetValueOrDefault(d)))
+            .ToList();
+
+        return Ok(new ListeningStatsDto(
+            days, totalPlays, totalMinutes, uniqueTracks, uniqueArtists,
+            topTracks, topArtists, topGenres, byDay));
+    }
+
     [HttpGet("recent-searches")]
     public async Task<ActionResult<IEnumerable<RecentSearchDto>>> RecentSearches(CancellationToken ct = default)
     {

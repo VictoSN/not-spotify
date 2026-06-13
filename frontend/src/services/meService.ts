@@ -13,6 +13,18 @@ export interface PlayHistoryItem {
   playedAt: string
 }
 
+export interface ListeningStats {
+  days: number
+  totalPlays: number
+  totalMinutes: number
+  uniqueTracks: number
+  uniqueArtists: number
+  topTracks: { track: Track; playCount: number }[]
+  topArtists: { artistId: string; name: string; playCount: number }[]
+  topGenres: { name: string; playCount: number }[]
+  byDay: { date: string; count: number }[]
+}
+
 export interface UpdateProfilePayload {
   name?: string
   email?: string
@@ -41,6 +53,11 @@ export const meService = {
 
   async getHistory(limit = 50, offset = 0): Promise<PlayHistoryItem[]> {
     const res = await api.get<PlayHistoryItem[]>('/me/history', { params: { limit, offset } })
+    return res.data
+  },
+
+  async getStats(days = 30): Promise<ListeningStats> {
+    const res = await api.get<ListeningStats>('/me/stats', { params: { days } })
     return res.data
   },
 

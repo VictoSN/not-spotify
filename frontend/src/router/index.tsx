@@ -22,6 +22,7 @@ import { GenreBrowsePage } from '@/pages/GenreBrowsePage'
 import { GenreDetailPage } from '@/pages/GenreDetailPage'
 import { TrendingPage } from '@/pages/browse/TrendingPage'
 import { ChartsPage } from '@/pages/browse/ChartsPage'
+import { StatsPage } from '@/pages/StatsPage'
 import { RecommendedTracksPage } from '@/pages/browse/RecommendedTracksPage'
 import { RecentsPage } from '@/pages/browse/RecentsPage'
 import { RecommendedPlaylistsPage } from '@/pages/browse/RecommendedPlaylistsPage'
@@ -82,6 +83,7 @@ export const router = createBrowserRouter([
             children: [
               { path: 'profile', element: <ProfilePage /> },
               { path: 'settings', element: <SettingsPage /> },
+              { path: 'stats', element: <StatsPage /> },
               { path: 'messages', element: <MessagesPage /> },
             ],
           },

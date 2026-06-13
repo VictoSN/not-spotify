@@ -16,6 +16,7 @@ import {
   ChatBubbleLeftRightIcon,
   XMarkIcon,
   RssIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline'
 import {
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolid,
@@ -654,6 +655,14 @@ export function TopBar() {
               >
                 <ClockIcon className={userMenuIconClass} />
                 Listening history
+              </Link>
+              <Link
+                to="/stats"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                <ChartBarIcon className={userMenuIconClass} />
+                Listening stats
               </Link>
 
               <div className="my-1 border-t border-secondary/10" />

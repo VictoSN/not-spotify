@@ -80,6 +80,21 @@ Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see sessio
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Medium-term features: stats page, song radio, playlist import
+
+**Completed (commits 7b5e33a, 020075b, 5c792ce; report update 131ff1f):**
+- **Personal listening stats / mini-Wrapped** — `GET /me/stats?days=` aggregates the caller's PlayHistories into totals (plays, est. minutes, unique tracks/artists), top tracks/artists/genres, and a zero-filled per-day series. New `/stats` page (protected) with summary cards, plays-per-day bar chart, top-artist bars, genre pills, top-track list with counts, and a 7/30/365-day toggle. Linked from the user menu. Verified in-browser as alex (78 min, 23 plays, top artist Justin Bieber, range switch works).
+- **Song radio** — `GET /tracks/{id}/radio` builds an endless station: co-listen similarity (other listeners' tracks for the seed) × 3 + genre overlap + same-artist boost, seed first, trending pad. "Go to song radio" in the track ⋯ menu loads the station into the queue and plays. Verified: seeded from ALL I CAN TAKE → 15-track station, playback started, queue populated.
+- **Playlist import (JSON)** — Library header Import button reads a file exported by the existing Export button, creates a private playlist, matches each entry to a catalog track by title (preferring artist match), and reports N matched. Verified: 2/3 matched (fake track correctly skipped), tracks present after import. **Bug fixed in same change:** `addTrackToPlaylist` was used but not destructured from the store; the per-track try/catch swallowed the ReferenceError so every track silently skipped (0 matched) before the fix.
+- Updated FEATURE_GAP_REPORT.md: quick-wins marked done, roadmap re-ordered, and **corrected the false claim that a `Notifications` table exists** — it does not; a notifications center now needs a new entity + migration.
+
+**Notes for next session:**
+- All three features verified in the live browser preview against the real DB; test playlists created during verification were deleted afterward (alex's list is back to Night Drive / Evening Chill / R&B Vibes).
+- Next medium features per the report: notifications center (needs migration — coordinate on shared DB), smart playlists (needs migration), crossfade (frontend audio-engine rework), "fans also like" (cheap now that the radio co-listen matrix exists).
+- `/me/stats` estimates minutes by summing full track durations per play (no partial-play tracking) — fine for a demo metric.
+
+---
+
 ### 2026-06-13 — Account 3 — Feature-gap report + 12 quick-win features
 
 **Completed (commits e2c14cd, 278a291, 3932361, f86e7b8):**

@@ -154,17 +154,18 @@ Legend: ✅ = realistic free · ⚠️ = realistic with caveats · ❌ = not rea
 All eight shipped and browser-verified: search by lyrics · share fix (track URL + Web Share) · keyboard shortcuts · sleep timer · playback speed · play next · weekly Top 50 charts · library sorting · playlist JSON export · autoplay radio-lite. (Playlist cover mosaic, duplicate detection, and playlist *import* were the only quick-win items not yet built — small leftovers, folded into medium-term polish below.)
 
 ### Medium-term (1–3 sessions each) — IN PROGRESS
-Current focus order (hardest-value first):
-1. **Personal stats page / mini-Wrapped** ← *next up* — top artists/tracks, minutes listened, genre breakdown; reuse admin-dashboard chart components. Build the stats page first, season it into "Wrapped" at end of term.
-2. **Notifications center** — `Notifications` table already exists; surface friend-request + new-release-from-followed-artist + approval events, bell in TopBar.
-3. **Song radio** ("start radio" on any track/artist) using genre + co-listen similarity — also unlocks "Fans also like".
-4. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings).
-5. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle.
-6. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
-7. **Playlist folders + pinning**; small leftovers: cover mosaic, duplicate detection, playlist import.
-8. **House ads on free tier** + Family plan via extra Stripe test prices.
-9. **PWA** — installable + offline cache of downloaded tracks; doubles as your desktop story.
-10. **Asymmetric follows + public profiles** (followers/following, top tracks this month).
+1. ✅ **Personal stats page / mini-Wrapped** — DONE (2026-06-13). `/stats`: minutes/plays/unique counts, plays-per-day chart, top artists/genres/tracks, 7/30/365-day toggle. Can be seasoned into a year-end "Wrapped" view later.
+2. ✅ **Song radio** — DONE (2026-06-13). `GET /tracks/{id}/radio` blends co-listen similarity + genre overlap + same-artist boost; "Go to song radio" in the track menu. The co-listen matrix here also makes "Fans also like" cheap to add next.
+3. ✅ **Playlist import** — DONE (2026-06-13). Library → Import reads an exported JSON and rebuilds the playlist by matching titles to the catalog. (Pairs with the export quick win.)
+4. **Notifications center** ← *next up* — ⚠️ no `Notifications` table actually exists yet (the earlier note was wrong); needs a new entity + **migration** (coordinate — migrations on the shared Supabase DB have conflicted before). Surface friend-request + new-release-from-followed-artist + approval events, bell in TopBar.
+5. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings). Needs a rules-storage column → migration.
+6. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle. Frontend-only but reworks the singleton audio engine; verify carefully.
+7. **"Fans also like" related artists** — cheap now that the co-listen matrix exists (radio).
+8. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
+9. **Playlist folders + pinning**; small leftovers: cover mosaic, duplicate detection.
+10. **House ads on free tier** + Family plan via extra Stripe test prices.
+11. **PWA** — installable + offline cache of downloaded tracks; doubles as your desktop story.
+12. **Asymmetric follows + public profiles** (followers/following, top tracks this month).
 
 ### Stretch goals
 - **Listen-along / Jam** (already on your roadmap) — SignalR room + host clock sync; high effort, very high demo value.

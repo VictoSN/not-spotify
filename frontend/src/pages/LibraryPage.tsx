@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { trackService } from '@/services/trackService'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
@@ -13,8 +14,15 @@ import { TrackRow } from '@/components/cards/TrackRow'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { PlusIcon, PlayIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+
+/** Shape produced by the playlist Export button on PlaylistDetailPage. */
+interface ImportedPlaylist {
+  name?: string
+  description?: string | null
+  tracks?: { title?: string; artist?: string }[]
+}
 
 type Filter = 'playlists' | 'albums' | 'artists' | 'liked'
 type SortKey = 'recent' | 'az' | 'za'
@@ -30,7 +38,7 @@ function sortBy<T>(items: T[], sort: SortKey, name: (item: T) => string): T[] {
 export function LibraryPage() {
   useDocumentTitle('Your Library')
   const isMobile = useIsMobile()
-  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, likedAtMap, isLoading, fetchLibrary, createPlaylist } =
+  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, likedAtMap, isLoading, fetchLibrary, createPlaylist, addTrackToPlaylist } =
     useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -51,12 +59,64 @@ export function LibraryPage() {
     fetchLibrary()
   }, [fetchLibrary, isAuthenticated])
 
+  const navigate = useNavigate()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = useState(false)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+
   const handleCreatePlaylist = () => {
     if (!isAuthenticated) {
       openAuthPrompt({ title: 'Create playlists with a free account' })
       return
     }
     createPlaylist('New Playlist')
+  }
+
+  const handleImportClick = () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Import playlists with a free account' })
+      return
+    }
+    fileInputRef.current?.click()
+  }
+
+  // Import a playlist exported as JSON: create it, then match each entry to a
+  // catalog track by title (+ artist) and add the ones we find.
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-importing the same file
+    if (!file) return
+
+    setImporting(true)
+    setImportMsg(null)
+    try {
+      const data = JSON.parse(await file.text()) as ImportedPlaylist
+      const entries = Array.isArray(data.tracks) ? data.tracks : []
+      const playlist = await createPlaylist(data.name?.trim() || 'Imported playlist', data.description ?? undefined, false)
+
+      let matched = 0
+      for (const entry of entries) {
+        const title = entry.title?.trim()
+        if (!title) continue
+        try {
+          const results = await trackService.search(title)
+          if (results.length === 0) continue
+          const wantArtist = entry.artist?.trim().toLowerCase()
+          const best = (wantArtist && results.find((t) => t.artist.name.toLowerCase() === wantArtist)) || results[0]
+          await addTrackToPlaylist(playlist.id, best)
+          matched++
+        } catch {
+          // skip unmatched / network blip
+        }
+      }
+
+      setImportMsg(`Imported "${playlist.name}" — ${matched} of ${entries.length} track${entries.length !== 1 ? 's' : ''} matched.`)
+      navigate(`/playlist/${playlist.id}`)
+    } catch {
+      setImportMsg('Could not read that file. Export a playlist from not-spotify to get a valid JSON file.')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const filters: { key: Filter; label: string; count: number }[] = [
@@ -77,10 +137,35 @@ export function LibraryPage() {
     <div className="px-6 py-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold text-primary">Your Library</h1>
-        <Button size="icon" variant="ghost" onClick={handleCreatePlaylist} aria-label="Create playlist">
-          <PlusIcon className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleImportClick}
+            disabled={importing}
+            aria-label="Import playlist from JSON"
+            title="Import playlist from JSON"
+          >
+            {importing ? <Spinner size="sm" /> : <ArrowDownTrayIcon className="w-5 h-5" />}
+          </Button>
+          <Button size="icon" variant="ghost" onClick={handleCreatePlaylist} aria-label="Create playlist">
+            <PlusIcon className="w-5 h-5" />
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            onChange={handleImportFile}
+            className="hidden"
+          />
+        </div>
       </div>
+
+      {importMsg && (
+        <div className="mb-4 rounded-md border border-elevated/50 bg-surface px-4 py-2.5 text-sm text-primary">
+          {importMsg}
+        </div>
+      )}
 
       {/* Filter chips + sort */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">

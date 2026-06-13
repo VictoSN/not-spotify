@@ -73,6 +73,7 @@ interface PlayerState {
   toggleNowPlaying: () => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
   toggleKaraoke: () => void
+  setKaraokeOpen: (open: boolean) => void
   tick: (currentTime: number, duration: number) => void
 }
 
@@ -272,6 +273,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen, isNowPlayingCollapsed: false })),
   setNowPlayingCollapsed: (collapsed) => set({ isNowPlayingCollapsed: collapsed }),
   toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
+  setKaraokeOpen: (open) => set({ isKaraokeOpen: open }),
 
   tick: (currentTime, duration) => {
     const { sleepTimerEndsAt } = get()

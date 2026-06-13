@@ -256,30 +256,22 @@ export function PictureInPicturePlayer() {
     }
   }, [currentTrack, isPlaying])
 
-  // mediaSession metadata — populates the native PiP title / artwork / OS widget
+  // mediaSession metadata — populates the native PiP title / artwork / OS widget.
+  // NOTE: the action handlers (play/pause/next/prev/seek) are owned solely by
+  // audioEngine, which registers them once at startup and never nulls them.
+  // Registering them here too (and nulling on every track change) left Edge's
+  // PiP next/prev/seek buttons wired to momentarily-null handlers — so only
+  // play/pause appeared to work. Keep this effect to metadata only.
   useEffect(() => {
     if (!('mediaSession' in navigator)) return
-    if (!currentTrack) {
-      navigator.mediaSession.metadata = null
-      return
-    }
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: currentTrack.title,
-      artist: currentTrack.artist.name,
-      album: currentTrack.album.title,
-      artwork: [{ src: currentTrack.album.coverUrl, sizes: '512x512', type: 'image/jpeg' }],
-    })
-    const store = usePlayerStore.getState
-    navigator.mediaSession.setActionHandler('play', () => store().resume())
-    navigator.mediaSession.setActionHandler('pause', () => store().pause())
-    navigator.mediaSession.setActionHandler('nexttrack', () => store().skipNext())
-    navigator.mediaSession.setActionHandler('previoustrack', () => store().skipPrevious())
-
-    return () => {
-      ;(['play', 'pause', 'nexttrack', 'previoustrack'] as const).forEach((a) =>
-        navigator.mediaSession.setActionHandler(a, null),
-      )
-    }
+    navigator.mediaSession.metadata = currentTrack
+      ? new MediaMetadata({
+          title: currentTrack.title,
+          artist: currentTrack.artist.name,
+          album: currentTrack.album.title,
+          artwork: [{ src: currentTrack.album.coverUrl, sizes: '512x512', type: 'image/jpeg' }],
+        })
+      : null
   }, [currentTrack])
 
   // mediaSession playback state

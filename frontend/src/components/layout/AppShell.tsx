@@ -31,6 +31,7 @@ export function AppShell() {
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
   const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
+  const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const karaokeVisible = isKaraokeOpen && !!currentTrack
   const prevAuth = useRef(isAuthenticated)
 
@@ -52,6 +53,13 @@ export function AppShell() {
     const path = `${location.pathname}${location.search}`
     analyticsService.recordVisit(path).catch(() => { })
   }, [location.pathname, location.search])
+
+  // Karaoke fills the main card and hides the page underneath; navigating
+  // would otherwise leave the lyrics overlay covering the new route. Close it
+  // whenever the path changes so navigation is never visually blocked.
+  useEffect(() => {
+    setKaraokeOpen(false)
+  }, [location.pathname, setKaraokeOpen])
 
   useEffect(() => {
     if (!isAuthenticated || !currentTrackId || !isPlaying) return

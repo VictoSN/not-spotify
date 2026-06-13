@@ -300,6 +300,87 @@ public class TracksController : ControllerBase
         return Ok(await _mapper.ToDtoListAsync(station, ct));
     }
 
+    /// <summary>
+    /// Spotify-style "Daily Mixes" — one mix per the listener's top genres
+    /// (from their 90-day play history), each filled with popular tracks in that
+    /// genre, lightly shuffled. Falls back to the catalogue's biggest genres for
+    /// guests / users with no history so the row is never empty.
+    /// </summary>
+    [HttpGet("daily-mixes")]
+    public async Task<ActionResult<IEnumerable<DailyMixDto>>> DailyMixes([FromQuery] int count = 4, [FromQuery] int size = 25, CancellationToken ct = default)
+    {
+        count = Math.Clamp(count, 1, 6);
+        size = Math.Clamp(size, 10, 40);
+
+        var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        Guid? me = Guid.TryParse(rawId, out var g) ? g : null;
+
+        // The user's top genres, by how many of their recent plays carry them.
+        List<(Guid Id, string Name, string Slug, string? Color)> topGenres = new();
+        if (me is not null)
+        {
+            var since = DateTime.UtcNow.AddDays(-90);
+            var recentIds = await _db.PlayHistories
+                .Where(h => h.UserId == me && h.PlayedAt >= since)
+                .Select(h => h.TrackId)
+                .ToListAsync(ct);
+
+            if (recentIds.Count > 0)
+            {
+                var genreRows = await _db.TrackGenres
+                    .Where(tg => recentIds.Contains(tg.TrackId))
+                    .Select(tg => new { tg.GenreId, tg.Genre.Name, tg.Genre.Slug, tg.Genre.Color })
+                    .ToListAsync(ct);
+
+                topGenres = genreRows
+                    .GroupBy(r => new { r.GenreId, r.Name, r.Slug, r.Color })
+                    .OrderByDescending(grp => grp.Count())
+                    .Take(count)
+                    .Select(grp => (grp.Key.GenreId, grp.Key.Name, grp.Key.Slug, (string?)grp.Key.Color))
+                    .ToList();
+            }
+        }
+
+        // Fallback: catalogue's biggest genres by approved-track count.
+        if (topGenres.Count == 0)
+        {
+            var byTrackCount = await _db.TrackGenres
+                .Where(tg => tg.Track.Status == "approved")
+                .GroupBy(tg => tg.GenreId)
+                .OrderByDescending(grp => grp.Count())
+                .Take(count)
+                .Select(grp => grp.Key)
+                .ToListAsync(ct);
+
+            var genres = await _db.Genres.Where(g => byTrackCount.Contains(g.Id)).ToListAsync(ct);
+            topGenres = genres.Select(g => (g.Id, g.Name, g.Slug, (string?)g.Color)).ToList();
+        }
+
+        var mixes = new List<DailyMixDto>(topGenres.Count);
+        var mixNum = 1;
+        foreach (var genre in topGenres)
+        {
+            var pool = await BaseQuery()
+                .Where(t => t.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+                .OrderByDescending(t => t.PlayCount)
+                .Take(size * 2)
+                .ToListAsync(ct);
+
+            if (pool.Count == 0) continue;
+
+            // Light shuffle so the mix feels fresh between loads.
+            var tracks = pool.OrderBy(_ => Random.Shared.Next()).Take(size).ToList();
+            mixes.Add(new DailyMixDto(
+                genre.Slug,
+                $"{genre.Name} Mix",
+                $"Daily Mix {mixNum++}",
+                genre.Color,
+                await _mapper.ToDtoListAsync(tracks, ct)));
+        }
+
+        return Ok(mixes);
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TrackDto>> Get(Guid id, CancellationToken ct = default)
     {

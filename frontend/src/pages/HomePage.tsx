@@ -24,7 +24,9 @@ import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { TrackTile } from '@/components/cards/TrackTile'
+import { MixTile } from '@/components/cards/MixTile'
 import { Spinner } from '@/components/ui/Spinner'
+import type { DailyMix } from '@/services/trackService'
 
 const PREVIEW_LIMIT = 10
 
@@ -42,6 +44,7 @@ export function HomePage() {
   const [newReleases, setNewReleases] = useState<Album[]>([])
   const [recents, setRecents] = useState<Track[]>([])
   const [popularArtists, setPopularArtists] = useState<Artist[]>([])
+  const [dailyMixes, setDailyMixes] = useState<DailyMix[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -63,13 +66,14 @@ export function HomePage() {
         setRecents(rc)
         setLoading(false)
 
-        // Wave 2: secondary sections (4 requests, staggered after paint)
-        const [ml, nm, rp, nr, pa] = await Promise.all([
+        // Wave 2: secondary sections (staggered after paint)
+        const [ml, nm, rp, nr, pa, dm] = await Promise.all([
           trackService.getMostLiked(PREVIEW_LIMIT),
           trackService.getNewMusic(PREVIEW_LIMIT),
           playlistService.getRecommended(PREVIEW_LIMIT),
           albumService.getNewReleases(PREVIEW_LIMIT),
           artistService.getPopular(PREVIEW_LIMIT),
+          trackService.getDailyMixes(4).catch(() => [] as DailyMix[]),
         ])
         if (cancelled) return
         setMostLiked(ml)
@@ -77,6 +81,7 @@ export function HomePage() {
         setRecommendedPlaylists(rp)
         setNewReleases(nr)
         setPopularArtists(pa)
+        setDailyMixes(dm)
       } catch {
         if (!cancelled) setLoading(false)
       }
@@ -229,6 +234,18 @@ export function HomePage() {
               )
             })}
           </div>
+        )}
+
+        {/* Daily Mixes — genre-based, personalised mixes */}
+        {dailyMixes.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title="Made for you" />
+            <HorizontalScroller>
+              {dailyMixes.map((mix) => (
+                <MixTile key={mix.id} mix={mix} />
+              ))}
+            </HorizontalScroller>
+          </section>
         )}
 
         {/* For You Today — personalised, auth only */}

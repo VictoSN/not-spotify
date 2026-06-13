@@ -149,6 +149,9 @@ public record AddPlaylistTrackRequest(Guid TrackId);
 /// <summary>One row of the weekly Top 50 chart.</summary>
 public record ChartEntryDto(int Rank, int PlaysThisWeek, TrackDto Track);
 
+/// <summary>A genre-based "Daily Mix" of tracks built for the listener.</summary>
+public record DailyMixDto(string Id, string Title, string Subtitle, string? Color, IEnumerable<TrackDto> Tracks);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

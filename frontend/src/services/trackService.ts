@@ -7,6 +7,14 @@ export interface ChartEntry {
   track: Track
 }
 
+export interface DailyMix {
+  id: string
+  title: string
+  subtitle: string
+  color: string | null
+  tracks: Track[]
+}
+
 export const trackService = {
   async getById(id: string): Promise<Track> {
     const res = await api.get<Track>(`/tracks/${id}`)
@@ -25,6 +33,11 @@ export const trackService = {
 
   async getRadio(trackId: string, limit = 30): Promise<Track[]> {
     const res = await api.get<Track[]>(`/tracks/${trackId}/radio`, { params: { limit } })
+    return res.data
+  },
+
+  async getDailyMixes(count = 4): Promise<DailyMix[]> {
+    const res = await api.get<DailyMix[]>('/tracks/daily-mixes', { params: { count } })
     return res.data
   },
 

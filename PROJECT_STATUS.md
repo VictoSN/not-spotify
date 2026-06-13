@@ -80,6 +80,20 @@ Last updated: 2026-06-13 (compact library setting wired)
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Daily Mixes + playlist sort + voice search
+
+**Completed (commits dd90148, 499d70b, 4fdb361):**
+- **Daily Mixes** — `GET /tracks/daily-mixes` builds one mix per the listener's top genres (90-day history), filled with that genre's popular tracks, lightly shuffled; guest/no-history fallback = catalogue's biggest genres. New `MixTile` (2×2 cover mosaic + genre-colored label band; play loads the mix into the queue) in a "Made for you" home row. Verified: alex saw Indie/Electronic/Dream Pop/Synthwave mixes; playing one queued 9 tracks.
+- **Sortable playlist tracks** — "Sort by" dropdown on the playlist track list (Custom/Title/Artist/Album/Date added/Duration); sorts the displayed rows and the play-queue together, never mutates server order. Verified: title sort reordered Night Drive correctly.
+- **Voice search** — `VoiceSearchButton` (Web Speech API) mic in the top bar; transcript → existing `submitSearch` → `/search`. Renders nothing where the API is absent; graceful on denied mic. Verified button renders + clicking degrades cleanly (real speech-to-text needs a mic, can't automate).
+
+**Note:** playlist duplicate-detection from the roadmap is **moot** — the backend already returns 409 on duplicate adds, so a playlist can't contain dupes.
+
+**Notes for next session:**
+- Remaining: notifications / smart playlists / waveform-comments (all need a migration — coordinate on shared DB); crossfade/EQ (audio-engine rework, unverifiable audibly here); listen-along (SignalR, stretch centerpiece); PWA; asymmetric follows.
+
+---
+
 ### 2026-06-13 — Account 3 — Feature-gap fix: compact library setting
 
 **Completed:**

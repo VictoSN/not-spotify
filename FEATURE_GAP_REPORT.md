@@ -162,17 +162,18 @@ All eight shipped and browser-verified: search by lyrics · share fix (track URL
 6. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings). Needs a rules-storage column → migration.
 7. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle. Frontend-only but reworks the singleton audio engine; verify carefully.
 8. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
-9. **Playlist folders + pinning**; small leftovers: ✅ cover mosaic DONE (2026-06-13), duplicate detection still open.
+9. **Playlist folders + pinning**; small leftovers: ✅ cover mosaic DONE (2026-06-13); ✅ playlist track **sorting** DONE (2026-06-13, Custom/Title/Artist/Album/Date/Duration); duplicate detection is **moot** — backend already rejects duplicate adds with 409.
 10. **House ads on free tier** + Family plan via extra Stripe test prices.
 11. **PWA** — installable + offline cache of downloaded tracks; doubles as your desktop story.
 12. **Asymmetric follows + public profiles** (followers/following, top tracks this month).
 
 ### Stretch goals
 - **Listen-along / Jam** (already on your roadmap) — SignalR room + host clock sync; high effort, very high demo value.
-- **Daily mixes** via simple collaborative filtering on `PlayHistories`.
+- ✅ **Daily mixes** — DONE (2026-06-13). Genre-based mixes from 90-day history (`GET /tracks/daily-mixes`), "Made for you" home row. (Not full collaborative filtering, but the genre approach demos well.)
+- ✅ **Voice search** — DONE (2026-06-13). Mic button in the top bar via the Web Speech API (Chrome/Edge); no-ops on browsers without it.
 - **Desktop wrapper** (Tauri) — roadmap item; PWA first makes it nearly free.
 - **Adaptive streaming / quality selection** — ffmpeg + hls.js, gated by storage budget.
-- **Blend playlists**, **embeddable player**, **voice search**.
+- **Blend playlists**, **embeddable player**.
 - **Personal uploads locker** — demo-scale only (storage).
 
 ### Not realistic for this project (flagged per the no-paid-services rule)

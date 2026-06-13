@@ -219,6 +219,87 @@ public class TracksController : ControllerBase
         return Ok(await _mapper.ToDtoListAsync(ranked, ct));
     }
 
+    /// <summary>
+    /// Builds an endless "station" seeded from a track. Ranks the rest of the
+    /// catalogue by a blend of co-listen similarity (how often other listeners
+    /// played a candidate in the same sessions as the seed) and genre overlap,
+    /// with the seed's own artist boosted. The seed track is returned first.
+    /// Falls back to genre-only / trending when there's no play data yet.
+    /// </summary>
+    [HttpGet("{id:guid}/radio")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Radio(Guid id, [FromQuery] int limit = 30, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 5, 60);
+
+        var seed = await BaseQuery().FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (seed is null) return NotFound();
+
+        var seedGenreIds = await _db.TrackGenres
+            .Where(tg => tg.TrackId == id)
+            .Select(tg => tg.GenreId)
+            .ToListAsync(ct);
+
+        // Co-listen: users who played the seed → the other tracks they played, by frequency.
+        var seedListeners = await _db.PlayHistories
+            .Where(h => h.TrackId == id)
+            .Select(h => h.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var coListenScore = new Dictionary<Guid, int>();
+        if (seedListeners.Count > 0)
+        {
+            var coPlays = await _db.PlayHistories
+                .Where(h => seedListeners.Contains(h.UserId) && h.TrackId != id)
+                .GroupBy(h => h.TrackId)
+                .Select(g => new { TrackId = g.Key, Count = g.Count() })
+                .OrderByDescending(x => x.Count)
+                .Take(limit * 3)
+                .ToListAsync(ct);
+            foreach (var c in coPlays) coListenScore[c.TrackId] = c.Count;
+        }
+
+        // Candidate pool: co-listen matches + genre matches + same artist.
+        var coIds = coListenScore.Keys.ToList();
+        var candidates = await BaseQuery()
+            .Where(t => t.Id != id && (
+                coIds.Contains(t.Id) ||
+                t.ArtistId == seed.ArtistId ||
+                t.TrackGenres.Any(tg => seedGenreIds.Contains(tg.GenreId))))
+            .Take(limit * 6)
+            .ToListAsync(ct);
+
+        var maxCo = coListenScore.Count > 0 ? coListenScore.Values.Max() : 1;
+        double Score(Models.Track t)
+        {
+            var co = coListenScore.GetValueOrDefault(t.Id) / (double)maxCo;       // 0..1
+            var genre = t.TrackGenres.Count(tg => seedGenreIds.Contains(tg.GenreId));
+            var sameArtist = t.ArtistId == seed.ArtistId ? 1 : 0;
+            return co * 3.0 + genre * 1.0 + sameArtist * 0.5;
+        }
+
+        var ranked = candidates
+            .OrderByDescending(Score)
+            .ThenByDescending(t => t.PlayCount)
+            .Take(limit - 1)
+            .ToList();
+
+        // Pad with trending if the pool was thin.
+        if (ranked.Count < limit - 1)
+        {
+            var have = ranked.Select(t => t.Id).Append(id).ToHashSet();
+            var fillers = await BaseQuery()
+                .OrderByDescending(t => t.PlayCount)
+                .Take(limit * 2)
+                .ToListAsync(ct);
+            ranked.AddRange(fillers.Where(t => !have.Contains(t.Id)).Take(limit - 1 - ranked.Count));
+        }
+
+        var station = new List<Models.Track> { seed };
+        station.AddRange(ranked);
+        return Ok(await _mapper.ToDtoListAsync(station, ct));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TrackDto>> Get(Guid id, CancellationToken ct = default)
     {

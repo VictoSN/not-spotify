@@ -23,6 +23,11 @@ export const trackService = {
     return res.data
   },
 
+  async getRadio(trackId: string, limit = 30): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/tracks/${trackId}/radio`, { params: { limit } })
+    return res.data
+  },
+
   async getMostLiked(limit = 10): Promise<Track[]> {
     const res = await api.get<Track[]>('/tracks/most-liked', { params: { limit } })
     return res.data

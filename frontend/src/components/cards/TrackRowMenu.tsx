@@ -11,6 +11,7 @@ import {
   ForwardIcon,
   UserIcon,
   MusicalNoteIcon,
+  RadioIcon,
   ShareIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
@@ -22,6 +23,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { trackService } from '@/services/trackService'
 
 interface TrackRowMenuProps {
   track: Track
@@ -56,6 +58,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const addToQueue = usePlayerStore((s) => s.addToQueue)
   const playNext = usePlayerStore((s) => s.playNext)
+  const play = usePlayerStore((s) => s.play)
   const queue = usePlayerStore((s) => s.queue)
 
   const isLiked = likedTrackIds.has(track.id)
@@ -146,6 +149,17 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
 
   const handlePlayNext = () =>
     gate('Queue songs with a free account', () => playNext(track))
+
+  const handleStartRadio = () =>
+    gate('Start a radio station with a free account', async () => {
+      try {
+        const station = await trackService.getRadio(track.id, 40)
+        if (station.length > 0) play(station[0], station)
+      } catch {
+        // Fall back to just playing the seed track if radio can't be built.
+        play(track, [track])
+      }
+    })
 
   const handleAddToPlaylist = async (playlistId: string) => {
     try {
@@ -480,6 +494,21 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                 </MenuItem>
               </>
             )}
+
+            <MenuItem>
+              <button
+                type="button"
+                onClick={(e) => {
+                  stop(e)
+                  handleStartRadio()
+                  close()
+                }}
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+              >
+                <RadioIcon className="w-4 h-4" />
+                Go to song radio
+              </button>
+            </MenuItem>
 
             <div className="my-1 h-px bg-secondary/20" />
 

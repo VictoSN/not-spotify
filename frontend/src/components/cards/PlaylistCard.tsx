@@ -8,6 +8,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { PlaylistCover } from './PlaylistCover'
 
 interface PlaylistCardProps {
   playlist: Playlist
@@ -55,11 +56,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
       className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
-        {playlist.coverUrl ? (
-          <img src={playlist.coverUrl} alt={playlist.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl">🎵</div>
-        )}
+        <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
         <button
           onClick={handlePlay}
           className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"

@@ -37,6 +37,7 @@ import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
+import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
@@ -324,11 +325,7 @@ export function PlaylistDetailPage() {
         }}
       >
         <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated self-center sm:self-auto">
-          {playlist.coverUrl ? (
-            <img src={playlist.coverUrl} alt={playlist.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl">🎵</div>
-          )}
+          <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
         </div>
         <div className="min-w-0 pb-2">
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">

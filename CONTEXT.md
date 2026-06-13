@@ -65,6 +65,12 @@ Spotify-clone music streaming platform (web app). Built collaboratively across m
 - DB joins: EF queries quote identifiers with `"` in raw SQL (Postgres requires this for PascalCase)
 - Storage keys: `audio/{guid}.ext`, `covers/{guid}.ext`, `images/artists/{guid}.ext`, `avatars/{userId}/{guid}.ext`
 
+## Key feature endpoints (added since the original scaffold)
+- Discovery: `GET /tracks/charts` (weekly Top 50), `GET /tracks/{id}/radio` (song radio), `GET /tracks/daily-mixes` (genre mixes), `GET /artists/{id}/related` ("Fans also like"). `GET /search` also returns `tracksByLyrics`.
+- Personal: `GET /me/stats?days=` (listening stats / mini-Wrapped). Playlist export/import is client-side JSON (no endpoint).
+- New frontend pages/routes: `/charts`, `/stats`. Player extras (sleep timer, speed, play-next) live in `playerStore` + `PlayerExtras.tsx`; voice search in `VoiceSearchButton.tsx`; keyboard shortcuts in `useKeyboardShortcuts.ts` + `KeyboardShortcutsHelp.tsx`.
+- mediaSession action handlers are owned **only** by `services/audioEngine.ts` (set once). Do NOT re-register them per-track elsewhere — that broke Edge PiP controls.
+
 ## Status Tracking
 - `PROJECT_STATUS.md` (repo root) — single source of truth for what's done/in-progress/broken
 - Every session MUST read PROJECT_STATUS.md first and update it before ending

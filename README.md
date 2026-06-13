@@ -4,6 +4,26 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 ---
 
+## 📊 Project Status & Features
+
+**Live status is tracked in [PROJECT_STATUS.md](PROJECT_STATUS.md)** (single source of truth — what's done, what's next, current bugs). A full competitive gap analysis and roadmap lives in [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md), and architecture notes for new contributors in [CONTEXT.md](CONTEXT.md).
+
+**What works today (highlights):**
+- **Playback:** full player, queue + premium drag-reorder, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
+- **Discovery:** trending, for-you, new music, recents, **weekly Top 50 charts**, **search by lyrics**, **song radio**, **"Fans also like"**, **Daily Mixes**.
+- **Library/playlists:** create/edit/delete, public/friends/private visibility, collaborative playlists, JSON export/import, library + track sorting, cover-art mosaics.
+- **Social:** friends, real-time presence, Friend Activity rail, 1:1 chat, friends-only playlists.
+- **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
+- **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped).
+- **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`.
+
+**Being worked on next:** notifications center, smart playlists, crossfade/gapless, waveform + timed comments, PWA, and a "listen-along" jam mode. See PROJECT_STATUS.md → *Next up / unfinished*.
+
+### Run everything at once (Windows)
+Instead of three manual terminals, **double-click [`dev.cmd`](dev.cmd)** (or run `./dev.sh` from Git Bash). It opens the backend, the Stripe webhook listener, and the frontend in separate windows. (Stripe CLI must be installed + `stripe login` done once.) Manual steps are below.
+
+---
+
 ## 🚀 Getting Started
 
 To get both the frontend and backend running locally on your machine, follow these instructions.
@@ -340,6 +360,30 @@ Returns the current user's most recently played **distinct** tracks (requires au
 
 - Raw play events are de-duplicated: multiple plays of the same track in a session collapse to the single most-recent timestamp.
 - **Data used:** `PlayHistories` (user-scoped)
+
+---
+
+### Weekly Charts — `GET /tracks/charts`
+
+The **Top 50 this week** (`/charts` page). Pure ranking by plays in the last 7 days (from `PlayHistories`), tie-broken by all-time play count, padded with all-time top tracks when the week is quiet. Returns `rank` + `playsThisWeek` per entry.
+
+---
+
+### Song Radio — `GET /tracks/{id}/radio`
+
+An endless "station" seeded from any track (the "Go to song radio" menu item). Ranks the catalogue by a blend of **co-listen similarity** (how often other listeners played a candidate in the same sessions as the seed) + **genre overlap** + a same-artist boost; seed plays first. The same co-listen matrix powers **"Fans also like"** related artists (`GET /artists/{id}/related`).
+
+---
+
+### Daily Mixes — `GET /tracks/daily-mixes`
+
+The **"Made for you"** home row. Builds one mix per the listener's top genres (from their 90-day `PlayHistories`), each filled with that genre's popular tracks, lightly shuffled. Falls back to the catalogue's biggest genres for guests / no-history users.
+
+---
+
+### Search by Lyrics — `GET /search`
+
+Beyond title/artist/album/playlist matches, search also returns `tracksByLyrics` — tracks whose **cached lyrics** contain the query (min 3 chars, title matches excluded). Surfaced as a "Found in lyrics" section. Free because lyrics are already stored per track.
 
 ---
 

@@ -1,68 +1,93 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-13 (compact library setting wired)
+Last updated: 2026-06-13 (status overhaul: full feature inventory, current bugs, what's next)
+
+> **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
 ---
 
 ## ✅ COMPLETED FEATURES (verified working — do not re-implement)
+
+**Accounts, tiers & billing**
 - User accounts with playlists/favorites stored in DB
-- Follow artist (with search & sort)
-- Extended "more options" menu for songs
-- Discovery algorithms: trending, most liked, for you today, new music, recents
-- Free tier restrictions: shuffle-only playback, limited customization
-- PiP (Picture-in-Picture) player
-- Premium queue reordering
-- Admin site (basic, pre-restructure)
-- Artist dashboard: playlist/song management (edit/delete)
-- Artist/admin dashboard statistics (albums/tracks)
-- Premium song downloads (single track)
-- Friends: add friends
-- Friend profiles + online status
-- Friends-only playlists
-- Chat with friends
-- New user promo/free trial
-- Admin approval table with sorting
-- Mobile/tablet responsive UI
-- Admin can revoke artist status
-- History log for rejected albums/tracks/applications
-- Lyrics transcription (non-AI)
-- "Friend Activity" feed (Spotify-style right rail: listening-now + recently-played per friend)
-- Dynamic theming from cover art on album/playlist/track pages (incl. fix for broken gradient on album/track)
-- Karaoke synced lyrics (Spotify-style: highlight + auto-scroll + seek-on-click; LRC from LRCLIB; plain-text fallback)
+- Free vs Premium tiers; free = forced shuffle, no repeat/order control (gated server + client)
+- Stripe-hosted premium checkout (test mode) + subscription management + cancel
+- Premium downloads: single track, and album/playlist as ZIP
+- New-user promo / free-trial code
+
+**Playback & player**
+- Audio engine + bottom bar: play/pause/skip, seek, shuffle, repeat (off/one/all), volume/mute
+- Now Playing panel (resizable/collapsible) with queue + **premium drag-reorder**, artist info, credits
+- PiP (Picture-in-Picture) player + OS **MediaSession** (media keys, lock screen) — single stable handler owner
+- **Sleep timer**, **playback speed** (0.75–2×), **Play next** queue insert, **autoplay radio-lite** at queue end
+- **Keyboard shortcuts** (space/arrows/M/L) + **`?` help overlay**
+- 1–5 **star ratings** on the playing track
+- Mobile mini-player + now-playing sheet; mobile/tablet responsive UI
+
+**Discovery & search**
+- Algorithms: trending, most liked, for you today, new music, recents
+- **Weekly Top 50 charts** (`/charts`)
+- **Search by lyrics** ("Found in lyrics" section)
+- **Song radio** (endless station from any track — co-listen + genre)
+- **"Fans also like"** related artists on the artist page
+- **Daily Mixes** (genre-based "Made for you" home row)
+- Genre browse grid, recent searches, **voice search** (Web Speech API, Chrome/Edge)
+
+**Library & playlists**
+- Create/edit/delete playlists (name, description, cover); visibility public/friends/private (server-enforced)
+- **Collaborative playlists** with invites
+- **Playlist JSON export + import**; **library sorting** (recent/A-Z/Z-A); **playlist track sorting** (title/artist/album/date/duration)
+- **Playlist cover mosaic** (2×2 album-art for coverless playlists)
+- Liked songs with date-added; follow artists (search & sort)
+
+**Social**
+- Friends: add/accept/decline/unfriend, friends-of-friends suggestions, mutual counts
+- Friend profiles + real-time online presence (SignalR)
+- **Friend Activity** rail (listening-now + recently-played)
+- 1:1 **chat** (read receipts, unread badges); friends-only playlists
+
+**Personalization**
+- Light/dark theme; **dynamic cover-art theming** (album/playlist/track headers, now-playing)
+- **Personal listening stats / mini-Wrapped** (`/stats`); compact library layout setting
+
+**Lyrics**
+- Lyrics transcription (non-AI, LRCLIB → Lyrics.ovh)
+- **Karaoke synced lyrics** (highlight + auto-scroll + seek-on-click; closes on navigation)
+
+**Artist & admin**
+- Artist dashboard: albums/tracks CRUD, drag-reorder track numbers, edit title/explicit/lyrics, resubmit rejected work, profile editing; verified badge; auto lyrics fetch at upload
+- Artist application → admin review flow
+- Admin: dashboard stats, artists/albums/tracks CRUD, approval queue (sortable), rejection/review history (audit), revoke artist status, dedicated **`/admin/login` + route guard**
 
 ---
 
-## 🔄 IN PROGRESS
+## 🔄 NEXT UP / UNFINISHED (what we're going after)
 
-### Account 1 — Bug Fixes
-- [x] Bug 1: Premium playlist/album download doesn't cascade to individual tracks ✅ (2026-06-12, commit 3592fb0d)
-- [x] Bug 2: Cannot delete album without deleting tracks first ✅ (2026-06-12, commit 27610f0f)
-- [x] Bug 3: Chat notification badge appears even when conversation is open (admin) ✅ (2026-06-12, commit 5b5636e5)
-- [ ] UI Bug 4: Artist dashboard tab padding inconsistent — **blocked on repro**: no tab component exists in ArtistDashboardPage (searched current + historical versions); reporter needs to point at the exact screen/element (screenshot)
-- [x] UI Bug 5: Header blocks library tooltip ✅ (2026-06-12, commit 0d45c82f)
+Ordered by value; see [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §3 for full reasoning.
 
-### Account 2 — Admin Restructure
-- [ ] Task 1: Restructure admin site into sidebar/topbar admin panel layout
-  - [ ] Inventory existing admin pages/routes (list below once done)
-  - [ ] Build layout shell
-  - [ ] Migrate: Statistics dashboard
-  - [ ] Migrate: Approval table
-  - [ ] Migrate: Revoke artist status
-  - [ ] Migrate: Rejection history
-- [x] Task 2: Move admin login to dedicated `/admin/login` route + guard middleware ✅ (2026-06-12)
+**Needs a DB migration** (coordinate first — migrations on the shared Supabase DB have conflicted before):
+- [ ] **Notifications center** — new entity + bell in TopBar (friend requests, new release from followed artist, approval events). *(No `Notifications` table exists yet — the old note claiming one was wrong.)*
+- [ ] **Smart playlists** — iTunes-style rules (genre / rating / play-count / date-added); pairs with existing star ratings.
+- [ ] **Waveform + timed comments** — ffmpeg peaks at upload + comments pinned to timestamps (SoundCloud signature).
+- [ ] **Asymmetric follows + public profiles** (followers/following beyond mutual friendship).
 
-### Account 3 — Stretch Features
-- [x] Task 1: "What your friends are listening to" feed ✅ (2026-06-12)
-- [x] Task 2: Dynamic theming from album art dominant color ✅ (2026-06-12)
+**No migration (frontend / query only):**
+- [ ] **Crossfade + gapless** (Web Audio) — wires the still-dead `crossfade` setting toggle; also unlocks EQ. *Audio-engine rework; verify audibly.*
+- [ ] **PWA** — installable + offline cache of downloaded tracks (also the cheapest path to a desktop app).
+- [ ] Wire remaining **dead settings toggles**: `crossfade`, `normalize`, `quality` (note: `autoplay` ✅ and `compact` ✅ are now wired).
+
+**Stretch / centerpiece:**
+- [ ] **Listen-along / Jam** — SignalR room + host clock sync. High effort, high demo value.
+- [ ] **Desktop wrapper** (Tauri).
+
+**Other in-flight tracks:**
+- [ ] **Account 2 — Admin restructure**: move the admin pages into a dedicated sidebar/topbar admin panel layout. (Dedicated `/admin/login` + guard is ✅ done; the layout shell + page migration is still open.)
 
 ---
 
-## ❌ NOT STARTED
-- Desktop app wrapper
-- "Listen with friends" LIVE synced playback
-- Expanded premium customization options
-- Full library UI rehaul to match Spotify
+## ❌ NOT REALISTIC FOR THIS PROJECT (no-paid-services constraint)
+Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatial audio (Dolby Atmos), real ad-network monetization / artist royalties at scale, native iOS/Android + CarPlay/Android Auto/TV/Watch apps, concert/tour data (needs paid/approval API keys), Shazam-grade audio recognition.
 
 ---
 
@@ -72,13 +97,28 @@ Last updated: 2026-06-13 (compact library setting wired)
 | 1 | Premium download doesn't cascade to individual songs in playlist/album | **Fixed** 2026-06-12 (3592fb0d) | Account 1 |
 | 2 | Can't delete album without deleting tracks first | **Fixed** 2026-06-12 (27610f0f) | Account 1 |
 | 3 | Notification still appears when chat/messages already open (admin) | **Fixed** 2026-06-12 (5b5636e5) | Account 1 |
-| 4 | Artist dashboard tabs have inconsistent padding/width | Open — needs repro/screenshot (no tab component found in code) | Account 1 |
+| 4 | Artist dashboard album header had inconsistent padding/width | **Fixed** 2026-06-13 (f8baf55) — was invalid `<button>`-in-`<button>` nesting; now an accessible `role="button"` div | Account 3 |
 | 5 | Header blocks library tooltip | **Fixed** 2026-06-12 (0d45c82f) | Account 1 |
+| 6 | Lyrics view blocked navigation (overlay stayed over the new page) | **Fixed** 2026-06-13 (a2a57cf) | Account 3 |
+| 7 | PiP next/prev/seek dead in Edge (only play/pause worked) | **Fixed** 2026-06-13 (a2a57cf) | Account 3 |
+
+### Known minor issues (cosmetic / low priority — not yet fixed)
+- React **"empty string passed to `src`"** console warnings on Home — a few seed tracks have a blank `coverUrl` rendering `<img src="">`. Cosmetic; fix by rendering a placeholder when `coverUrl` is empty.
+- SignalR **"connection stopped during negotiation"** burst on page reload — presence reconnects fine afterward; a reconnect race, not a functional break.
+- Login uses an **in-memory access token** (refreshed via cookie), so a hard browser reload briefly logs out until refresh completes — expected, not a bug.
 
 ---
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-13 — Account 3 — Status doc overhaul + artist-dashboard Bug 4 fix
+
+**Completed (commit f8baf55 + this doc pass):**
+- **Bug 4 fixed (artist dashboard "inconsistent tab padding/width").** Located via the user's repro (profile icon → Artist Dashboard). Root cause: the album-header row was a `<button>` wrapping ~7 nested `<button>`s (review-history, download, resubmit, edit, delete, expand). Nested buttons are invalid HTML — the browser auto-closed the outer button at the first nested one, ejecting the action buttons out of the flex row and producing the inconsistent padding/width. Converted the header to an accessible `role="button"` div (Enter/Space + `aria-expanded`); nested buttons are now valid and the row lays out consistently. Verified: rows are `role="button"` divs, expand/collapse works, the "button cannot be nested" console error is gone.
+- **Rewrote PROJECT_STATUS** top sections (full feature inventory grouped by area, "Next up / unfinished" with migration-vs-frontend split, refreshed bug table incl. the cosmetic known-issues list) and refreshed README (added a Project Status & Features overview + linked the companion docs; updated the discovery-algorithms section with charts / song radio / daily mixes / lyrics search).
+
+**Notes for next session:** unchanged from prior — remaining features split into migration-needed (notifications, smart playlists, waveform-comments, asymmetric follows) vs frontend-only (crossfade/EQ, PWA, dead-toggle wiring). Listen-along is the stretch centerpiece.
 
 ### 2026-06-13 — Account 3 — Daily Mixes + playlist sort + voice search
 

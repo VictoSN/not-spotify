@@ -195,3 +195,35 @@ The highest-leverage observations from the code pass:
 3. **Differentiation beats parity**: timed comments (SoundCloud), smart playlists (iTunes), and share-to-chat exploit assets you uniquely already have, rather than chasing Spotify's ML.
 
 Suggested order: ~~quick wins first~~ (done 2026-06-13), then **stats page → notifications → song radio → smart playlists → crossfade/gapless**, keeping listen-along as the end-of-term centerpiece if time allows.
+
+---
+
+## 5. Correctness & hardening backlog — added 2026-06-13 (Account 1)
+
+Section 2 is feature-parity oriented. This section is the complementary list: **robustness, honesty, and polish gaps** that don't show up as "missing features" but cost marks in grading/review. Each is verified against current code, not assumed. Effort scale is the same (Low / Medium / High).
+
+### 5.1 Things that currently mislead the user (cheap, high embarrassment-risk)
+| Gap | Where | Fix | Effort |
+|---|---|---|---|
+| **Dead settings toggles** — `streamingQuality`, `normalizeVolume`, `compactLibrary`, `crossfade` are `usePref` localStorage values wired to **nothing** (confirmed in [SettingsPage.tsx](frontend/src/pages/SettingsPage.tsx)). A grader who flips them and sees no effect reads it as broken. | Settings | Cheapest win is **`compactLibrary`** — the sidebar already has a list/grid view mode to reuse. `crossfade` is the medium roadmap item. For `quality`/`normalize` (need backend), **hide them behind a "coming soon" disabled state** rather than leaving live switches that lie. | Low (compact/hide) · Med (quality/normalize) |
+| **Share is track-only** — `navigator.share`/copy-link lives only in [TrackRowMenu.tsx](frontend/src/components/cards/TrackRowMenu.tsx); playlist and artist menus have no share. | Playlist/artist menus | Reuse the same share helper on playlist + artist context menus and the album page button. | Low |
+| **Chat is plaintext** — E2E design exists in `chatEncryption.ts` but is inactive; messages sit readable in the shared DB. | Chat | At minimum document it as a known limitation in the UI/README so it's a stated scope decision, not a silent flaw. Activating the designed crypto is the real fix. | Low (disclose) · High (implement) |
+
+### 5.2 Backend hardening (not in the feature roadmap at all)
+| Gap | Risk | Fix | Effort |
+|---|---|---|---|
+| **No rate limiting anywhere** — confirmed: no `AddRateLimiter`, no 429s in the codebase. Login, friend requests, and chat send are all unthrottled. | Brute-force on `/auth/login`; chat/friend-request spam. | ASP.NET Core 8 ships `builder.Services.AddRateLimiter(...)` + `app.UseRateLimiter()`; a fixed-window limiter on auth + chat-send is a few lines. | Low |
+| **Destructive admin actions use native `confirm()`** (album/track delete) — inconsistent with the app's custom modals and easy to misfire. | UX/safety | A shared `ConfirmDialog` component (the app already has modal patterns like `AuthPromptModal`). | Low |
+| **Many failures are swallowed** — numerous `.catch(() => {})` / empty `catch` blocks across stores and pages; a failed like/follow/save/import gives the user no feedback. | UX | A lightweight global **toast** system; surface caught errors instead of dropping them. | Low–Med |
+| **No automated tests** — there is no test project/suite on either side. | Regression risk across 3 parallel accounts touching shared files. | A thin smoke layer: a couple of xUnit backend tests (auth round-trip, a guarded endpoint returns 401/403) + a Vitest render test or two. Even minimal coverage catches the cross-account breakages we keep hand-fixing at build time. | Medium |
+
+### 5.3 Accessibility & small UX (Low unless noted)
+- **Icon-only buttons** (player controls, tooltips, menu triggers) — audit `aria-label` coverage; most have it, some (e.g. expand/collapse chevrons) should be re-checked.
+- **Modal focus management** — confirm focus trap + `Esc`-to-close + return-focus on the edit/invite/auth modals.
+- **Full "Queue / Up next" route** — the queue lives only in the Now-Playing panel; a dedicated page (or expandable view) is a common expectation and trivial given the data already exists.
+- **Single-track download** anchors directly at `track.audioUrl` (browser-fetches the public URL), while the new album/playlist zip path reads server-side. Works, but the two download paths now diverge — worth unifying so a single track in LocalStorage mode downloads via the server too (same root cause as Bug 1).
+
+### 5.4 Still-open functional bug
+- **Bug 4 — artist dashboard tab padding** (PROJECT_STATUS): could not be located in code (the dashboard has no tab component; searched current + history). **Blocked on a repro/screenshot** from the reporter before it's actionable.
+
+**Net:** the feature breadth is strong; the cheapest marks left on the table are (1) stop the dead toggles from lying, (2) add basic rate limiting, and (3) replace silent `catch{}` with user-visible errors — none are features, all are "looks unfinished" risks a reviewer notices in minutes.

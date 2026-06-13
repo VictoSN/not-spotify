@@ -19,6 +19,11 @@ export const artistService = {
     return res.data
   },
 
+  async getRelated(artistId: string, limit = 8): Promise<Artist[]> {
+    const res = await api.get<Artist[]>(`/artists/${artistId}/related`, { params: { limit } })
+    return res.data
+  },
+
   async search(query: string): Promise<Artist[]> {
     const res = await api.get<{ artists: Artist[] }>('/search', { params: { q: query, type: 'artist' } })
     return res.data.artists

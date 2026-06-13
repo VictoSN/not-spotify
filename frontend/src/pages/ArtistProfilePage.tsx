@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
+import { ArtistCard } from '@/components/cards/ArtistCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { SectionHeader } from '@/components/common/SectionHeader'
@@ -25,6 +26,7 @@ export function ArtistProfilePage() {
   useDocumentTitle(artist?.name ?? null)
   const [topTracks, setTopTracks] = useState<Track[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
+  const [related, setRelated] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
   const playWithGate = usePlaybackGate()
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
@@ -41,6 +43,8 @@ export function ArtistProfilePage() {
         setLoading(false)
       },
     )
+    // Related artists load independently — never block the page on them.
+    artistService.getRelated(id, 8).then(setRelated).catch(() => setRelated([]))
   }, [id])
 
   if (loading)
@@ -119,6 +123,18 @@ export function ArtistProfilePage() {
           <HorizontalScroller>
             {albums.map((album) => (
               <AlbumCard key={album.id} album={album} />
+            ))}
+          </HorizontalScroller>
+        </section>
+      )}
+
+      {/* Fans also like */}
+      {related.length > 0 && (
+        <section className="px-6 mb-8">
+          <SectionHeader title="Fans also like" />
+          <HorizontalScroller>
+            {related.map((a) => (
+              <ArtistCard key={a.id} artist={a} />
             ))}
           </HorizontalScroller>
         </section>

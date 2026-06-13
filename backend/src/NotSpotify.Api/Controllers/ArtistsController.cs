@@ -65,6 +65,72 @@ public class ArtistsController : ControllerBase
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
 
+    /// <summary>
+    /// "Fans also like" — artists whose tracks are played by the same listeners
+    /// who play this artist, ranked by co-listen frequency, with shared-genre
+    /// artists as a fallback so the section is never empty.
+    /// </summary>
+    [HttpGet("{id:guid}/related")]
+    public async Task<ActionResult<IEnumerable<ArtistDto>>> Related(Guid id, [FromQuery] int limit = 8, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 20);
+
+        if (!await _db.Artists.AnyAsync(a => a.Id == id, ct)) return NotFound();
+
+        // Listeners of this artist's tracks.
+        var listeners = await _db.PlayHistories
+            .Where(h => h.Track.ArtistId == id)
+            .Select(h => h.UserId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        var scored = new List<Guid>();
+        if (listeners.Count > 0)
+        {
+            scored = await _db.PlayHistories
+                .Where(h => listeners.Contains(h.UserId) && h.Track.ArtistId != id)
+                .GroupBy(h => h.Track.ArtistId)
+                .OrderByDescending(g => g.Select(h => h.UserId).Distinct().Count())
+                .ThenByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
+        // Fallback / top-up with artists sharing this artist's genres.
+        if (scored.Count < limit)
+        {
+            var genreIds = await _db.TrackGenres
+                .Where(tg => tg.Track.ArtistId == id)
+                .Select(tg => tg.GenreId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var exclude = scored.Append(id).ToHashSet();
+            var byGenre = await _db.TrackGenres
+                .Where(tg => genreIds.Contains(tg.GenreId) && tg.Track.ArtistId != id)
+                .Select(tg => tg.Track.ArtistId)
+                .Where(aid => !exclude.Contains(aid))
+                .ToListAsync(ct);
+
+            // Most frequently genre-overlapping artists first.
+            var ranked = byGenre
+                .GroupBy(aid => aid)
+                .OrderByDescending(g => g.Count())
+                .Select(g => g.Key)
+                .Take(limit - scored.Count);
+            scored.AddRange(ranked);
+        }
+
+        if (scored.Count == 0) return Ok(Array.Empty<ArtistDto>());
+
+        var artists = await _db.Artists.Where(a => scored.Contains(a.Id)).ToListAsync(ct);
+        // Preserve the score order (the WHERE above loses it).
+        var byId = artists.ToDictionary(a => a.Id);
+        var ordered = scored.Where(byId.ContainsKey).Select(aid => byId[aid]);
+        return Ok(ordered.Select(a => _mapper.ToDto(a)));
+    }
+
     [HttpGet("{id:guid}/albums")]
     public async Task<ActionResult<IEnumerable<AlbumDto>>> Albums(Guid id, CancellationToken ct = default)
     {

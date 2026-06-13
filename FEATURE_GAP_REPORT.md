@@ -162,7 +162,7 @@ All eight shipped and browser-verified: search by lyrics · share fix (track URL
 6. **Smart playlists** — iTunes-style rules over genre/rating/play-count/date-added; differentiates from a plain Spotify clone (pairs with existing star ratings). Needs a rules-storage column → migration.
 7. **Crossfade + gapless** via Web Audio (also makes the EQ nearly free afterwards) → wires the dead `crossfade` toggle. Frontend-only but reworks the singleton audio engine; verify carefully.
 8. **Waveform + timed comments** — ffmpeg peaks at upload, comments pinned to timestamps; the SoundCloud signature no other team will have.
-9. **Playlist folders + pinning**; small leftovers: cover mosaic, duplicate detection.
+9. **Playlist folders + pinning**; small leftovers: ✅ cover mosaic DONE (2026-06-13), duplicate detection still open.
 10. **House ads on free tier** + Family plan via extra Stripe test prices.
 11. **PWA** — installable + offline cache of downloaded tracks; doubles as your desktop story.
 12. **Asymmetric follows + public profiles** (followers/following, top tracks this month).

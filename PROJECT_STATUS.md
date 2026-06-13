@@ -80,6 +80,21 @@ Last updated: 2026-06-12 (karaoke synced lyrics — feature complete; see sessio
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
 
+### 2026-06-13 — Account 3 — Bug fixes (lyrics nav, PiP/Edge) + cover mosaic + shortcuts help
+
+**Completed (commits a2a57cf, ca241c0, 416debe):**
+- **Bug: lyrics blocked navigation** — KaraokeView fills the main card with the route `<Outlet/>` hidden underneath, so navigating left the lyrics overlay covering the new page. Added `setKaraokeOpen` to the player store and an effect in AppShell that closes karaoke on `location.pathname` change. Verified: open lyrics → go to /charts → overlay closes, page visible, reopens fine.
+- **Bug: PiP controls dead except play/pause (Edge)** — `PictureInPicturePlayer` registered play/pause/next/prev mediaSession handlers per-track and **nulled them on every track change**, racing `audioEngine` (imported in main.tsx) which already owns the full stable set (play/pause/prev/next/seek). Edge cached the momentarily-null next/prev/seek handlers. Fix: PiP now sets **metadata only**; audioEngine is the single stable handler owner. Verified metadata still updates across skips; Edge PiP buttons need a manual confirm (can't drive native PiP from the Chromium preview).
+- **Playlist cover mosaic** — new `PlaylistCover` component: custom cover → else 2×2 mosaic of first 4 distinct album covers → else single cover → else 🎵. Skips empty cover URLs. Used in PlaylistCard + playlist header. Verified with a 5-track coverless playlist (mosaic rendered, test playlist deleted after).
+- **Keyboard shortcuts help overlay** — press `?` to toggle a cheat sheet of the player shortcuts (Escape/backdrop to close); makes the existing shortcuts discoverable. Verified open/close.
+
+**Also this session:** dev launchers ([dev.cmd](dev.cmd) double-clickable, [dev.sh](dev.sh)) + CORS widened to 5173–5176 (fixes the blank-home/login-network-error when Vite drifts to :5174). Launchers prepend dotnet + nvm4w dirs to PATH. **Restart the backend after pulling so the CORS change loads.**
+
+**Notes for next session:**
+- Remaining medium features all need a migration (notifications, smart playlists, waveform+comments) or are audio-engine reworks (crossfade) — see FEATURE_GAP_REPORT roadmap. Small no-migration leftovers: playlist duplicate detection, folders/pinning, voice search.
+
+---
+
 ### 2026-06-13 — Account 3 — Dev launcher + CORS fix + "Fans also like"
 
 **Completed (commits 936009c, e539bd1, f0a19b8, 46121a2, c25e29b9):**

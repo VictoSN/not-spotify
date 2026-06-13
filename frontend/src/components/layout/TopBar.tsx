@@ -32,6 +32,7 @@ import { meService, type RecentSearch } from '@/services/meService'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
 import { FriendPanel } from '@/components/friends/FriendPanel'
+import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
 
@@ -508,6 +509,9 @@ export function TopBar() {
         >
           {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
         </button>
+
+        {/* Voice search — only renders where the Web Speech API exists */}
+        <VoiceSearchButton onResult={(text) => { setSearchValue(text); submitSearch(text) }} />
       </div>
 
       {/* Mobile: page title area (spacer) */}

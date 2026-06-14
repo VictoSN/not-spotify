@@ -4,6 +4,7 @@ import { MusicalNoteIcon } from '@heroicons/react/24/solid'
 import { router } from '@/router'
 import { useAuthStore } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
+import { InstallPrompt } from '@/components/common/InstallPrompt'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -24,5 +25,10 @@ export default function App() {
     )
   }
 
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <InstallPrompt />
+    </>
+  )
 }

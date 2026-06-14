@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
+import { ShareIcon } from '@heroicons/react/24/outline'
 import type { Artist } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/Button'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
+import { shareLink } from '@/utils/share'
 
 export function ArtistProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -28,6 +30,7 @@ export function ArtistProfilePage() {
   const [albums, setAlbums] = useState<Album[]>([])
   const [related, setRelated] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
+  const [shareCopied, setShareCopied] = useState(false)
   const playWithGate = usePlaybackGate()
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -104,6 +107,17 @@ export function ArtistProfilePage() {
         <Button variant={isFollowing ? 'outline' : 'secondary'} onClick={toggleFollow}>
           {isFollowing ? 'Following' : 'Follow'}
         </Button>
+        <button
+          onClick={async () => {
+            const r = await shareLink(`/artist/${artist.id}`, { title: artist.name, text: `Check out ${artist.name} on not-spotify` })
+            if (r === 'copied') { setShareCopied(true); setTimeout(() => setShareCopied(false), 1500) }
+          }}
+          title="Share this artist"
+          className="flex items-center gap-2 text-sm font-semibold text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
+        >
+          <ShareIcon className="w-5 h-5" />
+          {shareCopied ? 'Link copied' : 'Share'}
+        </button>
       </div>
 
       {/* Popular tracks */}

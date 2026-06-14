@@ -16,6 +16,7 @@ import {
   UserPlusIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
+  ShareIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playlist'
@@ -41,6 +42,7 @@ import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
+import { shareLink } from '@/utils/share'
 import { cn } from '@/utils/cn'
 
 type TrackSort = 'custom' | 'title' | 'artist' | 'album' | 'duration' | 'added'
@@ -97,6 +99,7 @@ export function PlaylistDetailPage() {
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
+  const [shareCopied, setShareCopied] = useState(false)
   const playWithGate = usePlaybackGate()
   const isMobile = useIsMobile()
   const { isAuthenticated, user } = useAuthStore()
@@ -529,6 +532,19 @@ export function PlaylistDetailPage() {
             Export
           </button>
         )}
+
+        {/* Share — free for everyone */}
+        <button
+          onClick={async () => {
+            const r = await shareLink(`/playlist/${playlist.id}`, { title: playlist.name, text: `Check out ${playlist.name} on not-spotify` })
+            if (r === 'copied') { setShareCopied(true); setTimeout(() => setShareCopied(false), 1500) }
+          }}
+          title="Share this playlist"
+          className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+        >
+          <ShareIcon className="w-5 h-5" />
+          {shareCopied ? 'Link copied' : 'Share'}
+        </button>
       </div>
 
       {playlist.isOwner && editOpen && (

@@ -28,6 +28,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { trackService } from '@/services/trackService'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
+import { shareLink } from '@/utils/share'
+import { notify } from '@/utils/toast'
 
 interface TrackRowMenuProps {
   track: Track
@@ -169,41 +171,42 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const handleAddToPlaylist = async (playlistId: string) => {
     try {
       await addTrackToPlaylist(playlistId, track)
-    } catch {
-      // ignore duplicate / network blips
+      notify.success('Added to playlist')
+    } catch (error) {
+      // The backend returns 409 when the track is already in the playlist.
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 409) notify.info('Already in this playlist')
+      else notify.error("Couldn't add to playlist")
     }
   }
 
   const handleRemoveFromPlaylist = async (playlistId: string) => {
     try {
       await removeTrackFromPlaylist(playlistId, track.id)
+      notify.success('Removed from playlist')
     } catch {
-      // ignore network blips
+      notify.error("Couldn't remove from playlist")
     }
   }
 
   const handleNewPlaylist = async () => {
-    const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`, undefined, true)
-    await addTrackToPlaylist(playlist.id, track)
-    navigate(`/playlist/${playlist.id}`)
+    try {
+      const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`, undefined, true)
+      await addTrackToPlaylist(playlist.id, track)
+      navigate(`/playlist/${playlist.id}`)
+    } catch {
+      notify.error("Couldn't create playlist")
+    }
   }
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/track/${track.id}`
-    // Native share sheet where available (mobile), clipboard otherwise.
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: track.title, text: `${track.title} · ${track.artist.name}`, url })
-        return
-      } catch {
-        /* cancelled or unsupported — fall through to clipboard */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url)
-    } catch {
-      /* ignore — clipboard may be unavailable */
-    }
+    const result = await shareLink(`/track/${track.id}`, {
+      title: track.title,
+      text: `${track.title} · ${track.artist.name}`,
+    })
+    if (result === 'copied') notify.success('Link copied to clipboard')
+    else if (result === 'failed') notify.error("Couldn't copy link")
+    // 'shared' → the native share sheet already gave feedback.
   }
 
   // Stops the row's onClick (which would otherwise play the track) from firing
@@ -597,19 +600,14 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                   ) : (
                     <ArrowDownCircleIcon className="w-4 h-4" />
                   )}
-                  <span className="flex flex-col">
-                    <span>
-                      {offline.busy
-                        ? offline.saved
-                          ? 'Removing…'
-                          : 'Downloading…'
-                        : offline.saved
-                          ? 'Downloaded — remove'
-                          : 'Save for offline'}
-                    </span>
-                    {offline.error && (
-                      <span className="text-[10px] text-red-400">{offline.error}</span>
-                    )}
+                  <span>
+                    {offline.busy
+                      ? offline.saved
+                        ? 'Removing…'
+                        : 'Downloading…'
+                      : offline.saved
+                        ? 'Downloaded — remove'
+                        : 'Save for offline'}
                   </span>
                 </button>
               </MenuItem>

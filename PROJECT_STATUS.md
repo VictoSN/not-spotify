@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (Offline audio playback — save-for-offline downloads)
+Last updated: 2026-06-14 (Tier 1 hardening — dead toggles hidden + global toasts)
 
 > **Companion docs:** [README.md](README.md) (setup) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs competitors + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture).
 
@@ -18,6 +18,7 @@ Last updated: 2026-06-14 (Offline audio playback — save-for-offline downloads)
 - **Lyrics:** non-AI transcription (LRCLIB → Lyrics.ovh); karaoke synced lyrics.
 - **Artist/admin:** artist dashboard (albums/tracks CRUD, reorder, edit, resubmit, profile, verified badge, auto-lyrics, charts); artist application → admin review; admin dashboard/CRUD/approval queue/audit/revoke; dedicated `/adminlogin` guard.
 - **Platform:** **PWA** ✅ — installable (manifest + maskable icons), offline app shell + asset cache via service worker, in-app install prompt. **Offline audio** ✅ — premium "Save for offline" caches full tracks; SW serves them Range-aware (seeking works offline) at `/_offline-audio`; managed in Settings → Offline downloads.
+- **Hardening/polish:** dead settings toggles (`language`, `quality`, `normalize`, `crossfade`) now **disabled with a "Coming soon" badge** instead of lying; global **toast** system (sonner, theme-aware) surfacing previously-silent failures (share, add/remove-playlist, offline save/remove).
 
 ---
 
@@ -28,9 +29,14 @@ Last updated: 2026-06-14 (Offline audio playback — save-for-offline downloads)
 - [ ] **Waveform + timed comments** — ffmpeg peaks at upload + timestamp-pinned comments (SoundCloud signature).
 - [ ] **Asymmetric follows + public profiles** — one-way follows, follower/following counts, public "top tracks".
 
+**Tier 1 hardening — remaining (do before any Tier 3; mostly backend, needs the backend running to verify):**
+- [ ] **Rate limiting** on `/auth/*` + chat-send (ASP.NET `AddRateLimiter`, fixed-window). *Backend — can't runtime-verify without booting the backend (auto-migrates shared DB).*
+- [ ] **`ConfirmDialog`** to replace native `confirm()` on admin destructive actions. *Touches Account 2 admin pages — coordinate.*
+- [ ] **Unify single-track download** with the album/playlist ZIP server path (currently diverging). *Backend.*
+- [ ] A11y pass (icon-button aria-labels, modal focus traps/Esc) + dedicated **Queue/Up-next** view (data already in player store). *Frontend.*
+
 **No migration (frontend / query only):**
-- [ ] **Crossfade + gapless** (Web Audio) — wires the dead `crossfade` toggle; unlocks EQ. *Audio-engine rework; verify audibly.*
-- [ ] Wire remaining **dead settings toggles**: `crossfade`, `normalize`, `quality`.
+- [ ] **Crossfade + gapless** (Web Audio) — would wire the now-disabled `crossfade` toggle; unlocks EQ. *Audio-engine rework; verify audibly.*
 - [ ] **Account 2 — Admin restructure:** dedicated sidebar/topbar admin-panel layout (the `/adminlogin` guard is ✅; layout shell migration still open).
 
 **Stretch:** [ ] Desktop wrapper (Tauri) — now nearly free on top of the PWA.
@@ -41,7 +47,7 @@ Last updated: 2026-06-14 (Offline audio playback — save-for-offline downloads)
 - **Audio:** Equalizer (Web Audio); volume normalization (wires `normalize`); PiP FF/rewind (needs seekable PiP rendering).
 - **Discovery:** Discover Weekly (collaborative filtering over PlayHistories); editorial/featured playlists; mood/activity tagging.
 - **Social:** share-to-chat rich cards.
-- **Platform:** embeddable iframe mini-player; hardening (rate-limit auth/chat, global error toast, thin test suite).
+- **Platform:** embeddable iframe mini-player; hardening (rate-limit auth/chat, thin test suite).
 - **Large subsystems (each its own session + migration; designed in gap report §6):** RBAC (master admin + roles); location-based discovery ("Popular in <country>"); ads engine (inventory/cadence/scheduling/targeting); podcasts + music videos.
 
 ## ❌ NOT REALISTIC (no-paid-services constraint)
@@ -56,7 +62,13 @@ None open — bugs 1–11 all fixed (see git history). **Known minor cosmetic is
 
 ## 📝 SESSION LOG (most recent on top; keep ≤2 entries + summary)
 
-**Previous sessions summary (through 2026-06-14):** Built out the full feature set above across 3 Pro accounts. Highlights: lyrics pipeline + karaoke synced lyrics; dynamic cover-art theming + friend activity feed; 12+ quick-wins (sleep timer, speed, play-next, shortcuts, charts, lyrics search, library/track sorting, JSON export/import); listening stats, song radio, daily mixes, "fans also like", voice search; dedicated `/adminlogin` + guard; pro dashboards (AreaChart); notifications center (`AddNotifications` migration — applied to shared DB); backlog burndown (share, admin-decision notifications, Blend); **Listen-along/Jam** (`SessionHub` at `/hubs/session` — host broadcasts playback, guests mirror w/ drift+latency correction; verified via two raw SignalR connections). Fixed bugs 1–11 (downloads, album/track delete, chat badge, artist-dashboard nesting, lyrics-nav overlay, PiP/Edge handlers, voice-search punctuation). **Migration lesson:** never pass `--no-build` to `ef migrations add/remove`; hubs read the in-memory access token so sockets 401 after the 15-min token lifetime until an API call refreshes. Inert test accounts remain in the shared DB (`notify-test*@example.com`, `fable-test@example.com`, all `Password123!`); a standing alex↔testing2 friendship was left for blend testing.
+**Previous sessions summary (through 2026-06-14):** Built out the full feature set above across 3 Pro accounts. Highlights: lyrics pipeline + karaoke synced lyrics; dynamic cover-art theming + friend activity feed; 12+ quick-wins (sleep timer, speed, play-next, shortcuts, charts, lyrics search, library/track sorting, JSON export/import); listening stats, song radio, daily mixes, "fans also like", voice search; dedicated `/adminlogin` + guard; pro dashboards (AreaChart); notifications center (`AddNotifications` migration — applied to shared DB); backlog burndown (share, admin-decision notifications, Blend); **Listen-along/Jam** (`SessionHub` at `/hubs/session`); **PWA** (installable manifest + maskable icons, offline app-shell SW, PROD-only registration, install prompt; icons generated by `scripts/generate-icons.mjs`). Fixed bugs 1–11. **Migration lesson:** never pass `--no-build` to `ef migrations add/remove`; hubs read the in-memory access token so sockets 401 after the 15-min token lifetime until an API call refreshes. **Verify PWA/offline via `npm run build` + `vite preview` (`frontend-preview` launch config), not `npm run dev` (SW is PROD-gated).** Inert test accounts remain in the shared DB (`notify-test*@example.com`, `fable-test@example.com`, all `Password123!`); a standing alex↔testing2 friendship was left for blend testing.
+
+### 2026-06-14 — Account 3 — Tier 1 hardening (dead toggles + toasts)
+**Completed (this session) — frontend-only, no migration:**
+- **Dead settings toggles hidden honestly.** `language`, `streamingQuality`, `normalizeVolume`, `crossfade` in `SettingsPage` were live switches wired to nothing — now rendered **disabled with a "Coming soon" badge** (new `Switch`/`Select` `disabled` support + `ComingSoon` pill + `Row` `badge` slot). Live prefs (compact library, autoplay, now-playing, theme) untouched. Addresses gap report §5.1 / Tier 1 #1.
+- **Global toast system** (Tier 1 #5 / §5.2). Wired `sonner` (already a dep, previously unused): theme-aware `AppToaster` mounted in `App.tsx` (bottom-center, above the player bar) + `utils/toast.ts` `notify` wrapper. Converted previously-**silent** user-facing failures to toasts: track-menu **share** (was a silent clipboard copy → "Link copied"), **add/remove-playlist** (success / "Already in this playlist" on 409 / error), **offline save/remove** (replaced the inline error with success+error toasts).
+- **Verified** on the dev server via a **temporary** `/dev/settings` harness (added, screenshotted, then **removed** — confirmed no leftover refs): 4 "Coming soon" badges + 4 disabled controls render correctly while live toggles stay interactive; a fired toast renders with correct text/theme. Production build + eslint clean on all touched files; PROD `vite preview` shows the toast outlet mounts with no console errors.
 
 ### 2026-06-14 — Account 3 — Offline audio playback (save-for-offline)
 **Completed (this session) — frontend-only, no migration:**
@@ -65,13 +77,6 @@ None open — bugs 1–11 all fixed (see git history). **Known minor cosmetic is
 - **Verified** against a production build + `vite preview`: SW Range reconstruction is **byte-exact** — full request → 200 w/ `Accept-Ranges`; `bytes=100-199` → 206 `Content-Range: bytes 100-199/1000` w/ exact bytes; open-ended `bytes=990-` → last 10 bytes; unsaved id → 404; normal assets still 200; app renders; no console errors. tsc + eslint clean on touched files.
 - **Not verifiable here / next:** the full "save a real track → go offline → play" round-trip needs a logged-in **premium** session + real audio + the media host allowing **CORS** on the save fetch (Supabase public bucket / backend static). The backend wasn't started (it auto-migrates the shared DB on boot). If saves fail in practice, check CORS on the audio host first.
 
-### 2026-06-14 — Account 3 — PWA (installable + offline shell)
-**Completed (this session):**
-- **PWA, frontend-only, no migration.** New `public/manifest.webmanifest` (standalone, theme `#000000`, 192/512 + maskable icons, 3 app shortcuts) linked from `index.html` with theme-color + apple-touch-icon meta. New `public/sw.js` service worker: precaches the app shell, network-first navigations with offline fallback to the cached shell, stale-while-revalidate for same-origin assets + cover art. Registered via `src/utils/registerSW.ts` (**PROD-only** — never in dev, so Vite HMR is untouched). Dismissible in-app `InstallPrompt` (`beforeinstallprompt`) mounted in `App.tsx`.
-- **Icons generated from scratch** (no image libs): `scripts/generate-icons.mjs` rasterizes the brand beamed-eighth-note and PNG-encodes via zlib → `public/icons/{icon-192,icon-512,icon-maskable-512}.png`. Re-run if brand colors change.
-- **Verified** against a production build + `vite preview` (`frontend-preview` launch config) in-browser: manifest parses (standalone, 3 icons, 3 shortcuts), SW **activated & controlling**, shell cache holds all 6 precache URLs + `/index.html` (offline shell available), asset cache populated with hashed JS/CSS, icons serve `image/png` 200, no console errors.
-- **Scoped out (logged in NEXT UP):** true offline *audio* playback — audio uses HTTP Range, whose 206 partials break seeking if naively cached; needs a dedicated "save for offline" full-file store. The SW deliberately skips audio + API.
-
-**Notes for next session:** PWA + offline downloads are installable/working on Chromium over https/localhost; Safari/Firefox get the manifest but no `beforeinstallprompt` (expected). Verify PWA/offline via `npm run build` + `vite preview` (the `frontend-preview` launch config), **not** `npm run dev` (the SW is PROD-gated). Next no-migration feature is crossfade/gapless (audio-engine rework, verify audibly — can't be checked in this headless harness); the migration features (smart playlists, waveform-comments, asymmetric follows) need shared-DB coordination.
+**Notes for next session:** Remaining **Tier 1 hardening** is mostly backend (rate limiting, unify download path) or Account 2 scope (`ConfirmDialog` in admin) — needs the backend running to verify, which I avoided (it auto-migrates the shared DB on boot). Finish Tier 1 before any Tier 3. The toast system (`utils/toast.ts` `notify`) is now available to surface any remaining silent `catch {}` blocks across stores/pages. Next no-migration feature is crossfade/gapless (audio-engine rework, verify audibly — can't be checked headless).
 
 <!-- New entries go above this line -->

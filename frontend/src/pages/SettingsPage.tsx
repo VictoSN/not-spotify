@@ -28,17 +28,29 @@ function usePref<T>(key: string, initial: T): [T, (v: T) => void] {
   return [value, set]
 }
 
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
         'relative h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-page',
         checked ? 'border-accent bg-accent' : 'border-secondary/20 bg-elevated',
+        disabled && 'cursor-not-allowed opacity-50',
       )}
     >
       <span
@@ -51,23 +63,38 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   )
 }
 
+/** Small pill marking a control that exists in the UI but isn't wired yet. */
+function ComingSoon() {
+  return (
+    <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary">
+      Coming soon
+    </span>
+  )
+}
+
 function Select({
   value,
   onChange,
   options,
   label,
+  disabled,
 }: {
   value: string
   onChange: (v: string) => void
   options: { value: string; label: string }[]
   label: string
+  disabled?: boolean
 }) {
   return (
     <select
       aria-label={label}
       value={value}
+      disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      className="shrink-0 rounded-md border border-secondary/20 bg-elevated px-3 py-2 text-sm font-medium text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
+      className={cn(
+        'shrink-0 rounded-md border border-secondary/20 bg-elevated px-3 py-2 text-sm font-medium text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent',
+        disabled && 'cursor-not-allowed opacity-50 hover:border-secondary/20',
+      )}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
@@ -91,15 +118,20 @@ function Row({
   label,
   sub,
   control,
+  badge,
 }: {
   label: string
   sub?: string
   control: React.ReactNode
+  badge?: React.ReactNode
 }) {
   return (
     <div className="flex items-center justify-between gap-6 py-3.5">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-primary">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-primary">{label}</p>
+          {badge}
+        </div>
         {sub && <p className="mt-0.5 text-xs text-secondary">{sub}</p>}
       </div>
       <div className="shrink-0">{control}</div>
@@ -112,12 +144,17 @@ export function SettingsPage() {
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const toggleNowPlaying = usePlayerStore((s) => s.toggleNowPlaying)
 
-  const [language, setLanguage] = usePref('ns-pref-language', 'en')
-  const [streamingQuality, setStreamingQuality] = usePref('ns-pref-quality', 'auto')
-  const [normalizeVolume, setNormalizeVolume] = usePref('ns-pref-normalize', false)
+  // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
   const [autoplay, setAutoplay] = usePref('ns-pref-autoplay', true)
-  const [crossfade, setCrossfade] = usePref('ns-pref-crossfade', false)
+  // Not yet wired to anything — shown disabled with a "Coming soon" badge rather
+  // than as live switches that silently do nothing. (crossfade is the Tier 2
+  // audio-engine task; quality/normalize need backend transcoding/loudness.)
+  const [language] = usePref('ns-pref-language', 'en')
+  const [streamingQuality] = usePref('ns-pref-quality', 'auto')
+  const [normalizeVolume] = usePref('ns-pref-normalize', false)
+  const [crossfade] = usePref('ns-pref-crossfade', false)
+  const noop = () => {}
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-6">
@@ -163,12 +200,14 @@ export function SettingsPage() {
       <Section title="Language">
         <Row
           label="Choose language"
-          sub="Changes will be applied after restarting the app"
+          sub="Additional languages aren't available yet"
+          badge={<ComingSoon />}
           control={
             <Select
               label="Language"
               value={language}
-              onChange={setLanguage}
+              onChange={noop}
+              disabled
               options={[
                 { value: 'en', label: 'English (English)' },
                 { value: 'es', label: 'Español (Spanish)' },
@@ -184,11 +223,14 @@ export function SettingsPage() {
       <Section title="Audio quality">
         <Row
           label="Streaming quality"
+          sub="Adaptive bitrate isn't available yet"
+          badge={<ComingSoon />}
           control={
             <Select
               label="Streaming quality"
               value={streamingQuality}
-              onChange={setStreamingQuality}
+              onChange={noop}
+              disabled
               options={[
                 { value: 'auto', label: 'Automatic' },
                 { value: 'low', label: 'Low' },
@@ -202,7 +244,8 @@ export function SettingsPage() {
         <Row
           label="Normalize volume"
           sub="Set the same volume level for all songs and podcasts"
-          control={<Switch label="Normalize volume" checked={normalizeVolume} onChange={setNormalizeVolume} />}
+          badge={<ComingSoon />}
+          control={<Switch label="Normalize volume" checked={normalizeVolume} onChange={noop} disabled />}
         />
       </Section>
 
@@ -236,7 +279,8 @@ export function SettingsPage() {
         <Row
           label="Crossfade songs"
           sub="Allow you to crossfade between songs"
-          control={<Switch label="Crossfade songs" checked={crossfade} onChange={setCrossfade} />}
+          badge={<ComingSoon />}
+          control={<Switch label="Crossfade songs" checked={crossfade} onChange={noop} disabled />}
         />
       </Section>
 

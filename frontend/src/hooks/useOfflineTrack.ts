@@ -7,6 +7,7 @@ import {
   removeTrackOffline,
   saveTrackOffline,
 } from '@/services/offlineAudio'
+import { notify } from '@/utils/toast'
 
 /**
  * Tracks whether a single track is saved for offline and exposes a toggle.
@@ -16,7 +17,6 @@ export function useOfflineTrack(track: Track) {
   const supported = isOfflineSupported()
   const [saved, setSaved] = useState(() => isTrackSaved(track.id))
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const sync = () => setSaved(isTrackSaved(track.id))
@@ -27,16 +27,20 @@ export function useOfflineTrack(track: Track) {
 
   const toggle = useCallback(async () => {
     setBusy(true)
-    setError(null)
     try {
-      if (isTrackSaved(track.id)) await removeTrackOffline(track.id)
-      else await saveTrackOffline(track)
+      if (isTrackSaved(track.id)) {
+        await removeTrackOffline(track.id)
+        notify.success('Removed download')
+      } else {
+        await saveTrackOffline(track)
+        notify.success(`Saved “${track.title}” for offline`)
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not update offline download.')
+      notify.error(e instanceof Error ? e.message : 'Could not update offline download.')
     } finally {
       setBusy(false)
     }
   }, [track])
 
-  return { supported, saved, busy, error, toggle }
+  return { supported, saved, busy, toggle }
 }

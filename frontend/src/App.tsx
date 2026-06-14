@@ -5,6 +5,7 @@ import { router } from '@/router'
 import { useAuthStore } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
+import { AppToaster } from '@/components/ui/AppToaster'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -29,6 +30,7 @@ export default function App() {
     <>
       <RouterProvider router={router} />
       <InstallPrompt />
+      <AppToaster />
     </>
   )
 }

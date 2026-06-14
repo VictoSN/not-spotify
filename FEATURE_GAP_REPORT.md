@@ -168,7 +168,7 @@ All eight shipped and browser-verified: search by lyrics · share fix (track URL
 12. **Asymmetric follows + public profiles** (followers/following, top tracks this month).
 
 ### Stretch goals
-- **Listen-along / Jam — a.k.a. "play together"** (already on your roadmap) — host plays, friends join a session and hear the same track in sync via a SignalR room + host clock sync + drift correction. High effort, very high demo value; no migration (SignalR already in the stack). **Top pick when ready to build the showcase feature.**
+- ✅ **Listen-along / Jam — a.k.a. "play together"** — DONE 2026-06-14 (commits afcdfe5, a8c6ce1). `SessionHub` relay; host broadcasts playback, guests mirror in sync with drift/latency correction. Player-bar host toggle + JamBar banner + "Listen along" on a friend's profile. Verified via two SignalR connections.
 - ✅ **Daily mixes** — DONE (2026-06-13). Genre-based mixes from 90-day history (`GET /tracks/daily-mixes`), "Made for you" home row. (Not full collaborative filtering, but the genre approach demos well.)
 - ✅ **Voice search** — DONE (2026-06-13). Mic button in the top bar via the Web Speech API (Chrome/Edge); no-ops on browsers without it.
 - **Desktop wrapper** (Tauri) — roadmap item; PWA first makes it nearly free.

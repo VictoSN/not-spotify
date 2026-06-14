@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (backlog burndown: share buttons, admin-decision notifications, Blend)
+Last updated: 2026-06-14 (Listen-along / Jam "play together" — the showcase feature)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -79,7 +79,7 @@ Ordered by value; see [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §3 for ful
 - [ ] Wire remaining **dead settings toggles**: `crossfade`, `normalize`, `quality` (note: `autoplay` ✅ and `compact` ✅ are now wired).
 
 **Stretch / centerpiece:**
-- [ ] **Listen-along / Jam** — SignalR room + host clock sync. High effort, high demo value.
+- [x] ✅ **Listen-along / Jam ("play together")** — DONE 2026-06-14 (commits afcdfe5 backend, a8c6ce1 frontend). `SessionHub` relay at `/hubs/session`; host broadcasts player state, guests mirror with drift/latency correction; JamBar banner + player-bar host toggle + "Listen along" on a friend's profile. Verified: two-connection relay (participants=2, guest got host's track/position), app host flow.
 - [ ] **Desktop wrapper** (Tauri).
 
 **Other in-flight tracks:**
@@ -91,7 +91,7 @@ Ordered by value; see [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §3 for ful
 Single consolidated list of everything recommended but not yet built, so nothing gets lost. Each is free (no paid APIs/licensing) unless noted. ⭐ = high demo value.
 
 **Social / "together" (the showcase ideas):**
-- [ ] ⭐ **Play together / Listen-along ("Jam")** — a host plays, friends join a session and hear the same track in sync. SignalR is already in the stack (powers presence + chat); needs a session room + host playback broadcast + drift correction + join/leave UI. High effort, highest demo value. *No migration.* (gap report §3 stretch)
+- [x] ⭐ **Play together / Listen-along ("Jam")** — DONE 2026-06-14 (commits afcdfe5, a8c6ce1). Host broadcasts playback over `/hubs/session`; guests mirror in sync (drift + latency corrected). Player-bar host toggle, JamBar banner, "Listen along" on a friend's profile.
 - [x] ✅ **Blend playlist** — DONE 2026-06-14 (commit f97eaa2). `GET /friends/{userId}/blend` mixes both friends' top tracks; "Blend with <name>" button on a friend's profile.
 - [ ] **Asymmetric follows + public profiles** — follow users one-way (beyond mutual friendship), followers/following counts, public "top tracks this month". *Migration.*
 - [ ] **Share to chat** — send a track/playlist as a rich card into an existing chat thread. *Low.*
@@ -154,6 +154,13 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-14 — Account 3 — Listen-along / Jam ("play together") — the showcase
+
+**Completed (commits afcdfe5 backend, a8c6ce1 frontend):**
+- **Listen-along / Jam.** New `SessionHub` (`/hubs/session`) — in-memory relay: host `StartSession` opens a `jam-{hostId}` group, guests `JoinSession`, host `Sync` relays full playback state (track + positionMs + isPlaying + timestamp) to others, plus participant-count + `JamEnded`/`JamJoined` events and disconnect cleanup. Frontend: `jamStore` + `useJamSocket` (host broadcasts on change + every 2s; guest mirrors with drift>1.5s + latency correction; re-registers on reconnect), `JamBar` banner (host: participants + copy-invite; guest: "Listening with <host>"), a host toggle in the player bar, and a "Listen along" button on a friend's profile.
+- **Verified:** two raw SignalR connections proved the relay end-to-end — host `Sync` → guest `JamSync` with the exact track/position, `participants=2`, no false `JamEnded`. App host flow verified (role=host, JamBar shows, participant round-trip = 1). Two-app-tab sync couldn't be driven in the single-browser harness, but both halves are independently verified.
+- **No migration** (SignalR relay only). **Known caveat:** SignalR `accessTokenFactory` reads the in-memory access token, so in a tab left open past the 15-min access-token lifetime the jam/presence sockets 401 until an API call refreshes — a pre-existing limitation of all hubs, not Jam-specific.
 
 ### 2026-06-14 — Account 3 — Backlog burndown: share, admin notifications, blend
 

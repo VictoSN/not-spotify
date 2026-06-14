@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { CameraIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
@@ -8,26 +9,23 @@ import { useAuthStore } from '@/stores/authStore'
 export function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-md rounded-lg bg-surface p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1 text-secondary transition-colors hover:bg-elevated hover:text-primary"
-          aria-label="Close"
-        >
-          <XMarkIcon className="h-5 w-5" />
-        </button>
-        <h2 className="mb-5 text-2xl font-bold text-primary">Profile details</h2>
-        {/* Mounted fresh while open, so fields initialise from the current user. */}
-        <EditProfileForm onClose={onClose} />
+    <Dialog open={open} onClose={onClose} className="relative z-50">
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" aria-hidden="true" />
+      <div className="fixed inset-0 flex items-center justify-center px-4">
+        <DialogPanel className="relative w-full max-w-md rounded-lg bg-surface p-6 shadow-2xl">
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-full p-1 text-secondary transition-colors hover:bg-elevated hover:text-primary"
+            aria-label="Close"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+          <DialogTitle className="mb-5 text-2xl font-bold text-primary">Profile details</DialogTitle>
+          {/* Mounted fresh while open, so fields initialise from the current user. */}
+          <EditProfileForm onClose={onClose} />
+        </DialogPanel>
       </div>
-    </div>
+    </Dialog>
   )
 }
 

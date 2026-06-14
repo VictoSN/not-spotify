@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { XMarkIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 
@@ -12,16 +13,21 @@ export function AuthPromptModal() {
 
   useEffect(() => {
     if (isOpen) {
-      setRendered(true)
-      const frame = window.requestAnimationFrame(() => setClosing(false))
+      const frame = window.requestAnimationFrame(() => {
+        setRendered(true)
+        setClosing(false)
+      })
       return () => window.cancelAnimationFrame(frame)
     }
 
     if (!rendered) return undefined
 
-    setClosing(true)
+    const frame = window.requestAnimationFrame(() => setClosing(true))
     const timeout = window.setTimeout(() => setRendered(false), EXIT_MS)
-    return () => window.clearTimeout(timeout)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.clearTimeout(timeout)
+    }
   }, [isOpen, rendered])
 
   const requestClose = () => {
@@ -33,15 +39,14 @@ export function AuthPromptModal() {
   if (!rendered) return null
 
   return (
-    <div
+    <Dialog
+      open={rendered}
+      onClose={requestClose}
       className={`fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm ${
         closing ? 'animate-auth-overlay-out' : 'animate-auth-overlay-in'
       }`}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="auth-prompt-title"
     >
-      <div
+      <DialogPanel
         className={`relative grid w-full max-w-3xl grid-cols-1 gap-8 rounded-lg bg-gradient-to-b from-elevated to-surface p-8 shadow-2xl sm:grid-cols-[minmax(220px,300px)_1fr] sm:p-10 ${
           closing ? 'animate-auth-card-out' : 'animate-auth-card-in'
         }`}
@@ -69,9 +74,9 @@ export function AuthPromptModal() {
         </div>
 
         <div className="flex flex-col justify-center text-center sm:text-left">
-          <h2 id="auth-prompt-title" className="pr-8 text-3xl font-bold leading-tight text-primary sm:pr-0">
+          <DialogTitle className="pr-8 text-3xl font-bold leading-tight text-primary sm:pr-0">
             {title}
-          </h2>
+          </DialogTitle>
           <div className="mt-8 flex flex-col items-center gap-4 sm:items-start">
             <Link
               to="/signup"
@@ -91,7 +96,7 @@ export function AuthPromptModal() {
             </Link>
           </p>
         </div>
-      </div>
-    </div>
+      </DialogPanel>
+    </Dialog>
   )
 }

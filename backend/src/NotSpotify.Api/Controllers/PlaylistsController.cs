@@ -21,12 +21,14 @@ public class PlaylistsController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly IStorageService _storage;
     private readonly AudioDownloadService _audioDownloads;
 
-    public PlaylistsController(AppDbContext db, MediaMapper mapper, AudioDownloadService audioDownloads)
+    public PlaylistsController(AppDbContext db, MediaMapper mapper, IStorageService storage, AudioDownloadService audioDownloads)
     {
         _db = db;
         _mapper = mapper;
+        _storage = storage;
         _audioDownloads = audioDownloads;
     }
 

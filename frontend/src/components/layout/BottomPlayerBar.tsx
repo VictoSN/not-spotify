@@ -1,5 +1,6 @@
 ﻿import { QueueListIcon, MicrophoneIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+import { Link, useLocation } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
@@ -21,11 +22,13 @@ function PipIcon({ className }: { className?: string }) {
 }
 
 export function BottomPlayerBar() {
-  const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
+  const { toggleNowPlaying, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
   const jamRole = useJamStore((s) => s.role)
   const startHosting = useJamStore((s) => s.startHosting)
   const stopJam = useJamStore((s) => s.stopJam)
   const isMobile = useIsMobile()
+  const location = useLocation()
+  const queueOpen = location.pathname === '/queue'
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
@@ -122,14 +125,15 @@ export function BottomPlayerBar() {
             <PipIcon className="w-5 h-5" />
           </button>
         )}
-        <button
-          onClick={toggleNowPlaying}
-          className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${isNowPlayingOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-          aria-label="Toggle now playing panel"
-          aria-pressed={isNowPlayingOpen}
+        <Link
+          to="/queue"
+          className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+          aria-label="Open queue"
+          aria-current={queueOpen ? 'page' : undefined}
+          title="Queue"
         >
           <QueueListIcon className="w-5 h-5" />
-        </button>
+        </Link>
       </div>
     </div>
   )

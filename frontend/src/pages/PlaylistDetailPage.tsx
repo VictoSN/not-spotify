@@ -137,18 +137,25 @@ export function PlaylistDetailPage() {
       .finally(() => setLoading(false))
     // Fetch collaborators in parallel (silently ignore if endpoint not yet live).
     collaboratorService.list(id).then(setCollaborators).catch(() => {})
-  }, [id])
+  }, [id, syncPlaylistTracks])
 
   // Keep local playlist state in sync with the store so that add/remove operations
   // triggered from TrackRowMenu (which write to the store) are reflected immediately.
   useEffect(() => {
-    if (!playlist) return
-    const storePlaylist = savedPlaylists.find((p) => p.id === playlist.id)
+    const playlistId = playlist?.id
+    if (!playlistId) return
+    const storePlaylist = savedPlaylists.find((p) => p.id === playlistId)
     // Store entries are summaries until syncPlaylistTracks runs — mirroring an
     // unsynced entry would wipe local tracks to undefined and crash the memos.
     if (!storePlaylist?.tracks) return
-    setPlaylist((prev) => prev ? { ...prev, tracks: storePlaylist.tracks, totalDurationMs: storePlaylist.totalDurationMs } : prev)
-  }, [savedPlaylists])
+    window.queueMicrotask(() => {
+      setPlaylist((prev) =>
+        prev?.id === playlistId
+          ? { ...prev, tracks: storePlaylist.tracks, totalDurationMs: storePlaylist.totalDurationMs }
+          : prev,
+      )
+    })
+  }, [savedPlaylists, playlist?.id])
 
   // Fetch recommendations once the playlist (and its tracks/genres) are loaded — they
   // refresh after every add so newly-added tracks drop off the list.
@@ -162,8 +169,8 @@ export function PlaylistDetailPage() {
     if (!playlist?.isOwner && !playlist?.isCollaborator) return
     const q = debouncedQuery.trim()
     if (!q) {
-      setSearchResults([])
-      return
+      const frame = window.requestAnimationFrame(() => setSearchResults([]))
+      return () => window.cancelAnimationFrame(frame)
     }
     let cancelled = false
     trackService.search(q).then((tracks) => {
@@ -399,6 +406,7 @@ export function PlaylistDetailPage() {
         <button
           onClick={toggleShuffle}
           title={shuffleEnabled ? 'Shuffle on' : 'Shuffle off'}
+          aria-label={shuffleEnabled ? 'Turn shuffle off' : 'Turn shuffle on'}
           aria-pressed={shuffleEnabled}
           className={cn(
             'relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95',

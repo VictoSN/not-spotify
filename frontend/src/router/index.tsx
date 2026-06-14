@@ -41,6 +41,7 @@ import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
+import { QueuePage } from '@/pages/QueuePage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 
 export const router = createBrowserRouter([
@@ -80,6 +81,7 @@ export const router = createBrowserRouter([
           { path: 'new-releases', element: <NewReleasesPage /> },
           { path: 'user/:userId', element: <UserProfilePage /> },
           { path: 'track/:id', element: <TrackDetailPage /> },
+          { path: 'queue', element: <QueuePage /> },
           {
             element: <ProtectedRoute />,
             children: [

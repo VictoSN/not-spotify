@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   HomeIcon,
   MagnifyingGlassIcon,
+  QueueListIcon,
   RectangleStackIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Home', Icon: HomeIcon, IconActive: HomeSolid, exact: true },
   { to: '/search', label: 'Search', Icon: MagnifyingGlassIcon, IconActive: SearchSolid },
   { to: '/library', label: 'Library', Icon: RectangleStackIcon, IconActive: LibSolid },
+  { to: '/queue', label: 'Queue', Icon: QueueListIcon, IconActive: QueueListIcon },
 ]
 
 export function MobileNav() {

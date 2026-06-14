@@ -25,6 +25,15 @@ export interface ListeningStats {
   byDay: { date: string; count: number }[]
 }
 
+export interface ArtistStats {
+  days: number
+  totalPlays: number
+  playsInWindow: number
+  followerCount: number
+  byDay: { date: string; count: number }[]
+  topTracks: { track: Track; playCount: number }[]
+}
+
 export interface UpdateProfilePayload {
   name?: string
   email?: string
@@ -58,6 +67,11 @@ export const meService = {
 
   async getStats(days = 30): Promise<ListeningStats> {
     const res = await api.get<ListeningStats>('/me/stats', { params: { days } })
+    return res.data
+  },
+
+  async getArtistStats(days = 14): Promise<ArtistStats> {
+    const res = await api.get<ArtistStats>('/me/artist-stats', { params: { days } })
     return res.data
   },
 

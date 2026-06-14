@@ -13,6 +13,12 @@ import {
 } from '@heroicons/react/24/outline'
 import { adminService, type AdminDashboardStats, type AdminTrendPoint } from '@/services/adminService'
 import { Spinner } from '@/components/ui/Spinner'
+import { AreaChart, type AreaPoint } from '@/components/common/AreaChart'
+
+/** Maps an admin trend series to the AreaChart's point shape. */
+function toAreaData(data: AdminTrendPoint[]): AreaPoint[] {
+  return data.map((p) => ({ label: p.date, value: p.count }))
+}
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>
 
@@ -66,36 +72,6 @@ function StatCard({
         </div>
       </div>
       <p className="mt-3 text-sm text-secondary">{helper}</p>
-    </div>
-  )
-}
-
-function MiniBars({ data, tone }: { data: AdminTrendPoint[]; tone: 'green' | 'blue' }) {
-  const max = Math.max(...data.map((point) => point.count), 1)
-  const fill = tone === 'green'
-    ? 'bg-gradient-to-t from-accent to-emerald-300'
-    : 'bg-gradient-to-t from-sky-500 to-cyan-300'
-
-  return (
-    <div className="flex h-48 items-end gap-3 rounded-lg border border-elevated/40 bg-base/35 px-4 py-4">
-      {data.map((point) => {
-        const height = Math.max(8, Math.round((point.count / max) * 100))
-        return (
-          <div key={point.date} className="flex h-full min-w-0 flex-1 flex-col justify-end gap-2">
-            <div className="relative flex flex-1 items-end">
-              <div
-                className={`w-full rounded-t-md ${fill} shadow-[0_0_24px_rgba(30,215,96,0.16)] transition-all duration-500`}
-                style={{ height: `${height}%` }}
-                title={`${point.date}: ${formatNumber(point.count)}`}
-              />
-            </div>
-            <div className="text-center">
-              <p className="text-xs font-semibold text-primary">{formatNumber(point.count)}</p>
-              <p className="mt-1 truncate text-[11px] text-muted">{point.date}</p>
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }
@@ -232,14 +208,14 @@ export function AdminDashboardPage() {
                 <span className="text-sm font-semibold text-primary">Site visits</span>
                 <span className="text-xs font-semibold text-accent">{formatNumber(stats.totalVisits)} total</span>
               </div>
-              <MiniBars data={stats.visitsTrend} tone="green" />
+              <AreaChart data={toAreaData(stats.visitsTrend)} height={150} color="var(--c-accent, #1db954)" formatValue={(n) => `${formatNumber(n)} visits`} />
             </div>
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-semibold text-primary">Music plays</span>
                 <span className="text-xs font-semibold text-sky-300">{formatNumber(stats.playsLast7Days)} this week</span>
               </div>
-              <MiniBars data={stats.playsTrend} tone="blue" />
+              <AreaChart data={toAreaData(stats.playsTrend)} height={150} color="#38bdf8" formatValue={(n) => `${formatNumber(n)} plays`} />
             </div>
           </div>
         </div>

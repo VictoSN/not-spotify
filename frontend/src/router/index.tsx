@@ -49,6 +49,8 @@ export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },
+  // Friendly alias — the admin console's only advertised entrance.
+  { path: '/adminlogin', element: <AdminLoginPage /> },
   {
     errorElement: (
       <ErrorBoundary>

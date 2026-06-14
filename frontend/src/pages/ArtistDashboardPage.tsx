@@ -13,8 +13,11 @@ import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import type { Artist as ArtistProfile } from '@/types/artist'
 import { downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
+import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AreaChart } from '@/components/common/AreaChart'
+import { formatNumber } from '@/utils/formatNumber'
 
 const STATUS_CONFIG = {
   approved: { label: 'Live', icon: CheckCircleIcon, cls: 'text-green-400', bg: 'bg-green-500/15' },
@@ -45,6 +48,7 @@ export function ArtistDashboardPage() {
   const navigate = useNavigate()
 
   const [albums, setAlbums] = useState<AlbumWithTracks[]>([])
+  const [artistStats, setArtistStats] = useState<ArtistStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [isRevoked, setIsRevoked] = useState(false)
   const [revocationNote, setRevocationNote] = useState<string | null>(null)
@@ -171,6 +175,12 @@ export function ArtistDashboardPage() {
   }
 
   useEffect(() => { if (isArtist) reload() }, [isArtist])
+
+  // Dashboard chart data — loaded independently so it never blocks the page.
+  useEffect(() => {
+    if (!isArtist) return
+    meService.getArtistStats(14).then(setArtistStats).catch(() => setArtistStats(null))
+  }, [isArtist])
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null
@@ -774,6 +784,57 @@ export function ArtistDashboardPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Performance: plays over time + top tracks ─────────────────────── */}
+      {!loading && artistStats && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
+          <div className="bg-surface border border-elevated/40 rounded-lg p-5">
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-primary">Plays — last {artistStats.days} days</h2>
+                <p className="text-xs text-secondary">{formatNumber(artistStats.playsInWindow)} plays in window · {formatNumber(artistStats.totalPlays)} all-time</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-accent">{formatNumber(artistStats.followerCount)}</p>
+                <p className="text-xs text-muted">followers</p>
+              </div>
+            </div>
+            <AreaChart
+              data={artistStats.byDay.map((d) => ({
+                label: new Date(d.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                value: d.count,
+              }))}
+              height={180}
+              formatValue={(n) => `${formatNumber(n)} plays`}
+            />
+          </div>
+
+          <div className="bg-surface border border-elevated/40 rounded-lg p-5">
+            <h2 className="mb-3 text-base font-bold text-primary">Your top tracks</h2>
+            {artistStats.topTracks.length === 0 ? (
+              <p className="text-sm text-secondary">No plays yet.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {artistStats.topTracks.map((t, i) => {
+                  const max = Math.max(...artistStats.topTracks.map((x) => x.playCount), 1)
+                  return (
+                    <div key={t.track.id} className="flex items-center gap-3">
+                      <span className="w-4 shrink-0 text-center text-xs font-bold text-secondary">{i + 1}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-primary">{t.track.title}</span>
+                        <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-elevated">
+                          <span className="block h-full rounded-full bg-accent" style={{ width: `${Math.round((t.playCount / max) * 100)}%` }} />
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-xs font-semibold text-secondary">{formatNumber(t.playCount)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

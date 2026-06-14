@@ -654,6 +654,55 @@ public class MeController : ControllerBase
     // Artist — track management (Artist role required)
     // ──────────────────────────────────────────────
 
+    /// <summary>
+    /// Time-series + headline stats for the signed-in artist's dashboard chart:
+    /// plays per day over a window, plus totals and the artist's top tracks.
+    /// </summary>
+    [HttpGet("artist-stats")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<ArtistStatsDto>> ArtistStats([FromQuery] int days = 14, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+        var artistId = user.ArtistId.Value;
+
+        days = Math.Clamp(days, 7, 90);
+        var since = DateTime.UtcNow.Date.AddDays(-(days - 1));
+
+        var trackIds = await _db.Tracks.Where(t => t.ArtistId == artistId).Select(t => t.Id).ToListAsync(ct);
+
+        // Plays per day across all the artist's tracks (zero-filled).
+        var playRows = await _db.PlayHistories
+            .Where(h => trackIds.Contains(h.TrackId) && h.PlayedAt >= since)
+            .Select(h => h.PlayedAt)
+            .ToListAsync(ct);
+        var byDayMap = playRows.GroupBy(p => p.Date).ToDictionary(g => g.Key, g => g.Count());
+        var byDay = Enumerable.Range(0, days)
+            .Select(i => since.AddDays(i))
+            .Select(d => new StatDayDto(d.ToString("yyyy-MM-dd"), byDayMap.GetValueOrDefault(d)))
+            .ToList();
+
+        // Top tracks by all-time play count.
+        var topTrackEntities = await _db.Tracks
+            .Where(t => t.ArtistId == artistId)
+            .Include(t => t.Artist).Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .OrderByDescending(t => t.PlayCount)
+            .Take(5)
+            .ToListAsync(ct);
+        var topTracks = new List<StatTrackDto>();
+        foreach (var t in topTrackEntities)
+            topTracks.Add(new StatTrackDto(await _mapper.ToDtoAsync(t, ct), (int)t.PlayCount));
+
+        var totalPlays = await _db.Tracks.Where(t => t.ArtistId == artistId).SumAsync(t => (long)t.PlayCount, ct);
+        var playsInWindow = byDay.Sum(d => d.Count);
+        var followers = await _db.Artists.Where(a => a.Id == artistId).Select(a => a.FollowerCount).FirstOrDefaultAsync(ct);
+
+        return Ok(new ArtistStatsDto(days, totalPlays, playsInWindow, followers, byDay, topTracks));
+    }
+
     [HttpGet("artist-tracks")]
     [Authorize(Roles = "Artist")]
     public async Task<ActionResult<IEnumerable<TrackDto>>> GetArtistTracks(CancellationToken ct = default)

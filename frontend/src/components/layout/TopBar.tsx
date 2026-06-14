@@ -56,7 +56,6 @@ export function TopBar() {
   const isHome = location.pathname === '/'
   const isMessagesActive = location.pathname.startsWith('/messages')
   const currentQuery = searchParams.get('q') ?? ''
-  const isAdmin = user?.roles?.includes('Admin') ?? false
   const isArtist = user?.roles?.includes('Artist') ?? false
 
   const [showMenu, setShowMenu] = useState(false)
@@ -685,16 +684,8 @@ export function TopBar() {
                   Artist Dashboard
                 </Link>
               )}
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  onClick={() => setShowMenu(false)}
-                  className={userMenuItemClass}
-                >
-                  <Cog6ToothIcon className={userMenuIconClass} />
-                  Admin Dashboard
-                </Link>
-              )}
+              {/* No "Admin Dashboard" link here by design — the admin console is
+                  reached only via the dedicated /adminlogin entrance. */}
               <button
                 onClick={() => {
                   setShowMenu(false)

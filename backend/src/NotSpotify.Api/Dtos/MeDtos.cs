@@ -39,6 +39,16 @@ public record ListeningStatsDto(
     IEnumerable<StatDayDto> ByDay
 );
 
+// ── Artist dashboard stats ─────────────────────────────────────────────────
+public record ArtistStatsDto(
+    int Days,
+    long TotalPlays,
+    int PlaysInWindow,
+    long FollowerCount,
+    IEnumerable<StatDayDto> ByDay,
+    IEnumerable<StatTrackDto> TopTracks
+);
+
 public class PlaylistCoverUploadRequest
 {
     [Required]

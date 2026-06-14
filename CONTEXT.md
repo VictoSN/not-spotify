@@ -68,6 +68,7 @@ Spotify-clone music streaming platform (web app). Built collaboratively across m
 ## Key feature endpoints (added since the original scaffold)
 - Discovery: `GET /tracks/charts` (weekly Top 50), `GET /tracks/{id}/radio` (song radio), `GET /tracks/daily-mixes` (genre mixes), `GET /artists/{id}/related` ("Fans also like"). `GET /search` also returns `tracksByLyrics`.
 - Personal: `GET /me/stats?days=` (listening stats / mini-Wrapped). Playlist export/import is client-side JSON (no endpoint).
+- Notifications: `GET /notifications` (+ `unreadCount`), `POST /notifications/{id}/read`, `POST /notifications/read-all`, `DELETE /notifications`. Create via `NotificationService.NotifyAsync(...)` (best-effort persist + live `NotificationReceived` SignalR push to `user-{id}` group). Producers live where the event happens (e.g. FriendsController). New table `Notifications` (migration `AddNotifications`). ⚠️ When generating EF migrations here, **never pass `--no-build`** — it uses a stale assembly and produces empty/wrong migrations.
 - New frontend pages/routes: `/charts`, `/stats`. Player extras (sleep timer, speed, play-next) live in `playerStore` + `PlayerExtras.tsx`; voice search in `VoiceSearchButton.tsx`; keyboard shortcuts in `useKeyboardShortcuts.ts` + `KeyboardShortcutsHelp.tsx`.
 - mediaSession action handlers are owned **only** by `services/audioEngine.ts` (set once). Do NOT re-register them per-track elsewhere — that broke Edge PiP controls.
 

@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-13 (player/PiP/voice-search bug fixes)
+Last updated: 2026-06-14 (notifications center — new `Notifications` table; pull + restart to apply)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -46,6 +46,7 @@ Last updated: 2026-06-13 (player/PiP/voice-search bug fixes)
 - Friend profiles + real-time online presence (SignalR)
 - **Friend Activity** rail (listening-now + recently-played)
 - 1:1 **chat** (read receipts, unread badges); friends-only playlists
+- **Notifications center** — bell + dropdown with unread badge; live (SignalR) + 20s poll; producers for friend-request received/accepted (more producers easy to add via `NotificationService`)
 
 **Personalization**
 - Light/dark theme; **dynamic cover-art theming** (album/playlist/track headers, now-playing)
@@ -67,7 +68,7 @@ Last updated: 2026-06-13 (player/PiP/voice-search bug fixes)
 Ordered by value; see [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §3 for full reasoning.
 
 **Needs a DB migration** (coordinate first — migrations on the shared Supabase DB have conflicted before):
-- [ ] **Notifications center** — new entity + bell in TopBar (friend requests, new release from followed artist, approval events). *(No `Notifications` table exists yet — the old note claiming one was wrong.)*
+- [x] **Notifications center** ✅ (2026-06-14, commit aeec82f) — `AddNotifications` migration already applied to the shared DB; **pull + restart** so your code matches. Currently fires on friend request received/accepted; adding admin approve/reject producers is a one-liner via `NotificationService.NotifyAsync`.
 - [ ] **Smart playlists** — iTunes-style rules (genre / rating / play-count / date-added); pairs with existing star ratings.
 - [ ] **Waveform + timed comments** — ffmpeg peaks at upload + comments pinned to timestamps (SoundCloud signature).
 - [ ] **Asymmetric follows + public profiles** (followers/following beyond mutual friendship).
@@ -116,6 +117,18 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-14 — Account 3 — Notifications center (first "free feature")
+
+**Completed (commit aeec82f):**
+- **Notifications center**, full stack. New `Notification` entity + `AddNotifications` migration (additive table — **already applied to the shared Supabase DB** by running the backend, so teammates just pull + restart; `MigrateAsync` will see it applied). `NotificationService.NotifyAsync` persists best-effort and pushes a live `NotificationReceived` event to the recipient's PresenceHub group. `NotificationsController` (list + unread count, mark-read, mark-all-read, clear). Producers wired in `FriendsController` for **friend-request received** and **friend-request accepted**. Frontend: notification type/service/store, a TopBar **bell** with unread badge + dropdown (per-type icon, relative time, click marks-read + navigates, mark-all-read, clear); live via the presence socket with a 20s poll fallback.
+- **Verified end-to-end with two accounts** (API + browser): request → recipient's bell badge + item; accept → requester gets "accepted"; mark-all-read clears the badge. Test users/friendships/notifications cleaned up afterward.
+
+**⚠️ Migration mishap caught & fixed during this session:** generating the migration with `--no-build` used a stale assembly (empty migration), and `ef migrations remove --no-build` then deleted the wrong (karaoke `AddTrackSyncedLyrics`) migration. Restored it + the snapshot from git, deleted the empty migration, and regenerated `AddNotifications` cleanly with a fresh build. **Lesson for next migration: never use `--no-build` with `ef migrations add/remove`.** Verified `AddTrackSyncedLyrics` is intact and the snapshot contains both `Notifications` and `SyncedLyrics`.
+
+**Inert test accounts left in shared DB** (no admin user-delete endpoint): `notify-test@example.com`, `notify-test2@example.com` (+ earlier `fable-test@example.com`), all `Password123!`. Harmless; delete if/when a user-delete tool exists.
+
+**Next free features:** smart playlists (migration), crossfade/EQ (frontend, audio-engine rework), listen-along/Jam (SignalR centerpiece), PWA. Adding admin approve/reject notification producers is a quick follow-up.
 
 ### 2026-06-13 — Account 3 — Player/PiP/voice-search bug fixes
 

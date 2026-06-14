@@ -224,7 +224,54 @@ Section 2 is feature-parity oriented. This section is the complementary list: **
 - **Full "Queue / Up next" route** — the queue lives only in the Now-Playing panel; a dedicated page (or expandable view) is a common expectation and trivial given the data already exists.
 - **Single-track download** anchors directly at `track.audioUrl` (browser-fetches the public URL), while the new album/playlist zip path reads server-side. Works, but the two download paths now diverge — worth unifying so a single track in LocalStorage mode downloads via the server too (same root cause as Bug 1).
 
-### 5.4 Still-open functional bug
-- **Bug 4 — artist dashboard tab padding** (PROJECT_STATUS): could not be located in code (the dashboard has no tab component; searched current + history). **Blocked on a repro/screenshot** from the reporter before it's actionable.
+### 5.4 ~~Still-open functional bug~~ — resolved
+- **Bug 4 — artist dashboard padding** ✅ **FIXED** 2026-06-13 (f8baf55): the album-header row was a `<button>` nesting other `<button>`s; the browser restructured the DOM and broke the layout. Now an accessible `role="button"` div.
 
 **Net:** the feature breadth is strong; the cheapest marks left on the table are (1) stop the dead toggles from lying, (2) add basic rate limiting, and (3) replace silent `catch{}` with user-visible errors — none are features, all are "looks unfinished" risks a reviewer notices in minutes.
+
+---
+
+## 6. Requested feature set — 2026-06-14 (large items, design + effort)
+
+These were requested together. Two were shipped immediately; the other four are genuine subsystems (most need their own DB migration) and are scoped here so they can be built in dedicated sessions.
+
+### ✅ Shipped 2026-06-14
+- **Professional dashboards with charts** — dependency-free `AreaChart` (gradient area + line). Admin dashboard trends + a new artist-dashboard "plays over 14 days" chart, follower count, and top-track bars (new `GET /me/artist-stats`, no migration). Commit 80ba5db.
+- **Admin entrance hidden** — removed the "Admin Dashboard" link from the profile dropdown; the console is reachable only via `/adminlogin` (alias of the existing guarded `/admin/login`). Commit 80ba5db.
+
+### 6.1 Role-based admin access (master + roles + approval workflow) — **High**
+**Goal:** a master admin who can grant/revoke admin access; multiple admin role tiers with different permissions; some roles must request approval (with optional reason) before an action executes.
+**Design:**
+- ASP.NET Identity roles already exist (Admin, Artist). Add tiers: `MasterAdmin`, `Admin`, plus granular **permissions** (e.g. `approve_content`, `manage_users`, `manage_ads`, `revoke_artist`). Either a `Permissions` claim set per role or a small `RolePermission` table.
+- **Master** role: only the master can assign/remove roles + edit role→permission mappings. Seed exactly one master (e.g. alex).
+- **Approval workflow:** a new `PendingAction` table (actor, action type, target, payload JSON, optional reason, status, reviewer, timestamps). Roles flagged "requires approval" enqueue a `PendingAction` instead of executing; a master/approver approves → the action runs. Reuse the existing `ReviewHistory` audit pattern.
+- Admin UI: a "Team & roles" page (list admins, add/remove, role matrix) + an "Approvals" queue.
+**Migration:** yes (RolePermission + PendingAction). **Effort:** High (RBAC + approval engine + UI). Highest-risk item; do in its own session.
+
+### 6.2 Location on content + users → "Popular in <country>" — **Medium**
+**Goal:** location on artists/albums/EP/LP/single and users; browse rows like "Popular in Australia"; user country is editable.
+**Design:**
+- Users **already have `Country`** (`AspNetUsers.Country`) — expose it as editable in account settings (likely already partly there).
+- Add a `Country`/`Market` column to `Artists` and `Albums` (tracks inherit from album). Migration.
+- Discovery: `GET /tracks/popular?country=XX` = trending filtered/ranked by plays from users in that country (join PlayHistories → user.Country), with the artist/album market as a secondary boost. Home rows: "Popular in {yourCountry}" (from the signed-in user's country) + a few notable-country rows.
+- Seed country values for existing catalogue.
+**Migration:** yes (Artists/Albums country). **Effort:** Medium. Good standalone session; partially reuses existing trending.
+
+### 6.3 Ads engine (admin-managed, scheduled, targeted) — **High**
+**Goal:** admin controls ad inventory: types, ads-per-N-songs cadence, add/remove, scheduling (run only between dates), targeting (e.g. only users in country X). Free tier hears them.
+**Design:**
+- `Advertisement` table: type (audio/banner), asset key (uploaded to storage), advertiser/title, start/end dates, target country (nullable = all), weight, active flag.
+- `AdSettings` (singleton): ads-per-N-tracks cadence for free tier.
+- `GET /ads/next` returns an eligible ad for the current free user (date window valid + country matches + weighted random); the player inserts an audio ad every N tracks for free users (premium = none — finally makes the premium "ad-free" claim real). Count an impression.
+- Admin UI: ad list (CRUD + upload), schedule pickers, targeting, cadence setting, basic impression stats.
+**Migration:** yes. **Effort:** High (entities + scheduling/targeting + player insertion + admin UI). Self-recorded "house ads" keep it free (no ad network).
+
+### 6.4 Podcasts + music videos (new content types + catalogues) — **High**
+**Goal:** artists upload podcasts and music videos; dedicated catalogues for listeners.
+**Design:**
+- **Podcasts:** `Podcast` (show) + `Episode` (audio + show notes + duration). Mostly mirrors Album/Track, so the artist-upload + review flow and the audio player are largely reusable. New `/podcasts` catalogue + show/episode pages. Storage = same audio pipeline.
+- **Music videos:** `MusicVideo` (video file, linked track/artist). **Video is the storage-heavy one** — this is where R2/B2 free storage (see §"Free storage" in TEST_PLAN.md) matters; a `<video>` player page + a videos catalogue. Could gate behind premium.
+- Both add an artist "content type" selector at upload.
+**Migration:** yes (Podcast/Episode/MusicVideo). **Effort:** High; podcasts are cheaper than music videos (audio reuses everything; video needs a player + more storage). Recommend podcasts first, music videos last (storage budget).
+
+**Suggested order for these four:** 6.2 location (medium, mostly reuse) → 6.1 RBAC (unlocks 6.3 admin permissions) → 6.3 ads → 6.4 podcasts → music videos (storage-gated, do alongside the R2 move).

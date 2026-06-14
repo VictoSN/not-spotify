@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (notifications center — new `Notifications` table; pull + restart to apply)
+Last updated: 2026-06-14 (pro dashboards + admin entrance hidden; big features scoped in gap report §6)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -117,6 +117,18 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-14 — Account 3 — Pro dashboards + admin entrance + big-feature scoping
+
+**Completed (commit 80ba5db):**
+- **Professional dashboards (charts).** New dependency-free `AreaChart` (gradient area + line). Admin dashboard traffic/plays trends are now area charts (replaced bar mini-charts). Artist dashboard gained a "Plays — last 14 days" area chart + follower count + "Your top tracks" bars, backed by a new `GET /me/artist-stats` (PlayHistories aggregation; **no migration**). Verified both render with live data.
+- **Admin entrance hidden.** Removed the "Admin Dashboard" link from the user-profile dropdown; added `/adminlogin` as an alias of the existing guarded `/admin/login`. The console is now reachable only by knowing that URL. Verified the dropdown no longer lists it and `/adminlogin` works.
+
+**Scoped for later (too big for one session — full design + effort in [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §6):**
+- **RBAC**: master admin + role tiers + per-role permissions + approval-with-reason workflow (needs migration; High).
+- **Location-based discovery**: country on artists/albums/tracks + "Popular in <country>" rows; editable user country (needs migration; Medium).
+- **Ads engine**: admin-managed ad inventory, cadence (ads per N songs), scheduling (date windows), targeting (by country) (needs migration; High).
+- **Podcasts + music videos**: new content types + catalogues; podcasts reuse the audio pipeline, music videos are storage-heavy (pair with the R2 move) (needs migration; High).
 
 ### 2026-06-14 — Account 3 — Notifications center (first "free feature")
 

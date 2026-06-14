@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (PWA — installable app + offline shell)
+Last updated: 2026-06-14 (Offline audio playback — save-for-offline downloads)
 
 > **Companion docs:** [README.md](README.md) (setup) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs competitors + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture).
 
@@ -17,7 +17,7 @@ Last updated: 2026-06-14 (PWA — installable app + offline shell)
 - **Personalization:** light/dark theme; dynamic cover-art theming; listening stats / mini-Wrapped (`/stats`); compact library layout.
 - **Lyrics:** non-AI transcription (LRCLIB → Lyrics.ovh); karaoke synced lyrics.
 - **Artist/admin:** artist dashboard (albums/tracks CRUD, reorder, edit, resubmit, profile, verified badge, auto-lyrics, charts); artist application → admin review; admin dashboard/CRUD/approval queue/audit/revoke; dedicated `/adminlogin` guard.
-- **Platform:** **PWA** ✅ — installable (manifest + maskable icons), offline app shell + asset cache via service worker, in-app install prompt.
+- **Platform:** **PWA** ✅ — installable (manifest + maskable icons), offline app shell + asset cache via service worker, in-app install prompt. **Offline audio** ✅ — premium "Save for offline" caches full tracks; SW serves them Range-aware (seeking works offline) at `/_offline-audio`; managed in Settings → Offline downloads.
 
 ---
 
@@ -30,7 +30,6 @@ Last updated: 2026-06-14 (PWA — installable app + offline shell)
 
 **No migration (frontend / query only):**
 - [ ] **Crossfade + gapless** (Web Audio) — wires the dead `crossfade` toggle; unlocks EQ. *Audio-engine rework; verify audibly.*
-- [ ] **Offline audio playback** (PWA follow-up) — "save for offline" store caching full audio files + HTTP Range replay (deliberately out of scope of the current SW, which skips audio to avoid breaking seeking).
 - [ ] Wire remaining **dead settings toggles**: `crossfade`, `normalize`, `quality`.
 - [ ] **Account 2 — Admin restructure:** dedicated sidebar/topbar admin-panel layout (the `/adminlogin` guard is ✅; layout shell migration still open).
 
@@ -57,7 +56,14 @@ None open — bugs 1–11 all fixed (see git history). **Known minor cosmetic is
 
 ## 📝 SESSION LOG (most recent on top; keep ≤2 entries + summary)
 
-**Previous sessions summary (through 2026-06-14):** Built out the full feature set above across 3 Pro accounts. Highlights: lyrics pipeline + karaoke synced lyrics; dynamic cover-art theming + friend activity feed; 12+ quick-wins (sleep timer, speed, play-next, shortcuts, charts, lyrics search, library/track sorting, JSON export/import); listening stats, song radio, daily mixes, "fans also like", voice search; dedicated `/adminlogin` + guard; pro dashboards (AreaChart); notifications center (`AddNotifications` migration — applied to shared DB); backlog burndown (share, admin-decision notifications, Blend). Fixed bugs 1–11 (downloads, album/track delete, chat badge, artist-dashboard nesting, lyrics-nav overlay, PiP/Edge handlers, voice-search punctuation). **Migration lesson:** never pass `--no-build` to `ef migrations add/remove`. Inert test accounts remain in the shared DB (`notify-test*@example.com`, `fable-test@example.com`, all `Password123!`); a standing alex↔testing2 friendship was left for blend testing.
+**Previous sessions summary (through 2026-06-14):** Built out the full feature set above across 3 Pro accounts. Highlights: lyrics pipeline + karaoke synced lyrics; dynamic cover-art theming + friend activity feed; 12+ quick-wins (sleep timer, speed, play-next, shortcuts, charts, lyrics search, library/track sorting, JSON export/import); listening stats, song radio, daily mixes, "fans also like", voice search; dedicated `/adminlogin` + guard; pro dashboards (AreaChart); notifications center (`AddNotifications` migration — applied to shared DB); backlog burndown (share, admin-decision notifications, Blend); **Listen-along/Jam** (`SessionHub` at `/hubs/session` — host broadcasts playback, guests mirror w/ drift+latency correction; verified via two raw SignalR connections). Fixed bugs 1–11 (downloads, album/track delete, chat badge, artist-dashboard nesting, lyrics-nav overlay, PiP/Edge handlers, voice-search punctuation). **Migration lesson:** never pass `--no-build` to `ef migrations add/remove`; hubs read the in-memory access token so sockets 401 after the 15-min token lifetime until an API call refreshes. Inert test accounts remain in the shared DB (`notify-test*@example.com`, `fable-test@example.com`, all `Password123!`); a standing alex↔testing2 friendship was left for blend testing.
+
+### 2026-06-14 — Account 3 — Offline audio playback (save-for-offline)
+**Completed (this session) — frontend-only, no migration:**
+- **Save tracks for offline playback**, building on last session's PWA. New `services/offlineAudio.ts`: premium "Save for offline" fetches the full audio file and stores it in a persistent `ns-offline-audio` Cache Storage bucket + a `localStorage` index; `removeTrackOffline`/`clearOffline`/`listOffline`/`offlineTotalBytes`. The SW (`public/sw.js`) gained a **Range-aware** handler for the dedicated same-origin path `/_offline-audio?id=<trackId>`: it reconstructs 206 partials from the cached full body so **seeking works offline**, returns 404 for unsaved ids, and `ns-offline-audio` is excluded from activate-cleanup so downloads survive SW updates.
+- **Integration kept surgical:** `audioEngine` resolves the playback src via `resolvePlaybackSrc(track)` (offline URL only when saved **and** a SW controls the page; else the normal network URL) — **normal streaming playback is completely untouched** (the SW only ever intercepts `/_offline-audio`). UI: a premium "Save for offline / Downloaded — remove" item in the track ⋯ menu (`useOfflineTrack` hook) + a **Settings → Offline downloads** panel (`components/settings/OfflineDownloads.tsx`) listing saved tracks with sizes, per-track remove, and clear-all.
+- **Verified** against a production build + `vite preview`: SW Range reconstruction is **byte-exact** — full request → 200 w/ `Accept-Ranges`; `bytes=100-199` → 206 `Content-Range: bytes 100-199/1000` w/ exact bytes; open-ended `bytes=990-` → last 10 bytes; unsaved id → 404; normal assets still 200; app renders; no console errors. tsc + eslint clean on touched files.
+- **Not verifiable here / next:** the full "save a real track → go offline → play" round-trip needs a logged-in **premium** session + real audio + the media host allowing **CORS** on the save fetch (Supabase public bucket / backend static). The backend wasn't started (it auto-migrates the shared DB on boot). If saves fail in practice, check CORS on the audio host first.
 
 ### 2026-06-14 — Account 3 — PWA (installable + offline shell)
 **Completed (this session):**
@@ -66,9 +72,6 @@ None open — bugs 1–11 all fixed (see git history). **Known minor cosmetic is
 - **Verified** against a production build + `vite preview` (`frontend-preview` launch config) in-browser: manifest parses (standalone, 3 icons, 3 shortcuts), SW **activated & controlling**, shell cache holds all 6 precache URLs + `/index.html` (offline shell available), asset cache populated with hashed JS/CSS, icons serve `image/png` 200, no console errors.
 - **Scoped out (logged in NEXT UP):** true offline *audio* playback — audio uses HTTP Range, whose 206 partials break seeking if naively cached; needs a dedicated "save for offline" full-file store. The SW deliberately skips audio + API.
 
-**Notes for next session:** PWA is installable on Chromium (Chrome/Edge) over https/localhost; Safari/Firefox get the manifest but no `beforeinstallprompt` (expected). Desktop wrapper (Tauri) is now nearly free. Next no-migration feature is crossfade/gapless (audio-engine rework, verify audibly — can't be checked in this headless harness).
-
-### 2026-06-14 — Account 3 — Listen-along / Jam ("play together")
-**Completed (afcdfe5 backend, a8c6ce1 frontend):** `SessionHub` (`/hubs/session`) in-memory relay — host `StartSession` opens `jam-{hostId}`, guests `JoinSession`, host `Sync` relays full playback state to others + participant-count/`JamEnded`/`JamJoined` + disconnect cleanup. Frontend `jamStore` + `useJamSocket` (host broadcasts on change + every 2s; guest mirrors w/ drift>1.5s + latency correction; re-registers on reconnect), `JamBar` banner, player-bar host toggle, "Listen along" on a friend's profile. **Verified** via two raw SignalR connections (host `Sync` → guest `JamSync` exact track/position, `participants=2`) + app host flow. No migration. **Caveat:** hub `accessTokenFactory` reads the in-memory access token, so a tab left past the 15-min token lifetime 401s until an API call refreshes — pre-existing across all hubs.
+**Notes for next session:** PWA + offline downloads are installable/working on Chromium over https/localhost; Safari/Firefox get the manifest but no `beforeinstallprompt` (expected). Verify PWA/offline via `npm run build` + `vite preview` (the `frontend-preview` launch config), **not** `npm run dev` (the SW is PROD-gated). Next no-migration feature is crossfade/gapless (audio-engine rework, verify audibly — can't be checked in this headless harness); the migration features (smart playlists, waveform-comments, asymmetric follows) need shared-DB coordination.
 
 <!-- New entries go above this line -->

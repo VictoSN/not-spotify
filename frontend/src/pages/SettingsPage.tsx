@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useThemeStore } from '@/stores/themeStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
 import { cn } from '@/utils/cn'
 
 /** Tiny localStorage-backed preference (no effects → lint-clean). */
@@ -238,6 +239,8 @@ export function SettingsPage() {
           control={<Switch label="Crossfade songs" checked={crossfade} onChange={setCrossfade} />}
         />
       </Section>
+
+      <OfflineDownloads />
     </div>
   )
 }

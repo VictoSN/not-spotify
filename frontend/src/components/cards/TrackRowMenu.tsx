@@ -16,14 +16,18 @@ import {
   ChevronRightIcon,
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
+  ArrowDownCircleIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { trackService } from '@/services/trackService'
+import { useOfflineTrack } from '@/hooks/useOfflineTrack'
 
 interface TrackRowMenuProps {
   track: Track
@@ -60,6 +64,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const playNext = usePlayerStore((s) => s.playNext)
   const play = usePlayerStore((s) => s.play)
   const queue = usePlayerStore((s) => s.queue)
+  const offline = useOfflineTrack(track)
 
   const isLiked = likedTrackIds.has(track.id)
   const isInQueue = queue.some((t) => t.id === track.id)
@@ -568,6 +573,44 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                     Download
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+                </button>
+              </MenuItem>
+            )}
+
+            {isPremium && offline.supported && (
+              <MenuItem>
+                <button
+                  type="button"
+                  disabled={offline.busy}
+                  onClick={(e) => {
+                    stop(e)
+                    void offline.toggle()
+                    // Keep the menu open so the user sees the state change /
+                    // any error without re-opening.
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface disabled:cursor-default disabled:opacity-70"
+                >
+                  {offline.busy ? (
+                    <ArrowPathIcon className="w-4 h-4 animate-spin text-accent" />
+                  ) : offline.saved ? (
+                    <CheckCircleIcon className="w-4 h-4 text-accent" />
+                  ) : (
+                    <ArrowDownCircleIcon className="w-4 h-4" />
+                  )}
+                  <span className="flex flex-col">
+                    <span>
+                      {offline.busy
+                        ? offline.saved
+                          ? 'Removing…'
+                          : 'Downloading…'
+                        : offline.saved
+                          ? 'Downloaded — remove'
+                          : 'Save for offline'}
+                    </span>
+                    {offline.error && (
+                      <span className="text-[10px] text-red-400">{offline.error}</span>
+                    )}
+                  </span>
                 </button>
               </MenuItem>
             )}

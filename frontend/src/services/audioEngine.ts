@@ -1,4 +1,5 @@
 import { usePlayerStore } from '@/stores/playerStore'
+import { resolvePlaybackSrc } from '@/services/offlineAudio'
 import type { Track } from '@/types/track'
 
 class AudioEngine {
@@ -51,7 +52,9 @@ class AudioEngine {
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {
           trackChanged = true
-          const src = currentTrack.audioUrl
+          // Plays the locally-saved copy when the track is downloaded for
+          // offline (and a SW controls the page); otherwise the network URL.
+          const src = resolvePlaybackSrc(currentTrack)
           if (src !== this.currentSrc) {
             this.audio.src = src
             this.currentSrc = src

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
@@ -12,6 +13,7 @@ namespace NotSpotify.Api.Controllers;
 
 [ApiController]
 [Route("auth")]
+[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private const string RefreshCookieName = "rt";

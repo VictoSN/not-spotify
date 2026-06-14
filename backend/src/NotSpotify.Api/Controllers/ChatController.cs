@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -150,6 +151,7 @@ public class ChatController : ControllerBase
 
     /// <summary>POST /chat/with/{userId} — send a message to a friend.</summary>
     [HttpPost("with/{userId:guid}")]
+    [EnableRateLimiting("chat-send")]
     public async Task<ActionResult<ChatMessageDto>> Send(
         Guid userId,
         [FromBody] SendChatMessageDto dto,

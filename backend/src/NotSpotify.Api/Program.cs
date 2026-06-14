@@ -1,6 +1,9 @@
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -84,6 +87,53 @@ builder.Services
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var retryAfterSeconds = context.Lease.TryGetMetadata(
+            MetadataName.RetryAfter,
+            out var retryAfter)
+            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))
+            : 60;
+
+        context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new
+            {
+                message = "Too many requests. Please try again shortly.",
+                retryAfterSeconds,
+            },
+            cancellationToken);
+    };
+
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            }));
+
+    options.AddPolicy("chat-send", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.User.FindFirstValue("sub")
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromSeconds(10),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            }));
+});
+
 var supabaseStorageSection = builder.Configuration.GetSection("SupabaseStorage");
 var supabaseUrl = supabaseStorageSection["Url"];
 if (!string.IsNullOrWhiteSpace(supabaseUrl))
@@ -153,8 +203,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseRouting();
 app.UseCors();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PresenceHub>("/hubs/presence");

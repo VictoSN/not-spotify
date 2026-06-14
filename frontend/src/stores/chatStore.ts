@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage, Conversation } from '@/types/chat'
 import { chatService } from '@/services/chatService'
+import { notify } from '@/utils/toast'
 import { useAuthStore } from './authStore'
 
 /**
@@ -133,11 +134,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
       }))
       get().fetchConversations()
-    } catch {
+    } catch (error) {
       // Send failed — drop the optimistic bubble.
       set((s) => ({
         threads: { ...s.threads, [userId]: (s.threads[userId] ?? []).filter((m) => m.id !== tempId) },
       }))
+      const message = (error as { response?: { data?: { message?: string } } })
+        ?.response?.data?.message
+      notify.error(message ?? 'Message could not be sent. Please try again.')
     }
   },
 

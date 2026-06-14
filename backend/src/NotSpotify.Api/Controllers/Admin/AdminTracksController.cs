@@ -22,12 +22,14 @@ public class AdminTracksController : ControllerBase
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
+    private readonly NotificationService _notifications;
 
-    public AdminTracksController(AppDbContext db, MediaMapper mapper, IStorageService storage)
+    public AdminTracksController(AppDbContext db, MediaMapper mapper, IStorageService storage, NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
+        _notifications = notifications;
     }
 
     [HttpGet]
@@ -209,6 +211,13 @@ public class AdminTracksController : ControllerBase
             ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+
+        if (t.SubmittedByUserId is Guid approvedBy)
+            await _notifications.NotifyAsync(approvedBy, "approval",
+                $"Your track \"{t.Title}\" was approved",
+                body: string.IsNullOrWhiteSpace(req?.Note) ? "It's now live." : req!.Note,
+                linkUrl: $"/track/{id}", ct: ct);
+
         return NoContent();
     }
 
@@ -229,6 +238,13 @@ public class AdminTracksController : ControllerBase
             ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+
+        if (t.SubmittedByUserId is Guid rejectedBy)
+            await _notifications.NotifyAsync(rejectedBy, "rejection",
+                $"Your track \"{t.Title}\" was rejected",
+                body: string.IsNullOrWhiteSpace(req?.Note) ? "Open your dashboard to revise and resubmit." : req!.Note,
+                linkUrl: "/artist-dashboard", ct: ct);
+
         return NoContent();
     }
 

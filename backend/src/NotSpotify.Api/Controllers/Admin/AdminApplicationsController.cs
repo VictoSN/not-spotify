@@ -18,12 +18,14 @@ public class AdminApplicationsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly UserManager<ApplicationUser> _users;
     private readonly MediaMapper _mapper;
+    private readonly NotificationService _notifications;
 
-    public AdminApplicationsController(AppDbContext db, UserManager<ApplicationUser> users, MediaMapper mapper)
+    public AdminApplicationsController(AppDbContext db, UserManager<ApplicationUser> users, MediaMapper mapper, NotificationService notifications)
     {
         _db = db;
         _users = users;
         _mapper = mapper;
+        _notifications = notifications;
     }
 
     [HttpGet]
@@ -80,6 +82,12 @@ public class AdminApplicationsController : ControllerBase
         app.ReviewNote = req?.Note;
 
         await _db.SaveChangesAsync(ct);
+
+        await _notifications.NotifyAsync(app.UserId, "approval",
+            "Your artist application was approved 🎉",
+            body: string.IsNullOrWhiteSpace(req?.Note) ? "You can now upload music from the Artist Dashboard." : req!.Note,
+            linkUrl: "/artist-dashboard", ct: ct);
+
         return Ok(ToDto(app));
     }
 
@@ -102,6 +110,12 @@ public class AdminApplicationsController : ControllerBase
         app.ReviewNote = req?.Note;
 
         await _db.SaveChangesAsync(ct);
+
+        await _notifications.NotifyAsync(app.UserId, "rejection",
+            "Your artist application was not approved",
+            body: string.IsNullOrWhiteSpace(req?.Note) ? "You can apply again from your account settings." : req!.Note,
+            linkUrl: "/account", ct: ct);
+
         return Ok(ToDto(app));
     }
 

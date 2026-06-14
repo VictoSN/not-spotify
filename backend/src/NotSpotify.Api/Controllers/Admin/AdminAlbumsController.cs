@@ -22,12 +22,14 @@ public class AdminAlbumsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
+    private readonly NotificationService _notifications;
 
-    public AdminAlbumsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
+    public AdminAlbumsController(AppDbContext db, MediaMapper mapper, IStorageService storage, NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
+        _notifications = notifications;
     }
 
     [HttpGet]
@@ -113,6 +115,13 @@ public class AdminAlbumsController : ControllerBase
         });
 
         await _db.SaveChangesAsync(ct);
+
+        if (album.SubmittedByUserId is Guid approvedSubmitter)
+            await _notifications.NotifyAsync(approvedSubmitter, "approval",
+                $"Your release \"{album.Title}\" was approved",
+                body: string.IsNullOrWhiteSpace(req?.Note) ? "It's now live." : req!.Note,
+                linkUrl: $"/album/{id}", ct: ct);
+
         return Ok(_mapper.ToDto(album));
     }
 
@@ -154,6 +163,13 @@ public class AdminAlbumsController : ControllerBase
         });
 
         await _db.SaveChangesAsync(ct);
+
+        if (album.SubmittedByUserId is Guid rejectedSubmitter)
+            await _notifications.NotifyAsync(rejectedSubmitter, "rejection",
+                $"Your release \"{album.Title}\" was rejected",
+                body: string.IsNullOrWhiteSpace(req?.Note) ? "Open your dashboard to revise and resubmit." : req!.Note,
+                linkUrl: "/artist-dashboard", ct: ct);
+
         return Ok(_mapper.ToDto(album));
     }
 

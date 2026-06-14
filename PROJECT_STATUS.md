@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (Tier 1 hardening — auth/chat rate limiting)
+Last updated: 2026-06-14 (Tier 1 hardening — unified downloads implemented; build validation pending)
 
 > **Companion docs:** [README.md](README.md) (setup) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs competitors + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture).
 
@@ -18,7 +18,7 @@ Last updated: 2026-06-14 (Tier 1 hardening — auth/chat rate limiting)
 - **Lyrics:** non-AI transcription (LRCLIB → Lyrics.ovh); karaoke synced lyrics.
 - **Artist/admin:** artist dashboard (albums/tracks CRUD, reorder, edit, resubmit, profile, verified badge, auto-lyrics, charts); artist application → admin review; admin dashboard/CRUD/approval queue/audit/revoke; dedicated `/adminlogin` guard.
 - **Platform:** **PWA** ✅ — installable (manifest + maskable icons), offline app shell + asset cache via service worker, in-app install prompt. **Offline audio** ✅ — premium "Save for offline" caches full tracks; SW serves them Range-aware (seeking works offline) at `/_offline-audio`; managed in Settings → Offline downloads.
-- **Hardening/polish:** dead settings toggles (`language`, `quality`, `normalize`, `crossfade`) now **disabled with a "Coming soon" badge** instead of lying; global **toast** system (sonner, theme-aware) surfacing previously-silent failures; shared accessible **`ConfirmDialog`** replaces native confirms; fixed-window **rate limiting** protects `/auth/*` (per IP) and chat-send (per user), with JSON 429 + `Retry-After`.
+- **Hardening/polish:** dead settings toggles (`language`, `quality`, `normalize`, `crossfade`) now **disabled with a "Coming soon" badge** instead of lying; global **toast** system; shared accessible **`ConfirmDialog`**; fixed-window **rate limiting** on auth/chat.
 
 ---
 
@@ -30,7 +30,7 @@ Last updated: 2026-06-14 (Tier 1 hardening — auth/chat rate limiting)
 - [ ] **Asymmetric follows + public profiles** — one-way follows, follower/following counts, public "top tracks".
 
 **Tier 1 hardening — remaining (do before any Tier 3; mostly backend, needs the backend running to verify):**
-- [ ] **Unify single-track download** with the album/playlist ZIP server path (currently diverging). *Backend.*
+- [~] **Unify single-track download** with album/playlist server path — implementation complete via `AudioDownloadService`; backend + production frontend build validation pending due environment usage gate.
 - [ ] A11y pass (icon-button aria-labels + remaining non-confirm modals; shared ConfirmDialog focus/Esc is ✅) + dedicated **Queue/Up-next** view (data already in player store). *Frontend.*
 
 **No migration (frontend / query only):**
@@ -60,22 +60,16 @@ None open — bugs 1–11 all fixed (see git history). **Known minor cosmetic is
 
 ## 📝 SESSION LOG (most recent on top; keep ≤2 entries + summary)
 
-**Previous sessions summary (through 2026-06-14):** Built the full feature set above across 3 Pro accounts, including karaoke lyrics, dynamic theming, social/chat/notifications, Blend, Listen-along/Jam, discovery/statistics features, admin/artist dashboards, PWA, and premium **offline audio** with byte-verified Range replay. Tier 1 hardening started with honest disabled "Coming soon" settings and a global sonner toast system for formerly silent share/playlist/offline failures. Fixed bugs 1–11. **Migration lesson:** never pass `--no-build` to `ef migrations add/remove`; backend startup auto-migrates the shared Supabase DB. Verify PWA/offline via production build/preview, not Vite dev. Inert shared-DB test accounts and the alex↔testing2 friendship remain for testing.
+**Previous sessions summary (through 2026-06-14):** Built the full feature set above across 3 Pro accounts, including karaoke lyrics, dynamic theming, social/chat/notifications, Blend, Listen-along/Jam, discovery/statistics features, admin/artist dashboards, PWA, and premium **offline audio** with byte-verified Range replay. Tier 1 hardening completed honest disabled settings, global toasts, a shared accessible ConfirmDialog replacing all 9 native confirms, and fixed-window rate limiting for `/auth/*` + chat-send with visible 429 errors. Fixed bugs 1–11. **Migration lesson:** never pass `--no-build` to EF migration commands; backend startup auto-migrates the shared Supabase DB. Verify PWA/offline via production build/preview, not Vite dev.
 
-### 2026-06-14 — Tier 1 hardening — auth/chat rate limiting
-**Completed (this session) — backend + small frontend error surface, no migration:**
-- Added ASP.NET Core fixed-window policies via `AddRateLimiter`: `/auth/*` gets 20 requests/minute per remote IP; `POST /chat/with/{userId}` gets 20 sends/10 seconds per authenticated user (IP fallback). Rejections return HTTP 429, JSON `{ message, retryAfterSeconds }`, and `Retry-After`.
-- Added `UseRateLimiter` after routing/authentication; endpoint policies use `[EnableRateLimiting]`. Chat optimistic rollback now shows the server error through the existing toast system instead of silently losing a failed/rate-limited message.
-- **Shared files touched:** backend `Program.cs`, `AuthController.cs`, `ChatController.cs`; frontend `chatStore.ts`. No API startup, DB access, or migration.
-- Validation: `dotnet restore` + `dotnet build --no-restore` ✅ (0 warnings/errors); frontend TypeScript no-emit + focused chat-store ESLint + production build ✅ (existing SignalR/Rolldown and chunk-size warnings only); diff checks ✅. Runtime 429 testing intentionally skipped because API startup auto-migrates the shared DB.
+### 2026-06-14 — Tier 1 hardening — unified downloads
+**Implemented this session — backend + frontend, no migration; validation still incomplete:**
+- Added `AudioDownloadService`, shared by album ZIP, playlist ZIP, and new `GET /tracks/{id}/download`. It reads configured storage directly first and falls back to legacy absolute URLs, preserving extension/content type.
+- Track endpoint is authenticated: Premium listeners may download approved tracks; admins and the owning artist may download managed tracks. CORS exposes `Content-Disposition`.
+- Replaced every direct `audioUrl` download anchor in track detail/menu, artist dashboard, and admin track views with `trackService.download()`. Blob JSON errors surface through toasts; static search confirms no direct audio download anchors remain.
+- **Shared files touched:** `Program.cs`, track/album/playlist controllers, storage service docs, track service/menu/detail, artist dashboard, and Account 2 admin album/track pages.
+- Validation: frontend TypeScript no-emit ✅; focused track service/menu ESLint ✅; static direct-anchor and duplicate-helper searches ✅; diff checks ✅. Admin/detail lint reports only pre-existing effect-state and missing `jsx-a11y` rule issues. **Still incomplete:** backend restore/build and production frontend build were blocked by the environment usage gate; API was not started and the DB was untouched.
 
-### 2026-06-14 — Tier 1 hardening — shared ConfirmDialog
-**Completed (this session) — frontend-only, no migration:**
-- Added a promise-based shared `ConfirmProvider` + `useConfirm` hook using Headless UI Dialog. It provides a focus trap, explicit safe initial focus on Cancel, Esc/backdrop cancellation, focus restoration, danger styling, and resolves superseded/unmounted requests safely.
-- Replaced all 9 native `confirm()` calls: subscription cancellation; playlist deletion; artist-dashboard album/track deletion; admin album/artist/track deletion; artist reinstatement; admin play-count reset. Static search confirms no native calls remain.
-- **Shared files touched:** `App.tsx`, account/playlist/artist-dashboard pages, and Account 2 admin list/dev pages. No backend or migration changes.
-- Validation: TypeScript no-emit ✅; focused ESLint on provider/hook/App ✅; production `npm run build` ✅ (existing SignalR/Rolldown and chunk-size warnings only). Full touched-file lint still reports pre-existing effect-state and missing `jsx-a11y` rule issues. The prior checkpoint visually verified confirm/cancel/Esc outcomes; this resumed environment's in-app browser could not start due a Windows sandbox process error.
-
-**Notes for next session:** Continue Tier 1 before Tier 2/3. Next: unify single-track download with the server-backed album/playlist path. Frontend a11y audit and Queue/Up-next remain. ConfirmDialog already covers confirmation-modal focus/Esc; use `notify` for remaining user-facing silent catches.
+**Notes for next session:** Remaining Tier 1 is frontend a11y audit plus dedicated Queue/Up-next. First rerun `dotnet restore && dotnet build --no-restore` and `npm run build` when the usage gate resets, then proceed. ConfirmDialog already covers confirmation focus/Esc; use `notify` for remaining user-facing silent catches.
 
 <!-- New entries go above this line -->

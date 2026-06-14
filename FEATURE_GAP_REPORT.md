@@ -222,7 +222,7 @@ Section 2 is feature-parity oriented. This section is the complementary list: **
 - **Icon-only buttons** (player controls, tooltips, menu triggers) — audit `aria-label` coverage; most have it, some (e.g. expand/collapse chevrons) should be re-checked.
 - **Modal focus management** — confirm focus trap + `Esc`-to-close + return-focus on the edit/invite/auth modals.
 - **Full "Queue / Up next" route** — the queue lives only in the Now-Playing panel; a dedicated page (or expandable view) is a common expectation and trivial given the data already exists.
-- **Single-track download** anchors directly at `track.audioUrl` (browser-fetches the public URL), while the new album/playlist zip path reads server-side. Works, but the two download paths now diverge — worth unifying so a single track in LocalStorage mode downloads via the server too (same root cause as Bug 1).
+- **Single-track download** 🔄 **IMPLEMENTED; BUILD VALIDATION PENDING** — `GET /tracks/{id}/download` now uses the same shared `AudioDownloadService` as album/playlist ZIPs (storage-key first, legacy URL fallback). All listener/admin/artist download buttons use the authenticated server path; rerun backend + production frontend builds when the environment usage gate resets.
 
 ### 5.4 ~~Still-open functional bug~~ — resolved
 - **Bug 4 — artist dashboard padding** ✅ **FIXED** 2026-06-13 (f8baf55): the album-header row was a `<button>` nesting other `<button>`s; the browser restructured the DOM and broke the layout. Now an accessible `role="button"` div.

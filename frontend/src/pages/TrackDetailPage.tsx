@@ -20,6 +20,7 @@ import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
+import { notify } from '@/utils/toast'
 
 export function TrackDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -83,10 +84,10 @@ export function TrackDetailPage() {
     if (!track || !isPremium) return
     setDownloading(true)
     try {
-      const a = document.createElement('a')
-      a.href = track.audioUrl
-      a.download = `${track.title}.mp3`
-      a.click()
+      await trackService.download(track.id, track.title)
+      notify.success('Download started')
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could not download this track.')
     } finally {
       setDownloading(false)
     }

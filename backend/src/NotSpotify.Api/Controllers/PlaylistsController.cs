@@ -21,13 +21,13 @@ public class PlaylistsController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
-    private readonly IStorageService _storage;
+    private readonly AudioDownloadService _audioDownloads;
 
-    public PlaylistsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
+    public PlaylistsController(AppDbContext db, MediaMapper mapper, AudioDownloadService audioDownloads)
     {
         _db = db;
         _mapper = mapper;
-        _storage = storage;
+        _audioDownloads = audioDownloads;
     }
 
     private Guid? CurrentUserId()
@@ -305,7 +305,6 @@ public class PlaylistsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> DownloadZip(
         Guid id,
-        [FromServices] IHttpClientFactory httpFactory,
         CancellationToken ct = default)
     {
         // Premium-only feature
@@ -320,7 +319,6 @@ public class PlaylistsController : ControllerBase
             .FirstOrDefaultAsync(p => p.Id == id, ct);
         if (playlist is null) return NotFound();
 
-        var http = httpFactory.CreateClient();
         var ms = new MemoryStream();
         var added = 0;
 
@@ -333,18 +331,16 @@ public class PlaylistsController : ControllerBase
                 // Read uploaded audio via the storage service (disk / authed Supabase) —
                 // never by HTTP-fetching our own public URL, which the server may not
                 // be able to reach. Absolute legacy/seeded URLs are fetched directly.
-                var bytes = await FetchAudioBytes(track.AudioKey, track.AudioUrl, http, ct);
-                if (bytes is null) continue;
-
-                var sourcePath = (track.AudioKey ?? track.AudioUrl ?? string.Empty).Split('?')[0];
-                var ext = Path.GetExtension(sourcePath);
-                if (string.IsNullOrEmpty(ext)) ext = ".mp3";
+                var audio = await _audioDownloads.FetchAsync(track.AudioKey, track.AudioUrl, ct);
+                if (audio is null) continue;
 
                 var safeName = string.Concat(
                     track.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
-                var entry = zip.CreateEntry($"{i + 1:D2} - {safeName}{ext}", CompressionLevel.NoCompression);
+                var entry = zip.CreateEntry(
+                    $"{i + 1:D2} - {safeName}{audio.Extension}",
+                    CompressionLevel.NoCompression);
                 await using var entryStream = entry.Open();
-                await entryStream.WriteAsync(bytes, ct);
+                await entryStream.WriteAsync(audio.Bytes, ct);
                 added++;
             }
         }
@@ -358,22 +354,6 @@ public class PlaylistsController : ControllerBase
         var safeName2 = string.Concat(
             playlist.Name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
         return File(ms.ToArray(), "application/zip", $"{safeName2}.zip");
-    }
-
-    private async Task<byte[]?> FetchAudioBytes(string? audioKey, string? audioUrl, HttpClient http, CancellationToken ct)
-    {
-        if (!string.IsNullOrEmpty(audioKey))
-        {
-            var bytes = await _storage.ReadAsync(audioKey, ct);
-            if (bytes is not null) return bytes;
-        }
-        if (!string.IsNullOrEmpty(audioUrl) && Uri.TryCreate(audioUrl, UriKind.Absolute, out var abs)
-            && (abs.Scheme == Uri.UriSchemeHttp || abs.Scheme == Uri.UriSchemeHttps))
-        {
-            try { return await http.GetByteArrayAsync(abs, ct); }
-            catch { /* unreachable external audio — skip this track */ }
-        }
-        return null;
     }
 
     private Task<Playlist?> LoadFullPlaylist(Guid id, CancellationToken ct) => _db.Playlists

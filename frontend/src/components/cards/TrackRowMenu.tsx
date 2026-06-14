@@ -45,6 +45,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
   const [playlistQuery, setPlaylistQuery] = useState('')
   const [removePlaylistQuery, setRemovePlaylistQuery] = useState('')
+  const [downloading, setDownloading] = useState(false)
   // Hover-intent timer: closing the flyout is delayed so the pointer can cross
   // the small gap between the "Add to playlist" row and the flyout without it
   // flickering shut.
@@ -554,15 +555,29 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
 
             {isPremium ? (
               <MenuItem>
-                <a
-                  href={track.audioUrl}
-                  download
-                  onClick={stop}
+                <button
+                  type="button"
+                  disabled={downloading}
+                  onClick={async (e) => {
+                    stop(e)
+                    setDownloading(true)
+                    try {
+                      await trackService.download(track.id, track.title)
+                      notify.success('Download started')
+                      close()
+                    } catch (error) {
+                      notify.error(error instanceof Error ? error.message : 'Could not download this track.')
+                    } finally {
+                      setDownloading(false)
+                    }
+                  }}
                   className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                 >
-                  <ArrowDownTrayIcon className="w-4 h-4" />
-                  Download
-                </a>
+                  {downloading
+                    ? <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                    : <ArrowDownTrayIcon className="w-4 h-4" />}
+                  {downloading ? 'Downloading…' : 'Download'}
+                </button>
               </MenuItem>
             ) : (
               <MenuItem>

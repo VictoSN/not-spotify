@@ -150,6 +150,7 @@ else
     Console.WriteLine("[Storage] Using LocalStorage (Supabase URL is empty — user-secrets not loaded?)");
 }
 builder.Services.AddScoped<MediaMapper>();
+builder.Services.AddScoped<AudioDownloadService>();
 builder.Services.AddScoped<LyricsService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
@@ -164,6 +165,7 @@ builder.Services.AddCors(opt =>
         .WithOrigins(corsOrigins)
         .AllowAnyHeader()
         .AllowAnyMethod()
+        .WithExposedHeaders("Content-Disposition")
         .AllowCredentials());
 });
 

@@ -1,6 +1,45 @@
 import type { Track } from '@/types/track'
 import { api } from './api'
 
+function downloadFilename(contentDisposition: string | undefined, fallback: string): string {
+  if (!contentDisposition) return fallback
+
+  const encoded = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1]
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded)
+    } catch {
+      return fallback
+    }
+  }
+
+  return contentDisposition.match(/filename="?([^";]+)"?/i)?.[1] ?? fallback
+}
+
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+async function downloadError(error: unknown): Promise<Error> {
+  const data = (error as { response?: { data?: unknown } })?.response?.data
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as { message?: string }
+      if (parsed.message) return new Error(parsed.message)
+    } catch {
+      // The server may have returned a non-JSON error body.
+    }
+  }
+  return error instanceof Error ? error : new Error('Could not download this track.')
+}
+
 export interface ChartEntry {
   rank: number
   playsThisWeek: number
@@ -19,6 +58,21 @@ export const trackService = {
   async getById(id: string): Promise<Track> {
     const res = await api.get<Track>(`/tracks/${id}`)
     return res.data
+  },
+
+  async download(trackId: string, trackTitle: string): Promise<void> {
+    try {
+      const res = await api.get<Blob>(`/tracks/${trackId}/download`, {
+        responseType: 'blob',
+      })
+      const filename = downloadFilename(
+        res.headers['content-disposition'],
+        `${trackTitle}.mp3`,
+      )
+      saveBlob(res.data, filename)
+    } catch (error) {
+      throw await downloadError(error)
+    }
   },
 
   async getTrending(limit = 10): Promise<Track[]> {

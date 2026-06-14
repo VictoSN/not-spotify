@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -15,12 +16,18 @@ public class TracksController : ControllerBase
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
     private readonly LyricsService _lyrics;
+    private readonly AudioDownloadService _audioDownloads;
 
-    public TracksController(AppDbContext db, MediaMapper mapper, LyricsService lyrics)
+    public TracksController(
+        AppDbContext db,
+        MediaMapper mapper,
+        LyricsService lyrics,
+        AudioDownloadService audioDownloads)
     {
         _db = db;
         _mapper = mapper;
         _lyrics = lyrics;
+        _audioDownloads = audioDownloads;
     }
 
     private IQueryable<Models.Track> BaseQuery() => _db.Tracks
@@ -37,6 +44,37 @@ public class TracksController : ControllerBase
             .Skip(offset).Take(Math.Clamp(limit, 1, 200))
             .ToListAsync(ct);
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
+    }
+
+    [HttpGet("{id:guid}/download")]
+    [Authorize]
+    public async Task<IActionResult> Download(Guid id, CancellationToken ct = default)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        var caller = await _db.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (caller is null) return Unauthorized();
+
+        var track = await _db.Tracks.AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, ct);
+        if (track is null) return NotFound();
+
+        var canManage = User.IsInRole("Admin") || caller.ArtistId == track.ArtistId;
+        if (!canManage && track.Status != "approved") return NotFound();
+        if (!canManage && caller.Plan != "premium")
+            return StatusCode(403, new { message = "A Premium subscription is required to download music." });
+
+        var audio = await _audioDownloads.FetchAsync(track.AudioKey, track.AudioUrl, ct);
+        if (audio is null)
+            return StatusCode(502, new { message = "The track's audio file could not be fetched for download." });
+
+        var safeTitle = string.Concat(
+            track.Title.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+        if (string.IsNullOrWhiteSpace(safeTitle)) safeTitle = "track";
+        return File(audio.Bytes, audio.ContentType, $"{safeTitle}{audio.Extension}");
     }
 
     [HttpGet("featured")]

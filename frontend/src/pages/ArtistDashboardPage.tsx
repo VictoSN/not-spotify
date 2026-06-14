@@ -14,11 +14,13 @@ import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import type { Artist as ArtistProfile } from '@/types/artist'
 import { downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
+import { trackService } from '@/services/trackService'
 import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
 import { formatNumber } from '@/utils/formatNumber'
+import { notify } from '@/utils/toast'
 
 const STATUS_CONFIG = {
   approved: { label: 'Live', icon: CheckCircleIcon, cls: 'text-green-400', bg: 'bg-green-500/15' },
@@ -1347,15 +1349,22 @@ export function ArtistDashboardPage() {
                                               ? <StopCircleIcon className="w-3.5 h-3.5" />
                                               : <PlayIcon className="w-3.5 h-3.5" />}
                                           </button>
-                                          <a
-                                            href={t.audioUrl}
-                                            download
-                                            onClick={(e) => e.stopPropagation()}
+                                          <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                              e.stopPropagation()
+                                              try {
+                                                await trackService.download(t.id, t.title)
+                                                notify.success('Download started')
+                                              } catch (error) {
+                                                notify.error(error instanceof Error ? error.message : 'Could not download this track.')
+                                              }
+                                            }}
                                             className="p-1 rounded hover:bg-elevated/60 text-muted hover:text-primary transition-colors"
                                             title="Download"
                                           >
                                             <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                                          </a>
+                                          </button>
                                         </>
                                       )}
                                       {t.status === 'rejected' && (

@@ -10,9 +10,11 @@ import {
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { adminService, downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
+import { trackService } from '@/services/trackService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
+import { notify } from '@/utils/toast'
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -682,10 +684,18 @@ export function AdminAlbumsListPage() {
                                                       ? <><StopCircleIcon className="w-3.5 h-3.5" />Stop</>
                                                       : <><PlayIcon className="w-3.5 h-3.5" />Play</>}
                                                   </button>
-                                                  <a href={t.audioUrl} download
+                                                  <button type="button"
+                                                    onClick={async () => {
+                                                      try {
+                                                        await trackService.download(t.id, t.title)
+                                                        notify.success('Download started')
+                                                      } catch (error) {
+                                                        notify.error(error instanceof Error ? error.message : 'Could not download this track.')
+                                                      }
+                                                    }}
                                                     className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold text-secondary hover:text-primary hover:bg-elevated/60 transition-colors">
                                                     <ArrowDownTrayIcon className="w-3.5 h-3.5" />DL
-                                                  </a>
+                                                  </button>
                                                 </>
                                               ) : (
                                                 <span className="text-xs text-muted italic">No audio</span>

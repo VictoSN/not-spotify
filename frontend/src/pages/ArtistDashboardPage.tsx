@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import {
   MusicalNoteIcon, CloudArrowUpIcon, CheckCircleIcon, ClockIcon,
   XCircleIcon, PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
@@ -46,6 +47,7 @@ type AlbumWithTracks = Album & { trackList: Track[] }
 export function ArtistDashboardPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const confirm = useConfirm()
 
   const [albums, setAlbums] = useState<AlbumWithTracks[]>([])
   const [artistStats, setArtistStats] = useState<ArtistStats | null>(null)
@@ -264,7 +266,12 @@ export function ArtistDashboardPage() {
   }
 
   const handleDeleteAlbum = async (album: AlbumWithTracks) => {
-    if (!confirm(`Delete "${album.title}" and all its tracks? This cannot be undone.`)) return
+    if (!(await confirm({
+      title: `Delete "${album.title}"?`,
+      message: 'This deletes the album and all its tracks. This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     try {
       await api.delete(`/me/artist-albums/${album.id}`)
       setAlbums((prev) => prev.filter((a) => a.id !== album.id))
@@ -355,7 +362,11 @@ export function ArtistDashboardPage() {
   }
 
   const handleDeleteTrack = async (track: Track, albumId: string) => {
-    if (!confirm(`Delete "${track.title}"?`)) return
+    if (!(await confirm({
+      title: `Delete "${track.title}"?`,
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     try {
       await api.delete(`/me/artist-tracks/${track.id}`)
       setAlbums((prev) => prev.map((a) =>

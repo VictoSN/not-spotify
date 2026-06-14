@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon,
   CheckCircleIcon, XCircleIcon, ChevronDownIcon, ChevronUpIcon,
@@ -74,6 +75,7 @@ function StatusBadge({ status }: { status?: string | null }) {
 
 export function AdminAlbumsListPage() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('pending')
   const [albums, setAlbums] = useState<Album[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -252,7 +254,12 @@ export function AdminAlbumsListPage() {
   }
 
   const handleDelete = async (album: Album) => {
-    if (!confirm(`Delete "${album.title}"? All of its tracks will also be deleted and removed from every playlist. This cannot be undone.`)) return
+    if (!(await confirm({
+      title: `Delete "${album.title}"?`,
+      message: 'All of its tracks will also be deleted and removed from every playlist. This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     setActingId(album.id)
     try {
       await adminService.deleteAlbum(album.id)

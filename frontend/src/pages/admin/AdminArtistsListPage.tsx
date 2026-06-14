@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckBadgeIcon,
   NoSymbolIcon, ArrowPathIcon,
@@ -11,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 
 export function AdminArtistsListPage() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [artists, setArtists] = useState<Artist[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +40,12 @@ export function AdminArtistsListPage() {
   }, [])
 
   const handleDelete = async (artist: Artist) => {
-    if (!confirm(`Delete "${artist.name}"? This cannot be undone.`)) return
+    if (!(await confirm({
+      title: `Delete "${artist.name}"?`,
+      message: 'This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     setDeletingId(artist.id)
     setError(null)
     try {
@@ -70,7 +77,11 @@ export function AdminArtistsListPage() {
   }
 
   const handleReinstate = async (id: string) => {
-    if (!confirm('Reinstate this artist? They will be able to submit content again.')) return
+    if (!(await confirm({
+      title: 'Reinstate this artist?',
+      message: 'They will be able to submit content again.',
+      confirmText: 'Reinstate',
+    }))) return
     setActingId(id)
     setError(null)
     try {

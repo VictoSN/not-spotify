@@ -1,15 +1,22 @@
 import { useState } from 'react'
 import { api } from '@/services/api'
+import { useConfirm } from '@/hooks/useConfirm'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 
 export function AdminDevPage() {
+  const confirm = useConfirm()
   const [resetting, setResetting] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleReset = async () => {
-    if (!confirm('Reset all play counts to zero? Ratings and saves are not affected. This cannot be undone.')) return
+    if (!(await confirm({
+      title: 'Reset all play counts to zero?',
+      message: 'Ratings and saves are not affected. This cannot be undone.',
+      confirmText: 'Reset',
+      danger: true,
+    }))) return
     setResetting(true)
     setResult(null)
     setError(null)

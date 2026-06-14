@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import {
   ArrowTopRightOnSquareIcon,
   ChevronRightIcon,
@@ -93,6 +94,7 @@ export function AccountSettingsPage() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -150,7 +152,12 @@ export function AccountSettingsPage() {
   }
 
   const cancelSubscription = async () => {
-    if (!confirm('Cancel your Premium subscription? You will lose access to Premium features immediately.')) return
+    if (!(await confirm({
+      title: 'Cancel Premium?',
+      message: 'You will lose access to Premium features immediately.',
+      confirmText: 'Cancel subscription',
+      danger: true,
+    }))) return
     setBusy(true)
     setError(null)
     try {

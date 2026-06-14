@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckCircleIcon, XCircleIcon,
   PlayIcon, StopCircleIcon, ArrowDownTrayIcon, ClockIcon, StarIcon, HeartIcon,
@@ -19,6 +20,7 @@ function fmtDuration(ms: number) {
 
 export function AdminTracksListPage() {
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('all')
   const [tracks, setTracks] = useState<Track[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -67,7 +69,12 @@ export function AdminTracksListPage() {
   useEffect(() => { reload() }, [tab])
 
   const handleDelete = async (track: Track) => {
-    if (!confirm(`Delete "${track.title}"? This cannot be undone.`)) return
+    if (!(await confirm({
+      title: `Delete "${track.title}"?`,
+      message: 'This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     setActingId(track.id)
     setError(null)
     try {

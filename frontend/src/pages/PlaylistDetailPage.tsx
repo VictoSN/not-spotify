@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useConfirm } from '@/hooks/useConfirm'
 import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
 import {
   HeartIcon as HeartOutlineIcon,
@@ -80,6 +81,7 @@ function sortPlaylistTracks(tracks: PlaylistTrack[], key: TrackSort): PlaylistTr
 export function PlaylistDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const confirm = useConfirm()
   const [playlist, setPlaylist] = useState<Playlist | null>(null)
   const [loadError, setLoadError] = useState<'notfound' | 'forbidden' | null>(null)
   useDocumentTitle(playlist?.name ?? null)
@@ -287,7 +289,12 @@ export function PlaylistDetailPage() {
 
   const handleDelete = async () => {
     if (!playlist) return
-    if (!confirm(`Delete "${playlist.name}"? This cannot be undone.`)) return
+    if (!(await confirm({
+      title: `Delete "${playlist.name}"?`,
+      message: 'This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+    }))) return
     setBusy(true)
     try {
       await deletePlaylistAction(playlist.id)

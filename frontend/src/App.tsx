@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
 import { AppToaster } from '@/components/ui/AppToaster'
+import { ConfirmProvider } from '@/components/common/ConfirmDialog'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -27,10 +28,10 @@ export default function App() {
   }
 
   return (
-    <>
+    <ConfirmProvider>
       <RouterProvider router={router} />
       <InstallPrompt />
       <AppToaster />
-    </>
+    </ConfirmProvider>
   )
 }

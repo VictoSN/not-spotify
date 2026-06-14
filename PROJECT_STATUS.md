@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (added consolidated Future Work Backlog incl. "play together"/listen-along)
+Last updated: 2026-06-14 (backlog burndown: share buttons, admin-decision notifications, Blend)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -92,10 +92,11 @@ Single consolidated list of everything recommended but not yet built, so nothing
 
 **Social / "together" (the showcase ideas):**
 - [ ] ⭐ **Play together / Listen-along ("Jam")** — a host plays, friends join a session and hear the same track in sync. SignalR is already in the stack (powers presence + chat); needs a session room + host playback broadcast + drift correction + join/leave UI. High effort, highest demo value. *No migration.* (gap report §3 stretch)
-- [ ] **Blend playlist** — an auto playlist merging two friends' shared taste. *Backend query, no migration.*
+- [x] ✅ **Blend playlist** — DONE 2026-06-14 (commit f97eaa2). `GET /friends/{userId}/blend` mixes both friends' top tracks; "Blend with <name>" button on a friend's profile.
 - [ ] **Asymmetric follows + public profiles** — follow users one-way (beyond mutual friendship), followers/following counts, public "top tracks this month". *Migration.*
 - [ ] **Share to chat** — send a track/playlist as a rich card into an existing chat thread. *Low.*
-- [ ] **Admin approve/reject → notification** producers — quick follow-up now that `NotificationService` exists (one `NotifyAsync` call per admin decision). *Low, no migration.*
+- [x] ✅ **Share on playlist + artist** — DONE 2026-06-14 (commit 620261a). Shared `utils/share.ts` (native sheet → clipboard); buttons on playlist + artist pages.
+- [x] ✅ **Admin approve/reject → notifications** — DONE 2026-06-14 (commit 77bb31d). Producers in album/track/application review controllers notify the submitter/applicant.
 
 **Playback / audio:**
 - [ ] **Crossfade + gapless** (Web Audio) — wires the dead `crossfade` toggle; reworks the singleton audioEngine. *Verify audibly.*
@@ -153,6 +154,17 @@ Per FEATURE_GAP_REPORT §"Not realistic": licensed major-label catalogue, spatia
 
 ## 📝 SESSION LOG
 Each session appends an entry here (most recent on top).
+
+### 2026-06-14 — Account 3 — Backlog burndown: share, admin notifications, blend
+
+Worked the Future Work Backlog easiest→hardest, all verified in-browser/API:
+- **Share on playlist + artist** (easy, commit 620261a) — shared `utils/share.ts` (native share sheet → clipboard fallback) + buttons on both pages with a "Link copied" hint. Verified the artist button copies the URL.
+- **Admin approve/reject → notifications** (easy, commit 77bb31d) — wired `NotificationService` into album/track/application review controllers; submitter/applicant gets an in-app notification with the reviewer's note. Verified: alex approved a pending album → submitter (testing2) received an "approval" notification. Notification producer set is now complete (friend events + admin decisions).
+- **Blend** (medium, commit f97eaa2) — `GET /friends/{userId}/blend` (friends-only) mixes both users' top 90-day tracks (shared first, then interleaved). "Blend with <name>" button on a friend's profile loads it into the queue. Verified: befriended alex+testing2, blend returned 12 tracks, button loaded a 15-track queue and played.
+
+**DB note:** no migrations this session (all reused existing tables). Created a standing **alex ↔ testing2 friendship** during blend testing — left in place (two seed accounts; useful for future friends/blend testing). Gave testing2 a couple of plays. The previously-pending "asdf" album by testing2 was **approved** (legitimate moderation, now live).
+
+**Next (harder, not started):** crossfade/gapless (frontend audio-engine rework, unverifiable audibly here), then **listen-along / "play together"** (the SignalR showcase). Both are in the backlog; recommend a dedicated session each.
 
 ### 2026-06-14 — Account 3 — Pro dashboards + admin entrance + big-feature scoping
 

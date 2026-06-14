@@ -173,7 +173,7 @@ All eight shipped and browser-verified: search by lyrics · share fix (track URL
 - ✅ **Voice search** — DONE (2026-06-13). Mic button in the top bar via the Web Speech API (Chrome/Edge); no-ops on browsers without it.
 - **Desktop wrapper** (Tauri) — roadmap item; PWA first makes it nearly free.
 - **Adaptive streaming / quality selection** — ffmpeg + hls.js, gated by storage budget.
-- **Blend playlists**, **embeddable player**.
+- ✅ **Blend playlists** — DONE 2026-06-14 (commit f97eaa2); friends-only `GET /friends/{userId}/blend` + profile button. · **embeddable player** (still open).
 - **Personal uploads locker** — demo-scale only (storage).
 
 ### Not realistic for this project (flagged per the no-paid-services rule)

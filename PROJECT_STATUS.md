@@ -1,7 +1,7 @@
 # PROJECT_STATUS.md
 Single source of truth for feature/bug status. Every session reads this FIRST and updates it LAST.
 
-Last updated: 2026-06-14 (pro dashboards + admin entrance hidden; big features scoped in gap report §6)
+Last updated: 2026-06-14 (added consolidated Future Work Backlog incl. "play together"/listen-along)
 
 > **Companion docs:** [README.md](README.md) (setup + how to run) · [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) (vs Spotify/Apple/SoundCloud/YTM + roadmap) · [CONTEXT.md](CONTEXT.md) (architecture for new sessions).
 
@@ -84,6 +84,42 @@ Ordered by value; see [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md) §3 for ful
 
 **Other in-flight tracks:**
 - [ ] **Account 2 — Admin restructure**: move the admin pages into a dedicated sidebar/topbar admin panel layout. (Dedicated `/admin/login` + guard is ✅ done; the layout shell + page migration is still open.)
+
+---
+
+## 💡 FUTURE WORK BACKLOG (recommended features — full reasoning in [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md))
+Single consolidated list of everything recommended but not yet built, so nothing gets lost. Each is free (no paid APIs/licensing) unless noted. ⭐ = high demo value.
+
+**Social / "together" (the showcase ideas):**
+- [ ] ⭐ **Play together / Listen-along ("Jam")** — a host plays, friends join a session and hear the same track in sync. SignalR is already in the stack (powers presence + chat); needs a session room + host playback broadcast + drift correction + join/leave UI. High effort, highest demo value. *No migration.* (gap report §3 stretch)
+- [ ] **Blend playlist** — an auto playlist merging two friends' shared taste. *Backend query, no migration.*
+- [ ] **Asymmetric follows + public profiles** — follow users one-way (beyond mutual friendship), followers/following counts, public "top tracks this month". *Migration.*
+- [ ] **Share to chat** — send a track/playlist as a rich card into an existing chat thread. *Low.*
+- [ ] **Admin approve/reject → notification** producers — quick follow-up now that `NotificationService` exists (one `NotifyAsync` call per admin decision). *Low, no migration.*
+
+**Playback / audio:**
+- [ ] **Crossfade + gapless** (Web Audio) — wires the dead `crossfade` toggle; reworks the singleton audioEngine. *Verify audibly.*
+- [ ] **Equalizer (EQ)** — Web Audio BiquadFilters; nearly free once crossfade's Web Audio graph exists.
+- [ ] **Volume normalization** — ffmpeg loudness scan at upload + client gain; wires the dead `normalize` toggle. *Storage-light.*
+- [ ] **PiP fast-forward/rewind** — needs a seekable PiP rendering approach (current canvas-stream video isn't seekable). See Known issues.
+
+**Discovery / content:**
+- [ ] **Daily mixes → "Discover Weekly"** — evolve the genre mixes into collaborative-filtering recommendations over `PlayHistories`.
+- [ ] **Editorial / featured playlists** — admin-curated `featured` flag + a home row.
+- [ ] **Mood/activity tagging & browse.**
+
+**Platform / polish:**
+- [ ] **PWA** — installable + offline cache of downloaded tracks (also the cheapest path to a "desktop app"). *Frontend.*
+- [ ] **Desktop wrapper** (Tauri) — PWA first makes this nearly free.
+- [ ] **Embeddable mini-player** (iframe) — shareable `<iframe>` player for a track/playlist.
+- [ ] **Wire/hide remaining dead settings toggles** (`crossfade`, `normalize`, `quality`).
+- [ ] **Hardening backlog** (rate limiting on auth/chat, global toast for swallowed errors, a thin test suite, share on playlist/artist menus) — see gap report §5.
+
+**Large requested subsystems (each its own session + migration) — designed in gap report §6:**
+- [ ] **RBAC**: master admin + role tiers + per-role permissions + approval-with-reason workflow.
+- [ ] **Location-based discovery**: country on artists/albums/tracks + "Popular in <country>" rows.
+- [ ] **Ads engine**: admin-managed inventory, cadence, date scheduling, country targeting.
+- [ ] **Podcasts** (reuse audio pipeline) + **Music videos** (storage-heavy; pair with the R2 move).
 
 ---
 

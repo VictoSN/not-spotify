@@ -3,6 +3,7 @@ import * as signalR from '@microsoft/signalr'
 import { useAuthStore } from '@/stores/authStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useChatStore } from '@/stores/chatStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import type { ChatMessage } from '@/types/chat'
 
 /**
@@ -74,6 +75,11 @@ export function usePresenceSocket() {
     // Another of my own tabs marked a conversation read — clear badges here too.
     connection.on('ChatReadSelf', (partnerUserId: string) => {
       useChatStore.getState().applyReadSelf(partnerUserId)
+    })
+
+    // A new in-app notification arrived — refresh the bell list/badge.
+    connection.on('NotificationReceived', () => {
+      void useNotificationStore.getState().fetch()
     })
 
     // ── Lifecycle ──────────────────────────────────────────────────────────

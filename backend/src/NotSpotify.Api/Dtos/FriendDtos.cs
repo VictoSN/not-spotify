@@ -68,3 +68,18 @@ public record PublicUserProfileDto(
 
 public record SendFriendRequestDto(Guid UserId);
 public record RespondToRequestDto(string Action); // "accept" | "decline"
+
+/// <summary>An in-app notification (bell menu).</summary>
+public record NotificationDto(
+    string Id,
+    string Type,
+    string Title,
+    string? Body,
+    string? LinkUrl,
+    string? ImageUrl,
+    bool IsRead,
+    DateTime CreatedAt
+);
+
+/// <summary>Notification list + unread count for the bell badge.</summary>
+public record NotificationListDto(int UnreadCount, IEnumerable<NotificationDto> Items);

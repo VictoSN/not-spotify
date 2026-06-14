@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/authStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 /**
  * Refreshes social data (friends list, pending requests, suggestions, activity)
@@ -16,6 +17,7 @@ export function useFriendPolling() {
   const fetchRequests = useFriendStore((s) => s.fetchRequests)
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
   const fetchSuggestions = useFriendStore((s) => s.fetchSuggestions)
+  const fetchNotifications = useNotificationStore((s) => s.fetch)
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -25,13 +27,17 @@ export function useFriendPolling() {
     void fetchActivity()
     void fetchRequests()
     void fetchSuggestions()
+    void fetchNotifications()
 
-    // Refresh every 20 s for now-playing + request badge count.
+    // Refresh every 20 s for now-playing + request/notification badge counts.
+    // (Notifications also arrive instantly via the presence socket; this poll
+    // is the fallback when the socket is down.)
     const id = setInterval(() => {
       void fetchFriends()
       void fetchActivity()
       void fetchRequests()
       void fetchSuggestions()
+      void fetchNotifications()
     }, 20_000)
 
     return () => clearInterval(id)

@@ -101,6 +101,7 @@ else
 }
 builder.Services.AddScoped<MediaMapper>();
 builder.Services.AddScoped<LyricsService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
 

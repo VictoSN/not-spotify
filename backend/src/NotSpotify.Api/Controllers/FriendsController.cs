@@ -16,11 +16,13 @@ public class FriendsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly NotificationService _notifications;
 
-    public FriendsController(AppDbContext db, MediaMapper mapper)
+    public FriendsController(AppDbContext db, MediaMapper mapper, NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
+        _notifications = notifications;
     }
 
     private Guid CurrentUserId()
@@ -120,6 +122,7 @@ public class FriendsController : ControllerBase
             existing.AddresseeId = dto.UserId;
             existing.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
+            await NotifyFriendRequest(me, dto.UserId, ct);
             return NoContent();
         }
 
@@ -129,7 +132,23 @@ public class FriendsController : ControllerBase
             AddresseeId = dto.UserId,
         });
         await _db.SaveChangesAsync(ct);
+        await NotifyFriendRequest(me, dto.UserId, ct);
         return NoContent();
+    }
+
+    /// <summary>Tells the addressee that <paramref name="requesterId"/> sent them a friend request.</summary>
+    private async Task NotifyFriendRequest(Guid requesterId, Guid addresseeId, CancellationToken ct)
+    {
+        var requester = await _db.Users.FindAsync(new object[] { requesterId }, ct);
+        if (requester is null) return;
+        await _notifications.NotifyAsync(
+            addresseeId,
+            "friend_request",
+            $"{requester.Name} sent you a friend request",
+            body: "Open Friends to accept or decline.",
+            linkUrl: $"/user/{requesterId}",
+            imageUrl: _mapper.ToRef(requester).AvatarUrl,
+            ct: ct);
     }
 
     /// <summary>PATCH /friends/requests/{id} — accept or decline a pending request.</summary>
@@ -157,6 +176,22 @@ public class FriendsController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+
+        // Tell the original requester their request was accepted.
+        if (friendship.Status == FriendshipStatus.Accepted)
+        {
+            var accepter = await _db.Users.FindAsync(new object[] { me }, ct);
+            if (accepter is not null)
+                await _notifications.NotifyAsync(
+                    friendship.RequesterId,
+                    "friend_accepted",
+                    $"{accepter.Name} accepted your friend request",
+                    body: "You're now friends.",
+                    linkUrl: $"/user/{me}",
+                    imageUrl: _mapper.ToRef(accepter).AvatarUrl,
+                    ct: ct);
+        }
+
         return NoContent();
     }
 

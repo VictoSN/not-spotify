@@ -33,6 +33,7 @@ import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
 import { FriendPanel } from '@/components/friends/FriendPanel'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
+import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
 
@@ -546,6 +547,9 @@ export function TopBar() {
           </span>
         )}
       </button>
+
+      {/* Notifications bell — desktop only */}
+      <NotificationBell />
 
       {/* Friend activity feed toggle — desktop only */}
       <button

@@ -30,6 +30,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -325,6 +326,22 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             e.HasIndex(x => x.UserId).IsUnique();
             e.HasIndex(x => new { x.LastSeenAt, x.TrackId });
+        });
+
+        b.Entity<Notification>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.Property(x => x.Type).HasMaxLength(40);
+            e.Property(x => x.Title).HasMaxLength(200);
+            e.Property(x => x.Body).HasMaxLength(500);
+
+            // Bell query: "my notifications, newest first" + unread filter.
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
+            e.HasIndex(x => new { x.UserId, x.IsRead });
         });
     }
 }

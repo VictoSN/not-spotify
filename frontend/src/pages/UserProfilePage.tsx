@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline'
+import { UserPlusIcon, UserMinusIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDominantColor } from '@/hooks/useDominantColor'
 import { friendService } from '@/services/friendService'
 import { Avatar } from '@/components/ui/Avatar'
@@ -27,6 +28,9 @@ export function UserProfilePage() {
   const [loading, setLoading] = useState(true)
   const [friendActionBusy, setFriendActionBusy] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
+  const [blendBusy, setBlendBusy] = useState(false)
+  const [blendEmpty, setBlendEmpty] = useState(false)
+  const playWithGate = usePlaybackGate()
 
   const heroColor = useDominantColor(profile?.avatarUrl)
 
@@ -159,6 +163,31 @@ export function UserProfilePage() {
             </>
           )}
         </button>
+
+        {/* Blend — a shared mix of both your top tracks (friends only) */}
+        {isFriend && userId && (
+          <button
+            onClick={async () => {
+              if (blendBusy) return
+              setBlendBusy(true)
+              try {
+                const tracks = await friendService.getBlend(userId)
+                if (tracks.length > 0) playWithGate(tracks[0], tracks)
+                else setBlendEmpty(true)
+              } catch {
+                setBlendEmpty(true)
+              } finally {
+                setBlendBusy(false)
+              }
+            }}
+            disabled={blendBusy}
+            className="flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-sm font-semibold text-accent transition-all hover:scale-105 hover:bg-accent/20 active:scale-95 disabled:opacity-50"
+            title={`Play a blend of you and ${profile.name}`}
+          >
+            <SparklesIcon className="h-4 w-4" />
+            {blendBusy ? 'Blending…' : blendEmpty ? 'Not enough history yet' : `Blend with ${profile.name.split(' ')[0]}`}
+          </button>
+        )}
       </div>
 
       {/* Playlists */}

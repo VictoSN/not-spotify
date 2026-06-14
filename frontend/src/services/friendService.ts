@@ -1,5 +1,6 @@
 import type { Friend, FriendRequest, FriendActivity, UserSearchResult, PublicUserProfile, FriendSuggestion, MutualFriend } from '@/types/friend'
 import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
 import { api } from './api'
 
 export const friendService = {
@@ -23,6 +24,11 @@ export const friendService = {
 
   async unfriend(userId: string): Promise<void> {
     await api.delete(`/friends/${userId}`)
+  },
+
+  async getBlend(userId: string, limit = 30): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/friends/${userId}/blend`, { params: { limit } })
+    return res.data
   },
 
   async getActivity(): Promise<FriendActivity[]> {

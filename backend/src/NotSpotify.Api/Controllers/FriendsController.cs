@@ -215,6 +215,64 @@ public class FriendsController : ControllerBase
         return NoContent();
     }
 
+    // ── Blend ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// GET /friends/{userId}/blend — a "Blend": a shared playlist mixing the
+    /// caller's and the friend's most-played tracks (last 90 days), shared
+    /// favourites first, then interleaved. Both users must be friends.
+    /// </summary>
+    [HttpGet("{userId:guid}/blend")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Blend(Guid userId, [FromQuery] int limit = 30, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (userId == me) return BadRequest(new { message = "Pick a friend to blend with." });
+
+        var friendIds = await FriendIdsOf(me).ToListAsync(ct);
+        if (!friendIds.Contains(userId))
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only blend with a friend." });
+
+        limit = Math.Clamp(limit, 5, 50);
+        var since = DateTime.UtcNow.AddDays(-90);
+
+        // Each user's tracks ranked by their own play count in the window.
+        async Task<List<Guid>> TopTrackIds(Guid uid) => (await _db.PlayHistories
+            .Where(h => h.UserId == uid && h.PlayedAt >= since)
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(limit)
+            .ToListAsync(ct)).Select(x => x.TrackId).ToList();
+
+        var mine = await TopTrackIds(me);
+        var theirs = await TopTrackIds(userId);
+
+        // Shared favourites lead; then interleave the rest (mine, theirs, …).
+        var ordered = new List<Guid>();
+        foreach (var id in mine.Intersect(theirs)) ordered.Add(id);
+        var mineOnly = mine.Except(ordered).ToList();
+        var theirsOnly = theirs.Except(ordered).ToList();
+        for (var i = 0; i < Math.Max(mineOnly.Count, theirsOnly.Count); i++)
+        {
+            if (i < mineOnly.Count) ordered.Add(mineOnly[i]);
+            if (i < theirsOnly.Count) ordered.Add(theirsOnly[i]);
+        }
+        ordered = ordered.Distinct().Take(limit).ToList();
+
+        if (ordered.Count == 0) return Ok(Array.Empty<TrackDto>());
+
+        var tracks = await _db.Tracks
+            .Where(t => ordered.Contains(t.Id) && t.Status == "approved")
+            .Include(t => t.Artist).Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        // Preserve the blend order (Contains() loses it).
+        var byId = tracks.ToDictionary(t => t.Id);
+        var result = ordered.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
+        return Ok(await _mapper.ToDtoListAsync(result, ct));
+    }
+
     // ── Graph queries ────────────────────────────────────────────────────────
 
     /// <summary>

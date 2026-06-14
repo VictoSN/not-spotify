@@ -1,4 +1,4 @@
-﻿import { QueueListIcon, MicrophoneIcon } from '@heroicons/react/24/outline'
+﻿import { QueueListIcon, MicrophoneIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
@@ -7,6 +7,7 @@ import { VolumeControl } from '@/components/player/VolumeControl'
 import { PlaybackSpeedButton, SleepTimerButton } from '@/components/player/PlayerExtras'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useJamStore } from '@/stores/jamStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 
 // Inline SVG: rectangle with small inset rectangle â€” standard PiP icon
@@ -21,6 +22,9 @@ function PipIcon({ className }: { className?: string }) {
 
 export function BottomPlayerBar() {
   const { toggleNowPlaying, isNowPlayingOpen, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
+  const jamRole = useJamStore((s) => s.role)
+  const startHosting = useJamStore((s) => s.startHosting)
+  const stopJam = useJamStore((s) => s.stopJam)
   const isMobile = useIsMobile()
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -97,6 +101,16 @@ export function BottomPlayerBar() {
             <MicrophoneIcon className="w-5 h-5" />
           </button>
         )}
+        {/* Listen-along / Jam — host toggle */}
+        <button
+          onClick={() => (jamRole === 'host' ? stopJam() : startHosting())}
+          className={`hidden sm:block transition-all hover:scale-110 active:scale-90 ${jamRole === 'host' ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+          aria-label={jamRole === 'host' ? 'End jam' : 'Start a jam (listen along)'}
+          aria-pressed={jamRole === 'host'}
+          title={jamRole === 'host' ? 'End jam' : 'Start a jam (listen along)'}
+        >
+          <UserGroupIcon className="w-5 h-5" />
+        </button>
         <VolumeControl />
         {currentTrack && (
           <button

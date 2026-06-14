@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-import { UserPlusIcon, UserMinusIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { UserPlusIcon, UserMinusIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useFriendStore } from '@/stores/friendStore'
+import { useJamStore } from '@/stores/jamStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDominantColor } from '@/hooks/useDominantColor'
 import { friendService } from '@/services/friendService'
@@ -31,6 +32,8 @@ export function UserProfilePage() {
   const [blendBusy, setBlendBusy] = useState(false)
   const [blendEmpty, setBlendEmpty] = useState(false)
   const playWithGate = usePlaybackGate()
+  const jamRole = useJamStore((s) => s.role)
+  const joinAs = useJamStore((s) => s.joinAs)
 
   const heroColor = useDominantColor(profile?.avatarUrl)
 
@@ -186,6 +189,18 @@ export function UserProfilePage() {
           >
             <SparklesIcon className="h-4 w-4" />
             {blendBusy ? 'Blending…' : blendEmpty ? 'Not enough history yet' : `Blend with ${profile.name.split(' ')[0]}`}
+          </button>
+        )}
+
+        {/* Listen along — join this friend's jam (if they're hosting one) */}
+        {isFriend && userId && jamRole === 'off' && (
+          <button
+            onClick={() => joinAs(userId, profile.name)}
+            className="flex items-center gap-2 rounded-full border border-secondary/30 px-4 py-2 text-sm font-semibold text-secondary transition-all hover:scale-105 hover:border-primary hover:text-primary active:scale-95"
+            title={`Listen along with ${profile.name}`}
+          >
+            <UserGroupIcon className="h-4 w-4" />
+            Listen along
           </button>
         )}
       </div>

@@ -17,6 +17,8 @@ import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 import { KeyboardShortcutsHelp } from '@/components/common/KeyboardShortcutsHelp'
 import { useFriendPolling } from '@/hooks/useFriendPolling'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import { useJamSocket } from '@/hooks/useJamSocket'
+import { JamBar } from '@/components/jam/JamBar'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
 
@@ -42,6 +44,8 @@ export function AppShell() {
   useFriendPolling()
   // Space/arrows/M/L player shortcuts.
   useKeyboardShortcuts()
+  // Listen-along ("Jam") realtime session.
+  useJamSocket()
 
   useEffect(() => {
     if (prevAuth.current && !isAuthenticated) {
@@ -103,6 +107,7 @@ export function AppShell() {
         )}
       </div>
 
+      {isAuthenticated && <JamBar />}
       {isAuthenticated && <BottomPlayerBar />}
       {isMobile && <MobileNav />}
       {isMobile && isAuthenticated && <MobileNowPlayingSheet />}

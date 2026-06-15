@@ -80,12 +80,12 @@ Licensed major-label catalogue · spatial audio · real ad-network/royalties at 
 
 ## Phase 3 — Unit testing (3-way split)
 
-**There is NO automated test suite yet** — biggest quality gap (regression risk with 3 people on shared files).
+**Harness + smoke layer are now in place (2026-06-15).** Deepening per the 3-way split below is still open.
 
 **Setup (once, together):**
-- [ ] Backend: add xUnit project `backend/test/NotSpotify.Api.Tests`; use EF Core **InMemory/SQLite** so tests never touch the shared DB; mock `IStorageService`, `NotificationService`, Stripe.
-- [ ] Frontend: add **Vitest** + React Testing Library; test stores (pure logic) + component render/interaction with mocked services.
-- [ ] Wire a `test` script; start with a smoke layer (auth round-trip, guarded endpoint → 401/403, one store reducer, one component), then deepen.
+- [x] Backend: xUnit project `backend/test/NotSpotify.Api.Tests` (registered in `NotSpotify.slnx`); EF Core **InMemory** so tests never touch the shared DB; `IStorageService` mocked, `NotificationService` built over InMemory + no-op hub, `IHubContext` mocked. `dotnet test` → **9 passing** (Friends + Chat controller guards/persistence/real-time push).
+- [x] Frontend: **Vitest** + jsdom + Testing Library wired via a standalone `vitest.config.ts` (kept separate from `vite.config.ts` to avoid the vite-8/vitest-3 plugin-type clash); test files excluded from `tsc -b`. `npm run test` → **9 passing** (formatNumber, formatTime, chatStore reducers). `npm run build` + lint stay clean.
+- [x] `test` / `test:watch` scripts wired (frontend); backend via `dotnet test`. Smoke layer done — now **deepen** by the split below.
 
 **Split (each person owns unit tests for their slice):**
 

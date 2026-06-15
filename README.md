@@ -6,18 +6,19 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 ## 📊 Project Status & Features
 
-**Live status is tracked in [PROJECT_STATUS.md](PROJECT_STATUS.md)** (single source of truth — what's done, what's next, current bugs). A full competitive gap analysis and roadmap lives in [FEATURE_GAP_REPORT.md](FEATURE_GAP_REPORT.md), and architecture notes for new contributors in [CONTEXT.md](CONTEXT.md).
+**The remaining-work checklist and roadmap live in [todo.md](todo.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
 
 **What works today (highlights):**
-- **Playback:** full player, queue + premium drag-reorder, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
+- **Playback:** full player, queue + premium drag-reorder, **crossfade + gapless**, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
 - **Discovery:** trending, for-you, new music, recents, **weekly Top 50 charts**, **search by lyrics**, **song radio**, **"Fans also like"**, **Daily Mixes**.
 - **Library/playlists:** create/edit/delete, public/friends/private visibility, collaborative playlists, JSON export/import, library + track sorting, cover-art mosaics.
-- **Social:** friends, real-time presence, Friend Activity rail, 1:1 chat, friends-only playlists.
+- **Social:** friends, **asymmetric follows** (follower/following counts + public profile top tracks), real-time presence, Friend Activity rail, 1:1 chat, notifications center, friends-only playlists, Blend, listen-along/Jam.
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
 - **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped).
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`.
+- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback).
 
-**Being worked on next:** notifications center, smart playlists, crossfade/gapless, waveform + timed comments, PWA, and a "listen-along" jam mode. See PROJECT_STATUS.md → *Next up / unfinished*.
+**Being worked on next:** smart playlists, waveform + timed comments, the storage move (R2 → S3), and a unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 
 ### Run everything at once (Windows)
 Instead of three manual terminals, **double-click [`dev.cmd`](dev.cmd)** (or run `./dev.sh` from Git Bash). It opens the backend, the Stripe webhook listener, and the frontend in separate windows. (Stripe CLI must be installed + `stripe login` done once.) Manual steps are below.
@@ -400,3 +401,41 @@ Each authenticated user can rate a track 1–5 stars from the bottom player bar.
 `AverageRating = RatingSum / RatingCount` is derived at query time.
 
 The frontend stores the user's own rating in `ratingStore` (Zustand + localStorage) and syncs to the backend **optimistically** — the UI updates immediately and rolls back if the API call fails.
+
+---
+
+## Architecture & Conventions
+
+**Stack:** React 18 + TS + Vite + Zustand + React Router + Tailwind (custom CSS vars: `text-primary`, `bg-surface`, `bg-elevated`, `text-accent`; `bg-primary`/`text-page` for filled CTAs) + Heroicons · ASP.NET Core 8 + EF Core 8 · PostgreSQL on **Supabase** (`MigrateAsync()` runs on startup) · ASP.NET Identity + JWT (access+refresh; SignalR uses `?access_token=` on `/hubs/*`) · Supabase Storage behind `IStorageService` (Local fallback) · lyrics via LRCLIB→Lyrics.ovh (no keys) · Stripe.
+
+**Folder structure:**
+```
+/backend/src/NotSpotify.Api
+  /Controllers  Tracks, Me, Admin, Playlists, Auth, Friends, Users, Notifications, Albums, Artists, Search, Genres, Billing, Chat, Analytics, StripeWebhook
+  /Models       EF entities (Track, Album, Artist, Playlist, ApplicationUser, Friendship, UserFollow, Notification, …)
+  /Dtos · /Services (MediaMapper, IStorageService, LyricsService, TokenService, NotificationService, AudioDownloadService, StripeBillingService)
+  /Data (AppDbContext, DbSeeder) · /Migrations (auto-applied) · /Hubs (PresenceHub, SessionHub)
+  Program.cs    DI, JWT, rate limiter, storage selection, MigrateAsync + defensive CREATE TABLE IF NOT EXISTS guards
+/frontend/src
+  /components (player, cards, ui, layout, profile, friends, settings, common) /pages /services (api.ts + per-domain) /stores (Zustand) /router /types /hooks /utils
+```
+
+**Naming:** C# PascalCase (EF columns quoted `"Title"` in raw SQL) · TS camelCase vars / PascalCase components+types · API routes kebab-case · storage keys `audio/{guid}.ext`, `covers/{guid}.ext`, `avatars/{userId}/{guid}.ext`.
+
+**Non-obvious rules (these bite people):**
+- **Shared DB migrations:** never `dotnet ef … --no-build`; **always `dotnet build` before `dotnet run` after `migrations add`** (a stale DLL skips the migration while the Program.cs raw-SQL guard creates the table → history mismatch). Prefer **idempotent** migrations (`CREATE … IF NOT EXISTS`).
+- **Two-deck audio engine** (`services/audioEngine.ts`): two `HTMLAudioElement` decks (not Web Audio — `MediaElementSource` taints cross-origin storage audio). The player store owns *what plays next*; the engine only calls `skipNext()` early for crossfade overlap.
+- **mediaSession** action handlers are owned **only** by `audioEngine.ts` (set once) — re-registering per-track broke Edge PiP controls.
+- **PWA service worker** registers PROD-only — verify via `npm run build` + `npm run preview`, not dev.
+- **Toasts:** `notify.{success,error,info}` (`utils/toast.ts`). **Confirms:** `useConfirm()` hook — no native `confirm()`.
+- **Rate limiting:** `auth` (20/min/IP) on `AuthController`; `chat-send` (20/10s/user) on `ChatController.Send` → JSON 429 + `Retry-After`.
+- **Downloads:** `AudioDownloadService` only; frontend calls `trackService.download()`, never links `audioUrl`.
+- **Two social graphs:** `Friendships` = bidirectional + acceptance (FriendsController); `UserFollows` = one-way, no acceptance (UsersController).
+
+> **Shared DB:** the whole team writes to one Supabase instance. Coordinate destructive changes; prefer throwaway data. EF migrations auto-apply on backend startup.
+
+---
+
+## Known Issues
+
+No open bugs (1–11 fixed). Known minor cosmetic items (pre-logged — don't re-file): PiP fast-forward/rewind inert (canvas-stream video isn't seekable); React empty-`<img src>` warning on Home (blank seed cover); SignalR "stopped during negotiation" burst on reload (reconnects fine); brief logout flash on hard reload (in-memory access token; expected). `npm run lint` is red repo-wide on the established `setLoading`-in-effect pattern — `npm run build` is the real gate and passes.

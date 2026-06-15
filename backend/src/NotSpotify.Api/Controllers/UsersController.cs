@@ -15,11 +15,13 @@ public class UsersController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly NotificationService _notifications;
 
-    public UsersController(AppDbContext db, MediaMapper mapper)
+    public UsersController(AppDbContext db, MediaMapper mapper, NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
+        _notifications = notifications;
     }
 
     private Guid? CurrentUserId()
@@ -36,6 +38,10 @@ public class UsersController : ControllerBase
             .Where(f => f.Status == FriendshipStatus.Accepted &&
                         (f.RequesterId == userId || f.AddresseeId == userId))
             .Select(f => f.RequesterId == userId ? f.AddresseeId : f.RequesterId);
+
+    /// <summary>IDs the given user follows (one-way follow graph).</summary>
+    private IQueryable<Guid> FollowingIdsOf(Guid userId) =>
+        _db.UserFollows.Where(f => f.FollowerId == userId).Select(f => f.FolloweeId);
 
     // ── Search ───────────────────────────────────────────────────────────────
 
@@ -106,21 +112,176 @@ public class UsersController : ControllerBase
 
         var me = CurrentUserId();
         int mutual = 0;
+        bool? isFollowing = null;
 
         if (me.HasValue && me.Value != userId)
         {
             var myFriendIds = await FriendIdsOf(me.Value).ToListAsync(ct);
             var theirFriendIds = await FriendIdsOf(userId).ToListAsync(ct);
             mutual = myFriendIds.Intersect(theirFriendIds).Count();
+
+            isFollowing = await _db.UserFollows
+                .AnyAsync(f => f.FollowerId == me.Value && f.FolloweeId == userId, ct);
         }
+
+        var followerCount = await _db.UserFollows.CountAsync(f => f.FolloweeId == userId, ct);
+        var followingCount = await _db.UserFollows.CountAsync(f => f.FollowerId == userId, ct);
 
         return Ok(new PublicUserProfileDto(
             user.Id.ToString(),
             user.Name,
             _mapper.ToRef(user).AvatarUrl,
             user.CreatedAt,
-            mutual
+            mutual,
+            followerCount,
+            followingCount,
+            isFollowing
         ));
+    }
+
+    // ── Follows (asymmetric, one-way) ──────────────────────────────────────────
+
+    /// <summary>POST /users/{userId}/follow — start following a user.</summary>
+    [HttpPost("{userId:guid}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Follow(Guid userId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        if (me.Value == userId)
+            return BadRequest(new { message = "You cannot follow yourself." });
+
+        var target = await _db.Users.FindAsync(new object[] { userId }, ct);
+        if (target is null) return NotFound();
+
+        var already = await _db.UserFollows
+            .AnyAsync(f => f.FollowerId == me.Value && f.FolloweeId == userId, ct);
+        if (already) return NoContent(); // idempotent
+
+        _db.UserFollows.Add(new UserFollow { FollowerId = me.Value, FolloweeId = userId });
+        await _db.SaveChangesAsync(ct);
+
+        // Tell the followee someone followed them.
+        var follower = await _db.Users.FindAsync(new object[] { me.Value }, ct);
+        if (follower is not null)
+            await _notifications.NotifyAsync(
+                userId,
+                "new_follower",
+                $"{follower.Name} started following you",
+                body: "View their profile.",
+                linkUrl: $"/user/{me.Value}",
+                imageUrl: _mapper.ToRef(follower).AvatarUrl,
+                ct: ct);
+
+        return NoContent();
+    }
+
+    /// <summary>DELETE /users/{userId}/follow — stop following a user.</summary>
+    [HttpDelete("{userId:guid}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Unfollow(Guid userId, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var edge = await _db.UserFollows
+            .FirstOrDefaultAsync(f => f.FollowerId == me.Value && f.FolloweeId == userId, ct);
+        if (edge is null) return NoContent(); // idempotent
+
+        _db.UserFollows.Remove(edge);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>GET /users/{userId}/followers — users who follow this user.</summary>
+    [HttpGet("{userId:guid}/followers")]
+    public async Task<ActionResult<IEnumerable<FollowUserDto>>> GetFollowers(Guid userId, CancellationToken ct = default)
+    {
+        var followerIds = await _db.UserFollows
+            .Where(f => f.FolloweeId == userId)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => f.FollowerId)
+            .ToListAsync(ct);
+        return Ok(await BuildFollowList(followerIds, ct));
+    }
+
+    /// <summary>GET /users/{userId}/following — users this user follows.</summary>
+    [HttpGet("{userId:guid}/following")]
+    public async Task<ActionResult<IEnumerable<FollowUserDto>>> GetFollowing(Guid userId, CancellationToken ct = default)
+    {
+        var followeeIds = await _db.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => f.FolloweeId)
+            .ToListAsync(ct);
+        return Ok(await BuildFollowList(followeeIds, ct));
+    }
+
+    /// <summary>Maps a (already-ordered) set of user IDs to DTOs, flagging which the caller follows.</summary>
+    private async Task<List<FollowUserDto>> BuildFollowList(List<Guid> orderedIds, CancellationToken ct)
+    {
+        if (orderedIds.Count == 0) return new List<FollowUserDto>();
+
+        var me = CurrentUserId();
+        var myFollowing = me.HasValue
+            ? (await FollowingIdsOf(me.Value).Where(id => orderedIds.Contains(id)).ToListAsync(ct)).ToHashSet()
+            : new HashSet<Guid>();
+
+        var users = (await _db.Users
+            .Where(u => orderedIds.Contains(u.Id))
+            .ToListAsync(ct))
+            .ToDictionary(u => u.Id);
+
+        // Preserve the incoming order (newest-first); Contains() in the query loses it.
+        return orderedIds
+            .Where(users.ContainsKey)
+            .Select(id => users[id])
+            .Select(u => new FollowUserDto(
+                u.Id.ToString(),
+                u.Name,
+                _mapper.ToRef(u).AvatarUrl,
+                u.ArtistId.HasValue,
+                myFollowing.Contains(u.Id)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// GET /users/{userId}/top-tracks — the user's most-played tracks in the last
+    /// <paramref name="days"/> days (default 30), ranked by their own play count.
+    /// Public listening signal — shown on profile pages.
+    /// </summary>
+    [HttpGet("{userId:guid}/top-tracks")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> GetTopTracks(
+        Guid userId,
+        [FromQuery] int days = 30,
+        [FromQuery] int limit = 10,
+        CancellationToken ct = default)
+    {
+        days = Math.Clamp(days, 1, 365);
+        limit = Math.Clamp(limit, 1, 50);
+        var since = DateTime.UtcNow.AddDays(-days);
+
+        var ranked = await _db.PlayHistories
+            .Where(h => h.UserId == userId && h.PlayedAt >= since)
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        var orderedIds = ranked.Select(x => x.TrackId).ToList();
+        if (orderedIds.Count == 0) return Ok(Array.Empty<TrackDto>());
+
+        var tracks = await _db.Tracks
+            .Where(t => orderedIds.Contains(t.Id) && t.Status == "approved")
+            .Include(t => t.Artist).Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        // Preserve play-count order.
+        var byId = tracks.ToDictionary(t => t.Id);
+        var ordered = orderedIds.Where(byId.ContainsKey).Select(id => byId[id]).ToList();
+        return Ok(await _mapper.ToDtoListAsync(ordered, ct));
     }
 
     // ── Public playlists ─────────────────────────────────────────────────────

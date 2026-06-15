@@ -147,13 +147,16 @@ export function SettingsPage() {
   // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
   const [autoplay, setAutoplay] = usePref('ns-pref-autoplay', true)
+  // Crossfade length in seconds (0 = off); read live by the two-deck audioEngine.
+  // Back-compat: the old toggle stored a boolean.
+  const [crossfadeRaw, setCrossfadeRaw] = usePref<number | boolean>('ns-pref-crossfade', 0)
+  const crossfade = typeof crossfadeRaw === 'boolean' ? (crossfadeRaw ? 6 : 0) : crossfadeRaw
   // Not yet wired to anything — shown disabled with a "Coming soon" badge rather
-  // than as live switches that silently do nothing. (crossfade is the Tier 2
-  // audio-engine task; quality/normalize need backend transcoding/loudness.)
+  // than as live switches that silently do nothing. (quality/normalize need
+  // backend transcoding/loudness scanning.)
   const [language] = usePref('ns-pref-language', 'en')
   const [streamingQuality] = usePref('ns-pref-quality', 'auto')
   const [normalizeVolume] = usePref('ns-pref-normalize', false)
-  const [crossfade] = usePref('ns-pref-crossfade', false)
   const noop = () => {}
 
   return (
@@ -278,9 +281,21 @@ export function SettingsPage() {
         />
         <Row
           label="Crossfade songs"
-          sub="Allow you to crossfade between songs"
-          badge={<ComingSoon />}
-          control={<Switch label="Crossfade songs" checked={crossfade} onChange={noop} disabled />}
+          sub="Blend the end of one song into the start of the next"
+          control={
+            <Select
+              label="Crossfade length"
+              value={String(crossfade)}
+              onChange={(v) => setCrossfadeRaw(Number(v))}
+              options={[
+                { value: '0', label: 'Off' },
+                { value: '3', label: '3 seconds' },
+                { value: '6', label: '6 seconds' },
+                { value: '9', label: '9 seconds' },
+                { value: '12', label: '12 seconds' },
+              ]}
+            />
+          }
         />
       </Section>
 

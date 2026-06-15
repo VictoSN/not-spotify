@@ -65,6 +65,19 @@ export interface PublicUserProfile {
   avatarUrl: string | null
   createdAt: string
   mutualFriendsCount: number
+  followerCount: number
+  followingCount: number
+  /** null when viewing your own profile or unauthenticated. */
+  isFollowing: boolean | null
+}
+
+/** A user in a followers / following list. */
+export interface FollowUser {
+  id: string
+  name: string
+  avatarUrl: string | null
+  isArtist: boolean
+  isFollowedByMe: boolean
 }
 
 // Re-export for convenience so callers can import from one place

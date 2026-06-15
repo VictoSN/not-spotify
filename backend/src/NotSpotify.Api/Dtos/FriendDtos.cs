@@ -63,7 +63,21 @@ public record PublicUserProfileDto(
     string Name,
     string? AvatarUrl,
     DateTime CreatedAt,
-    int MutualFriendsCount
+    int MutualFriendsCount,
+    int FollowerCount,
+    int FollowingCount,
+    // Null when the viewer is unauthenticated or viewing their own profile.
+    bool? IsFollowing
+);
+
+/// <summary>A user in a followers / following list, with the viewer's follow state.</summary>
+public record FollowUserDto(
+    string Id,
+    string Name,
+    string? AvatarUrl,
+    bool IsArtist,
+    // True when the authenticated viewer already follows this user.
+    bool IsFollowedByMe
 );
 
 public record SendFriendRequestDto(Guid UserId);

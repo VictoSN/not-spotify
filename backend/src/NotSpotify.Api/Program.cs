@@ -239,6 +239,29 @@ using (var scope = app.Services.CreateScope())
             ON ""UserSavedAlbums""(""UserId"", ""SavedAt"");
     ");
 
+    // Same guard for the asymmetric-follow graph: ensure the table exists even if the
+    // EF migration gets stamped-without-running on the shared Supabase DB (a documented
+    // hazard with multiple team members applying migrations).
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UserFollows"" (
+            ""Id""         uuid NOT NULL,
+            ""FollowerId"" uuid NOT NULL,
+            ""FolloweeId"" uuid NOT NULL,
+            ""CreatedAt""  timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_UserFollows"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_UserFollows_AspNetUsers_FollowerId""
+                FOREIGN KEY (""FollowerId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_UserFollows_AspNetUsers_FolloweeId""
+                FOREIGN KEY (""FolloweeId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_UserFollows_FollowerId_FolloweeId""
+            ON ""UserFollows""(""FollowerId"", ""FolloweeId"");
+        CREATE INDEX IF NOT EXISTS ""IX_UserFollows_FolloweeId""
+            ON ""UserFollows""(""FolloweeId"");
+        CREATE INDEX IF NOT EXISTS ""IX_UserFollows_FollowerId""
+            ON ""UserFollows""(""FollowerId"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

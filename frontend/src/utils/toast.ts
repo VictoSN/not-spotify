@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 /**
  * Thin wrapper over sonner so call sites stay consistent and the toast library
  * can be swapped in one place. Use to surface caught errors instead of
- * swallowing them silently (see FEATURE_GAP_REPORT §5.2).
+ * swallowing them silently (see todo.md → Architecture & conventions).
  */
 export const notify = {
   success: (message: string) => toast.success(message),

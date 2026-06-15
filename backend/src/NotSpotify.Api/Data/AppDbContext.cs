@@ -27,6 +27,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<StripeWebhookEvent> StripeWebhookEvents => Set<StripeWebhookEvent>();
     public DbSet<ReviewHistory> ReviewHistories => Set<ReviewHistory>();
     public DbSet<Friendship> Friendships => Set<Friendship>();
+    public DbSet<UserFollow> UserFollows => Set<UserFollow>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
@@ -275,6 +276,26 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             // Fast lookup: "all friendships involving user X" (both as requester and addressee).
             e.HasIndex(x => new { x.AddresseeId, x.Status });
             e.HasIndex(x => new { x.RequesterId, x.Status });
+        });
+
+        b.Entity<UserFollow>(e =>
+        {
+            // One follow edge per ordered pair — no duplicate follows.
+            e.HasIndex(x => new { x.FollowerId, x.FolloweeId }).IsUnique();
+
+            e.HasOne(x => x.Follower)
+                .WithMany()
+                .HasForeignKey(x => x.FollowerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Followee)
+                .WithMany()
+                .HasForeignKey(x => x.FolloweeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // "Who follows X" (follower count/list) and "who X follows" (following list).
+            e.HasIndex(x => x.FolloweeId);
+            e.HasIndex(x => x.FollowerId);
         });
 
         b.Entity<ChatMessage>(e =>

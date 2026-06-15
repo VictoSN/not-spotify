@@ -1,4 +1,4 @@
-import type { Friend, FriendRequest, FriendActivity, UserSearchResult, PublicUserProfile, FriendSuggestion, MutualFriend } from '@/types/friend'
+import type { Friend, FriendRequest, FriendActivity, UserSearchResult, PublicUserProfile, FriendSuggestion, MutualFriend, FollowUser } from '@/types/friend'
 import type { Playlist } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import { api } from './api'
@@ -58,6 +58,31 @@ export const friendService = {
 
   async getSuggestions(): Promise<FriendSuggestion[]> {
     const res = await api.get<FriendSuggestion[]>('/friends/suggestions')
+    return res.data
+  },
+
+  // ── Asymmetric follows ────────────────────────────────────────────────────
+
+  async follow(userId: string): Promise<void> {
+    await api.post(`/users/${userId}/follow`)
+  },
+
+  async unfollow(userId: string): Promise<void> {
+    await api.delete(`/users/${userId}/follow`)
+  },
+
+  async getFollowers(userId: string): Promise<FollowUser[]> {
+    const res = await api.get<FollowUser[]>(`/users/${userId}/followers`)
+    return res.data
+  },
+
+  async getFollowing(userId: string): Promise<FollowUser[]> {
+    const res = await api.get<FollowUser[]>(`/users/${userId}/following`)
+    return res.data
+  },
+
+  async getUserTopTracks(userId: string, days = 30): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/users/${userId}/top-tracks`, { params: { days } })
     return res.data
   },
 }

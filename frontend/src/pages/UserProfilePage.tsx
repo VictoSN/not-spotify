@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
-import { UserPlusIcon, UserMinusIcon, SparklesIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { UserPlusIcon, UserMinusIcon, SparklesIcon, UserGroupIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useFriendStore } from '@/stores/friendStore'
@@ -10,10 +10,14 @@ import { useDominantColor } from '@/hooks/useDominantColor'
 import { friendService } from '@/services/friendService'
 import { Avatar } from '@/components/ui/Avatar'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
+import { TrackTile } from '@/components/cards/TrackTile'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { Spinner } from '@/components/ui/Spinner'
+import { FollowListModal } from '@/components/profile/FollowListModal'
+import { notify } from '@/utils/toast'
 import type { PublicUserProfile } from '@/types/friend'
 import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
 
 export function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
@@ -26,11 +30,17 @@ export function UserProfilePage() {
 
   const [profile, setProfile] = useState<PublicUserProfile | null>(null)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [topTracks, setTopTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
   const [friendActionBusy, setFriendActionBusy] = useState(false)
   const [requestSent, setRequestSent] = useState(false)
   const [blendBusy, setBlendBusy] = useState(false)
   const [blendEmpty, setBlendEmpty] = useState(false)
+  // Follow state is kept locally so the button + counts update instantly.
+  const [following, setFollowing] = useState(false)
+  const [followBusy, setFollowBusy] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [followModal, setFollowModal] = useState<'followers' | 'following' | null>(null)
   const playWithGate = usePlaybackGate()
   const jamRole = useJamStore((s) => s.role)
   const joinAs = useJamStore((s) => s.joinAs)
@@ -47,10 +57,14 @@ export function UserProfilePage() {
     Promise.all([
       friendService.getUserProfile(userId),
       friendService.getUserPlaylists(userId),
+      friendService.getUserTopTracks(userId).catch(() => [] as Track[]),
     ])
-      .then(([p, pls]) => {
+      .then(([p, pls, tracks]) => {
         setProfile(p)
         setPlaylists(pls)
+        setTopTracks(tracks)
+        setFollowing(p.isFollowing === true)
+        setFollowerCount(p.followerCount)
       })
       .catch(() => {
         // 404 → profile stays null → "User not found" shown below
@@ -79,6 +93,31 @@ export function UserProfilePage() {
       }
     } finally {
       setFriendActionBusy(false)
+    }
+  }
+
+  const handleFollow = async () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({
+        title: 'Follow people with a free account',
+        imageUrl: profile?.avatarUrl ?? null,
+      })
+      return
+    }
+    if (!userId) return
+    const next = !following
+    setFollowBusy(true)
+    setFollowing(next)
+    setFollowerCount((c) => Math.max(0, c + (next ? 1 : -1)))
+    try {
+      if (next) await friendService.follow(userId)
+      else await friendService.unfollow(userId)
+    } catch {
+      setFollowing(!next)
+      setFollowerCount((c) => Math.max(0, c + (next ? -1 : 1)))
+      notify.error(next ? 'Could not follow.' : 'Could not unfollow.')
+    } finally {
+      setFollowBusy(false)
     }
   }
 
@@ -129,6 +168,24 @@ export function UserProfilePage() {
             </h1>
             <div className="flex items-center gap-3 justify-center sm:justify-start flex-wrap text-sm text-secondary">
               <span>{playlists.length} Public Playlist{playlists.length === 1 ? '' : 's'}</span>
+              <span className="text-secondary/30">•</span>
+              <button
+                type="button"
+                onClick={() => setFollowModal('followers')}
+                className="font-semibold text-primary transition-colors hover:underline"
+              >
+                {followerCount}
+                <span className="font-normal text-secondary"> follower{followerCount === 1 ? '' : 's'}</span>
+              </button>
+              <span className="text-secondary/30">•</span>
+              <button
+                type="button"
+                onClick={() => setFollowModal('following')}
+                className="font-semibold text-primary transition-colors hover:underline"
+              >
+                {profile.followingCount}
+                <span className="font-normal text-secondary"> following</span>
+              </button>
               {isAuthenticated && profile.mutualFriendsCount > 0 && (
                 <>
                   <span className="text-secondary/30">•</span>
@@ -164,6 +221,26 @@ export function UserProfilePage() {
               <UserPlusIcon className="w-4 h-4" />
               Add friend
             </>
+          )}
+        </button>
+
+        {/* Follow — asymmetric, no acceptance needed (distinct from friending) */}
+        <button
+          onClick={() => void handleFollow()}
+          disabled={followBusy}
+          className={
+            following
+              ? 'flex items-center gap-2 rounded-full border border-secondary/40 px-4 py-2 text-sm font-semibold text-secondary transition-all hover:scale-105 hover:border-primary hover:text-primary active:scale-95 disabled:opacity-50'
+              : 'flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-bold text-page transition-transform hover:scale-105 active:scale-95 disabled:opacity-50'
+          }
+        >
+          {following ? (
+            <>
+              <CheckIcon className="h-4 w-4" />
+              Following
+            </>
+          ) : (
+            'Follow'
           )}
         </button>
 
@@ -205,6 +282,18 @@ export function UserProfilePage() {
         )}
       </div>
 
+      {/* Top tracks this month */}
+      {topTracks.length > 0 && (
+        <div className="px-6 py-4">
+          <h2 className="mb-4 text-xl font-bold text-primary">Top tracks this month</h2>
+          <HorizontalScroller>
+            {topTracks.map((t) => (
+              <TrackTile key={t.id} track={t} queue={topTracks} />
+            ))}
+          </HorizontalScroller>
+        </div>
+      )}
+
       {/* Playlists */}
       {playlists.length > 0 && (
         <div className="px-6 py-4">
@@ -221,6 +310,15 @@ export function UserProfilePage() {
         <div className="px-6 py-4">
           <p className="text-secondary text-sm">No public playlists yet.</p>
         </div>
+      )}
+
+      {followModal && userId && (
+        <FollowListModal
+          open={followModal !== null}
+          onClose={() => setFollowModal(null)}
+          userId={userId}
+          mode={followModal}
+        />
       )}
     </div>
   )

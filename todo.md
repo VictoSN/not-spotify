@@ -25,7 +25,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
 - [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).
-- [ ] **Editorial / featured playlists** — admin-curated + `featured` flag.
+- [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
 - [x] **Mood / activity tagging & browse**.
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.

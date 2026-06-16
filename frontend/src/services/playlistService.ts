@@ -14,7 +14,8 @@ export const playlistService = {
   },
 
   async getFeatured(limit = 6): Promise<Playlist[]> {
-    return this.getRecommended(limit)
+    const res = await api.get<Playlist[]>('/playlists/featured', { params: { limit } })
+    return res.data
   },
 
   async getUserPlaylists(): Promise<Playlist[]> {

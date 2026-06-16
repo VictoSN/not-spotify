@@ -21,7 +21,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **Admin restructure** *(Account 2)* — dedicated admin sidebar/topbar layout (`/adminlogin` guard already exists).
 - [x] **Equalizer** — Web Audio `BiquadFilter` graph (separate from the crossfade engine; mind cross-origin tainting).
 - [ ] **Wire remaining dead toggles** (disabled with "Coming soon" in Settings):
-  - [ ] Volume normalization (`normalize`) — needs backend ffmpeg loudness scan + client gain.
+  - [x] Volume normalization (`normalize`) — **done (2026-06-16)**: client-side real-time loudness leveler (a shared `DynamicsCompressorNode` + makeup `GainNode` after the EQ chain in `audioEngine.ts`); no backend/ffmpeg. Settings toggle now live & honest ("Even out the loudness between songs"). Off = transparent (ratio 1).
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
 - [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).

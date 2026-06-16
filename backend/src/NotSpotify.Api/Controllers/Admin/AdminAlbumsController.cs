@@ -122,6 +122,16 @@ public class AdminAlbumsController : ControllerBase
                 body: string.IsNullOrWhiteSpace(req?.Note) ? "It's now live." : req!.Note,
                 linkUrl: $"/album/{id}", ct: ct);
 
+        await _notifications.NotifyArtistFollowersOfReleaseAsync(
+            album.ArtistId,
+            album.Artist.Name,
+            album.Title,
+            album.Type,
+            $"/album/{id}",
+            imageUrl: album.CoverUrl,
+            excludeUserId: album.SubmittedByUserId,
+            ct: ct);
+
         return Ok(_mapper.ToDto(album));
     }
 

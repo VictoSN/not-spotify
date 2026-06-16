@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
@@ -52,6 +53,64 @@ public class NotificationService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to create notification for {UserId}", userId);
+        }
+    }
+
+    public async Task NotifyArtistFollowersOfReleaseAsync(
+        Guid artistId,
+        string artistName,
+        string releaseTitle,
+        string releaseKind,
+        string linkUrl,
+        string? imageUrl = null,
+        Guid? excludeUserId = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var artistAccountIds = await _db.Users
+                .Where(u => u.ArtistId == artistId)
+                .Select(u => u.Id)
+                .ToListAsync(ct);
+
+            if (excludeUserId is Guid submitterId && !artistAccountIds.Contains(submitterId))
+                artistAccountIds.Add(submitterId);
+
+            if (artistAccountIds.Count == 0) return;
+
+            var followerIds = await _db.UserFollows
+                .Where(f => artistAccountIds.Contains(f.FolloweeId))
+                .Select(f => f.FollowerId)
+                .Distinct()
+                .Where(id => !artistAccountIds.Contains(id))
+                .ToListAsync(ct);
+
+            if (followerIds.Count == 0) return;
+
+            var kind = releaseKind.Trim().ToLowerInvariant() == "track" ? "track" : "release";
+            var title = $"{artistName} released \"{releaseTitle}\"";
+            var body = kind == "track"
+                ? "New track from an artist you follow."
+                : "New release from an artist you follow.";
+
+            _db.Notifications.AddRange(followerIds.Select(userId => new Notification
+            {
+                UserId = userId,
+                Type = "new_release",
+                Title = title,
+                Body = body,
+                LinkUrl = linkUrl,
+                ImageUrl = imageUrl,
+            }));
+
+            await _db.SaveChangesAsync(ct);
+
+            foreach (var userId in followerIds)
+                await _hub.Clients.Group($"user-{userId}").SendAsync("NotificationReceived", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create new-release notifications for artist {ArtistId}", artistId);
         }
     }
 }

@@ -29,7 +29,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [ ] **Mood / activity tagging & browse**.
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
-- [ ] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
+- [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
 - [ ] **Playlist folders + pinning**. *(Duplicate detection is moot — backend 409s duplicate adds.)*

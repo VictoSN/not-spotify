@@ -14,6 +14,7 @@ function NotificationIcon({ type }: { type: string }) {
     case 'friend_accepted': return <CheckCircleIcon className={cls} />
     case 'approval': return <CheckCircleIcon className={cls} />
     case 'rejection': return <XCircleIcon className={cls} />
+    case 'new_release': return <MusicalNoteIcon className={cls} />
     default: return <MusicalNoteIcon className={cls} />
   }
 }

@@ -197,7 +197,10 @@ public class AdminTracksController : ControllerBase
     [HttpPatch("{id:guid}/approve")]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ReviewApplicationRequest? req, CancellationToken ct = default)
     {
-        var t = await _db.Tracks.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var t = await _db.Tracks
+            .Include(x => x.Artist)
+            .Include(x => x.Album)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (t is null) return NotFound();
         if (t.Status != "pending")
             return Conflict(new { message = $"Track is already {t.Status}." });
@@ -217,6 +220,16 @@ public class AdminTracksController : ControllerBase
                 $"Your track \"{t.Title}\" was approved",
                 body: string.IsNullOrWhiteSpace(req?.Note) ? "It's now live." : req!.Note,
                 linkUrl: $"/track/{id}", ct: ct);
+
+        await _notifications.NotifyArtistFollowersOfReleaseAsync(
+            t.ArtistId,
+            t.Artist.Name,
+            t.Title,
+            "track",
+            $"/track/{id}",
+            imageUrl: t.Album.CoverUrl,
+            excludeUserId: t.SubmittedByUserId,
+            ct: ct);
 
         return NoContent();
     }

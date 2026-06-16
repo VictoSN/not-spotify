@@ -36,6 +36,7 @@ import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
+import { useTranslation } from '@/i18n/useTranslation'
 
 const SEARCH_SKELETON_ROWS = [
   ['w-[84%]', 'w-[45%]'],
@@ -50,6 +51,7 @@ export function TopBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
+  const { t } = useTranslation()
   const { user, isAuthenticated, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
 
@@ -75,7 +77,7 @@ export function TopBar() {
   const [recents, setRecents] = useState<RecentSearch[]>([])
   const [searchValue, setSearchValue] = useState(currentQuery)
   const [suggestionsState, setSuggestionsState] = useState<{ query: string; data: SearchResults } | null>(null)
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false)
+  const [suggestionsDoneQuery, setSuggestionsDoneQuery] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
@@ -119,22 +121,22 @@ export function TopBar() {
 
   useEffect(() => {
     if (!showSearchPanel || !debouncedSearchValue) {
-      setSuggestionsLoading(false)
-      if (!debouncedSearchValue) setSuggestionsState(null)
       return
     }
 
     let cancelled = false
-    setSuggestionsLoading(true)
     searchService.search(debouncedSearchValue)
       .then((data) => {
-        if (!cancelled) setSuggestionsState({ query: debouncedSearchValue, data })
+        if (!cancelled) {
+          setSuggestionsState({ query: debouncedSearchValue, data })
+          setSuggestionsDoneQuery(debouncedSearchValue)
+        }
       })
       .catch(() => {
-        if (!cancelled) setSuggestionsState(null)
-      })
-      .finally(() => {
-        if (!cancelled) setSuggestionsLoading(false)
+        if (!cancelled) {
+          setSuggestionsState(null)
+          setSuggestionsDoneQuery(debouncedSearchValue)
+        }
       })
 
     return () => {
@@ -206,6 +208,11 @@ export function TopBar() {
   const userMenuItemClass =
     'flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-white/10'
   const userMenuIconClass = 'h-4 w-4 text-secondary'
+  const suggestionsLoading =
+    showSearchPanel &&
+    trimmedSearchValue.length > 0 &&
+    debouncedSearchValue.length > 0 &&
+    suggestionsDoneQuery !== debouncedSearchValue
   const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
 
   const searchPanel = shouldShowSearchPanel && (
@@ -215,11 +222,11 @@ export function TopBar() {
       ) : (
         <>
           <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
-            <span>{trimmedSearchValue ? 'Search suggestions' : 'Recent searches'}</span>
+            <span>{trimmedSearchValue ? t('topbar.searchSuggestions') : t('topbar.recentSearches')}</span>
             {trimmedSearchValue && (
               <span className="flex items-center gap-2 normal-case tracking-normal text-secondary">
                 <kbd className="rounded border border-secondary/40 px-1.5 py-0.5 text-[10px] text-primary">Enter</kbd>
-                Search
+                {t('topbar.search')}
               </span>
             )}
           </div>
@@ -234,7 +241,7 @@ export function TopBar() {
                 <MagnifyingGlassIcon className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
-                Search for "{trimmedSearchValue}"
+                {t('topbar.searchFor', { query: trimmedSearchValue })}
               </span>
             </button>
           )}
@@ -258,8 +265,8 @@ export function TopBar() {
                 type="button"
                 onClick={(e) => handleRemoveRecentSearch(e, recent.id)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-70 transition-colors duration-150 hover:text-primary group-hover:opacity-100"
-                aria-label={`Remove ${recent.term} from recent searches`}
-                title="Remove"
+                aria-label={t('topbar.removeRecentAria', { term: recent.term })}
+                title={t('topbar.remove')}
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
@@ -280,7 +287,7 @@ export function TopBar() {
                 <span className="block truncate text-sm font-bold text-primary">{track.title}</span>
                 <span className="block truncate text-xs font-semibold text-secondary">
                   {track.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-black text-[#282828]">E</span>}
-                  Song - {track.artist.name}
+                  {t('topbar.result.songBy', { artist: track.artist.name })}
                 </span>
               </span>
             </button>
@@ -302,7 +309,7 @@ export function TopBar() {
               )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-primary">{artist.name}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">Artist</span>
+                <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.artist')}</span>
               </span>
             </button>
           ))}
@@ -317,7 +324,9 @@ export function TopBar() {
               <img src={album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-primary">{album.title}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">Album - {album.artist.name}</span>
+                <span className="block truncate text-xs font-semibold text-secondary">
+                  {t('topbar.result.albumBy', { artist: album.artist.name })}
+                </span>
               </span>
             </button>
           ))}
@@ -338,7 +347,7 @@ export function TopBar() {
               )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-primary">{playlist.name}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">Playlist</span>
+                <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.playlist')}</span>
               </span>
             </button>
           ))}
@@ -347,7 +356,7 @@ export function TopBar() {
 
           {trimmedSearchValue && activeSuggestions && !hasSuggestionResults && (
             <div className="px-4 py-4 text-sm font-semibold text-secondary">
-              No quick matches. Press Enter to search everywhere.
+              {t('topbar.noQuickMatches')}
             </div>
           )}
 
@@ -358,7 +367,7 @@ export function TopBar() {
                 onClick={handleClearRecentSearches}
                 className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-white/10 active:scale-95"
               >
-                Clear recent searches
+                {t('topbar.clearRecentSearches')}
               </button>
             </div>
           )}
@@ -370,7 +379,7 @@ export function TopBar() {
   if (!isAuthenticated) {
     return (
       <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 border-b border-elevated/30 bg-base/90 px-4 backdrop-blur-xl md:h-16">
-        <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label="not-spotify home">
+        <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
           <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
         </Link>
@@ -380,7 +389,7 @@ export function TopBar() {
           <button
             onClick={() => navigate('/')}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
-            aria-label="Home"
+            aria-label={t('topbar.home')}
             aria-current={isHome ? 'page' : undefined}
           >
             {isHome ? <HomeSolid className="h-6 w-6 text-primary" /> : <HomeIcon className="h-6 w-6 text-secondary" />}
@@ -392,7 +401,7 @@ export function TopBar() {
               ref={searchInputRef}
               type="text"
               inputMode="search"
-              placeholder="What do you want to play?"
+              placeholder={t('topbar.searchPlaceholder')}
               value={searchValue}
               onChange={handleSearch}
               onKeyDown={handleSearchKeyDown}
@@ -404,8 +413,8 @@ export function TopBar() {
                 type="button"
                 onClick={handleClearSearch}
                 className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
-                aria-label="Clear search"
-                title="Clear search"
+                aria-label={t('topbar.clearSearch')}
+                title={t('topbar.clearSearch')}
               >
                 <XMarkIcon className="h-4 w-4" />
               </button>
@@ -415,8 +424,8 @@ export function TopBar() {
               type="button"
               onClick={handleBrowseClick}
               className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
-              aria-label="Browse all"
-              title="Browse all"
+              aria-label={t('topbar.browseAll')}
+              title={t('topbar.browseAll')}
             >
               <BrowseTrayIcon />
             </button>
@@ -426,18 +435,18 @@ export function TopBar() {
 
         <div className="flex items-center justify-end gap-5 text-sm font-bold text-secondary">
           <div className="hidden items-center gap-5 2xl:flex">
-            <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
-            <button className="transition-colors hover:text-primary">Support</button>
+            <Link to="/premium" className="transition-colors hover:text-primary">{t('topbar.premium')}</Link>
+            <button className="transition-colors hover:text-primary">{t('topbar.support')}</button>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
           <Link to="/signup" className="hidden md:block transition-colors hover:text-primary">
-            Sign up
+            {t('topbar.signUp')}
           </Link>
           <Link
             to="/login"
             className="rounded-full bg-primary px-4 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-page transition-transform hover:scale-105 active:scale-95"
           >
-            Log in
+            {t('topbar.logIn')}
           </Link>
         </div>
       </header>
@@ -447,7 +456,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-4 md:px-4 relative">
       {/* Far left: logo */}
-      <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="not-spotify home">
+      <Link to="/" className="flex items-center gap-2 shrink-0" aria-label={t('topbar.brandHome')}>
         <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
         <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
       </Link>
@@ -457,7 +466,7 @@ export function TopBar() {
         <button
           onClick={() => navigate('/')}
           className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center transition-all"
-          aria-label="Home"
+          aria-label={t('topbar.home')}
           aria-current={isHome ? 'page' : undefined}
         >
           {isHome ? <HomeSolid className="w-6 h-6 text-primary" /> : <HomeIcon className="w-6 h-6 text-secondary" />}
@@ -469,7 +478,7 @@ export function TopBar() {
             ref={searchInputRef}
             type="text"
             inputMode="search"
-            placeholder="What do you want to play?"
+            placeholder={t('topbar.searchPlaceholder')}
             value={searchValue}
             onChange={handleSearch}
             onKeyDown={handleSearchKeyDown}
@@ -481,8 +490,8 @@ export function TopBar() {
               type="button"
               onClick={handleClearSearch}
               className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
-              aria-label="Clear search"
-              title="Clear search"
+              aria-label={t('topbar.clearSearch')}
+              title={t('topbar.clearSearch')}
             >
               <XMarkIcon className="h-4 w-4" />
             </button>
@@ -492,8 +501,8 @@ export function TopBar() {
             type="button"
             onClick={handleBrowseClick}
             className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
-            aria-label="Browse all"
-            title="Browse all"
+            aria-label={t('topbar.browseAll')}
+            title={t('topbar.browseAll')}
           >
             <BrowseTrayIcon />
           </button>
@@ -504,8 +513,8 @@ export function TopBar() {
         <button
           onClick={toggleTheme}
           className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center text-secondary hover:text-primary transition-all shrink-0"
-          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
+          title={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
         >
           {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
         </button>
@@ -521,10 +530,10 @@ export function TopBar() {
       {user?.capabilities?.unlimitedPlayback === false && (
         <div className="hidden shrink-0 items-center gap-4 text-sm font-bold text-secondary sm:flex">
           <Link to="/premium" className="transition-colors hover:text-primary">
-            Premium
+            {t('topbar.premium')}
           </Link>
           <button type="button" className="transition-colors hover:text-primary">
-            Support
+            {t('topbar.support')}
           </button>
         </div>
       )}
@@ -532,14 +541,14 @@ export function TopBar() {
       {/* Messages — red badge shows unread count */}
       <button
         onClick={() => navigate(isMessagesActive ? '/' : '/messages')}
-        aria-label={chatUnread > 0 ? `Messages (${chatUnread} unread)` : 'Messages'}
+        aria-label={chatUnread > 0 ? t('topbar.messagesUnread', { n: chatUnread }) : t('topbar.messages')}
         className={cn(
           'spotify-tooltip-anchor relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
           isMessagesActive ? 'text-primary' : 'text-secondary'
         )}
       >
         {isMessagesActive ? <ChatBubbleLeftRightSolid className="h-5 w-5" /> : <ChatBubbleLeftRightIcon className="h-5 w-5" />}
-        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Messages</span>
+        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.messages')}</span>
         {chatUnread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
             {chatUnread > 9 ? '9+' : chatUnread}
@@ -557,7 +566,7 @@ export function TopBar() {
           setShowFriends(false)
           setShowMenu(false)
         }}
-        aria-label="Friend activity"
+        aria-label={t('topbar.friendActivity')}
         aria-pressed={friendActivityOpen}
         className={cn(
           'spotify-tooltip-anchor relative hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary md:flex',
@@ -565,7 +574,7 @@ export function TopBar() {
         )}
       >
         <RssIcon className="h-5 w-5" />
-        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Friend activity</span>
+        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.friendActivity')}</span>
       </button>
 
       {/* Friends panel toggle — desktop only */}
@@ -575,14 +584,14 @@ export function TopBar() {
             setShowFriends((v) => !v)
             setShowMenu(false)
           }}
-          aria-label="Friends"
+          aria-label={t('topbar.friends')}
           className={cn(
             'spotify-tooltip-anchor relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
             showFriends ? 'text-primary' : 'text-secondary'
           )}
         >
           {showFriends ? <UsersSolid className="h-5 w-5" /> : <UsersIcon className="h-5 w-5" />}
-          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Friends</span>
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.friends')}</span>
           {pendingCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center leading-none">
               {pendingCount > 9 ? '9+' : pendingCount}
@@ -605,9 +614,9 @@ export function TopBar() {
             setShowFriends(false)
           }}
           className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-2 md:pr-3 py-1 transition-colors"
-          aria-label="User menu"
+          aria-label={t('topbar.userMenu')}
         >
-          <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
+          <Avatar src={user?.avatarUrl} alt={user?.name ?? t('topbar.user')} size="sm" round />
           <span className="hidden sm:block text-sm font-semibold text-primary">{user?.name}</span>
         </button>
 
@@ -621,7 +630,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <UserIcon className={userMenuIconClass} />
-                Account
+                {t('topbar.account')}
               </Link>
               <Link
                 to="/profile"
@@ -629,7 +638,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <UserCircleIcon className={userMenuIconClass} />
-                Profile
+                {t('topbar.profile')}
               </Link>
               <Link
                 to="/settings"
@@ -637,7 +646,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <Cog6ToothIcon className={userMenuIconClass} />
-                Settings
+                {t('topbar.settings')}
               </Link>
               {/* Theme toggle in mobile menu */}
               <button
@@ -645,7 +654,7 @@ export function TopBar() {
                 className={cn(userMenuItemClass, 'md:hidden')}
               >
                 {theme === 'dark' ? <SunIcon className={userMenuIconClass} /> : <MoonIcon className={userMenuIconClass} />}
-                {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+                {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
               </button>
               <Link
                 to="/premium"
@@ -653,7 +662,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <ArrowDownTrayIcon className={userMenuIconClass} />
-                Premium
+                {t('topbar.premium')}
               </Link>
               <Link
                 to="/history"
@@ -661,7 +670,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <ClockIcon className={userMenuIconClass} />
-                Listening history
+                {t('topbar.listeningHistory')}
               </Link>
               <Link
                 to="/stats"
@@ -669,7 +678,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <ChartBarIcon className={userMenuIconClass} />
-                Listening stats
+                {t('topbar.listeningStats')}
               </Link>
 
               <div className="my-1 border-t border-secondary/10" />
@@ -681,7 +690,7 @@ export function TopBar() {
                   className={userMenuItemClass}
                 >
                   <MusicalNoteIcon className={userMenuIconClass} />
-                  Artist Dashboard
+                  {t('topbar.artistDashboard')}
                 </Link>
               )}
               {/* No "Admin Dashboard" link here by design — the admin console is
@@ -694,7 +703,7 @@ export function TopBar() {
                 className={userMenuItemClass}
               >
                 <ArrowRightOnRectangleIcon className={userMenuIconClass} />
-                Log out
+                {t('topbar.logOut')}
               </button>
             </div>
           </>
@@ -706,8 +715,11 @@ export function TopBar() {
 }
 
 function SearchSuggestionsSkeleton() {
+  const { t } = useTranslation()
+  const label = t('topbar.loadingSearchSuggestions')
+
   return (
-    <div className="px-1 pb-1 pt-1" role="status" aria-label="Loading search suggestions">
+    <div className="px-1 pb-1 pt-1" role="status" aria-label={label}>
       {SEARCH_SKELETON_ROWS.map(([titleWidth, subtitleWidth], index) => (
         <div key={index} className="flex items-center gap-3 px-1.5 py-1.5">
           <span className="search-skeleton-shimmer h-12 w-12 shrink-0 rounded" />
@@ -717,7 +729,7 @@ function SearchSuggestionsSkeleton() {
           </span>
         </div>
       ))}
-      <span className="sr-only">Loading search suggestions</span>
+      <span className="sr-only">{label}</span>
     </div>
   )
 }

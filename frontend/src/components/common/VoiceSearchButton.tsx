@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { MicrophoneIcon } from '@heroicons/react/24/outline'
 import { MicrophoneIcon as MicrophoneSolid } from '@heroicons/react/24/solid'
 import { cn } from '@/utils/cn'
+import { useTranslation } from '@/i18n/useTranslation'
 
 // The Web Speech API isn't in the standard TS lib; access it loosely.
 type SpeechRecognitionLike = {
@@ -34,6 +35,7 @@ interface VoiceSearchButtonProps {
  */
 export function VoiceSearchButton({ onResult, className }: VoiceSearchButtonProps) {
   const Ctor = getRecognitionCtor()
+  const { t } = useTranslation()
   const [listening, setListening] = useState(false)
   const recRef = useRef<SpeechRecognitionLike | null>(null)
 
@@ -72,9 +74,9 @@ export function VoiceSearchButton({ onResult, className }: VoiceSearchButtonProp
     <button
       type="button"
       onClick={start}
-      aria-label={listening ? 'Listening… click to stop' : 'Search by voice'}
+      aria-label={listening ? t('topbar.voiceListening') : t('topbar.voiceSearch')}
       aria-pressed={listening}
-      title="Search by voice"
+      title={t('topbar.voiceSearch')}
       className={cn(
         'flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70',
         listening ? 'text-red-500 animate-pulse' : 'text-secondary hover:text-primary',

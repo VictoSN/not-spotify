@@ -14,10 +14,11 @@ import {
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface NavItem {
   to: string
-  label: string
+  labelKey: string
   Icon: React.ComponentType<{ className?: string }>
   IconActive: React.ComponentType<{ className?: string }>
   exact?: boolean
@@ -25,24 +26,25 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Home', Icon: HomeIcon, IconActive: HomeSolid, exact: true },
-  { to: '/search', label: 'Search', Icon: MagnifyingGlassIcon, IconActive: SearchSolid },
-  { to: '/library', label: 'Library', Icon: RectangleStackIcon, IconActive: LibSolid },
-  { to: '/queue', label: 'Queue', Icon: QueueListIcon, IconActive: QueueListIcon },
+  { to: '/', labelKey: 'topbar.home', Icon: HomeIcon, IconActive: HomeSolid, exact: true },
+  { to: '/search', labelKey: 'topbar.search', Icon: MagnifyingGlassIcon, IconActive: SearchSolid },
+  { to: '/library', labelKey: 'topbar.library', Icon: RectangleStackIcon, IconActive: LibSolid },
+  { to: '/queue', labelKey: 'topbar.queue', Icon: QueueListIcon, IconActive: QueueListIcon },
 ]
 
 export function MobileNav() {
   const { isAuthenticated, user } = useAuthStore()
   const navigate = useNavigate()
+  const { t } = useTranslation()
 
   return (
     <nav
       className="shrink-0 bg-base border-t border-elevated/30 pb-safe"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      aria-label="Main navigation"
+      aria-label={t('topbar.mainNavigation')}
     >
       <div className="flex items-stretch h-14">
-        {NAV_ITEMS.map(({ to, label, Icon, IconActive, exact }) => (
+        {NAV_ITEMS.map(({ to, labelKey, Icon, IconActive, exact }) => (
           <NavLink
             key={to}
             to={to}
@@ -61,7 +63,7 @@ export function MobileNav() {
                 ) : (
                   <Icon className="w-6 h-6" />
                 )}
-                <span>{label}</span>
+                <span>{t(labelKey)}</span>
               </>
             )}
           </NavLink>
@@ -76,7 +78,7 @@ export function MobileNav() {
               ? 'text-primary'
               : 'text-secondary',
           )}
-          aria-label={isAuthenticated ? 'Profile' : 'Log in'}
+          aria-label={isAuthenticated ? t('topbar.profile') : t('topbar.logIn')}
         >
           {isAuthenticated && user?.avatarUrl ? (
             <img
@@ -89,7 +91,7 @@ export function MobileNav() {
           ) : (
             <UserCircleIcon className="w-6 h-6" />
           )}
-          <span>{isAuthenticated ? 'Profile' : 'Log in'}</span>
+          <span>{isAuthenticated ? t('topbar.profile') : t('topbar.logIn')}</span>
         </button>
       </div>
     </nav>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface SectionHeaderProps {
   title: string
@@ -7,6 +8,8 @@ interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, subtitle, href }: SectionHeaderProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center justify-between mb-4">
       <div>
@@ -15,7 +18,7 @@ export function SectionHeader({ title, subtitle, href }: SectionHeaderProps) {
       </div>
       {href && (
         <Link to={href} className="text-xs font-semibold text-secondary hover:text-primary uppercase tracking-wider transition-colors">
-          Show all
+          {t('common.showAll')}
         </Link>
       )}
     </div>

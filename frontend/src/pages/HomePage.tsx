@@ -27,11 +27,13 @@ import { TrackTile } from '@/components/cards/TrackTile'
 import { MixTile } from '@/components/cards/MixTile'
 import { Spinner } from '@/components/ui/Spinner'
 import type { DailyMix } from '@/services/trackService'
+import { useTranslation } from '@/i18n/useTranslation'
 
 const PREVIEW_LIMIT = 10
 
 export function HomePage() {
-  useDocumentTitle('Home')
+  const { t } = useTranslation()
+  useDocumentTitle(t('topbar.home'))
   const { user, isAuthenticated } = useAuthStore()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const playWithGate = usePlaybackGate()
@@ -108,9 +110,9 @@ export function HomePage() {
 
   const getGreeting = () => {
     const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 18) return 'Good afternoon'
-    return 'Good evening'
+    if (h < 12) return t('home.greeting.morning')
+    if (h < 18) return t('home.greeting.afternoon')
+    return t('home.greeting.evening')
   }
 
   if (loading) {
@@ -150,11 +152,11 @@ export function HomePage() {
             <div className="flex items-center gap-3 min-w-0">
               <span className="text-xl shrink-0">🎉</span>
               <div className="min-w-0">
-                <p className="text-sm font-black text-primary">Get Premium — 5% off your first month</p>
+                <p className="text-sm font-black text-primary">{t('home.promo.title')}</p>
                 <p className="mt-0.5 text-xs text-secondary">
-                  Use code{' '}
+                  {t('home.promo.useCode')}{' '}
                   <strong className="font-black text-accent">5OFF</strong>
-                  {' '}at checkout. Expires August 1st.
+                  {' '}{t('home.promo.atCheckout')}
                 </p>
               </div>
             </div>
@@ -163,7 +165,7 @@ export function HomePage() {
               className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
             >
               <SparklesIcon className="h-4 w-4" />
-              See plans
+              {t('home.promo.seePlans')}
             </Link>
           </div>
         )}
@@ -173,23 +175,23 @@ export function HomePage() {
             <div className="mb-8 overflow-hidden rounded-xl bg-surface ring-1 ring-accent/30">
               <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-primary">You're on the Free plan</p>
-                  <p className="mt-0.5 text-xs text-secondary">Shuffle-only playback · no repeat · limited controls.</p>
+                  <p className="text-sm font-black text-primary">{t('home.freePlan.title')}</p>
+                  <p className="mt-0.5 text-xs text-secondary">{t('home.freePlan.sub')}</p>
                 </div>
                 <Link
                   to="/premium"
                   className="inline-flex shrink-0 items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-black text-page transition-all hover:scale-105 active:scale-95"
                 >
-                  Claim offer
+                  {t('home.freePlan.cta')}
                 </Link>
               </div>
               <div className="flex items-center gap-2.5 border-t border-elevated/30 bg-elevated/20 px-5 py-2.5">
                 <span className="text-base shrink-0">🎉</span>
                 <p className="text-xs text-secondary">
-                  First month 5% off — use code{' '}
+                  {t('home.freePlan.offerPrefix')}{' '}
                 <strong className="font-black text-accent">5OFF</strong>
-                {' '}at checkout.{' '}
-                <span className="text-muted">Expires Aug 1.</span>
+                {' '}{t('home.promo.atCheckoutShort')}{' '}
+                <span className="text-muted">{t('home.freePlan.expires')}</span>
               </p>
             </div>
           </div>
@@ -225,7 +227,7 @@ export function HomePage() {
                         playWithGate(tracks[0], tracks)
                       }}
                       className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0 hover:scale-105 active:scale-95 transition-all shadow-lg"
-                      aria-label={`Play ${p.name}`}
+                      aria-label={t('home.playPlaylist', { name: p.name })}
                     >
                       <PlayIcon className="w-5 h-5 text-white ml-0.5" />
                     </button>
@@ -239,7 +241,7 @@ export function HomePage() {
         {/* Daily Mixes — genre-based, personalised mixes */}
         {dailyMixes.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Made for you" />
+            <SectionHeader title={t('home.section.madeForYou')} />
             <HorizontalScroller>
               {dailyMixes.map((mix) => (
                 <MixTile key={mix.id} mix={mix} />
@@ -251,7 +253,7 @@ export function HomePage() {
         {/* For You Today — personalised, auth only */}
         {isAuthenticated && forYou.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="For you today" />
+            <SectionHeader title={t('home.section.forYouToday')} />
             <HorizontalScroller>
               {forYou.map((track) => (
                 <TrackTile key={track.id} track={track} queue={forYou} />
@@ -263,7 +265,7 @@ export function HomePage() {
         {/* Recents — auth only, hidden until the user has played something */}
         {isAuthenticated && recents.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Recently played" />
+            <SectionHeader title={t('home.section.recentlyPlayed')} />
             <HorizontalScroller>
               {recents.map((track) => (
                 <TrackTile key={track.id} track={track} queue={recents} />
@@ -275,7 +277,7 @@ export function HomePage() {
         {/* Trending now */}
         {trending.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Trending now" href="/charts" />
+            <SectionHeader title={t('home.section.trendingNow')} href="/charts" />
             <HorizontalScroller>
               {trending.map((track) => (
                 <TrackTile key={track.id} track={track} queue={trending} />
@@ -287,7 +289,7 @@ export function HomePage() {
         {/* Most Liked */}
         {mostLiked.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Most liked" />
+            <SectionHeader title={t('home.section.mostLiked')} />
             <HorizontalScroller>
               {mostLiked.map((track) => (
                 <TrackTile key={track.id} track={track} queue={mostLiked} />
@@ -299,7 +301,7 @@ export function HomePage() {
         {/* Recommended playlists */}
         {recommendedPlaylists.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Recommended playlists" href="/playlists" />
+            <SectionHeader title={t('home.section.recommendedPlaylists')} href="/playlists" />
             <HorizontalScroller>
               {recommendedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} />
@@ -311,7 +313,7 @@ export function HomePage() {
         {/* New Music */}
         {newMusic.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="New music" />
+            <SectionHeader title={t('home.section.newMusic')} />
             <HorizontalScroller>
               {newMusic.map((track) => (
                 <TrackTile key={track.id} track={track} queue={newMusic} />
@@ -323,7 +325,7 @@ export function HomePage() {
         {/* Popular artists */}
         {popularArtists.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title="Popular artists" href="/popular-artists" />
+            <SectionHeader title={t('home.section.popularArtists')} href="/popular-artists" />
             <HorizontalScroller>
               {popularArtists.map((artist) => (
                 <ArtistCard key={artist.id} artist={artist} />
@@ -335,7 +337,10 @@ export function HomePage() {
         {/* New releases */}
         {newReleases.length > 0 && (
           <section className="mb-8">
-            <SectionHeader title={isAuthenticated ? 'New releases' : 'Popular albums and singles'} href="/new-releases" />
+            <SectionHeader
+              title={isAuthenticated ? t('home.section.newReleases') : t('home.section.popularAlbums')}
+              href="/new-releases"
+            />
             <HorizontalScroller>
               {newReleases.slice(0, PREVIEW_LIMIT).map((album) => (
                 <AlbumCard key={album.id} album={album} />

@@ -16,10 +16,12 @@ import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { BrowseCategoryGrid, BrowseFilterPills, type BrowseFilter } from '@/components/common/BrowseCategoryGrid'
+import { useTranslation } from '@/i18n/useTranslation'
 
 type Tab = 'all' | 'songs' | 'artists' | 'albums' | 'playlists'
 
 export function SearchPage() {
+  const { t } = useTranslation()
   const [searchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
   const debouncedQuery = useDebounce(query, 300)
@@ -71,8 +73,15 @@ export function SearchPage() {
   }, [debouncedQuery, isAuthenticated])
 
   const tabs: Tab[] = ['all', 'songs', 'artists', 'albums', 'playlists']
+  const tabLabels: Record<Tab, string> = {
+    all: t('search.tab.all'),
+    songs: t('search.tab.songs'),
+    artists: t('search.tab.artists'),
+    albums: t('search.tab.albums'),
+    playlists: t('search.tab.playlists'),
+  }
   const isMobile = useIsMobile()
-  useDocumentTitle(query.trim() ? `Search: ${query.trim()}` : 'Search')
+  useDocumentTitle(query.trim() ? t('search.titleWithQuery', { query: query.trim() }) : t('topbar.search'))
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const [mobileValue, setMobileValue] = useState(query)
 
@@ -96,7 +105,7 @@ export function SearchPage() {
               ref={mobileInputRef}
               autoFocus
               type="search"
-              placeholder="What do you want to play?"
+              placeholder={t('topbar.searchPlaceholder')}
               value={mobileValue}
               onChange={handleMobileSearch}
               className="h-11 w-full rounded-full border border-transparent bg-elevated pl-10 pr-10 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
@@ -105,7 +114,7 @@ export function SearchPage() {
               <button
                 onClick={() => { setMobileValue(''); navigate('/search', { replace: true }) }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary"
-                aria-label="Clear search"
+                aria-label={t('topbar.clearSearch')}
               >
                 <XMarkIcon className="w-4 h-4" />
               </button>
@@ -119,14 +128,14 @@ export function SearchPage() {
           {recents.length > 0 && (
             <section className="mb-8">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-primary">Recent searches</h2>
+                <h2 className="text-2xl font-bold text-primary">{t('topbar.recentSearches')}</h2>
                 <button
                   onClick={() => {
                     meService.clearRecentSearches().then(() => setRecents([])).catch(() => {})
                   }}
                   className="text-xs font-semibold text-secondary hover:text-primary uppercase tracking-wider transition-colors"
                 >
-                  Clear all
+                  {t('search.clearAll')}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -147,7 +156,7 @@ export function SearchPage() {
                           .then(() => setRecents((rows) => rows.filter((row) => row.id !== recent.id)))
                           .catch(() => {})
                       }}
-                      aria-label={`Remove ${recent.term}`}
+                      aria-label={t('search.removeRecent', { term: recent.term })}
                       className="text-secondary hover:text-primary p-0.5 rounded-full hover:bg-elevated transition-colors"
                     >
                       <XMarkIcon className="w-4 h-4" />
@@ -161,7 +170,7 @@ export function SearchPage() {
             <div className="sticky top-0 z-20 -mx-4 bg-page/95 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
               <BrowseFilterPills value={browseFilter} onChange={setBrowseFilter} />
             </div>
-            <h2 className="text-2xl font-black text-primary">Browse all</h2>
+            <h2 className="text-2xl font-black text-primary">{t('topbar.browseAll')}</h2>
             <BrowseCategoryGrid genres={genres} filter={browseFilter} />
           </section>
         </>
@@ -182,13 +191,13 @@ export function SearchPage() {
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize transition-colors ${
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
                       activeTab === tab
                         ? 'bg-primary text-page'
                         : 'bg-elevated text-secondary hover:text-primary'
                     }`}
                   >
-                    {tab}
+                    {tabLabels[tab]}
                   </button>
                 ))}
               </div>
@@ -196,7 +205,7 @@ export function SearchPage() {
               {/* Results */}
               {(activeTab === 'all' || activeTab === 'songs') && results.tracks.length > 0 && (
                 <section className="mb-8">
-                  <SectionHeader title="Songs" />
+                  <SectionHeader title={t('search.section.songs')} />
                   <div className="flex flex-col gap-1">
                     {results.tracks.slice(0, activeTab === 'songs' ? 50 : 5).map((track) => (
                       <TrackCard key={track.id} track={track} queue={results.tracks} />
@@ -207,7 +216,10 @@ export function SearchPage() {
 
               {(activeTab === 'all' || activeTab === 'songs') && (results.tracksByLyrics?.length ?? 0) > 0 && (
                 <section className="mb-8">
-                  <SectionHeader title="Found in lyrics" subtitle={`Songs whose lyrics mention "${query.trim()}"`} />
+                  <SectionHeader
+                    title={t('search.section.foundInLyrics')}
+                    subtitle={t('search.lyricsSubtitle', { query: query.trim() })}
+                  />
                   <div className="flex flex-col gap-1">
                     {results.tracksByLyrics.slice(0, activeTab === 'songs' ? 20 : 5).map((track) => (
                       <TrackCard key={track.id} track={track} queue={results.tracksByLyrics} />
@@ -218,7 +230,7 @@ export function SearchPage() {
 
               {(activeTab === 'all' || activeTab === 'artists') && results.artists.length > 0 && (
                 <section className="mb-8">
-                  <SectionHeader title="Artists" />
+                  <SectionHeader title={t('search.section.artists')} />
                   <div className="flex gap-4 flex-wrap">
                     {results.artists.slice(0, activeTab === 'artists' ? 50 : 5).map((artist) => (
                       <ArtistCard key={artist.id} artist={artist} />
@@ -229,7 +241,7 @@ export function SearchPage() {
 
               {(activeTab === 'all' || activeTab === 'albums') && results.albums.length > 0 && (
                 <section className="mb-8">
-                  <SectionHeader title="Albums" />
+                  <SectionHeader title={t('search.section.albums')} />
                   <div className="flex gap-4 flex-wrap">
                     {results.albums.slice(0, activeTab === 'albums' ? 50 : 5).map((album) => (
                       <AlbumCard key={album.id} album={album} />
@@ -240,7 +252,7 @@ export function SearchPage() {
 
               {(activeTab === 'all' || activeTab === 'playlists') && results.playlists.length > 0 && (
                 <section className="mb-8">
-                  <SectionHeader title="Playlists" />
+                  <SectionHeader title={t('search.section.playlists')} />
                   <div className="flex gap-4 flex-wrap">
                     {results.playlists.slice(0, activeTab === 'playlists' ? 50 : 5).map((playlist) => (
                       <PlaylistCard key={playlist.id} playlist={playlist} />
@@ -254,8 +266,8 @@ export function SearchPage() {
                 (results.tracksByLyrics?.length ?? 0) === 0 && (
                 <div className="text-center py-16">
                   <MagnifyingGlassIcon className="w-16 h-16 text-muted mx-auto mb-4" />
-                  <p className="text-primary font-semibold text-lg">No results for "{query}"</p>
-                  <p className="text-secondary text-sm mt-1">Check your spelling or try different keywords.</p>
+                  <p className="text-primary font-semibold text-lg">{t('search.noResults', { query })}</p>
+                  <p className="text-secondary text-sm mt-1">{t('search.noResultsSub')}</p>
                 </div>
               )}
             </>

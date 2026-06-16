@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { PlusIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+import { useTranslation } from '@/i18n/useTranslation'
 
 /** Shape produced by the playlist Export button on PlaylistDetailPage. */
 interface ImportedPlaylist {
@@ -36,7 +37,8 @@ function sortBy<T>(items: T[], sort: SortKey, name: (item: T) => string): T[] {
 }
 
 export function LibraryPage() {
-  useDocumentTitle('Your Library')
+  const { t } = useTranslation()
+  useDocumentTitle(t('library.title'))
   const isMobile = useIsMobile()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, likedAtMap, isLoading, fetchLibrary, createPlaylist, addTrackToPlaylist } =
     useLibraryStore()
@@ -66,15 +68,15 @@ export function LibraryPage() {
 
   const handleCreatePlaylist = () => {
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Create playlists with a free account' })
+      openAuthPrompt({ title: t('library.auth.createTitle') })
       return
     }
-    createPlaylist('New Playlist')
+    createPlaylist(t('library.newPlaylist'))
   }
 
   const handleImportClick = () => {
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Import playlists with a free account' })
+      openAuthPrompt({ title: t('library.auth.importTitle') })
       return
     }
     fileInputRef.current?.click()
@@ -92,7 +94,7 @@ export function LibraryPage() {
     try {
       const data = JSON.parse(await file.text()) as ImportedPlaylist
       const entries = Array.isArray(data.tracks) ? data.tracks : []
-      const playlist = await createPlaylist(data.name?.trim() || 'Imported playlist', data.description ?? undefined, false)
+      const playlist = await createPlaylist(data.name?.trim() || t('library.import.defaultName'), data.description ?? undefined, false)
 
       let matched = 0
       for (const entry of entries) {
@@ -110,20 +112,20 @@ export function LibraryPage() {
         }
       }
 
-      setImportMsg(`Imported "${playlist.name}" — ${matched} of ${entries.length} track${entries.length !== 1 ? 's' : ''} matched.`)
+      setImportMsg(t('library.import.success', { name: playlist.name, matched, total: entries.length }))
       navigate(`/playlist/${playlist.id}`)
     } catch {
-      setImportMsg('Could not read that file. Export a playlist from not-spotify to get a valid JSON file.')
+      setImportMsg(t('library.import.error'))
     } finally {
       setImporting(false)
     }
   }
 
   const filters: { key: Filter; label: string; count: number }[] = [
-    { key: 'playlists', label: 'Playlists', count: savedPlaylists.length },
-    { key: 'albums', label: 'Albums', count: savedAlbums.length },
-    { key: 'artists', label: 'Artists', count: followedArtists.length },
-    { key: 'liked', label: 'Liked songs', count: likedSongs.length },
+    { key: 'playlists', label: t('library.filter.playlists'), count: savedPlaylists.length },
+    { key: 'albums', label: t('library.filter.albums'), count: savedAlbums.length },
+    { key: 'artists', label: t('library.filter.artists'), count: followedArtists.length },
+    { key: 'liked', label: t('library.filter.liked'), count: likedSongs.length },
   ]
 
   if (isLoading)
@@ -136,19 +138,19 @@ export function LibraryPage() {
   return (
     <div className="px-6 py-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold text-primary">Your Library</h1>
+        <h1 className="text-3xl font-bold text-primary">{t('library.title')}</h1>
         <div className="flex items-center gap-1">
           <Button
             size="icon"
             variant="ghost"
             onClick={handleImportClick}
             disabled={importing}
-            aria-label="Import playlist from JSON"
-            title="Import playlist from JSON"
+            aria-label={t('library.import.aria')}
+            title={t('library.import.aria')}
           >
             {importing ? <Spinner size="sm" /> : <ArrowDownTrayIcon className="w-5 h-5" />}
           </Button>
-          <Button size="icon" variant="ghost" onClick={handleCreatePlaylist} aria-label="Create playlist">
+          <Button size="icon" variant="ghost" onClick={handleCreatePlaylist} aria-label={t('library.createPlaylist')}>
             <PlusIcon className="w-5 h-5" />
           </Button>
           <input
@@ -182,14 +184,14 @@ export function LibraryPage() {
           </button>
         ))}
         <select
-          aria-label="Sort library"
+          aria-label={t('library.sort.aria')}
           value={sort}
           onChange={(e) => setSort(e.target.value as SortKey)}
           className="ml-auto rounded-md border border-secondary/20 bg-elevated px-3 py-1.5 text-sm font-medium text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
         >
-          <option value="recent">Recently added</option>
-          <option value="az">A to Z</option>
-          <option value="za">Z to A</option>
+          <option value="recent">{t('sort.recentlyAdded')}</option>
+          <option value="az">{t('sort.az')}</option>
+          <option value="za">{t('sort.za')}</option>
         </select>
       </div>
 
@@ -197,11 +199,11 @@ export function LibraryPage() {
       {filter === 'playlists' &&
         (savedPlaylists.length === 0 ? (
           <EmptyState
-            title="No playlists yet"
-            description="Create your first playlist and start adding songs."
+            title={t('library.empty.playlists.title')}
+            description={t('library.empty.playlists.sub')}
             action={
               <Button onClick={handleCreatePlaylist} className="gap-2">
-                <PlusIcon className="w-4 h-4" /> Create playlist
+                <PlusIcon className="w-4 h-4" /> {t('library.createPlaylist')}
               </Button>
             }
           />
@@ -215,7 +217,7 @@ export function LibraryPage() {
 
       {filter === 'albums' &&
         (savedAlbums.length === 0 ? (
-          <EmptyState title="No saved albums" description="Save albums to find them here later." />
+          <EmptyState title={t('library.empty.albums.title')} description={t('library.empty.albums.sub')} />
         ) : (
           <div className="flex flex-wrap gap-4">
             {sortedAlbums.map((a) => (
@@ -226,7 +228,7 @@ export function LibraryPage() {
 
       {filter === 'artists' &&
         (followedArtists.length === 0 ? (
-          <EmptyState title="No followed artists" description="Follow your favourite artists to find them here." />
+          <EmptyState title={t('library.empty.artists.title')} description={t('library.empty.artists.sub')} />
         ) : (
           <div className="flex flex-wrap gap-4">
             {sortedArtists.map((a) => (
@@ -237,7 +239,7 @@ export function LibraryPage() {
 
       {filter === 'liked' &&
         (likedSongs.length === 0 ? (
-          <EmptyState title="No liked songs" description="Like songs to add them to this list." />
+          <EmptyState title={t('library.empty.liked.title')} description={t('library.empty.liked.sub')} />
         ) : (
           <div>
             {/* Playlist-style header */}
@@ -246,9 +248,9 @@ export function LibraryPage() {
                 <HeartSolid className="w-12 h-12 sm:w-16 sm:h-16 text-accent" />
               </div>
               <div className="min-w-0 pb-1 text-center sm:text-left">
-                <p className="text-xs font-semibold text-secondary uppercase tracking-wider">Playlist</p>
-                <h2 className="text-3xl sm:text-4xl font-black text-primary mt-1 mb-2">Liked Songs</h2>
-                <p className="text-xs text-secondary">{likedSongs.length} songs</p>
+                <p className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('sidebar.playlist')}</p>
+                <h2 className="text-3xl sm:text-4xl font-black text-primary mt-1 mb-2">{t('library.likedSongs')}</h2>
+                <p className="text-xs text-secondary">{t('library.songCount', { n: likedSongs.length })}</p>
               </div>
             </div>
 
@@ -260,7 +262,7 @@ export function LibraryPage() {
                 className="gap-2"
               >
                 <PlayIcon className="w-5 h-5" />
-                Play
+                {t('common.play')}
               </Button>
             </div>
 
@@ -270,9 +272,9 @@ export function LibraryPage() {
               style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 4fr 3fr var(--track-actions-width)' }}
             >
               <span className="text-xs text-secondary">#</span>
-              <span className="text-xs text-secondary uppercase tracking-wider">Title</span>
-              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Album</span>
-              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Date added</span>
+              <span className="text-xs text-secondary uppercase tracking-wider">{t('library.column.title')}</span>
+              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">{t('library.column.album')}</span>
+              <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">{t('library.column.dateAdded')}</span>
               <div className="grid grid-cols-[32px_50px_32px] sm:grid-cols-[80px_32px_50px_32px] items-center gap-1.5 sm:gap-2 justify-end w-[114px] sm:w-[194px] ml-auto">
                 <span className="hidden sm:block" />
                 <span />

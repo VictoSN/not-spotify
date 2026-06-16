@@ -14,11 +14,11 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 - **Library/playlists:** create/edit/delete, public/friends/private visibility, collaborative playlists, JSON export/import, library + track sorting, cover-art mosaics.
 - **Social:** friends, **asymmetric follows** (follower/following counts + public profile top tracks), real-time presence, Friend Activity rail, 1:1 chat, notifications center, friends-only playlists, Blend, listen-along/Jam.
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
-- **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped).
+- **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped), live language selector (en/es/fr across Settings, shell navigation, Home, Search, and Library).
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`.
 - **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback).
 
-**Being worked on next:** smart playlists, waveform + timed comments, the storage move (R2 → S3), and a unit-test suite. See **[todo.md](todo.md)** for the full checklist.
+**Being worked on next:** smart playlists, waveform + timed comments, remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 
 ### Run everything at once (Windows)
 Instead of three manual terminals, **double-click [`dev.cmd`](dev.cmd)** (or run `./dev.sh` from Git Bash). It opens the backend, the Stripe webhook listener, and the frontend in separate windows. (Stripe CLI must be installed + `stripe login` done once.) Manual steps are below.
@@ -438,4 +438,4 @@ The frontend stores the user's own rating in `ratingStore` (Zustand + localStora
 
 ## Known Issues
 
-No open bugs (1–11 fixed). Known minor cosmetic items (pre-logged — don't re-file): PiP fast-forward/rewind inert (canvas-stream video isn't seekable); React empty-`<img src>` warning on Home (blank seed cover); SignalR "stopped during negotiation" burst on reload (reconnects fine); brief logout flash on hard reload (in-memory access token; expected). `npm run lint` is red repo-wide on the established `setLoading`-in-effect pattern — `npm run build` is the real gate and passes.
+No open bugs (1–11 fixed). Known minor cosmetic items (pre-logged — don't re-file): React empty-`<img src>` warning on Home (blank seed cover); SignalR "stopped during negotiation" burst on reload (reconnects fine); brief logout flash on hard reload (in-memory access token; expected). `npm run lint` is red repo-wide on the established `setLoading`-in-effect pattern — `npm run build` is the real gate and passes when frontend dependencies are installed.

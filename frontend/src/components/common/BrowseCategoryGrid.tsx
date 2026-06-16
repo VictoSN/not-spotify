@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from '@/i18n/useTranslation'
 import type { Genre } from '@/types/genre'
 
 type BrowseCategorySeed = {
@@ -107,10 +108,11 @@ export function BrowseFilterPills({
   value: BrowseFilter
   onChange: (value: BrowseFilter) => void
 }) {
+  const { t } = useTranslation()
   const filters: Array<{ value: BrowseFilter; label: string }> = [
-    { value: 'all', label: 'All' },
-    { value: 'music', label: 'Music' },
-    { value: 'podcasts', label: 'Podcasts' },
+    { value: 'all', label: t('browse.filter.all') },
+    { value: 'music', label: t('browse.filter.music') },
+    { value: 'podcasts', label: t('browse.filter.podcasts') },
   ]
 
   return (

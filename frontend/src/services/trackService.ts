@@ -110,6 +110,11 @@ export const trackService = {
     return res.data
   },
 
+  async getDiscoverWeekly(limit = 50): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/discover-weekly', { params: { limit } })
+    return res.data
+  },
+
   async getByAlbum(albumId: string): Promise<Track[]> {
     const res = await api.get<Track[]>(`/albums/${albumId}/tracks`)
     return res.data

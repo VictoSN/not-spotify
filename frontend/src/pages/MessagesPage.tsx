@@ -7,6 +7,8 @@ import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { ChatMessage } from '@/types/chat'
+import { parseTrackShare } from '@/utils/chatShare'
+import { SharedTrackBubble } from '@/components/chat/SharedTrackBubble'
 import { cn } from '@/utils/cn'
 
 function formatTime(iso: string) {
@@ -156,7 +158,9 @@ export function MessagesPage() {
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-xs text-secondary">
                     {c.lastMessage
-                      ? `${c.lastMessage.senderId === me.id ? 'You: ' : ''}${c.lastMessage.body}`
+                      ? `${c.lastMessage.senderId === me.id ? 'You: ' : ''}${
+                          parseTrackShare(c.lastMessage.body) ? '🎵 Shared a song' : c.lastMessage.body
+                        }`
                       : 'Say hi!'}
                   </p>
                   {c.unreadCount > 0 && (
@@ -246,6 +250,7 @@ export function MessagesPage() {
                   {thread.map((m, i) => {
                     const mine = m.senderId === me.id
                     const showDay = i === 0 || formatDay(thread[i - 1].sentAt) !== formatDay(m.sentAt)
+                    const share = parseTrackShare(m.body)
                     return (
                       <div key={m.id}>
                         {showDay && (
@@ -256,25 +261,34 @@ export function MessagesPage() {
                           </div>
                         )}
                         <div className={cn('mb-1.5 flex', mine ? 'justify-end' : 'justify-start')}>
-                          <div
-                            className={cn(
-                              'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed break-words',
-                              mine
-                                ? 'rounded-br-md bg-accent text-white'
-                                : 'rounded-bl-md bg-elevated text-primary',
-                            )}
-                          >
-                            <span className="whitespace-pre-wrap">{m.body}</span>
-                            <span
+                          {share ? (
+                            <SharedTrackBubble
+                              trackId={share.trackId}
+                              mine={mine}
+                              time={formatTime(m.sentAt)}
+                              ticks={mine ? <ReadTicks message={m} /> : null}
+                            />
+                          ) : (
+                            <div
                               className={cn(
-                                'ml-2 inline-flex translate-y-0.5 items-center text-[10px]',
-                                mine ? 'text-white/70' : 'text-secondary',
+                                'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed break-words',
+                                mine
+                                  ? 'rounded-br-md bg-accent text-white'
+                                  : 'rounded-bl-md bg-elevated text-primary',
                               )}
                             >
-                              {formatTime(m.sentAt)}
-                              {mine && <ReadTicks message={m} />}
-                            </span>
-                          </div>
+                              <span className="whitespace-pre-wrap">{m.body}</span>
+                              <span
+                                className={cn(
+                                  'ml-2 inline-flex translate-y-0.5 items-center text-[10px]',
+                                  mine ? 'text-white/70' : 'text-secondary',
+                                )}
+                              >
+                                {formatTime(m.sentAt)}
+                                {mine && <ReadTicks message={m} />}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )

@@ -26,15 +26,21 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
   - [ ] Volume normalization (`normalize`) — needs backend ffmpeg loudness scan + client gain.
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
+<<<<<<< HEAD
 - [x] **PiP fast-forward / rewind** — Media Session seek handlers drive the real audio player and clamp to track duration.
 - [x] **Genre browse playlists + tracks** — `/genres/{slug}/playlists` + genre detail rows for public playlists and popular tracks. *(Mood/activity tagging remains migration-gated above.)*
+=======
+- [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).
+- [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
+- [x] **Mood / activity tagging & browse**.
+>>>>>>> 978d13a042c35b481ae83a323943f94b12bdfbc9
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
-- [ ] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
-- [ ] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
+- [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
+- [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.
-- [ ] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message.
+- [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
 - [ ] **Playlist folders + pinning**. *(Duplicate detection is moot — backend 409s duplicate adds.)*
-- [ ] **Discover Weekly** — collaborative filtering over `PlayHistories`.
+- [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.
 
 ### 1C — Large subsystems (each its own session + migration)
 - [ ] **RBAC** — High. Master admin grants/revokes admin; role tiers + granular permissions; approval workflow (`PendingAction` table — flagged roles enqueue instead of executing); "Team & roles" + "Approvals" UI. Seed one master. Highest-risk.

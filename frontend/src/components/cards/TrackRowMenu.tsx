@@ -13,6 +13,7 @@ import {
   MusicalNoteIcon,
   RadioIcon,
   ShareIcon,
+  ChatBubbleLeftRightIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
   ArrowDownTrayIcon,
@@ -29,6 +30,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { trackService } from '@/services/trackService'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
 import { shareLink } from '@/utils/share'
+import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { notify } from '@/utils/toast'
 
 interface TrackRowMenuProps {
@@ -46,6 +48,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
   const [playlistQuery, setPlaylistQuery] = useState('')
   const [removePlaylistQuery, setRemovePlaylistQuery] = useState('')
   const [downloading, setDownloading] = useState(false)
+  const [shareToChatOpen, setShareToChatOpen] = useState(false)
   // Hover-intent timer: closing the flyout is delayed so the pointer can cross
   // the small gap between the "Add to playlist" row and the flyout without it
   // flickering shut.
@@ -628,6 +631,23 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
               </MenuItem>
             )}
 
+            {isAuthenticated && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    setShareToChatOpen(true)
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <ChatBubbleLeftRightIcon className="w-4 h-4" />
+                  Share to chat
+                </button>
+              </MenuItem>
+            )}
+
             <MenuItem>
               <button
                 type="button"
@@ -643,6 +663,10 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
               </button>
             </MenuItem>
           </MenuItems>
+
+          {shareToChatOpen && (
+            <ShareToChatModal track={track} onClose={() => setShareToChatOpen(false)} />
+          )}
         </>
       )}
     </Menu>

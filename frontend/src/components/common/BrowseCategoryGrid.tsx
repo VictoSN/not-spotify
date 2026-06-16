@@ -6,6 +6,7 @@ type BrowseCategorySeed = {
   slug: string
   color: string
   kind?: BrowseFilter
+  to?: string
 }
 
 type BrowseCategory = BrowseCategorySeed & {
@@ -20,7 +21,7 @@ const curatedBrowseCategories: BrowseCategorySeed[] = [
   { name: 'Music', slug: 'music', color: '#dc148c' },
   { name: 'Podcasts', slug: 'podcasts', color: '#006450', kind: 'podcasts' },
   { name: 'Live Events', slug: 'live-events', color: '#8400e7' },
-  { name: 'Fitness', slug: 'fitness', color: '#777777' },
+  { name: 'Fitness', slug: 'fitness', color: '#777777', to: '/moods' },
   { name: 'Made For You', slug: 'made-for-you', color: '#1e3264' },
   { name: 'New Releases', slug: 'new-releases', color: '#608108' },
   { name: 'Mandopop', slug: 'mandopop', color: '#23366f' },
@@ -35,20 +36,20 @@ const curatedBrowseCategories: BrowseCategorySeed[] = [
   { name: 'J-Tracks', slug: 'j-tracks', color: '#8c1932' },
   { name: 'Indie', slug: 'indie', color: '#e8115b' },
   { name: 'Dance / Electronic', slug: 'electronic', color: '#477d95' },
-  { name: 'Mood', slug: 'mood', color: '#e1118c' },
+  { name: 'Mood', slug: 'mood', color: '#e1118c', to: '/moods' },
   { name: 'Discover', slug: 'discover', color: '#8d67ab' },
-  { name: 'Sleep', slug: 'sleep', color: '#1e3264' },
-  { name: 'Chill', slug: 'chill', color: '#b06239' },
+  { name: 'Sleep', slug: 'sleep', color: '#1e3264', to: '/moods' },
+  { name: 'Chill', slug: 'chill', color: '#b06239', to: '/moods' },
   { name: 'Love', slug: 'love', color: '#dc148c' },
   { name: 'RADAR', slug: 'radar', color: '#a56752' },
   { name: 'R&B', slug: 'rnb', color: '#d66d00' },
-  { name: 'Workout Music', slug: 'workout', color: '#777777' },
+  { name: 'Workout Music', slug: 'workout', color: '#777777', to: '/moods' },
   { name: 'Soundtracks', slug: 'soundtracks', color: '#3046c7' },
-  { name: 'Party', slug: 'party', color: '#8d67ab' },
+  { name: 'Party', slug: 'party', color: '#8d67ab', to: '/moods' },
   { name: 'Rock', slug: 'rock', color: '#006450' },
   { name: 'Latin', slug: 'latin', color: '#0d72ea' },
   { name: 'Country', slug: 'country', color: '#e13300' },
-  { name: 'At Home', slug: 'at-home', color: '#477d95' },
+  { name: 'At Home', slug: 'at-home', color: '#477d95', to: '/moods' },
   { name: 'Decades', slug: 'decades', color: '#a56752' },
   { name: 'Metal', slug: 'metal', color: '#e8115b' },
   { name: 'Jazz', slug: 'jazz', color: '#8d67ab' },
@@ -80,7 +81,7 @@ function buildBrowseCategories(genres: Genre[]): BrowseCategory[] {
       color: genre?.color ?? category.color,
       kind: category.kind ?? 'music',
       imageUrl: getCoverUrl(category.slug, genre?.imageUrl),
-      to: genre ? `/genres/${genre.slug}` : getSearchUrl(category.name),
+      to: category.to ?? (genre ? `/genres/${genre.slug}` : getSearchUrl(category.name)),
     }
   })
 

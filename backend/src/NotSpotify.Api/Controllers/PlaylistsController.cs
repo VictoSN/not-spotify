@@ -62,6 +62,63 @@ public class PlaylistsController : ControllerBase
             isSaved: savedIds.Contains(p.Id))));
     }
 
+    [HttpGet("featured")]
+    public async Task<ActionResult<IEnumerable<PlaylistSummaryDto>>> Featured([FromQuery] int limit = 24, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+        var me = CurrentUserId();
+        var adminRoleId = await _db.Roles
+            .Where(r => r.NormalizedName == "ADMIN")
+            .Select(r => r.Id)
+            .FirstOrDefaultAsync(ct);
+
+        var adminIds = adminRoleId == Guid.Empty
+            ? new List<Guid>()
+            : await _db.UserRoles
+                .Where(ur => ur.RoleId == adminRoleId)
+                .Select(ur => ur.UserId)
+                .ToListAsync(ct);
+
+        var q = _db.Playlists
+            .Where(p => p.IsPublic)
+            .Include(p => p.Owner)
+            .Include(p => p.PlaylistTracks)
+            .AsQueryable();
+
+        if (adminIds.Count > 0)
+            q = q.Where(p => adminIds.Contains(p.OwnerId));
+
+        var playlists = await q
+            .OrderByDescending(p => p.FollowerCount)
+            .ThenByDescending(p => p.UpdatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        if (playlists.Count == 0 && adminIds.Count > 0)
+        {
+            playlists = await _db.Playlists
+                .Where(p => p.IsPublic)
+                .Include(p => p.Owner)
+                .Include(p => p.PlaylistTracks)
+                .OrderByDescending(p => p.FollowerCount)
+                .ThenByDescending(p => p.UpdatedAt)
+                .Take(limit)
+                .ToListAsync(ct);
+        }
+
+        var savedIds = me is null
+            ? new HashSet<Guid>()
+            : (await _db.UserSavedPlaylists
+                .Where(s => s.UserId == me)
+                .Select(s => s.PlaylistId)
+                .ToListAsync(ct)).ToHashSet();
+
+        return Ok(playlists.Select(p => _mapper.ToSummary(
+            p,
+            isOwner: me != null && p.OwnerId == me,
+            isSaved: savedIds.Contains(p.Id))));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PlaylistDto>> Get(Guid id, CancellationToken ct = default)
     {

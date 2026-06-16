@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ClockIcon, MusicalNoteIcon, UserGroupIcon, PlayCircleIcon } from '@heroicons/react/24/outline'
+import {
+  CalendarDaysIcon,
+  ClockIcon,
+  FireIcon,
+  MusicalNoteIcon,
+  PlayCircleIcon,
+  SparklesIcon,
+  TrophyIcon,
+  UserGroupIcon,
+} from '@heroicons/react/24/outline'
 import { meService, type ListeningStats } from '@/services/meService'
 import { useAuthStore } from '@/stores/authStore'
 import { TrackCard } from '@/components/cards/TrackCard'
@@ -35,6 +44,173 @@ function StatCard({ label, value, helper, icon: Icon }: {
       </div>
       <p className="mt-3 text-sm text-secondary">{helper}</p>
     </div>
+  )
+}
+
+function formatListenTime(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return hours > 0 ? `${formatNumber(hours)}h ${minutes}m` : `${minutes}m`
+}
+
+function listeningPersona(stats: ListeningStats) {
+  const topArtist = stats.topArtists[0]
+  const topGenre = stats.topGenres[0]
+  const topArtistShare = topArtist && stats.totalPlays > 0 ? topArtist.playCount / stats.totalPlays : 0
+
+  if (topArtistShare >= 0.35) {
+    return {
+      title: 'The Loyalist',
+      copy: `${topArtist.name} owned your queue this year.`,
+    }
+  }
+
+  if (stats.uniqueArtists >= 25) {
+    return {
+      title: 'The Explorer',
+      copy: `You visited ${formatNumber(stats.uniqueArtists)} artists without staying in one lane.`,
+    }
+  }
+
+  if (topGenre) {
+    return {
+      title: `${topGenre.name} Signal`,
+      copy: `${topGenre.name} was the sound you kept coming back to.`,
+    }
+  }
+
+  return {
+    title: 'The Curator',
+    copy: 'A focused year of listening, saved one play at a time.',
+  }
+}
+
+function WrappedMetric({
+  label,
+  value,
+  helper,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  helper: string
+  icon: typeof ClockIcon
+}) {
+  return (
+    <div className="rounded-lg border border-elevated/50 bg-base/35 p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted">{label}</p>
+        <Icon className="h-5 w-5 text-accent" />
+      </div>
+      <p className="truncate text-2xl font-black text-primary">{value}</p>
+      <p className="mt-1 text-sm text-secondary">{helper}</p>
+    </div>
+  )
+}
+
+function WrappedYearView({ stats }: { stats: ListeningStats }) {
+  const topTrack = stats.topTracks[0]
+  const topArtist = stats.topArtists[0]
+  const topGenre = stats.topGenres[0]
+  const topDay = stats.byDay.reduce(
+    (best, day) => (day.count > best.count ? day : best),
+    { date: '', count: 0 },
+  )
+  const persona = listeningPersona(stats)
+  const topDayLabel = topDay.date
+    ? new Date(topDay.date).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+    : 'No peak day yet'
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-elevated/50 bg-surface">
+      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative min-h-[24rem] p-6 sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(29,185,84,0.22),transparent_30%),radial-gradient(circle_at_80%_15%,rgba(56,189,248,0.16),transparent_28%),linear-gradient(135deg,rgba(18,18,18,0.96),rgba(18,18,18,0.72))]" />
+          <div className="relative z-10 flex h-full flex-col justify-between">
+            <div>
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-white/85">
+                <SparklesIcon className="h-4 w-4" />
+                Year recap
+              </div>
+              <h2 className="max-w-xl text-4xl font-black leading-tight text-white sm:text-5xl">
+                Your Wrapped is ready.
+              </h2>
+              <p className="mt-4 max-w-lg text-sm text-white/70">
+                A full-year look at the songs, artists, genres, and habits that shaped your listening.
+              </p>
+            </div>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-white/55">Minutes</p>
+                <p className="text-2xl font-black text-white">{formatListenTime(stats.totalMinutes)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-white/55">Top artist</p>
+                <p className="truncate text-2xl font-black text-white">{topArtist?.name ?? 'Still forming'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-white/55">Persona</p>
+                <p className="truncate text-2xl font-black text-white">{persona.title}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-5 bg-base/45 p-6 sm:p-8">
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-muted">Song of the year</p>
+            {topTrack ? (
+              <Link to={`/track/${topTrack.track.id}`} className="group flex items-center gap-4">
+                <img
+                  src={topTrack.track.album.coverUrl}
+                  alt=""
+                  className="h-24 w-24 shrink-0 rounded-lg object-cover shadow-2xl transition-transform group-hover:scale-105"
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-2xl font-black text-primary group-hover:underline">
+                    {topTrack.track.title}
+                  </span>
+                  <span className="mt-1 block truncate text-sm text-secondary">{topTrack.track.artist.name}</span>
+                  <span className="mt-3 inline-flex rounded-full bg-accent/15 px-3 py-1 text-xs font-bold text-accent">
+                    {formatNumber(topTrack.playCount)} plays
+                  </span>
+                </span>
+              </Link>
+            ) : (
+              <p className="text-secondary">Play more music to reveal your song of the year.</p>
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <WrappedMetric
+              label="Peak day"
+              value={topDayLabel}
+              helper={`${formatNumber(topDay.count)} plays`}
+              icon={CalendarDaysIcon}
+            />
+            <WrappedMetric
+              label="Top genre"
+              value={topGenre?.name ?? 'Still forming'}
+              helper={topGenre ? `${formatNumber(topGenre.playCount)} plays` : 'No genre leader yet'}
+              icon={FireIcon}
+            />
+            <WrappedMetric
+              label="Different songs"
+              value={formatNumber(stats.uniqueTracks)}
+              helper="Unique tracks heard"
+              icon={MusicalNoteIcon}
+            />
+            <WrappedMetric
+              label={persona.title}
+              value="Listening type"
+              helper={persona.copy}
+              icon={TrophyIcon}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -75,9 +251,31 @@ export function StatsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!isAuthenticated) { setLoading(false); return }
-    setLoading(true)
-    meService.getStats(range).then(setStats).catch(() => setStats(null)).finally(() => setLoading(false))
+    let cancelled = false
+
+    Promise.resolve().then(async () => {
+      if (!isAuthenticated) {
+        if (!cancelled) {
+          setStats(null)
+          setLoading(false)
+        }
+        return
+      }
+
+      if (!cancelled) setLoading(true)
+      try {
+        const next = await meService.getStats(range)
+        if (!cancelled) setStats(next)
+      } catch {
+        if (!cancelled) setStats(null)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [isAuthenticated, range])
 
   if (!isAuthenticated) {
@@ -91,9 +289,8 @@ export function StatsPage() {
     )
   }
 
-  const hours = stats ? Math.floor(stats.totalMinutes / 60) : 0
-  const minutes = stats ? stats.totalMinutes % 60 : 0
   const topTracks = stats?.topTracks ?? []
+  const topTrackQueue = topTracks.map((x) => x.track)
   const maxArtistPlays = Math.max(...(stats?.topArtists.map((a) => a.playCount) ?? [1]), 1)
 
   return (
@@ -124,11 +321,13 @@ export function StatsPage() {
         <p className="text-secondary">No listening data for this period yet. Play some music and check back!</p>
       ) : (
         <div className="space-y-8">
+          {range === 365 && <WrappedYearView stats={stats} />}
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard
               label="Minutes listened"
-              value={hours > 0 ? `${formatNumber(hours)}h ${minutes}m` : `${minutes}m`}
+              value={formatListenTime(stats.totalMinutes)}
               helper={`${formatNumber(stats.totalPlays)} plays in total`}
               icon={ClockIcon}
             />
@@ -195,7 +394,7 @@ export function StatsPage() {
                     <div key={t.track.id} className="flex items-center gap-2">
                       <span className="w-5 shrink-0 text-center text-sm font-bold text-secondary">{i + 1}</span>
                       <div className="min-w-0 flex-1">
-                        <TrackCard track={t.track} queue={topTracks.map((x) => x.track)} />
+                        <TrackCard track={t.track} queue={topTrackQueue} />
                       </div>
                       <span className="hidden w-16 shrink-0 text-right text-xs font-semibold text-secondary sm:block">
                         {formatNumber(t.playCount)}×

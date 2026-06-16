@@ -26,20 +26,17 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
   - [x] Volume normalization (`normalize`) — **done (2026-06-16)**: client-side real-time loudness leveler (a shared `DynamicsCompressorNode` + makeup `GainNode` after the EQ chain in `audioEngine.ts`); no backend/ffmpeg. Settings toggle now live & honest ("Even out the loudness between songs"). Off = transparent (ratio 1).
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
-<<<<<<< HEAD
 - [x] **PiP fast-forward / rewind** — Media Session seek handlers drive the real audio player and clamp to track duration.
 - [x] **Genre browse playlists + tracks** — `/genres/{slug}/playlists` + genre detail rows for public playlists and popular tracks. *(Mood/activity tagging remains migration-gated above.)*
-=======
 - [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).
 - [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
 - [x] **Mood / activity tagging & browse**.
->>>>>>> 978d13a042c35b481ae83a323943f94b12bdfbc9
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
-- [ ] **Playlist folders + pinning** — *pinning done (2026-06-16)*: client-side pin/unpin (`utils/pinnedLibrary.ts`, localStorage `ns-library-pinned`) floats items to the top of the library sidebar (list + grid) via a hover pin button; syncs app-wide on `ns-pinned-change`. **Folders (drag-to-group + collapsible) still pending.** *(Duplicate detection is moot — backend 409s duplicate adds.)*
+- [x] **Playlist folders + pinning** — **done (2026-06-16)**, client-side / no migration. Pinning (`utils/pinnedLibrary.ts`) floats items to the top of the sidebar; **folders** (`utils/libraryFolders.ts`) are collapsible groups created via the Create dropdown (Playlist/Folder), renamed/deleted from a folder menu, with items moved in/out from each row's ⋯ menu (menu-based, **not** drag-and-drop). All localStorage; sidebar syncs on `ns-pinned-change` / `ns-folders-change`. *(Duplicate detection is moot — backend 409s duplicate adds.)*
 - [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.
 
 ### 1C — Large subsystems (each its own session + migration)

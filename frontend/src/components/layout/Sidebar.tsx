@@ -3,12 +3,20 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   PlusIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   ListBulletIcon,
   Squares2X2Icon,
   CheckIcon,
+  FolderIcon,
+  FolderPlusIcon,
+  MusicalNoteIcon,
+  EllipsisHorizontalIcon,
+  PencilIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -18,6 +26,18 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useRatingStore } from '@/stores/ratingStore'
 import { getPinnedSet, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
+import {
+  type LibraryFolder,
+  getFolders,
+  createFolder,
+  renameFolder,
+  deleteFolder,
+  setFolderCollapsed,
+  addItemToFolder,
+  removeItemFromFolder,
+  folderOfItem,
+  FOLDERS_EVENT,
+} from '@/utils/libraryFolders'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -84,6 +104,11 @@ export function Sidebar() {
   )
   const [compactLibrary, setCompactLibrary] = useState(getInitialCompactLibrary)
   const [pinned, setPinned] = useState<Set<string>>(getPinnedSet)
+  const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const [rowMenuKey, setRowMenuKey] = useState<string | null>(null)
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
@@ -133,6 +158,17 @@ export function Sidebar() {
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener(PINNED_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  // Keep folders in step (created/edited from the row + folder menus).
+  useEffect(() => {
+    const sync = () => setFolders(getFolders())
+    window.addEventListener(FOLDERS_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(FOLDERS_EVENT, sync)
       window.removeEventListener('storage', sync)
     }
   }, [])
@@ -239,6 +275,29 @@ export function Sidebar() {
     !!currentTrack &&
     ((item.kind === 'album' && currentTrack.album.id === item.id) ||
       (item.kind === 'artist' && currentTrack.artist.id === item.id))
+
+  // ── Folders (a client-side grouping layer over `items`) ─────────
+  const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
+  const folderItemKeys = useMemo(() => new Set(folders.flatMap((f) => f.itemKeys)), [folders])
+  // Folders only surface in the default view (no active filter/search), so the
+  // flat filtered list stays predictable when searching.
+  const foldersActive = filter === 'all' && !query.trim()
+  const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
+  const hasFolderSection = foldersActive && folders.length > 0
+
+  const handleCreateFolder = () => {
+    const folder = createFolder()
+    // Clear any filter/search so the new (empty) folder is visible, then rename.
+    setFilter('all')
+    setQuery('')
+    setRenamingFolderId(folder.id)
+    setRenameValue(folder.name)
+  }
+
+  const commitRename = (id: string) => {
+    renameFolder(id, renameValue)
+    setRenamingFolderId(null)
+  }
 
   const frameStyle: React.CSSProperties = {
     flexBasis: collapsed ? RAIL : width,
@@ -406,17 +465,48 @@ export function Sidebar() {
           </span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={handleCreate}
-            className="spotify-tooltip-anchor relative flex items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
-            aria-label="Create playlist"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Create
-            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
-              Create a playlist, folder, or Jam
-            </span>
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setCreateMenuOpen((v) => !v)}
+              className="spotify-tooltip-anchor relative flex items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
+              aria-label="Create playlist or folder"
+              aria-haspopup="menu"
+              aria-expanded={createMenuOpen}
+            >
+              <PlusIcon className="w-4 h-4" />
+              Create
+              {!createMenuOpen && (
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
+                  Create a playlist or folder
+                </span>
+              )}
+            </button>
+            {createMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                  <button
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      handleCreate()
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                  >
+                    <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> Playlist
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCreateMenuOpen(false)
+                      handleCreateFolder()
+                    }}
+                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                  >
+                    <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> Folder
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <button
             onClick={() => setLibraryExpanded(!libraryExpanded)}
             className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
@@ -541,8 +631,34 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* List / grid */}
+      {/* Folders + library list/grid */}
       <div key={libraryExpanded ? 'expanded' : 'normal'} className="flex-1 overflow-y-auto px-2 pb-2 animate-fade-in">
+        {hasFolderSection && (
+          <div className="mb-1 flex flex-col">
+            {folders.map((folder) => (
+              <FolderGroup
+                key={folder.id}
+                folder={folder}
+                contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
+                compact={compactLibrary}
+                folders={folders}
+                isNowPlaying={isNowPlaying}
+                renaming={renamingFolderId === folder.id}
+                renameValue={renameValue}
+                onRenameChange={setRenameValue}
+                onRenameStart={() => {
+                  setRenamingFolderId(folder.id)
+                  setRenameValue(folder.name)
+                }}
+                onRenameCommit={() => commitRename(folder.id)}
+                onRenameCancel={() => setRenamingFolderId(null)}
+                rowMenuKey={rowMenuKey}
+                setRowMenuKey={setRowMenuKey}
+              />
+            ))}
+          </div>
+        )}
+
         {grid ? (
           <div
             className={cn(
@@ -577,41 +693,27 @@ export function Sidebar() {
                 {!compactLibrary && <p className="text-xs text-secondary truncate">Playlist • {likedSongs.length} songs</p>}
               </NavLink>
             )}
-            {items.map((item) => (
-              <div key={item.key} className="group/row relative">
-                <NavLink
-                  to={item.to}
-                  onClick={() => libraryExpanded && setLibraryExpanded(false)}
-                  className={({ isActive }) =>
-                    cn(
-                      'block rounded-md transition-colors',
-                      compactLibrary ? 'p-1.5' : 'p-2',
-                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                    )
-                  }
-                >
-                  <div
-                    className={cn(
-                      'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
-                      compactLibrary ? 'mb-1.5' : 'mb-2',
-                      item.round ? 'rounded-full' : 'rounded-md',
-                    )}
-                  >
-                    {item.image ? (
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className={compactLibrary ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-                    )}
-                  </div>
-                  <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
-                    {item.name}
-                  </p>
-                  {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
-                </NavLink>
-                <PinButton itemKey={item.key} pinned={pinned.has(item.key)} variant="grid" />
-              </div>
+            {ungroupedItems.map((item) => (
+              <LibraryGridCard
+                key={item.key}
+                item={item}
+                compact={compactLibrary}
+                nowPlaying={isNowPlaying(item)}
+                onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+              >
+                <RowOverlay
+                  variant="grid"
+                  itemKey={item.key}
+                  pinned={pinned.has(item.key)}
+                  showPin
+                  folders={folders}
+                  menuOpen={rowMenuKey === item.key}
+                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                  onCloseMenu={() => setRowMenuKey(null)}
+                />
+              </LibraryGridCard>
             ))}
-            {items.length === 0 && !showLiked && (
+            {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
             )}
           </div>
@@ -640,42 +742,21 @@ export function Sidebar() {
                 </div>
               </NavLink>
             )}
-            {items.map((item) => (
-              <div key={item.key} className="group/row relative">
-                <NavLink
-                  to={item.to}
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center rounded-md transition-colors',
-                      compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
-                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                    )
-                  }
-                >
-                  <div
-                    className={cn(
-                      'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
-                      compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
-                      item.round ? 'rounded-full' : 'rounded-md',
-                    )}
-                  >
-                    {item.image ? (
-                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className={compactLibrary ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-                    )}
-                  </div>
-                  <div className="min-w-0 pr-7">
-                    <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
-                      {item.name}
-                    </p>
-                    {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
-                  </div>
-                </NavLink>
-                <PinButton itemKey={item.key} pinned={pinned.has(item.key)} variant="list" />
-              </div>
+            {ungroupedItems.map((item) => (
+              <LibraryListRow key={item.key} item={item} compact={compactLibrary} nowPlaying={isNowPlaying(item)}>
+                <RowOverlay
+                  variant="list"
+                  itemKey={item.key}
+                  pinned={pinned.has(item.key)}
+                  showPin
+                  folders={folders}
+                  menuOpen={rowMenuKey === item.key}
+                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                  onCloseMenu={() => setRowMenuKey(null)}
+                />
+              </LibraryListRow>
             ))}
-            {items.length === 0 && !showLiked && (
+            {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
             )}
           </>
@@ -710,9 +791,10 @@ function PinButton({
       title={pinned ? 'Unpin' : 'Pin'}
       className={cn(
         'absolute z-10 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+        // Sits just left of the row's ⋯ menu button.
         variant === 'list'
-          ? 'right-1.5 top-1/2 -translate-y-1/2'
-          : 'right-2 top-2 bg-page/70 backdrop-blur-sm',
+          ? 'right-9 top-1/2 -translate-y-1/2'
+          : 'right-11 top-2 bg-page/70 backdrop-blur-sm',
         pinned
           ? 'text-accent opacity-100'
           : 'text-secondary opacity-0 hover:text-primary group-hover/row:opacity-100',
@@ -720,6 +802,400 @@ function PinButton({
     >
       <PinIcon className="h-4 w-4" />
     </button>
+  )
+}
+
+/** Pin (if shown) + the ⋯ "move to folder" menu, overlaid on a library row. */
+function RowOverlay({
+  variant,
+  itemKey,
+  pinned,
+  showPin,
+  folders,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+}: {
+  variant: 'list' | 'grid'
+  itemKey: string
+  pinned: boolean
+  showPin: boolean
+  folders: LibraryFolder[]
+  menuOpen: boolean
+  onToggleMenu: () => void
+  onCloseMenu: () => void
+}) {
+  return (
+    <>
+      {showPin && <PinButton itemKey={itemKey} pinned={pinned} variant={variant} />}
+      <RowMenu
+        variant={variant}
+        itemKey={itemKey}
+        folders={folders}
+        open={menuOpen}
+        onToggle={onToggleMenu}
+        onClose={onCloseMenu}
+      />
+    </>
+  )
+}
+
+/** Per-row dropdown to move an item into / out of a folder. */
+function RowMenu({
+  variant,
+  itemKey,
+  folders,
+  open,
+  onToggle,
+  onClose,
+}: {
+  variant: 'list' | 'grid'
+  itemKey: string
+  folders: LibraryFolder[]
+  open: boolean
+  onToggle: () => void
+  onClose: () => void
+}) {
+  const currentFolderId = folderOfItem(folders, itemKey)
+  const stop = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  return (
+    <div
+      className={cn(
+        'absolute z-20',
+        variant === 'list' ? 'right-1.5 top-1/2 -translate-y-1/2' : 'right-2 top-2',
+      )}
+    >
+      <button
+        type="button"
+        onClick={(e) => {
+          stop(e)
+          onToggle()
+        }}
+        aria-label="Move to folder"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+          variant === 'grid' && 'bg-page/70 backdrop-blur-sm',
+          open ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
+        )}
+      >
+        <EllipsisHorizontalIcon className="h-4 w-4" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={(e) => { stop(e); onClose() }} />
+          <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+            <p className="px-3 pb-1 pt-2 text-xs font-bold text-secondary">Move to folder</p>
+            <div className="max-h-56 overflow-y-auto">
+              {folders.length === 0 && <p className="px-3 py-1.5 text-xs text-secondary">No folders yet</p>}
+              {folders.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={(e) => {
+                    stop(e)
+                    addItemToFolder(f.id, itemKey)
+                    onClose()
+                  }}
+                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                >
+                  <span className="truncate">{f.name}</span>
+                  {currentFolderId === f.id && <CheckIcon className="h-4 w-4 shrink-0 text-accent" />}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={(e) => {
+                stop(e)
+                const f = createFolder()
+                addItemToFolder(f.id, itemKey)
+                onClose()
+              }}
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+            >
+              <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> New folder
+            </button>
+            {currentFolderId && (
+              <>
+                <div className="my-1 border-t border-secondary/10" />
+                <button
+                  onClick={(e) => {
+                    stop(e)
+                    removeItemFromFolder(itemKey)
+                    onClose()
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                >
+                  Remove from folder
+                </button>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+/** A library row in list layout (used by the flat list + inside folders). */
+function LibraryListRow({
+  item,
+  compact,
+  nowPlaying,
+  children,
+}: {
+  item: LibItem
+  compact: boolean
+  nowPlaying: boolean
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="group/row relative">
+      <NavLink
+        to={item.to}
+        className={({ isActive }) =>
+          cn(
+            'flex items-center rounded-md transition-colors',
+            compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+            isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+          )
+        }
+      >
+        <div
+          className={cn(
+            'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+            compact ? 'h-9 w-9' : 'h-12 w-12',
+            item.round ? 'rounded-full' : 'rounded-md',
+          )}
+        >
+          {item.image ? (
+            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className={compact ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 pr-14">
+          <p className={cn('text-sm font-medium truncate', nowPlaying ? 'text-accent' : 'text-primary')}>{item.name}</p>
+          {!compact && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+        </div>
+      </NavLink>
+      {children}
+    </div>
+  )
+}
+
+/** A library item in grid layout. */
+function LibraryGridCard({
+  item,
+  compact,
+  nowPlaying,
+  onNavigate,
+  children,
+}: {
+  item: LibItem
+  compact: boolean
+  nowPlaying: boolean
+  onNavigate: () => void
+  children?: React.ReactNode
+}) {
+  return (
+    <div className="group/row relative">
+      <NavLink
+        to={item.to}
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          cn(
+            'block rounded-md transition-colors',
+            compact ? 'p-1.5' : 'p-2',
+            isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+          )
+        }
+      >
+        <div
+          className={cn(
+            'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
+            compact ? 'mb-1.5' : 'mb-2',
+            item.round ? 'rounded-full' : 'rounded-md',
+          )}
+        >
+          {item.image ? (
+            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className={compact ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+          )}
+        </div>
+        <p className={cn('text-sm font-medium truncate', nowPlaying ? 'text-accent' : 'text-primary')}>{item.name}</p>
+        {!compact && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+      </NavLink>
+      {children}
+    </div>
+  )
+}
+
+/** A collapsible folder header + its (indented) contents, list-style. */
+function FolderGroup({
+  folder,
+  contents,
+  compact,
+  folders,
+  isNowPlaying,
+  renaming,
+  renameValue,
+  onRenameChange,
+  onRenameStart,
+  onRenameCommit,
+  onRenameCancel,
+  rowMenuKey,
+  setRowMenuKey,
+}: {
+  folder: LibraryFolder
+  contents: LibItem[]
+  compact: boolean
+  folders: LibraryFolder[]
+  isNowPlaying: (item: LibItem) => boolean
+  renaming: boolean
+  renameValue: string
+  onRenameChange: (v: string) => void
+  onRenameStart: () => void
+  onRenameCommit: () => void
+  onRenameCancel: () => void
+  rowMenuKey: string | null
+  setRowMenuKey: (key: string | null) => void
+}) {
+  const [menuOpen, setMenuOpen] = useState(false)
+  const count = folder.itemKeys.length
+
+  return (
+    <div>
+      <div className="group/folder relative">
+        {renaming ? (
+          <div className={cn('flex items-center rounded-md', compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2')}>
+            <span className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <div
+              className={cn(
+                'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
+                compact ? 'h-9 w-9' : 'h-12 w-12',
+              )}
+            >
+              <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+            </div>
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => onRenameChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onRenameCommit()
+                else if (e.key === 'Escape') onRenameCancel()
+              }}
+              onBlur={onRenameCommit}
+              aria-label="Folder name"
+              className="min-w-0 flex-1 rounded border border-accent/60 bg-surface px-1.5 py-1 text-sm font-medium text-primary outline-none"
+            />
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setFolderCollapsed(folder.id, !folder.collapsed)}
+              aria-expanded={!folder.collapsed}
+              aria-label={folder.collapsed ? `Expand ${folder.name}` : `Collapse ${folder.name}`}
+              className={cn(
+                'flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50',
+                compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+              )}
+            >
+              {folder.collapsed ? (
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-secondary" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4 shrink-0 text-secondary" />
+              )}
+              <div
+                className={cn(
+                  'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
+                  compact ? 'h-9 w-9' : 'h-12 w-12',
+                )}
+              >
+                <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+              </div>
+              <div className="min-w-0 flex-1 pr-7">
+                <p className="truncate text-sm font-medium text-primary">{folder.name}</p>
+                {!compact && (
+                  <p className="truncate text-xs text-secondary">
+                    Folder • {count} item{count === 1 ? '' : 's'}
+                  </p>
+                )}
+              </div>
+            </button>
+            <div className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label="Folder options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className={cn(
+                  'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100',
+                  menuOpen ? 'opacity-100' : 'opacity-0 group-hover/folder:opacity-100',
+                )}
+              >
+                <EllipsisHorizontalIcon className="h-4 w-4" />
+              </button>
+              {menuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onRenameStart()
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <PencilIcon className="h-4 w-4 shrink-0 text-secondary" /> Rename
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        deleteFolder(folder.id)
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> Delete folder
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {!folder.collapsed && (
+        <div className="ml-4 border-l border-secondary/10 pl-1">
+          {contents.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-secondary">Empty — add items from a row's ⋯ menu.</p>
+          ) : (
+            contents.map((item) => (
+              <LibraryListRow key={item.key} item={item} compact={compact} nowPlaying={isNowPlaying(item)}>
+                <RowOverlay
+                  variant="list"
+                  itemKey={item.key}
+                  pinned={false}
+                  showPin={false}
+                  folders={folders}
+                  menuOpen={rowMenuKey === item.key}
+                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                  onCloseMenu={() => setRowMenuKey(null)}
+                />
+              </LibraryListRow>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

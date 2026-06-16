@@ -19,7 +19,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 
 ### 1B — No migration (frontend / query only)
 - [ ] **Admin restructure** *(Account 2)* — dedicated admin sidebar/topbar layout (`/adminlogin` guard already exists).
-- [ ] **Equalizer** — Web Audio `BiquadFilter` graph (separate from the crossfade engine; mind cross-origin tainting).
+- [x] **Equalizer** — Web Audio `BiquadFilter` graph (separate from the crossfade engine; mind cross-origin tainting).
 - [ ] **Wire remaining dead toggles** (disabled with "Coming soon" in Settings):
   - [ ] Volume normalization (`normalize`) — needs backend ffmpeg loudness scan + client gain.
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).

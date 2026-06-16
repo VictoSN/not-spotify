@@ -1,5 +1,11 @@
 import { usePlayerStore } from '@/stores/playerStore'
 import { resolvePlaybackSrc } from '@/services/offlineAudio'
+import {
+  EQUALIZER_BANDS,
+  EQUALIZER_EVENT,
+  getEqualizerSettings,
+  normalizeEqualizerSettings,
+} from '@/services/equalizerPrefs'
 import type { Track } from '@/types/track'
 
 /*
@@ -41,6 +47,10 @@ class AudioEngine {
   private decks: [HTMLAudioElement, HTMLAudioElement]
   private srcs: [string, string] = ['', '']
   private active: 0 | 1 = 0
+  private audioContext: AudioContext | null = null
+  private deckSources: [MediaElementAudioSourceNode | null, MediaElementAudioSourceNode | null] = [null, null]
+  private deckFilters: [BiquadFilterNode[], BiquadFilterNode[]] = [[], []]
+  private equalizerGains = getEqualizerSettings().gains
   private crossfadeSec = readCrossfadeSeconds()
   private fadeRaf: number | null = null
   /** Deck currently ramping out during a crossfade (so we can stop it on cancel). */
@@ -51,17 +61,27 @@ class AudioEngine {
   private unsubscribe: (() => void) | null = null
   private mediaSessionTrackId: string | null = null
   private onPrefChange: () => void
+  private onEqualizerChange: (event: Event) => void
 
   constructor() {
     this.decks = [new Audio(), new Audio()]
     this.decks.forEach((deck, i) => {
+      deck.crossOrigin = 'anonymous'
       deck.preload = 'auto'
       this.bindDeckEvents(i as 0 | 1)
     })
     this.onPrefChange = () => {
       this.crossfadeSec = readCrossfadeSeconds()
     }
+    this.onEqualizerChange = (event) => {
+      const next = event instanceof CustomEvent
+        ? normalizeEqualizerSettings(event.detail)
+        : getEqualizerSettings()
+      this.equalizerGains = next.gains
+      this.applyEqualizerGains()
+    }
     window.addEventListener('ns-pref-change', this.onPrefChange)
+    window.addEventListener(EQUALIZER_EVENT, this.onEqualizerChange)
     this.bindMediaSessionActions()
     this.subscribeToStore()
   }
@@ -81,6 +101,65 @@ class AudioEngine {
     deck.addEventListener('error', () => {
       if (i === this.active) usePlayerStore.getState().pause()
     })
+  }
+
+  private ensureAudioGraph() {
+    if (this.audioContext) return
+    const AudioContextClass =
+      window.AudioContext ??
+      (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!AudioContextClass) return
+
+    try {
+      this.audioContext = new AudioContextClass()
+      this.connectDeckToGraph(0)
+      this.connectDeckToGraph(1)
+      this.applyEqualizerGains()
+    } catch {
+      this.audioContext = null
+      this.deckSources = [null, null]
+      this.deckFilters = [[], []]
+    }
+  }
+
+  private connectDeckToGraph(index: 0 | 1) {
+    if (!this.audioContext || this.deckSources[index]) return
+
+    const source = this.audioContext.createMediaElementSource(this.decks[index])
+    const filters = EQUALIZER_BANDS.map((band) => {
+      const filter = this.audioContext!.createBiquadFilter()
+      filter.type = band.type
+      filter.frequency.value = band.frequency
+      filter.Q.value = band.type === 'peaking' ? 1 : 0.707
+      return filter
+    })
+
+    source.connect(filters[0])
+    filters.forEach((filter, i) => {
+      const next = filters[i + 1]
+      if (next) filter.connect(next)
+    })
+    filters[filters.length - 1].connect(this.audioContext.destination)
+
+    this.deckSources[index] = source
+    this.deckFilters[index] = filters
+  }
+
+  private applyEqualizerGains() {
+    if (!this.audioContext) return
+    const now = this.audioContext.currentTime
+    this.deckFilters.forEach((filters) => {
+      filters.forEach((filter, i) => {
+        filter.gain.setTargetAtTime(this.equalizerGains[i] ?? 0, now, 0.015)
+      })
+    })
+  }
+
+  private resumeAudioGraph() {
+    this.ensureAudioGraph()
+    if (this.audioContext?.state === 'suspended') {
+      this.audioContext.resume().catch(() => {})
+    }
   }
 
   private onTimeUpdate(i: 0 | 1) {
@@ -180,6 +259,7 @@ class AudioEngine {
   }
 
   private switchToTrack(track: Track, isPlaying: boolean, targetVol: number, playbackRate: number) {
+    if (isPlaying) this.resumeAudioGraph()
     this.cancelFade()
     const src = resolvePlaybackSrc(track)
     const oldDeck = this.activeDeck
@@ -255,7 +335,10 @@ class AudioEngine {
 
       // Play / pause for the active deck.
       if (isPlaying !== prevIsPlaying) {
-        if (isPlaying) this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+        if (isPlaying) {
+          this.resumeAudioGraph()
+          this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+        }
         else this.activeDeck.pause()
         prevIsPlaying = isPlaying
       }
@@ -369,11 +452,13 @@ class AudioEngine {
   destroy() {
     this.unsubscribe?.()
     window.removeEventListener('ns-pref-change', this.onPrefChange)
+    window.removeEventListener(EQUALIZER_EVENT, this.onEqualizerChange)
     this.cancelFade()
     this.decks.forEach((deck) => {
       deck.pause()
       deck.src = ''
     })
+    this.audioContext?.close().catch(() => {})
     const session = this.getMediaSession()
     if (session) {
       session.metadata = null

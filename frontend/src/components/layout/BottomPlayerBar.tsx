@@ -5,7 +5,7 @@ import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
-import { PlaybackSpeedButton, SleepTimerButton } from '@/components/player/PlayerExtras'
+import { EqualizerButton, PlaybackSpeedButton, SleepTimerButton } from '@/components/player/PlayerExtras'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useJamStore } from '@/stores/jamStore'
@@ -93,6 +93,7 @@ export function BottomPlayerBar() {
       <div className="flex items-center gap-3 justify-self-end">
         <PlaybackSpeedButton />
         <SleepTimerButton />
+        <EqualizerButton />
         {currentTrack && (
           <button
             onClick={toggleKaraoke}

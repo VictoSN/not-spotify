@@ -49,4 +49,43 @@ public class GenresController : ControllerBase
             .ToListAsync(ct);
         return Ok(await _mapper.ToDtoListAsync(tracks, ct));
     }
+
+    [HttpGet("{slug}/playlists")]
+    public async Task<ActionResult<IEnumerable<PlaylistDto>>> Playlists(string slug, CancellationToken ct = default)
+    {
+        var genre = await _db.Genres.FirstOrDefaultAsync(g => g.Slug == slug, ct);
+        if (genre is null) return NotFound();
+
+        var playlistIds = await _db.PlaylistTracks
+            .Where(pt => pt.Playlist.IsPublic && pt.Track.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+            .GroupBy(pt => pt.PlaylistId)
+            .OrderByDescending(g => g.Count())
+            .ThenByDescending(g => g.Max(pt => pt.Playlist.UpdatedAt))
+            .Take(24)
+            .Select(g => g.Key)
+            .ToListAsync(ct);
+
+        if (playlistIds.Count == 0) return Ok(Array.Empty<PlaylistDto>());
+
+        var playlists = await _db.Playlists
+            .Where(p => playlistIds.Contains(p.Id))
+            .Include(p => p.Owner)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Artist)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Album)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.AddedByUser)
+            .ToListAsync(ct);
+
+        var byId = playlists.ToDictionary(p => p.Id);
+        var ordered = playlistIds
+            .Where(byId.ContainsKey)
+            .Select(id => byId[id])
+            .ToList();
+
+        var dtos = new List<PlaylistDto>(ordered.Count);
+        foreach (var playlist in ordered)
+            dtos.Add(await _mapper.ToDtoAsync(playlist, ct));
+
+        return Ok(dtos);
+    }
 }

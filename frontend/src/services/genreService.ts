@@ -1,5 +1,6 @@
 import type { Genre } from '@/types/genre'
 import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
 import { api } from './api'
 
 export const genreService = {
@@ -13,7 +14,13 @@ export const genreService = {
     return res.data
   },
 
-  async getPlaylistsByGenre(_slug: string): Promise<Playlist[]> {
-    return []
+  async getTracksByGenre(slug: string): Promise<Track[]> {
+    const res = await api.get<Track[]>(`/genres/${slug}/tracks`)
+    return res.data
+  },
+
+  async getPlaylistsByGenre(slug: string): Promise<Playlist[]> {
+    const res = await api.get<Playlist[]>(`/genres/${slug}/playlists`)
+    return res.data
   },
 }

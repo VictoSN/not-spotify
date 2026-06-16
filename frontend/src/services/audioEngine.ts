@@ -382,20 +382,30 @@ class AudioEngine {
     setHandler('pause', () => usePlayerStore.getState().pause())
     setHandler('previoustrack', () => usePlayerStore.getState().skipPrevious())
     setHandler('nexttrack', () => usePlayerStore.getState().skipNext())
-    setHandler('seekbackward', (details) => {
-      const state = usePlayerStore.getState()
-      state.seek(Math.max(0, state.currentTime - (details.seekOffset ?? 10)))
-    })
-    setHandler('seekforward', (details) => {
-      const state = usePlayerStore.getState()
-      const duration =
-        state.duration > 0 ? state.duration : state.currentTrack?.durationMs ? state.currentTrack.durationMs / 1000 : 0
-      state.seek(duration > 0 ? Math.min(duration, state.currentTime + (details.seekOffset ?? 10)) : state.currentTime)
-    })
+    setHandler('seekbackward', (details) => this.seekBy(-(details.seekOffset ?? 10)))
+    setHandler('seekforward', (details) => this.seekBy(details.seekOffset ?? 10))
     setHandler('seekto', (details) => {
       if (details.seekTime == null) return
-      usePlayerStore.getState().seek(details.seekTime)
+      this.seekTo(details.seekTime)
     })
+  }
+
+  private getDisplayDuration(): number {
+    const state = usePlayerStore.getState()
+    return state.duration > 0 ? state.duration : state.currentTrack?.durationMs ? state.currentTrack.durationMs / 1000 : 0
+  }
+
+  private seekBy(offsetSeconds: number) {
+    const state = usePlayerStore.getState()
+    this.seekTo(state.currentTime + offsetSeconds)
+  }
+
+  private seekTo(seconds: number) {
+    const duration = this.getDisplayDuration()
+    const next = duration > 0
+      ? Math.min(duration, Math.max(0, seconds))
+      : Math.max(0, seconds)
+    usePlayerStore.getState().seek(next)
   }
 
   private updateMediaSession(state: {

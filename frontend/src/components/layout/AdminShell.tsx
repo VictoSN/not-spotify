@@ -1,31 +1,69 @@
-import { useState } from 'react'
-import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
+import { useState, type ComponentType, type SVGProps } from 'react'
+import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  MusicalNoteIcon,
-  UserGroupIcon,
-  RectangleStackIcon,
   ArrowLeftIcon,
-  ClipboardDocumentListIcon,
-  WrenchScrewdriverIcon,
+  ArrowRightStartOnRectangleIcon,
   Bars3Icon,
-  XMarkIcon,
   ChartBarSquareIcon,
+  ClipboardDocumentListIcon,
+  MusicalNoteIcon,
+  RectangleStackIcon,
+  UserGroupIcon,
+  WrenchScrewdriverIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
+import { cn } from '@/utils/cn'
 
-const navItems = [
-  { to: '/admin/dashboard',    label: 'Dashboard',    icon: ChartBarSquareIcon },
-  { to: '/admin/artists',      label: 'Artists',      icon: UserGroupIcon },
-  { to: '/admin/albums',       label: 'Albums',        icon: RectangleStackIcon },
-  { to: '/admin/tracks',       label: 'Tracks',        icon: MusicalNoteIcon },
-  { to: '/admin/applications', label: 'Applications', icon: ClipboardDocumentListIcon },
-  { to: '/admin/dev',          label: 'Dev Tools',    icon: WrenchScrewdriverIcon },
+type AdminIcon = ComponentType<SVGProps<SVGSVGElement>>
+
+const navItems: { to: string; label: string; description: string; icon: AdminIcon }[] = [
+  { to: '/admin/dashboard', label: 'Dashboard', description: 'Overview', icon: ChartBarSquareIcon },
+  { to: '/admin/artists', label: 'Artists', description: 'Profiles and ownership', icon: UserGroupIcon },
+  { to: '/admin/albums', label: 'Albums', description: 'Releases and review', icon: RectangleStackIcon },
+  { to: '/admin/tracks', label: 'Tracks', description: 'Audio catalog', icon: MusicalNoteIcon },
+  { to: '/admin/applications', label: 'Applications', description: 'Artist requests', icon: ClipboardDocumentListIcon },
+  { to: '/admin/dev', label: 'Dev Tools', description: 'Diagnostics', icon: WrenchScrewdriverIcon },
 ]
+
+function activeItem(pathname: string) {
+  return navItems.find((item) => pathname === item.to || pathname.startsWith(`${item.to}/`)) ?? navItems[0]
+}
+
+function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav className="space-y-1 px-3">
+      {navItems.map(({ to, label, description, icon: Icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            cn(
+              'group flex min-h-14 items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
+              isActive
+                ? 'bg-accent/15 text-accent'
+                : 'text-secondary hover:bg-elevated/60 hover:text-primary',
+            )
+          }
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-bold">{label}</span>
+            <span className="block truncate text-xs text-secondary">{description}</span>
+          </span>
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
 
 export function AdminShell() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const current = activeItem(location.pathname)
 
   const handleLogout = async () => {
     await logout()
@@ -33,122 +71,111 @@ export function AdminShell() {
   }
 
   return (
-    <div className="min-h-screen bg-page flex flex-col">
-      {/* ── Top nav bar ─────────────────────────────────────────── */}
-      <header className="bg-surface border-b border-elevated/40 shrink-0">
-        {/* Main row */}
-        <div className="h-14 flex items-center px-4 sm:px-6 gap-3 sm:gap-6">
-          {/* Brand */}
-          <div className="flex items-center gap-2 text-accent font-bold text-base sm:text-lg select-none shrink-0">
-            <MusicalNoteIcon className="w-5 h-5" />
-            <span className="hidden xs:inline">not-spotify</span>
-            <span className="text-secondary font-normal text-sm ml-1">Admin</span>
+    <div className="flex h-screen overflow-hidden bg-page text-primary">
+      <aside className="hidden w-72 shrink-0 border-r border-elevated/40 bg-surface lg:flex lg:flex-col">
+        <div className="flex h-16 items-center gap-3 border-b border-elevated/40 px-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-white">
+            <MusicalNoteIcon className="h-5 w-5" />
           </div>
-
-          {/* Desktop nav links — hidden below lg */}
-          <nav className="hidden lg:flex items-center gap-1 flex-1">
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-accent/15 text-accent'
-                      : 'text-secondary hover:text-primary hover:bg-elevated/50'
-                  }`
-                }
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* Right side */}
-          <div className="ml-auto flex items-center gap-3 sm:gap-4">
-            <Link
-              to="/"
-              className="flex items-center gap-1.5 text-sm text-secondary hover:text-primary transition-colors"
-            >
-              <ArrowLeftIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to app</span>
-            </Link>
-
-            <span className="hidden sm:block text-sm text-secondary truncate max-w-[120px]">{user?.name}</span>
-
-            {/* Hamburger — visible below lg */}
-            <button
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              className="lg:hidden flex items-center justify-center w-9 h-9 rounded-md text-secondary hover:text-primary hover:bg-elevated/50 transition-colors"
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={mobileMenuOpen}
-            >
-              {mobileMenuOpen
-                ? <XMarkIcon className="w-5 h-5" />
-                : <Bars3Icon className="w-5 h-5" />
-              }
-            </button>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black text-primary">not-spotify</p>
+            <p className="truncate text-xs font-semibold uppercase tracking-wide text-secondary">Admin console</p>
           </div>
         </div>
 
-        {/* Mobile/tablet dropdown nav — shown when hamburger is open */}
+        <div className="flex-1 overflow-y-auto py-4">
+          <AdminNav />
+        </div>
+
+        <div className="border-t border-elevated/40 p-4">
+          <div className="mb-3 min-w-0">
+            <p className="truncate text-sm font-bold text-primary">{user?.name ?? 'Admin'}</p>
+            <p className="truncate text-xs text-secondary">{user?.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-secondary/20 text-sm font-bold text-secondary transition-colors hover:border-primary/30 hover:text-primary"
+          >
+            <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+            Log out
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-elevated/40 bg-surface/95 px-4 backdrop-blur sm:px-6">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-secondary transition-colors hover:bg-elevated hover:text-primary lg:hidden"
+            aria-label="Open admin navigation"
+          >
+            <Bars3Icon className="h-5 w-5" />
+          </button>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-wide text-secondary">Admin</p>
+            <h1 className="truncate text-lg font-black text-primary">{current.label}</h1>
+          </div>
+
+          <Link
+            to="/"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-secondary/20 px-3 text-sm font-bold text-secondary transition-colors hover:border-primary/30 hover:text-primary"
+          >
+            <ArrowLeftIcon className="h-4 w-4" />
+            <span className="hidden sm:inline">Back to app</span>
+          </Link>
+        </header>
+
         {mobileMenuOpen && (
-          <nav className="lg:hidden border-t border-elevated/30 px-4 py-3 flex flex-col gap-1">
-            {navItems.map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={() => setMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-accent/15 text-accent'
-                      : 'text-secondary hover:text-primary hover:bg-elevated/50'
-                  }`
-                }
-              >
-                <Icon className="w-5 h-5" />
-                {label}
-              </NavLink>
-            ))}
-            <div className="mt-2 pt-2 border-t border-elevated/30 flex items-center justify-between">
-              <span className="text-sm text-secondary">{user?.name}</span>
-              <button
-                onClick={handleLogout}
-                className="text-xs font-semibold text-secondary hover:text-primary transition-colors"
-              >
-                Log out
-              </button>
-            </div>
-          </nav>
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <div className="absolute inset-0 bg-black/60" onClick={() => setMobileMenuOpen(false)} />
+            <aside className="relative flex h-full w-[min(20rem,calc(100vw-3rem))] flex-col bg-surface shadow-2xl">
+              <div className="flex h-16 items-center justify-between border-b border-elevated/40 px-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent text-white">
+                    <MusicalNoteIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-primary">not-spotify</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-secondary">Admin console</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-md text-secondary transition-colors hover:bg-elevated hover:text-primary"
+                  aria-label="Close admin navigation"
+                >
+                  <XMarkIcon className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto py-4">
+                <AdminNav onNavigate={() => setMobileMenuOpen(false)} />
+              </div>
+
+              <div className="border-t border-elevated/40 p-4">
+                <p className="truncate text-sm font-bold text-primary">{user?.name ?? 'Admin'}</p>
+                <p className="mb-3 truncate text-xs text-secondary">{user?.email}</p>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-secondary/20 text-sm font-bold text-secondary transition-colors hover:border-primary/30 hover:text-primary"
+                >
+                  <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+                  Log out
+                </button>
+              </div>
+            </aside>
+          </div>
         )}
 
-        {/* Tablet secondary nav row — visible between md and lg, always-open strip */}
-        <div className="hidden md:flex lg:hidden items-center gap-1 px-4 pb-2 flex-wrap">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-accent/15 text-accent'
-                    : 'text-secondary hover:text-primary hover:bg-elevated/50'
-                }`
-              }
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </NavLink>
-          ))}
-        </div>
-      </header>
-
-      {/* Page content */}
-      <main className="flex-1 overflow-y-auto overflow-x-auto">
-        <Outlet />
-      </main>
+        <main className="min-h-0 flex-1 overflow-auto">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

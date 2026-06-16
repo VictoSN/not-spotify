@@ -16,8 +16,8 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 ⚠️ Shared Supabase DB — coordinate first. **Always `dotnet build` before `dotnet run` after `migrations add`**, and prefer idempotent `CREATE … IF NOT EXISTS` migrations.
 - [ ] **Smart playlists** — Med. Rules engine (genre / rating / play-count / date-added); pairs with star ratings. Rules column on `Playlists`.
 - [ ] **Waveform + timed comments** — Med–High. ffmpeg peak extraction at upload + a comments table pinned to timestamps. SoundCloud signature.
-- [ ] **Editorial / featured playlists** — Med. Admin-curated playlists + featured/sort fields on `Playlists`; public featured endpoint + home row.
-- [ ] **Mood / activity tagging** — Med. Tag taxonomy/joins for tracks/playlists; admin tagging + browse filters.
+- [ ] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
+- [ ] **Mood / activity tagging taxonomy** — Med. Optional hardening beyond the shipped search-backed mood page; add tag taxonomy/joins for tracks/playlists + admin tagging.
 
 ### 1B — No migration (frontend / query only)
 - [x] **Admin restructure** *(Account 2)* — dedicated admin sidebar/topbar layout (`/adminlogin` guard already exists).
@@ -26,14 +26,10 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
   - [ ] Volume normalization (`normalize`) — needs backend ffmpeg loudness scan + client gain.
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
-<<<<<<< HEAD
 - [x] **PiP fast-forward / rewind** — Media Session seek handlers drive the real audio player and clamp to track duration.
 - [x] **Genre browse playlists + tracks** — `/genres/{slug}/playlists` + genre detail rows for public playlists and popular tracks. *(Mood/activity tagging remains migration-gated above.)*
-=======
-- [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).
 - [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
-- [x] **Mood / activity tagging & browse**.
->>>>>>> 978d13a042c35b481ae83a323943f94b12bdfbc9
+- [x] **Mood / activity browse** — `/moods` search-backed rows, with mood-like browse cards routed there. *(Tag taxonomy remains migration-gated above.)*
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).

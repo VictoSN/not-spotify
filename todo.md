@@ -33,7 +33,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [ ] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
 - [ ] **Playlist folders + pinning**. *(Duplicate detection is moot — backend 409s duplicate adds.)*
-- [ ] **Discover Weekly** — collaborative filtering over `PlayHistories`.
+- [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.
 
 ### 1C — Large subsystems (each its own session + migration)
 - [ ] **RBAC** — High. Master admin grants/revokes admin; role tiers + granular permissions; approval workflow (`PendingAction` table — flagged roles enqueue instead of executing); "Team & roles" + "Approvals" UI. Seed one master. Highest-risk.

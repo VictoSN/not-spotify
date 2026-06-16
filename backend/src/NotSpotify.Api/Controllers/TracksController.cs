@@ -419,6 +419,86 @@ public class TracksController : ControllerBase
         return Ok(mixes);
     }
 
+    /// <summary>
+    /// Discover Weekly: collaborative filtering over PlayHistories.
+    /// Finds listeners who overlap with the signed-in user's recent plays, then
+    /// recommends tracks those listeners played that the user has not heard yet.
+    /// Falls back to trending for guests and fresh accounts.
+    /// </summary>
+    [HttpGet("discover-weekly")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> DiscoverWeekly([FromQuery] int limit = 30, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 10, 60);
+
+        var rawId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (rawId is null || !Guid.TryParse(rawId, out var me))
+            return await TrendingFallback(limit, ct);
+
+        var since = DateTime.UtcNow.AddDays(-120);
+        var myTrackIds = await _db.PlayHistories
+            .Where(h => h.UserId == me && h.PlayedAt >= since)
+            .Select(h => h.TrackId)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (myTrackIds.Count == 0)
+            return await TrendingFallback(limit, ct);
+
+        var peerIds = await _db.PlayHistories
+            .Where(h => h.UserId != me && myTrackIds.Contains(h.TrackId))
+            .GroupBy(h => h.UserId)
+            .OrderByDescending(g => g.Count())
+            .Take(200)
+            .Select(g => g.Key)
+            .ToListAsync(ct);
+
+        if (peerIds.Count == 0)
+            return await ForYou(limit, ct);
+
+        var candidateScores = await _db.PlayHistories
+            .Where(h => peerIds.Contains(h.UserId) && !myTrackIds.Contains(h.TrackId))
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Score = g.Count() })
+            .OrderByDescending(x => x.Score)
+            .Take(limit * 5)
+            .ToListAsync(ct);
+
+        if (candidateScores.Count == 0)
+            return await ForYou(limit, ct);
+
+        var scoreByTrackId = candidateScores.ToDictionary(x => x.TrackId, x => x.Score);
+        var candidateIds = candidateScores.Select(x => x.TrackId).ToList();
+        var candidates = await BaseQuery()
+            .Where(t => candidateIds.Contains(t.Id))
+            .ToListAsync(ct);
+
+        var ranked = candidates
+            .OrderByDescending(t => scoreByTrackId.GetValueOrDefault(t.Id))
+            .ThenByDescending(t => t.PlayCount)
+            .Take(limit)
+            .ToList();
+
+        if (ranked.Count < limit)
+        {
+            var have = ranked.Select(t => t.Id).ToHashSet();
+            var fillersResult = await ForYou(limit, ct);
+            if (fillersResult.Result is OkObjectResult { Value: IEnumerable<TrackDto> fillerDtos })
+            {
+                var fillerIds = fillerDtos.Select(t => t.Id).Where(id => !have.Contains(id)).Take(limit - ranked.Count).ToList();
+                if (fillerIds.Count > 0)
+                {
+                    var fillers = await BaseQuery().Where(t => fillerIds.Contains(t.Id)).ToListAsync(ct);
+                    ranked.AddRange(fillers.OrderBy(t => fillerIds.IndexOf(t.Id)));
+                }
+            }
+        }
+
+        if (ranked.Count == 0)
+            return await TrendingFallback(limit, ct);
+
+        return Ok(await _mapper.ToDtoListAsync(ranked, ct));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TrackDto>> Get(Guid id, CancellationToken ct = default)
     {

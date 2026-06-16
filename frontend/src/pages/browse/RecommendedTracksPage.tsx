@@ -9,15 +9,32 @@ export function RecommendedTracksPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Recommendation algorithm is a later phase — trending is the stand-in.
-    trackService.getTrending(50).then(setTracks).finally(() => setLoading(false))
+    let cancelled = false
+
+    Promise.resolve().then(async () => {
+      try {
+        const next = await trackService.getDiscoverWeekly(50)
+        if (!cancelled) setTracks(next)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (
     <div className="px-6 py-6">
-      <h1 className="text-3xl font-bold text-primary mb-6">Recommended for you</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-primary">Discover Weekly</h1>
+        <p className="mt-1 text-sm text-secondary">
+          Collaborative picks from listeners with similar play history.
+        </p>
+      </div>
       {loading ? (
-        <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
+        <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
       ) : tracks.length === 0 ? (
         <p className="text-secondary">No recommendations yet.</p>
       ) : (

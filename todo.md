@@ -32,7 +32,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
-- [ ] **Playlist folders + pinning**. *(Duplicate detection is moot — backend 409s duplicate adds.)*
+- [ ] **Playlist folders + pinning** — *pinning done (2026-06-16)*: client-side pin/unpin (`utils/pinnedLibrary.ts`, localStorage `ns-library-pinned`) floats items to the top of the library sidebar (list + grid) via a hover pin button; syncs app-wide on `ns-pinned-change`. **Folders (drag-to-group + collapsible) still pending.** *(Duplicate detection is moot — backend 409s duplicate adds.)*
 - [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.
 
 ### 1C — Large subsystems (each its own session + migration)

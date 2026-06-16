@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useThemeStore } from '@/stores/themeStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useLocaleStore } from '@/stores/localeStore'
+import { useTranslation } from '@/i18n/useTranslation'
+import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
 import { cn } from '@/utils/cn'
 
@@ -65,9 +68,10 @@ function Switch({
 
 /** Small pill marking a control that exists in the UI but isn't wired yet. */
 function ComingSoon() {
+  const { t } = useTranslation()
   return (
     <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary">
-      Coming soon
+      {t('common.comingSoon')}
     </span>
   )
 }
@@ -140,7 +144,10 @@ function Row({
 }
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { theme, setTheme } = useThemeStore()
+  const language = useLocaleStore((s) => s.language)
+  const setLanguage = useLocaleStore((s) => s.setLanguage)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const toggleNowPlaying = usePlayerStore((s) => s.toggleNowPlaying)
 
@@ -153,120 +160,110 @@ export function SettingsPage() {
   // Back-compat: the old toggle stored a boolean.
   const [crossfadeRaw, setCrossfadeRaw] = usePref<number | boolean>('ns-pref-crossfade', 0)
   const crossfade = typeof crossfadeRaw === 'boolean' ? (crossfadeRaw ? 6 : 0) : crossfadeRaw
-  // Not yet wired to anything — shown disabled with a "Coming soon" badge rather
-  // than as live controls that silently do nothing. Streaming quality needs
-  // backend transcoding (Phase 2); language needs a full i18n layer.
-  const [language] = usePref('ns-pref-language', 'en')
+  // Streaming quality stays disabled ("Coming soon") — it needs backend
+  // transcoding (Phase 2).
   const [streamingQuality] = usePref('ns-pref-quality', 'auto')
   const noop = () => {}
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-6">
       <div className="mb-2 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-primary">Settings</h1>
+        <h1 className="text-3xl font-bold text-primary">{t('settings.title')}</h1>
         <MagnifyingGlassIcon className="h-5 w-5 text-secondary" />
       </div>
 
-      <Section title="Account">
+      <Section title={t('settings.account')}>
         <Row
-          label="Edit login methods"
-          sub="Manage your account, plan, payment and security"
+          label={t('settings.account.edit')}
+          sub={t('settings.account.editSub')}
           control={
             <Link
               to="/account"
               className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-4 py-1.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
             >
-              Edit
+              {t('common.edit')}
               <ArrowTopRightOnSquareIcon className="h-4 w-4" />
             </Link>
           }
         />
       </Section>
 
-      <Section title="Appearance">
+      <Section title={t('settings.appearance')}>
         <Row
-          label="Theme"
-          sub="Dark and light use the same music-first green accent"
+          label={t('settings.theme')}
+          sub={t('settings.theme.sub')}
           control={
             <Select
-              label="Theme"
+              label={t('settings.theme')}
               value={theme}
               onChange={(v) => setTheme(v as 'dark' | 'light')}
               options={[
-                { value: 'dark', label: 'Dark' },
-                { value: 'light', label: 'Light' },
+                { value: 'dark', label: t('theme.dark') },
+                { value: 'light', label: t('theme.light') },
               ]}
             />
           }
         />
       </Section>
 
-      <Section title="Language">
+      <Section title={t('settings.language')}>
         <Row
-          label="Choose language"
-          sub="Additional languages aren't available yet"
-          badge={<ComingSoon />}
+          label={t('settings.language.choose')}
+          sub={t('settings.language.sub')}
           control={
             <Select
-              label="Language"
+              label={t('settings.language')}
               value={language}
-              onChange={noop}
-              disabled
-              options={[
-                { value: 'en', label: 'English (English)' },
-                { value: 'es', label: 'Español (Spanish)' },
-                { value: 'fr', label: 'Français (French)' },
-                { value: 'ja', label: '日本語 (Japanese)' },
-                { value: 'ko', label: '한국어 (Korean)' },
-              ]}
+              onChange={(v) => setLanguage(v as (typeof LANGUAGES)[number]['code'])}
+              options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))}
             />
           }
         />
       </Section>
 
-      <Section title="Audio quality">
+      <Section title={t('settings.audio')}>
         <Row
-          label="Streaming quality"
-          sub="Adaptive bitrate isn't available yet"
+          label={t('settings.audio.streaming')}
+          sub={t('settings.audio.streamingSub')}
           badge={<ComingSoon />}
           control={
             <Select
-              label="Streaming quality"
+              label={t('settings.audio.streaming')}
               value={streamingQuality}
               onChange={noop}
               disabled
               options={[
-                { value: 'auto', label: 'Automatic' },
-                { value: 'low', label: 'Low' },
-                { value: 'normal', label: 'Normal' },
-                { value: 'high', label: 'High' },
-                { value: 'veryhigh', label: 'Very High' },
+                { value: 'auto', label: t('quality.auto') },
+                { value: 'low', label: t('quality.low') },
+                { value: 'normal', label: t('quality.normal') },
+                { value: 'high', label: t('quality.high') },
+                { value: 'veryhigh', label: t('quality.veryhigh') },
               ]}
             />
           }
         />
         <Row
-          label="Normalize volume"
-          sub="Even out the loudness between songs as they play"
-          control={<Switch label="Normalize volume" checked={normalizeVolume} onChange={setNormalizeVolume} />}
+          label={t('settings.audio.normalize')}
+          sub={t('settings.audio.normalizeSub')}
+          control={<Switch label={t('settings.audio.normalize')} checked={normalizeVolume} onChange={setNormalizeVolume} />}
         />
       </Section>
 
-      <Section title="Your Library">
+      <Section title={t('settings.library')}>
         <Row
-          label="Use compact library layout"
-          sub="Reduce artwork size and row spacing in the sidebar"
-          control={<Switch label="Use compact library layout" checked={compactLibrary} onChange={setCompactLibrary} />}
+          label={t('settings.library.compact')}
+          sub={t('settings.library.compactSub')}
+          control={<Switch label={t('settings.library.compact')} checked={compactLibrary} onChange={setCompactLibrary} />}
         />
       </Section>
 
-      <Section title="Display">
+      <Section title={t('settings.display')}>
         <Row
-          label="Show the now-playing panel"
-          sub="Open the right panel with what's currently playing"
+          label={t('settings.display.nowPlaying')}
+          sub={t('settings.display.nowPlayingSub')}
           control={
             <Switch
-              label="Show the now-playing panel"
+              label={t('settings.display.nowPlaying')}
               checked={isNowPlayingOpen}
               onChange={() => toggleNowPlaying()}
             />
@@ -274,25 +271,25 @@ export function SettingsPage() {
         />
       </Section>
 
-      <Section title="Playback">
+      <Section title={t('settings.playback')}>
         <Row
-          label="Autoplay similar content when your music ends"
-          control={<Switch label="Autoplay" checked={autoplay} onChange={setAutoplay} />}
+          label={t('settings.playback.autoplay')}
+          control={<Switch label={t('settings.playback.autoplay')} checked={autoplay} onChange={setAutoplay} />}
         />
         <Row
-          label="Crossfade songs"
-          sub="Blend the end of one song into the start of the next"
+          label={t('settings.playback.crossfade')}
+          sub={t('settings.playback.crossfadeSub')}
           control={
             <Select
-              label="Crossfade length"
+              label={t('settings.playback.crossfade')}
               value={String(crossfade)}
               onChange={(v) => setCrossfadeRaw(Number(v))}
               options={[
-                { value: '0', label: 'Off' },
-                { value: '3', label: '3 seconds' },
-                { value: '6', label: '6 seconds' },
-                { value: '9', label: '9 seconds' },
-                { value: '12', label: '12 seconds' },
+                { value: '0', label: t('crossfade.off') },
+                { value: '3', label: t('crossfade.seconds', { n: 3 }) },
+                { value: '6', label: t('crossfade.seconds', { n: 6 }) },
+                { value: '9', label: t('crossfade.seconds', { n: 9 }) },
+                { value: '12', label: t('crossfade.seconds', { n: 12 }) },
               ]}
             />
           }

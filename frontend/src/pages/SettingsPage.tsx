@@ -147,16 +147,17 @@ export function SettingsPage() {
   // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
   const [autoplay, setAutoplay] = usePref('ns-pref-autoplay', true)
+  // Read live by the two-deck audioEngine's Web Audio graph.
+  const [normalizeVolume, setNormalizeVolume] = usePref('ns-pref-normalize', false)
   // Crossfade length in seconds (0 = off); read live by the two-deck audioEngine.
   // Back-compat: the old toggle stored a boolean.
   const [crossfadeRaw, setCrossfadeRaw] = usePref<number | boolean>('ns-pref-crossfade', 0)
   const crossfade = typeof crossfadeRaw === 'boolean' ? (crossfadeRaw ? 6 : 0) : crossfadeRaw
   // Not yet wired to anything — shown disabled with a "Coming soon" badge rather
-  // than as live switches that silently do nothing. (quality/normalize need
-  // backend transcoding/loudness scanning.)
+  // than as live controls that silently do nothing. Streaming quality needs
+  // backend transcoding (Phase 2); language needs a full i18n layer.
   const [language] = usePref('ns-pref-language', 'en')
   const [streamingQuality] = usePref('ns-pref-quality', 'auto')
-  const [normalizeVolume] = usePref('ns-pref-normalize', false)
   const noop = () => {}
 
   return (
@@ -246,9 +247,8 @@ export function SettingsPage() {
         />
         <Row
           label="Normalize volume"
-          sub="Set the same volume level for all songs and podcasts"
-          badge={<ComingSoon />}
-          control={<Switch label="Normalize volume" checked={normalizeVolume} onChange={noop} disabled />}
+          sub="Even out the loudness between songs as they play"
+          control={<Switch label="Normalize volume" checked={normalizeVolume} onChange={setNormalizeVolume} />}
         />
       </Section>
 

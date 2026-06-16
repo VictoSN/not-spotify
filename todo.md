@@ -23,7 +23,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **Admin restructure** *(Account 2)* — dedicated admin sidebar/topbar layout (`/adminlogin` guard already exists).
 - [x] **Equalizer** — Web Audio `BiquadFilter` graph (separate from the crossfade engine; mind cross-origin tainting).
 - [ ] **Wire remaining dead toggles** (disabled with "Coming soon" in Settings):
-  - [ ] Volume normalization (`normalize`) — needs backend ffmpeg loudness scan + client gain.
+  - [x] Volume normalization (`normalize`) — **done (2026-06-16)**: client-side real-time loudness leveler (a shared `DynamicsCompressorNode` + makeup `GainNode` after the EQ chain in `audioEngine.ts`); no backend/ffmpeg. Settings toggle now live & honest ("Even out the loudness between songs"). Off = transparent (ratio 1).
   - [ ] Streaming quality (`quality`) — needs backend transcoding/adaptive bitrate (storage-gated → Phase 2).
   - [ ] Language (`language`) — i18n; large, low priority.
 - [x] **PiP fast-forward / rewind** — Media Session seek handlers drive the real audio player and clamp to track duration.
@@ -35,7 +35,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
-- [ ] **Playlist folders + pinning**. *(Duplicate detection is moot — backend 409s duplicate adds.)*
+- [ ] **Playlist folders + pinning** — *pinning done (2026-06-16)*: client-side pin/unpin (`utils/pinnedLibrary.ts`, localStorage `ns-library-pinned`) floats items to the top of the library sidebar (list + grid) via a hover pin button; syncs app-wide on `ns-pinned-change`. **Folders (drag-to-group + collapsible) still pending.** *(Duplicate detection is moot — backend 409s duplicate adds.)*
 - [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.
 
 ### 1C — Large subsystems (each its own session + migration)

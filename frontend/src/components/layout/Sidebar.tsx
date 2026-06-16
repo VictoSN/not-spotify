@@ -17,6 +17,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useRatingStore } from '@/stores/ratingStore'
+import { getPinnedSet, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -82,6 +83,7 @@ export function Sidebar() {
     typeof window !== 'undefined' && window.localStorage.getItem('ns-library-view') === 'grid' ? 'grid' : 'list',
   )
   const [compactLibrary, setCompactLibrary] = useState(getInitialCompactLibrary)
+  const [pinned, setPinned] = useState<Set<string>>(getPinnedSet)
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
@@ -121,6 +123,17 @@ export function Sidebar() {
     return () => {
       window.removeEventListener('storage', syncFromStorage)
       window.removeEventListener('ns-pref-change', handlePrefChange)
+    }
+  }, [])
+
+  // Keep pinned items in step across tabs/views (the toggle lives on each row).
+  useEffect(() => {
+    const sync = () => setPinned(getPinnedSet())
+    window.addEventListener(PINNED_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(PINNED_EVENT, sync)
+      window.removeEventListener('storage', sync)
     }
   }, [])
 
@@ -211,8 +224,12 @@ export function Sidebar() {
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
     else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
+    // Pinned items float to the top, keeping their order among the rest.
+    if (pinned.size) {
+      list = [...list.filter((i) => pinned.has(i.key)), ...list.filter((i) => !pinned.has(i.key))]
+    }
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, filter, query, sort])
+  }, [savedPlaylists, savedAlbums, followedArtists, filter, query, sort, pinned])
 
   const showLiked =
     (filter === 'all' || filter === 'playlists') &&
@@ -561,36 +578,38 @@ export function Sidebar() {
               </NavLink>
             )}
             {items.map((item) => (
-              <NavLink
-                key={item.key}
-                to={item.to}
-                onClick={() => libraryExpanded && setLibraryExpanded(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'rounded-md transition-colors',
-                    compactLibrary ? 'p-1.5' : 'p-2',
-                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                  )
-                }
-              >
-                <div
-                  className={cn(
-                    'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
-                    compactLibrary ? 'mb-1.5' : 'mb-2',
-                    item.round ? 'rounded-full' : 'rounded-md',
-                  )}
+              <div key={item.key} className="group/row relative">
+                <NavLink
+                  to={item.to}
+                  onClick={() => libraryExpanded && setLibraryExpanded(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'block rounded-md transition-colors',
+                      compactLibrary ? 'p-1.5' : 'p-2',
+                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                    )
+                  }
                 >
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className={compactLibrary ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-                  )}
-                </div>
-                <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
-                  {item.name}
-                </p>
-                {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
-              </NavLink>
+                  <div
+                    className={cn(
+                      'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
+                      compactLibrary ? 'mb-1.5' : 'mb-2',
+                      item.round ? 'rounded-full' : 'rounded-md',
+                    )}
+                  >
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={compactLibrary ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                    )}
+                  </div>
+                  <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
+                    {item.name}
+                  </p>
+                  {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+                </NavLink>
+                <PinButton itemKey={item.key} pinned={pinned.has(item.key)} variant="grid" />
+              </div>
             ))}
             {items.length === 0 && !showLiked && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
@@ -622,37 +641,39 @@ export function Sidebar() {
               </NavLink>
             )}
             {items.map((item) => (
-              <NavLink
-                key={item.key}
-                to={item.to}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center rounded-md transition-colors',
-                    compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
-                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                  )
-                }
-              >
-                <div
-                  className={cn(
-                    'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
-                    compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
-                    item.round ? 'rounded-full' : 'rounded-md',
-                  )}
+              <div key={item.key} className="group/row relative">
+                <NavLink
+                  to={item.to}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center rounded-md transition-colors',
+                      compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                    )
+                  }
                 >
-                  {item.image ? (
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className={compactLibrary ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
-                    {item.name}
-                  </p>
-                  {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
-                </div>
-              </NavLink>
+                  <div
+                    className={cn(
+                      'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+                      compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
+                      item.round ? 'rounded-full' : 'rounded-md',
+                    )}
+                  >
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={compactLibrary ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 pr-7">
+                    <p className={cn('text-sm font-medium truncate', isNowPlaying(item) ? 'text-accent' : 'text-primary')}>
+                      {item.name}
+                    </p>
+                    {!compactLibrary && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+                  </div>
+                </NavLink>
+                <PinButton itemKey={item.key} pinned={pinned.has(item.key)} variant="list" />
+              </div>
             ))}
             {items.length === 0 && !showLiked && (
               <p className="text-sm text-secondary px-2 py-6 text-center">Nothing here yet.</p>
@@ -663,6 +684,59 @@ export function Sidebar() {
 
       <DragHandle onMouseDown={onDragStart} />
     </aside>
+  )
+}
+
+function PinButton({
+  itemKey,
+  pinned,
+  variant,
+}: {
+  itemKey: string
+  pinned: boolean
+  variant: 'list' | 'grid'
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        // Sibling of the NavLink, but guard against any bubbling to be safe.
+        e.preventDefault()
+        e.stopPropagation()
+        togglePinned(itemKey)
+      }}
+      aria-label={pinned ? 'Unpin from Your Library' : 'Pin to top of Your Library'}
+      aria-pressed={pinned}
+      title={pinned ? 'Unpin' : 'Pin'}
+      className={cn(
+        'absolute z-10 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+        variant === 'list'
+          ? 'right-1.5 top-1/2 -translate-y-1/2'
+          : 'right-2 top-2 bg-page/70 backdrop-blur-sm',
+        pinned
+          ? 'text-accent opacity-100'
+          : 'text-secondary opacity-0 hover:text-primary group-hover/row:opacity-100',
+      )}
+    >
+      <PinIcon className="h-4 w-4" />
+    </button>
+  )
+}
+
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 3.5h6M10.5 3.5v5.2L8 11.7v1.1h8v-1.1L13.5 8.7V3.5M12 12.8V20.5" />
+    </svg>
   )
 }
 

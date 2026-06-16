@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -69,6 +70,29 @@ internal static class TestHelpers
         return new NotificationService(db, hub, NullLogger<NotificationService>.Instance);
     }
 
+    /// <summary>A stub storage service (public URL = key, ReadAsync = miss).</summary>
+    public static IStorageService NewStorage()
+    {
+        var storage = new Mock<IStorageService>();
+        storage.Setup(s => s.GetPublicUrl(It.IsAny<string>())).Returns<string>(k => $"https://cdn.test/{k}");
+        storage.Setup(s => s.GetAudioUrlAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+               .Returns<string, CancellationToken>((k, _) => Task.FromResult($"https://cdn.test/{k}"));
+        storage.Setup(s => s.ReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+               .ReturnsAsync((byte[]?)null);
+        return storage.Object;
+    }
+
+    /// <summary>An IHttpClientFactory handing out plain HttpClients.</summary>
+    public static IHttpClientFactory NewHttpFactory()
+    {
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient());
+        return factory.Object;
+    }
+
+    public static AudioDownloadService NewAudioDownloads()
+        => new AudioDownloadService(NewStorage(), NewHttpFactory());
+
     /// <summary>Attaches a ClaimsPrincipal carrying the given user id to a controller.</summary>
     public static T AsUser<T>(this T controller, Guid userId) where T : ControllerBase
     {
@@ -76,6 +100,16 @@ internal static class TestHelpers
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) },
+        };
+        return controller;
+    }
+
+    /// <summary>Attaches an anonymous principal (no user id) — i.e. a logged-out visitor.</summary>
+    public static T AsGuest<T>(this T controller) where T : ControllerBase
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
         };
         return controller;
     }
@@ -97,5 +131,20 @@ internal static class TestHelpers
             AddresseeId = b,
             Status = FriendshipStatus.Accepted,
         });
+    }
+
+    /// <summary>Adds a playlist with the given owner and visibility ("public"|"friends"|"private").</summary>
+    public static Playlist AddPlaylist(this AppDbContext db, Guid ownerId, string visibility)
+    {
+        var playlist = new Playlist
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test playlist",
+            OwnerId = ownerId,
+            IsPublic = visibility == "public",
+            Visibility = visibility,
+        };
+        db.Playlists.Add(playlist);
+        return playlist;
     }
 }

@@ -93,10 +93,10 @@ Licensed major-label catalogue · spatial audio · real ad-network/royalties at 
   - Backend: recommendation endpoints (trending/most-liked/for-you/charts/radio/daily-mixes/search-by-lyrics) ranking + empty/guest fallbacks; `LyricsService`.
   - Frontend: `playerStore` (transport, free-vs-premium shuffle/repeat gating, queue/play-next/reorder, sleep timer, rate), two-deck `audioEngine` transitions, keyboard-shortcut hook, rating store.
 - [ ] **Part B — Library / Playlists / Search / Social — Owner: ____**
-  - Backend: playlist CRUD + visibility 403 matrix, collaborative add/remove, friends graph (mutual/suggestions/blend), **follows** (follow/idempotent/unfollow/self-403/counts/lists), search.
+  - Backend: playlist CRUD + visibility 403 matrix ✅ (`PlaylistsControllerTests` — public/friends/private × guest/owner/friend/stranger + 404), **follows** ✅ (`UsersControllerFollowTests` — self-400, missing-target-404, new edge, idempotent re-follow, unfollow, idempotent unfollow); still open: collaborative add/remove, friends graph (mutual/suggestions/blend), friend requests (`FriendsControllerTests` covers send/accept basics), search.
   - Frontend: `libraryStore`, `friendStore`, export/import matching, `FollowListModal`, search debounce/recents.
 - [ ] **Part C — Artist / Admin / Auth / Billing / Platform — Owner: ____**
-  - Backend: auth (signup/login/refresh, rate-limit 429), role/route guards (401/403), artist application→review, admin CRUD + approval/revoke + `ReviewHistory`, `AudioDownloadService` premium gating, Stripe webhook (mocked), `NotificationService`.
+  - Backend: `AudioDownloadService` premium gating ✅ (`PlaylistsControllerTests` — free→403, premium→file); still open: auth (signup/login/refresh, rate-limit 429), role/route guards (401/403), artist application→review, admin CRUD + approval/revoke + `ReviewHistory`, Stripe webhook (mocked), `NotificationService`.
   - Frontend: `authStore` (login/logout/refresh, capabilities), wired settings toggles, admin guards, offline-audio save/resolve.
 
 > Two-browser manual checks are still required for real-time features (presence, chat, collaborative playlists, listen-along). Seed logins in the README.

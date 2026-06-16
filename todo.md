@@ -26,7 +26,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
   - [ ] Language (`language`) — i18n; large, low priority.
 - [ ] **PiP fast-forward / rewind** — currently inert (canvas-stream video isn't seekable).
 - [ ] **Editorial / featured playlists** — admin-curated + `featured` flag.
-- [ ] **Mood / activity tagging & browse**.
+- [x] **Mood / activity tagging & browse**.
 - [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).

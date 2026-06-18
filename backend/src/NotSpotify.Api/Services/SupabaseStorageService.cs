@@ -15,11 +15,17 @@ public class SupabaseStorageService : IStorageService
     }
 
     public Task<string> GetAudioUrlAsync(string key, CancellationToken ct = default)
-        => Task.FromResult(GetPublicUrl(key));
+    {
+        // Audio always goes direct to Supabase (too large to proxy).
+        var normalized = key.TrimStart('/');
+        return Task.FromResult($"{_opt.Url.TrimEnd('/')}/storage/v1/object/public/{_opt.Bucket}/{normalized}");
+    }
 
     public string GetPublicUrl(string key)
     {
         var normalized = key.TrimStart('/');
+        if (!string.IsNullOrWhiteSpace(_opt.ImageProxyBase))
+            return $"{_opt.ImageProxyBase.TrimEnd('/')}/storage/images/{normalized}";
         return $"{_opt.Url.TrimEnd('/')}/storage/v1/object/public/{_opt.Bucket}/{normalized}";
     }
 

@@ -11,81 +11,39 @@ namespace NotSpotify.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "Reposts",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    TrackId = table.Column<Guid>(type: "uuid", nullable: true),
-                    AlbumId = table.Column<Guid>(type: "uuid", nullable: true),
-                    PlaylistId = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Reposts", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_Reposts_Albums_AlbumId",
-                        column: x => x.AlbumId,
-                        principalTable: "Albums",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Reposts_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Reposts_Playlists_PlaylistId",
-                        column: x => x.PlaylistId,
-                        principalTable: "Playlists",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Reposts_Tracks_TrackId",
-                        column: x => x.TrackId,
-                        principalTable: "Tracks",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_UserId_TrackId",
-                table: "Reposts",
-                columns: new[] { "UserId", "TrackId" },
-                unique: true,
-                filter: "\"TrackId\" IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_UserId_AlbumId",
-                table: "Reposts",
-                columns: new[] { "UserId", "AlbumId" },
-                unique: true,
-                filter: "\"AlbumId\" IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_UserId_PlaylistId",
-                table: "Reposts",
-                columns: new[] { "UserId", "PlaylistId" },
-                unique: true,
-                filter: "\"PlaylistId\" IS NOT NULL");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_UserId_CreatedAt",
-                table: "Reposts",
-                columns: new[] { "UserId", "CreatedAt" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_AlbumId",
-                table: "Reposts",
-                columns: new[] { "AlbumId" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Reposts_PlaylistId",
-                table: "Reposts",
-                columns: new[] { "PlaylistId" });
+            // Idempotent: shared Supabase DB may already have this table from
+            // the raw-SQL guard in Program.cs.
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS ""Reposts"" (
+                    ""Id""         uuid NOT NULL,
+                    ""UserId""     uuid NOT NULL,
+                    ""TrackId""    uuid NULL,
+                    ""AlbumId""    uuid NULL,
+                    ""PlaylistId"" uuid NULL,
+                    ""CreatedAt""  timestamp with time zone NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_Reposts"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_Reposts_AspNetUsers_UserId""
+                        FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_Reposts_Tracks_TrackId""
+                        FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_Reposts_Albums_AlbumId""
+                        FOREIGN KEY (""AlbumId"") REFERENCES ""Albums""(""Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_Reposts_Playlists_PlaylistId""
+                        FOREIGN KEY (""PlaylistId"") REFERENCES ""Playlists""(""Id"") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_TrackId""
+                    ON ""Reposts""(""UserId"", ""TrackId"") WHERE ""TrackId"" IS NOT NULL;
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_AlbumId""
+                    ON ""Reposts""(""UserId"", ""AlbumId"") WHERE ""AlbumId"" IS NOT NULL;
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_PlaylistId""
+                    ON ""Reposts""(""UserId"", ""PlaylistId"") WHERE ""PlaylistId"" IS NOT NULL;
+                CREATE INDEX IF NOT EXISTS ""IX_Reposts_UserId_CreatedAt""
+                    ON ""Reposts""(""UserId"", ""CreatedAt"");
+                CREATE INDEX IF NOT EXISTS ""IX_Reposts_AlbumId""
+                    ON ""Reposts""(""AlbumId"");
+                CREATE INDEX IF NOT EXISTS ""IX_Reposts_PlaylistId""
+                    ON ""Reposts""(""PlaylistId"");
+            ");
         }
 
         /// <inheritdoc />

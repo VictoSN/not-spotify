@@ -11,55 +11,32 @@ namespace NotSpotify.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "TrackComments",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    TrackId = table.Column<Guid>(type: "uuid", nullable: false),
-                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
-                    Body = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
-                    ParentId = table.Column<Guid>(type: "uuid", nullable: true),
-                    TimestampMs = table.Column<long>(type: "bigint", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_TrackComments", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_TrackComments_AspNetUsers_UserId",
-                        column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_TrackComments_TrackComments_ParentId",
-                        column: x => x.ParentId,
-                        principalTable: "TrackComments",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
-                    table.ForeignKey(
-                        name: "FK_TrackComments_Tracks_TrackId",
-                        column: x => x.TrackId,
-                        principalTable: "Tracks",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TrackComments_TrackId_CreatedAt",
-                table: "TrackComments",
-                columns: new[] { "TrackId", "CreatedAt" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TrackComments_ParentId",
-                table: "TrackComments",
-                columns: new[] { "ParentId" });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_TrackComments_UserId",
-                table: "TrackComments",
-                columns: new[] { "UserId" });
+            // Idempotent: shared Supabase DB may already have this table from
+            // the raw-SQL guard in Program.cs.
+            migrationBuilder.Sql(@"
+                CREATE TABLE IF NOT EXISTS ""TrackComments"" (
+                    ""Id""          uuid NOT NULL,
+                    ""TrackId""     uuid NOT NULL,
+                    ""UserId""      uuid NOT NULL,
+                    ""Body""        character varying(1000) NOT NULL,
+                    ""ParentId""    uuid NULL,
+                    ""TimestampMs"" bigint NULL,
+                    ""CreatedAt""   timestamp with time zone NOT NULL DEFAULT now(),
+                    CONSTRAINT ""PK_TrackComments"" PRIMARY KEY (""Id""),
+                    CONSTRAINT ""FK_TrackComments_AspNetUsers_UserId""
+                        FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_TrackComments_Tracks_TrackId""
+                        FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE CASCADE,
+                    CONSTRAINT ""FK_TrackComments_TrackComments_ParentId""
+                        FOREIGN KEY (""ParentId"") REFERENCES ""TrackComments""(""Id"") ON DELETE SET NULL
+                );
+                CREATE INDEX IF NOT EXISTS ""IX_TrackComments_TrackId_CreatedAt""
+                    ON ""TrackComments""(""TrackId"", ""CreatedAt"");
+                CREATE INDEX IF NOT EXISTS ""IX_TrackComments_ParentId""
+                    ON ""TrackComments""(""ParentId"");
+                CREATE INDEX IF NOT EXISTS ""IX_TrackComments_UserId""
+                    ON ""TrackComments""(""UserId"");
+            ");
         }
 
         /// <inheritdoc />

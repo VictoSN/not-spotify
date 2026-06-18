@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NotSpotify.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260618115202_AddPlaylistFeaturedFlags")]
+    [Migration("20260618134047_AddPlaylistFeaturedFlags")]
     partial class AddPlaylistFeaturedFlags
     {
         /// <inheritdoc />

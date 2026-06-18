@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Npgsql;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
@@ -217,7 +218,17 @@ app.MapHub<NotSpotify.Api.Hubs.SessionHub>("/hubs/session");
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    try
+    {
+        await db.Database.MigrateAsync();
+    }
+    catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07" || ex.SqlState == "42701")
+    {
+        // Shared Supabase DB: a previous run's raw-SQL guard already created the
+        // table/column. The migration is a no-op — log and continue so later
+        // migrations (which may add columns/ indexes) still apply.
+        Console.WriteLine($"[Migration] Skipped (already exists): {ex.MessageText}");
+    }
 
     // Ensure UserSavedAlbums table exists — the EF migration for this was stamped
     // as applied while empty (stale binary), so we guarantee the schema here.

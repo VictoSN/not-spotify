@@ -145,6 +145,9 @@ public class MediaMapper
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);
 
+    public MoodTagDto ToDto(MoodTag m)
+        => new(m.Id, m.Name, m.Slug, m.Kind, m.Color, m.Icon, m.SearchQuery, m.SortOrder);
+
     public PlaylistSummaryDto ToSummary(Playlist p, bool isOwner = false, bool isSaved = false) => new(
         p.Id,
         p.Name,

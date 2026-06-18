@@ -29,4 +29,5 @@ public class Playlist
     public ApplicationUser Owner { get; set; } = null!;
 
     public ICollection<PlaylistTrack> PlaylistTracks { get; set; } = new List<PlaylistTrack>();
+    public ICollection<PlaylistMoodTag> PlaylistMoodTags { get; set; } = new List<PlaylistMoodTag>();
 }

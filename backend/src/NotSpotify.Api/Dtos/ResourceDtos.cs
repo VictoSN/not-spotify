@@ -98,6 +98,31 @@ public record AlbumDto(
 
 public record GenreDto(Guid Id, string Name, string Slug, string Color, string? ImageUrl);
 
+public record MoodTagDto(
+    Guid Id,
+    string Name,
+    string Slug,
+    string Kind,
+    string Color,
+    string? Icon,
+    string? SearchQuery,
+    int SortOrder
+);
+
+/// <summary>Replaces the full set of mood/activity tags on a track or playlist.</summary>
+public record SetMoodTagsRequest(IEnumerable<Guid> MoodTagIds);
+
+/// <summary>Create/update payload for the admin mood-tag taxonomy editor.</summary>
+public record UpsertMoodTagRequest(
+    string Name,
+    string Slug,
+    string Kind,
+    string? Color,
+    string? Icon,
+    string? SearchQuery,
+    int SortOrder = 0
+);
+
 public record UserRefDto(Guid Id, string Name, string? AvatarUrl);
 
 public record PlaylistTrackDto(TrackDto Track, DateTime AddedAt, UserRefDto AddedBy);

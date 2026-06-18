@@ -14,6 +14,9 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Track> Tracks => Set<Track>();
     public DbSet<Genre> Genres => Set<Genre>();
     public DbSet<TrackGenre> TrackGenres => Set<TrackGenre>();
+    public DbSet<MoodTag> MoodTags => Set<MoodTag>();
+    public DbSet<TrackMoodTag> TrackMoodTags => Set<TrackMoodTag>();
+    public DbSet<PlaylistMoodTag> PlaylistMoodTags => Set<PlaylistMoodTag>();
     public DbSet<Playlist> Playlists => Set<Playlist>();
     public DbSet<PlaylistTrack> PlaylistTracks => Set<PlaylistTrack>();
     public DbSet<UserSavedPlaylist> UserSavedPlaylists => Set<UserSavedPlaylist>();
@@ -115,6 +118,42 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(x => x.Genre)
                 .WithMany(g => g.TrackGenres)
                 .HasForeignKey(x => x.GenreId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<MoodTag>(e =>
+        {
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.HasIndex(x => new { x.Kind, x.SortOrder });
+        });
+
+        b.Entity<TrackMoodTag>(e =>
+        {
+            e.HasKey(x => new { x.TrackId, x.MoodTagId });
+
+            e.HasOne(x => x.Track)
+                .WithMany(t => t.TrackMoodTags)
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.MoodTag)
+                .WithMany(m => m.TrackMoodTags)
+                .HasForeignKey(x => x.MoodTagId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<PlaylistMoodTag>(e =>
+        {
+            e.HasKey(x => new { x.PlaylistId, x.MoodTagId });
+
+            e.HasOne(x => x.Playlist)
+                .WithMany(p => p.PlaylistMoodTags)
+                .HasForeignKey(x => x.PlaylistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.MoodTag)
+                .WithMany(m => m.PlaylistMoodTags)
+                .HasForeignKey(x => x.MoodTagId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

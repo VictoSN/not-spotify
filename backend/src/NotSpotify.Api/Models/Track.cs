@@ -44,6 +44,7 @@ public class Track
     public Album Album { get; set; } = null!;
 
     public ICollection<TrackGenre> TrackGenres { get; set; } = new List<TrackGenre>();
+    public ICollection<TrackMoodTag> TrackMoodTags { get; set; } = new List<TrackMoodTag>();
     public ICollection<PlaylistTrack> PlaylistTracks { get; set; } = new List<PlaylistTrack>();
     public ICollection<TrackRating> Ratings { get; set; } = new List<TrackRating>();
 }

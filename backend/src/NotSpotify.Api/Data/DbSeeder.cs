@@ -133,6 +133,27 @@ public static class DbSeeder
         foreach (var newGenre in genres.Concat(extraGenres))
             slugToGenreId[newGenre.Slug] = newGenre.Id;
 
+        // Map each genre to the mood/activity tags it fits, so the /moods browse page has
+        // real tagged tracks on a fresh DB. The taxonomy rows themselves are seeded by the
+        // AddMoodTags migration; here we only add the track↔mood join rows (G("mood-<slug>")
+        // matches the deterministic GUIDs that migration inserts).
+        var genreToMoods = new Dictionary<string, string[]>
+        {
+            ["electronic"] = new[] { "workout", "party" },
+            ["synthwave"] = new[] { "workout", "hype" },
+            ["retrowave"] = new[] { "hype" },
+            ["indie"] = new[] { "chill", "morning" },
+            ["dream-pop"] = new[] { "chill", "sleep" },
+            ["post-rock"] = new[] { "focus" },
+            ["instrumental"] = new[] { "focus", "sleep" },
+            ["alternative"] = new[] { "hype" },
+            ["rnb"] = new[] { "love", "chill" },
+            ["neo-soul"] = new[] { "love", "at-home" },
+            ["pop"] = new[] { "party", "morning" },
+            ["lo-fi"] = new[] { "focus", "sleep", "at-home" },
+            ["bedroom-pop"] = new[] { "at-home", "chill" },
+        };
+
         var tracks = new List<Track>();
         foreach (var t in trackData)
         {
@@ -156,6 +177,12 @@ public static class DbSeeder
             foreach (var slug in t.genreSlugs)
                 if (slugToGenreId.TryGetValue(slug, out var gid))
                     track.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = gid });
+
+            var moodSlugs = t.genreSlugs
+                .SelectMany(slug => genreToMoods.TryGetValue(slug, out var m) ? m : Array.Empty<string>())
+                .Distinct();
+            foreach (var moodSlug in moodSlugs)
+                track.TrackMoodTags.Add(new TrackMoodTag { TrackId = track.Id, MoodTagId = G("mood-" + moodSlug) });
         }
         db.Tracks.AddRange(tracks);
 

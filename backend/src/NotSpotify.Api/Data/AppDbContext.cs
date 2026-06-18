@@ -126,6 +126,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             e.Property(x => x.IsFeatured).HasDefaultValue(false);
             e.Property(x => x.SortOrder).HasDefaultValue(0);
+            e.Property(x => x.Rules).HasColumnType("jsonb");
             e.HasIndex(x => new { x.IsFeatured, x.SortOrder });
         });
 

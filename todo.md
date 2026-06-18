@@ -14,7 +14,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 
 ### 1A — Migration-gated
 ⚠️ Shared Supabase DB — coordinate first. **Always `dotnet build` before `dotnet run` after `migrations add`**, and prefer idempotent `CREATE … IF NOT EXISTS` migrations.
-- [ ] **Smart playlists** — Med. Rules engine (genre / rating / play-count / date-added); pairs with star ratings. Rules column on `Playlists`.
+- [x] **Smart playlists** — **done (2026-06-18)**. JSONB rules on `Playlists` with AND-combined genre / minimum rating / minimum play-count / recently-added filters plus a result cap. Tracks resolve dynamically from the approved catalogue; Library has a smart-playlist builder, detail pages show/edit rule chips, and manual add/remove is disabled while rules are active. Migration is idempotent and covered by backend unit tests.
 - [ ] **Waveform + timed comments** — Med–High. ffmpeg peak extraction at upload + a comments table pinned to timestamps. SoundCloud signature.
 - [x] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
 - [ ] **Mood / activity tagging taxonomy** — Med. Optional hardening beyond the shipped search-backed mood page; add tag taxonomy/joins for tracks/playlists + admin tagging.

@@ -151,7 +151,8 @@ public class MediaMapper
         p.CreatedAt,
         p.UpdatedAt,
         isOwner,
-        isSaved
+        isSaved,
+        SmartPlaylistService.Deserialize(p.Rules)
     );
 
     public async Task<PlaylistDto> ToDtoAsync(Playlist p, CancellationToken ct = default, bool isOwner = false, bool isSaved = false)
@@ -180,7 +181,8 @@ public class MediaMapper
             p.CreatedAt,
             p.UpdatedAt,
             isOwner,
-            isSaved
+            isSaved,
+            SmartPlaylistService.Deserialize(p.Rules)
         );
     }
 }

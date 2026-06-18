@@ -18,6 +18,7 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   ShareIcon,
+  SparklesIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playlist'
@@ -90,6 +91,12 @@ export function PlaylistDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [smartGenre, setSmartGenre] = useState('')
+  const [smartRating, setSmartRating] = useState('')
+  const [smartPlayCount, setSmartPlayCount] = useState('')
+  const [smartDays, setSmartDays] = useState('')
+  const [smartLimit, setSmartLimit] = useState('100')
+  const [clearSmartRules, setClearSmartRules] = useState(false)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [collaborators, setCollaborators] = useState<UserRef[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -127,6 +134,12 @@ export function PlaylistDetailPage() {
         setPlaylist(p)
         setEditName(p.name)
         setEditDescription(p.description ?? '')
+        setSmartGenre(p.smartRules?.genre ?? '')
+        setSmartRating(p.smartRules?.minimumRating?.toString() ?? '')
+        setSmartPlayCount(p.smartRules?.minimumPlayCount?.toString() ?? '')
+        setSmartDays(p.smartRules?.addedWithinDays?.toString() ?? '')
+        setSmartLimit(p.smartRules?.limit?.toString() ?? '100')
+        setClearSmartRules(false)
         syncPlaylistTracks(p.id, p.tracks)
       })
       .catch((err) => {
@@ -319,6 +332,14 @@ export function PlaylistDetailPage() {
       let updated = await playlistService.update(playlist.id, {
         name: editName.trim(),
         description: editDescription.trim(),
+        smartRules: playlist.smartRules && !clearSmartRules ? {
+          genre: smartGenre.trim() || null,
+          minimumRating: smartRating ? Number(smartRating) : null,
+          minimumPlayCount: smartPlayCount ? Number(smartPlayCount) : null,
+          addedWithinDays: smartDays ? Number(smartDays) : null,
+          limit: Number(smartLimit) || 100,
+        } : undefined,
+        clearSmartRules,
       })
       if (coverFile) {
         updated = await playlistService.uploadCover(playlist.id, coverFile)
@@ -381,7 +402,7 @@ export function PlaylistDetailPage() {
         </div>
         <div className="min-w-0 pb-2">
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
-            {{ public: 'Public playlist', friends: 'Friends only', private: 'Private playlist' }[currentVisibility()]}
+            {playlist.smartRules ? 'Smart playlist' : { public: 'Public playlist', friends: 'Friends only', private: 'Private playlist' }[currentVisibility()]}
           </p>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mt-1 mb-3 break-words">{playlist.name}</h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
@@ -392,6 +413,17 @@ export function PlaylistDetailPage() {
             {' · '}
             {tracks.length} songs, {formatMs(playlist.totalDurationMs)}
           </p>
+          {playlist.smartRules && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 font-semibold text-accent">
+                <SparklesIcon className="h-3.5 w-3.5" /> Updates automatically
+              </span>
+              {playlist.smartRules.genre && <span className="rounded-full bg-elevated px-2.5 py-1 text-secondary">Genre: {playlist.smartRules.genre}</span>}
+              {playlist.smartRules.minimumRating != null && <span className="rounded-full bg-elevated px-2.5 py-1 text-secondary">{playlist.smartRules.minimumRating}+ stars</span>}
+              {playlist.smartRules.minimumPlayCount != null && <span className="rounded-full bg-elevated px-2.5 py-1 text-secondary">{playlist.smartRules.minimumPlayCount}+ plays</span>}
+              {playlist.smartRules.addedWithinDays != null && <span className="rounded-full bg-elevated px-2.5 py-1 text-secondary">Added in {playlist.smartRules.addedWithinDays} days</span>}
+            </div>
+          )}
         </div>
       </div>
 
@@ -450,7 +482,7 @@ export function PlaylistDetailPage() {
               <TrashIcon className="w-5 h-5" />
               Delete
             </button>
-            {!findPanelOpen && (
+            {!playlist.smartRules && !findPanelOpen && (
               <button
                 onClick={() => setFindPanelOpen(true)}
                 title="Add songs"
@@ -480,14 +512,16 @@ export function PlaylistDetailPage() {
               </div>
             )}
 
-            <button
-              onClick={() => setInviteOpen(true)}
-              title="Invite collaborator"
-              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
-            >
-              <UserPlusIcon className="w-5 h-5" />
-              Invite
-            </button>
+            {!playlist.smartRules && (
+              <button
+                onClick={() => setInviteOpen(true)}
+                title="Invite collaborator"
+                className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+              >
+                <UserPlusIcon className="w-5 h-5" />
+                Invite
+              </button>
+            )}
           </>
         )}
 
@@ -583,6 +617,40 @@ export function PlaylistDetailPage() {
                   className="min-h-24 rounded-md border border-secondary/20 bg-elevated px-3 py-2 text-sm text-primary outline-none transition-colors focus:border-accent"
                 />
               </label>
+              {playlist.smartRules && (
+                <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
+                  <div className="mb-3 flex items-center gap-2 font-semibold text-primary">
+                    <SparklesIcon className="h-4 w-4 text-accent" />
+                    Smart rules
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1 text-xs font-semibold text-secondary">
+                      Genre slug
+                      <input value={smartGenre} onChange={(e) => setSmartGenre(e.target.value)} disabled={clearSmartRules} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary disabled:opacity-50" />
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-secondary">
+                      Minimum rating
+                      <input type="number" min="1" max="5" step="0.5" value={smartRating} onChange={(e) => setSmartRating(e.target.value)} disabled={clearSmartRules} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary disabled:opacity-50" />
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-secondary">
+                      Minimum plays
+                      <input type="number" min="0" value={smartPlayCount} onChange={(e) => setSmartPlayCount(e.target.value)} disabled={clearSmartRules} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary disabled:opacity-50" />
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-secondary">
+                      Added within days
+                      <input type="number" min="1" max="3650" value={smartDays} onChange={(e) => setSmartDays(e.target.value)} disabled={clearSmartRules} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary disabled:opacity-50" />
+                    </label>
+                    <label className="grid gap-1 text-xs font-semibold text-secondary">
+                      Maximum tracks
+                      <input type="number" min="1" max="500" value={smartLimit} onChange={(e) => setSmartLimit(e.target.value)} disabled={clearSmartRules} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary disabled:opacity-50" />
+                    </label>
+                  </div>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-secondary">
+                    <input type="checkbox" checked={clearSmartRules} onChange={(e) => setClearSmartRules(e.target.checked)} />
+                    Convert to a regular playlist
+                  </label>
+                </div>
+              )}
             </div>
 
             <div>
@@ -667,13 +735,13 @@ export function PlaylistDetailPage() {
             queue={tracks}
             showAlbum
             addedAt={pt.addedAt}
-            currentPlaylistId={playlist.id}
+            currentPlaylistId={playlist.smartRules ? undefined : playlist.id}
           />
         ))}
       </div>
 
       {/* "Let's find something for your playlist" panel — owner & collaborators */}
-      {(playlist.isOwner || playlist.isCollaborator) && findPanelOpen && (
+      {!playlist.smartRules && (playlist.isOwner || playlist.isCollaborator) && findPanelOpen && (
         <div className="px-6 pt-6 pb-10 border-t border-elevated/30 mt-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold text-primary">Let's find something for your playlist</h2>

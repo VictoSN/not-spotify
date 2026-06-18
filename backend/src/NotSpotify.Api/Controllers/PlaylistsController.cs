@@ -23,13 +23,20 @@ public class PlaylistsController : ControllerBase
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
     private readonly AudioDownloadService _audioDownloads;
+    private readonly SmartPlaylistService _smartPlaylists;
 
-    public PlaylistsController(AppDbContext db, MediaMapper mapper, IStorageService storage, AudioDownloadService audioDownloads)
+    public PlaylistsController(
+        AppDbContext db,
+        MediaMapper mapper,
+        IStorageService storage,
+        AudioDownloadService audioDownloads,
+        SmartPlaylistService smartPlaylists)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
         _audioDownloads = audioDownloads;
+        _smartPlaylists = smartPlaylists;
     }
 
     private Guid? CurrentUserId()
@@ -150,6 +157,7 @@ public class PlaylistsController : ControllerBase
 
         var isOwner = me != null && p.OwnerId == me;
         var isSaved = me != null && await _db.UserSavedPlaylists.AnyAsync(s => s.UserId == me && s.PlaylistId == id, ct);
+        await HydrateSmartTracksAsync(p, ct);
         return Ok(await _mapper.ToDtoAsync(p, ct, isOwner, isSaved));
     }
 
@@ -159,6 +167,8 @@ public class PlaylistsController : ControllerBase
     {
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
+        var rulesError = SmartPlaylistService.Validate(req.SmartRules);
+        if (rulesError is not null) return BadRequest(new { message = rulesError });
 
         var playlist = new Playlist
         {
@@ -167,11 +177,14 @@ public class PlaylistsController : ControllerBase
             Name = req.Name,
             Description = req.Description,
             IsPublic = req.IsPublic,
+            Visibility = req.IsPublic ? "public" : "private",
+            Rules = req.SmartRules is null ? null : SmartPlaylistService.Serialize(req.SmartRules),
         };
         _db.Playlists.Add(playlist);
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(playlist.Id, ct);
+        await HydrateSmartTracksAsync(loaded!, ct);
         return CreatedAtAction(nameof(Get), new { id = playlist.Id }, await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
@@ -203,6 +216,16 @@ public class PlaylistsController : ControllerBase
         }
 
         if (req.CoverUrl is not null) p.CoverUrl = req.CoverUrl;
+        if (req.SmartRules is not null)
+        {
+            var rulesError = SmartPlaylistService.Validate(req.SmartRules);
+            if (rulesError is not null) return BadRequest(new { message = rulesError });
+            p.Rules = SmartPlaylistService.Serialize(req.SmartRules);
+        }
+        else if (req.ClearSmartRules)
+        {
+            p.Rules = null;
+        }
         p.UpdatedAt = DateTime.UtcNow;
 
         // When a playlist transitions from public -> private/friends, revoke everyone else's
@@ -216,6 +239,7 @@ public class PlaylistsController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(id, ct);
+        await HydrateSmartTracksAsync(loaded!, ct);
         return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
@@ -251,6 +275,7 @@ public class PlaylistsController : ControllerBase
             await _storage.DeleteAsync(oldKey, ct);
 
         var loaded = await LoadFullPlaylist(id, ct);
+        await HydrateSmartTracksAsync(loaded!, ct);
         return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
     }
 
@@ -277,6 +302,8 @@ public class PlaylistsController : ControllerBase
         var p = await _db.Playlists.Include(x => x.PlaylistTracks).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return NotFound();
         if (p.OwnerId != me) return StatusCode(StatusCodes.Status403Forbidden);
+        if (p.Rules is not null)
+            return BadRequest(new { message = "Smart playlists are filled automatically. Edit or remove the rules first." });
 
         if (p.PlaylistTracks.Any(pt => pt.TrackId == req.TrackId))
             return Conflict(new { message = "Track already in playlist." });
@@ -303,6 +330,8 @@ public class PlaylistsController : ControllerBase
         var p = await _db.Playlists.Include(x => x.PlaylistTracks).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return NotFound();
         if (p.OwnerId != CurrentUserId()) return StatusCode(StatusCodes.Status403Forbidden);
+        if (p.Rules is not null)
+            return BadRequest(new { message = "Smart playlists are filled automatically. Edit or remove the rules first." });
 
         var pt = p.PlaylistTracks.FirstOrDefault(x => x.TrackId == trackId);
         if (pt is null) return NotFound();
@@ -320,6 +349,9 @@ public class PlaylistsController : ControllerBase
     [HttpGet("{id:guid}/recommendations")]
     public async Task<ActionResult<IEnumerable<TrackDto>>> Recommendations(Guid id, [FromQuery] int limit = 10, CancellationToken ct = default)
     {
+        if (await _db.Playlists.AnyAsync(p => p.Id == id && p.Rules != null, ct))
+            return Ok(Array.Empty<TrackDto>());
+
         var existingTrackIds = await _db.PlaylistTracks
             .Where(pt => pt.PlaylistId == id)
             .Select(pt => pt.TrackId)
@@ -376,9 +408,11 @@ public class PlaylistsController : ControllerBase
             return StatusCode(403, new { message = "A Premium subscription is required to download music." });
 
         var playlist = await _db.Playlists
+            .Include(p => p.Owner)
             .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track)
             .FirstOrDefaultAsync(p => p.Id == id, ct);
         if (playlist is null) return NotFound();
+        await HydrateSmartTracksAsync(playlist, ct);
 
         var ms = new MemoryStream();
         var added = 0;
@@ -424,4 +458,20 @@ public class PlaylistsController : ControllerBase
         .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
         .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.AddedByUser)
         .FirstOrDefaultAsync(p => p.Id == id, ct);
+
+    private async Task HydrateSmartTracksAsync(Playlist playlist, CancellationToken ct)
+    {
+        if (playlist.Rules is null) return;
+        var tracks = await _smartPlaylists.ResolveAsync(playlist.Rules, ct);
+        playlist.PlaylistTracks = tracks.Select((track, index) => new PlaylistTrack
+        {
+            PlaylistId = playlist.Id,
+            TrackId = track.Id,
+            Track = track,
+            Position = index + 1,
+            AddedAt = track.CreatedAt,
+            AddedByUserId = playlist.OwnerId,
+            AddedByUser = playlist.Owner,
+        }).ToList();
+    }
 }

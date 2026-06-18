@@ -4,6 +4,14 @@ import type { PlaylistVisibility } from './friend'
 
 export type { PlaylistVisibility }
 
+export interface SmartPlaylistRules {
+  genre?: string | null
+  minimumRating?: number | null
+  minimumPlayCount?: number | null
+  addedWithinDays?: number | null
+  limit: number
+}
+
 export interface PlaylistTrack {
   track: Track
   addedAt: string
@@ -23,6 +31,7 @@ export interface Playlist {
   isFeatured?: boolean
   /** Manual ordering weight — lower numbers appear first when featured. */
   sortOrder?: number
+  smartRules?: SmartPlaylistRules | null
   owner: UserRef
   collaborators?: UserRef[]
   /** Whether the current user is a collaborator (not the owner). */

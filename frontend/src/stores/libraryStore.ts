@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
-import type { Playlist, PlaylistTrack, PlaylistVisibility } from '@/types/playlist'
+import type { Playlist, PlaylistTrack, PlaylistVisibility, SmartPlaylistRules } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
 import { albumService } from '@/services/albumService'
@@ -26,7 +26,7 @@ interface LibraryState {
   unfollowArtist: (artistId: string) => Promise<void>
   saveAlbum: (album: Album) => Promise<void>
   unsaveAlbum: (albumId: string) => Promise<void>
-  createPlaylist: (name: string, description?: string, isPublic?: boolean) => Promise<Playlist>
+  createPlaylist: (name: string, description?: string, isPublic?: boolean, smartRules?: SmartPlaylistRules) => Promise<Playlist>
   syncPlaylistTracks: (playlistId: string, tracks: PlaylistTrack[]) => void
   addTrackToPlaylist: (playlistId: string, track: Track) => Promise<void>
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>
@@ -171,8 +171,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
-  createPlaylist: async (name, description, isPublic = true) => {
-    const playlist = await playlistService.create(name, description, isPublic)
+  createPlaylist: async (name, description, isPublic = true, smartRules) => {
+    const playlist = await playlistService.create(name, description, isPublic, smartRules)
     set((s) => ({ savedPlaylists: [playlist, ...s.savedPlaylists] }))
     return playlist
   },

@@ -154,6 +154,7 @@ builder.Services.AddScoped<MediaMapper>();
 builder.Services.AddScoped<AudioDownloadService>();
 builder.Services.AddScoped<LyricsService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddScoped<SmartPlaylistService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
 
@@ -349,6 +350,18 @@ using (var scope = app.Services.CreateScope())
         END $$;
         CREATE INDEX IF NOT EXISTS ""IX_Playlists_IsFeatured_SortOrder""
             ON ""Playlists""(""IsFeatured"", ""SortOrder"");
+    ");
+
+    // Smart playlists store their rule set as JSONB. Keep the guard idempotent
+    // because the shared database can have migration-history/schema drift.
+    await db.Database.ExecuteSqlRawAsync(@"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'Playlists' AND column_name = 'Rules') THEN
+                ALTER TABLE ""Playlists"" ADD COLUMN ""Rules"" jsonb NULL;
+            END IF;
+        END $$;
     ");
 
     await DbSeeder.SeedAsync(scope.ServiceProvider);

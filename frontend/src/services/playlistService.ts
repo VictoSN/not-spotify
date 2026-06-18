@@ -1,4 +1,4 @@
-import type { Playlist, PlaylistVisibility } from '@/types/playlist'
+import type { Playlist, PlaylistVisibility, SmartPlaylistRules } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import { api } from './api'
 
@@ -23,8 +23,13 @@ export const playlistService = {
     return res.data
   },
 
-  async create(name: string, description?: string, isPublic = true): Promise<Playlist> {
-    const res = await api.post<Playlist>('/playlists', { name, description, isPublic })
+  async create(
+    name: string,
+    description?: string,
+    isPublic = true,
+    smartRules?: SmartPlaylistRules,
+  ): Promise<Playlist> {
+    const res = await api.post<Playlist>('/playlists', { name, description, isPublic, smartRules })
     return res.data
   },
 
@@ -41,7 +46,14 @@ export const playlistService = {
 
   async update(
     playlistId: string,
-    payload: { name?: string; description?: string | null; isPublic?: boolean; visibility?: PlaylistVisibility },
+    payload: {
+      name?: string
+      description?: string | null
+      isPublic?: boolean
+      visibility?: PlaylistVisibility
+      smartRules?: SmartPlaylistRules
+      clearSmartRules?: boolean
+    },
   ): Promise<Playlist> {
     const res = await api.patch<Playlist>(`/playlists/${playlistId}`, payload)
     return res.data

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PlayIcon, HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid, StarIcon } from '@heroicons/react/24/solid'
+import { HeartIcon as HeartSolid, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { useHueStore } from '@/stores/hueStore'
 import { getDominantColor } from '@/hooks/useDominantColor'
@@ -8,6 +8,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { playlistService } from '@/services/playlistService'
 import { PlaylistCover } from './PlaylistCover'
 
 interface PlaylistCardProps {
@@ -22,13 +23,16 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { savedPlaylists, savePlaylist, unsavePlaylist } = useLibraryStore()
   const isSaved = savedPlaylists.some((p) => p.id === playlist.id)
 
-  const handlePlay = (e: React.MouseEvent) => {
+  const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault()
     if (!isAuthenticated) {
       openAuthPrompt({ title: 'Start listening with a free account', imageUrl: playlist.coverUrl })
       return
     }
-    const tracks = playlist.tracks.map((pt) => pt.track)
+    const resolved = playlist.tracks
+      ? playlist
+      : await playlistService.getById(playlist.id)
+    const tracks = resolved.tracks.map((pt) => pt.track)
     if (tracks.length > 0) playWithGate(tracks[0], tracks)
   }
 
@@ -78,6 +82,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
       </div>
       <p className="text-sm font-semibold text-primary truncate flex items-center gap-1">
         {playlist.isFeatured && <StarIcon className="w-3.5 h-3.5 text-accent shrink-0" title="Featured" />}
+        {playlist.smartRules && <SparklesIcon className="w-3.5 h-3.5 text-accent shrink-0" title="Smart playlist" />}
         <span className="truncate">{playlist.name}</span>
       </p>
       {playlist.description && <p className="text-xs text-secondary mt-0.5 line-clamp-2">{playlist.description}</p>}

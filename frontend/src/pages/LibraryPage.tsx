@@ -14,7 +14,7 @@ import { TrackRow } from '@/components/cards/TrackRow'
 import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-import { PlusIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { PlusIcon, PlayIcon, ClockIcon, ArrowDownTrayIcon, SparklesIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { useTranslation } from '@/i18n/useTranslation'
 
@@ -65,6 +65,14 @@ export function LibraryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [smartOpen, setSmartOpen] = useState(false)
+  const [smartName, setSmartName] = useState('My smart playlist')
+  const [smartGenre, setSmartGenre] = useState('')
+  const [smartRating, setSmartRating] = useState('')
+  const [smartPlayCount, setSmartPlayCount] = useState('')
+  const [smartDays, setSmartDays] = useState('')
+  const [smartLimit, setSmartLimit] = useState('100')
+  const [creatingSmart, setCreatingSmart] = useState(false)
 
   const handleCreatePlaylist = () => {
     if (!isAuthenticated) {
@@ -80,6 +88,36 @@ export function LibraryPage() {
       return
     }
     fileInputRef.current?.click()
+  }
+
+  const handleCreateSmartPlaylist = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Create smart playlists with a free account' })
+      return
+    }
+    const rules = {
+      genre: smartGenre.trim() || null,
+      minimumRating: smartRating ? Number(smartRating) : null,
+      minimumPlayCount: smartPlayCount ? Number(smartPlayCount) : null,
+      addedWithinDays: smartDays ? Number(smartDays) : null,
+      limit: Number(smartLimit) || 100,
+    }
+    if (!rules.genre && rules.minimumRating === null && rules.minimumPlayCount === null && rules.addedWithinDays === null) {
+      setImportMsg('Choose at least one smart playlist rule.')
+      return
+    }
+    setCreatingSmart(true)
+    setImportMsg(null)
+    try {
+      const playlist = await createPlaylist(smartName.trim() || 'My smart playlist', undefined, true, rules)
+      setSmartOpen(false)
+      navigate(`/playlist/${playlist.id}`)
+    } catch {
+      setImportMsg('Could not create the smart playlist.')
+    } finally {
+      setCreatingSmart(false)
+    }
   }
 
   // Import a playlist exported as JSON: create it, then match each entry to a
@@ -150,6 +188,15 @@ export function LibraryPage() {
           >
             {importing ? <Spinner size="sm" /> : <ArrowDownTrayIcon className="w-5 h-5" />}
           </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setSmartOpen((open) => !open)}
+            aria-label="Create smart playlist"
+            title="Create smart playlist"
+          >
+            <SparklesIcon className="w-5 h-5" />
+          </Button>
           <Button size="icon" variant="ghost" onClick={handleCreatePlaylist} aria-label={t('library.createPlaylist')}>
             <PlusIcon className="w-5 h-5" />
           </Button>
@@ -167,6 +214,61 @@ export function LibraryPage() {
         <div className="mb-4 rounded-md border border-elevated/50 bg-surface px-4 py-2.5 text-sm text-primary">
           {importMsg}
         </div>
+      )}
+
+      {smartOpen && (
+        <form onSubmit={handleCreateSmartPlaylist} className="mb-6 rounded-xl border border-accent/20 bg-surface p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-primary">Create smart playlist</h2>
+              <p className="text-xs text-secondary">Tracks update automatically when they match every selected rule.</p>
+            </div>
+            <button type="button" onClick={() => setSmartOpen(false)} className="text-secondary hover:text-primary" aria-label="Close">
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Name
+              <input value={smartName} onChange={(e) => setSmartName(e.target.value)} required className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent" />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Genre slug
+              <input value={smartGenre} onChange={(e) => setSmartGenre(e.target.value)} placeholder="rock" className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent" />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Minimum rating
+              <select value={smartRating} onChange={(e) => setSmartRating(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none">
+                <option value="">Any rating</option>
+                <option value="3">3+ stars</option>
+                <option value="4">4+ stars</option>
+                <option value="4.5">4.5+ stars</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Minimum plays
+              <input type="number" min="0" value={smartPlayCount} onChange={(e) => setSmartPlayCount(e.target.value)} placeholder="Any" className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent" />
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Added recently
+              <select value={smartDays} onChange={(e) => setSmartDays(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none">
+                <option value="">Any time</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last year</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-xs font-semibold text-secondary">
+              Maximum tracks
+              <input type="number" min="1" max="500" value={smartLimit} onChange={(e) => setSmartLimit(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent" />
+            </label>
+          </div>
+          <Button type="submit" className="mt-4 gap-2" disabled={creatingSmart}>
+            <SparklesIcon className="h-4 w-4" />
+            {creatingSmart ? 'Creating…' : 'Create smart playlist'}
+          </Button>
+        </form>
       )}
 
       {/* Filter chips + sort */}

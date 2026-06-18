@@ -16,6 +16,11 @@ public class Playlist
     public string Visibility { get; set; } = "public";
     public bool IsFeatured { get; set; } = false;
     public int SortOrder { get; set; } = 0;
+    /// <summary>
+    /// JSON-serialized smart-playlist rules. Null means this is a regular,
+    /// manually curated playlist.
+    /// </summary>
+    public string? Rules { get; set; }
     public long FollowerCount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

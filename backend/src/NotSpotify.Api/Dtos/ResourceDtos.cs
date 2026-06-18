@@ -101,6 +101,14 @@ public record UserRefDto(Guid Id, string Name, string? AvatarUrl);
 
 public record PlaylistTrackDto(TrackDto Track, DateTime AddedAt, UserRefDto AddedBy);
 
+public record SmartPlaylistRulesDto(
+    string? Genre = null,
+    double? MinimumRating = null,
+    long? MinimumPlayCount = null,
+    int? AddedWithinDays = null,
+    int Limit = 100
+);
+
 public record PlaylistDto(
     Guid Id,
     string Name,
@@ -117,7 +125,8 @@ public record PlaylistDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     bool IsOwner,
-    bool IsSaved
+    bool IsSaved,
+    SmartPlaylistRulesDto? SmartRules
 );
 
 public record PlaylistSummaryDto(
@@ -135,17 +144,25 @@ public record PlaylistSummaryDto(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     bool IsOwner,
-    bool IsSaved
+    bool IsSaved,
+    SmartPlaylistRulesDto? SmartRules
 );
 
-public record CreatePlaylistRequest(string Name, string? Description, bool IsPublic = true);
+public record CreatePlaylistRequest(
+    string Name,
+    string? Description,
+    bool IsPublic = true,
+    SmartPlaylistRulesDto? SmartRules = null
+);
 
 public record UpdatePlaylistRequest(
     string? Name,
     string? Description,
     bool? IsPublic,
     string? Visibility,   // "public" | "friends" | "private"
-    string? CoverUrl
+    string? CoverUrl,
+    SmartPlaylistRulesDto? SmartRules,
+    bool ClearSmartRules = false
 );
 
 public record AddPlaylistTrackRequest(Guid TrackId);

@@ -1,13 +1,15 @@
 import { SpeakerWaveIcon, SpeakerXMarkIcon } from '@heroicons/react/24/outline'
 import { Slider } from '@/components/ui/Slider'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function VolumeControl() {
+  const { t } = useTranslation()
   const { volume, isMuted, setVolume, toggleMute } = usePlayerStore()
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={toggleMute} className="text-secondary hover:text-primary transition-all hover:scale-110 active:scale-90" aria-label={isMuted ? 'Unmute' : 'Mute'}>
+      <button onClick={toggleMute} className="text-secondary hover:text-primary transition-all hover:scale-110 active:scale-90" aria-label={isMuted ? t('player.unmute') : t('player.mute')}>
         {isMuted || volume === 0 ? (
           <SpeakerXMarkIcon className="w-4 h-4" />
         ) : (
@@ -21,7 +23,7 @@ export function VolumeControl() {
         step={1}
         onValueChange={(v) => setVolume(v / 100)}
         className="w-24"
-        aria-label="Volume"
+        aria-label={t('player.volume')}
       />
     </div>
   )

@@ -26,6 +26,7 @@ import { notify } from '@/utils/toast'
 import { usePlayerStore } from '@/stores/playerStore'
 
 export function TrackDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [track, setTrack] = useState<Track | null>(null)
   const [lyrics, setLyrics] = useState<string | null>(null)
@@ -85,7 +86,7 @@ export function TrackDetailPage() {
   const toggleLike = () => {
     if (!track) return
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Like songs with a free account', imageUrl: track.album.coverUrl })
+      openAuthPrompt({ title: t('detail.likeSongsPrompt'), imageUrl: track.album.coverUrl })
       return
     }
     if (isLiked) unlikeTrack(track.id)
@@ -97,9 +98,9 @@ export function TrackDetailPage() {
     setDownloading(true)
     try {
       await trackService.download(track.id, track.title)
-      notify.success('Download started')
+      notify.success(t('detail.downloadStarted'))
     } catch (error) {
-      notify.error(error instanceof Error ? error.message : 'Could not download this track.')
+      notify.error(error instanceof Error ? error.message : t('detail.downloadError'))
     } finally {
       setDownloading(false)
     }
@@ -114,7 +115,11 @@ export function TrackDetailPage() {
   }
 
   if (loadError || !track) {
+<<<<<<< HEAD
     return <div className="p-8 text-secondary">{t('track.notFound')}</div>
+=======
+    return <div className="p-8 text-secondary">{t('detail.songNotFound')}</div>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
   }
 
   const releaseYear = track.album.releaseDate.slice(0, 4)
@@ -139,7 +144,11 @@ export function TrackDetailPage() {
 
         {/* Meta */}
         <div className="min-w-0 pb-2">
+<<<<<<< HEAD
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">{t('track.song')}</p>
+=======
+          <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">{t('detail.song')}</p>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-3 break-words">
             {track.title}
             {track.explicit && (
@@ -174,7 +183,11 @@ export function TrackDetailPage() {
             <span className="text-secondary">·</span>
             <span className="text-secondary">{formatMs(track.durationMs)}</span>
             <span className="text-secondary">·</span>
+<<<<<<< HEAD
             <span className="text-secondary">{t('track.plays', { n: formatNumber(track.playCount) })}</span>
+=======
+            <span className="text-secondary">{t('detail.plays', { n: formatNumber(track.playCount) })}</span>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           </div>
         </div>
       </div>
@@ -185,7 +198,7 @@ export function TrackDetailPage() {
         <button
           onClick={handlePlay}
           className="flex items-center justify-center w-14 h-14 rounded-full bg-accent hover:bg-accent/80 active:scale-95 transition-all shadow-lg"
-          aria-label="Play"
+          aria-label={t('common.play')}
         >
           <PlayIcon className="w-6 h-6 text-white ml-0.5" />
         </button>
@@ -194,7 +207,7 @@ export function TrackDetailPage() {
         <button
           onClick={toggleLike}
           className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors"
-          aria-label={isLiked ? 'Unlike' : 'Like'}
+          aria-label={isLiked ? t('player.unlike') : t('player.like')}
         >
           {isLiked ? (
             <HeartSolid className="w-7 h-7 text-accent" />
@@ -209,7 +222,7 @@ export function TrackDetailPage() {
             onClick={handleDownload}
             disabled={downloading}
             className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors disabled:opacity-50"
-            aria-label="Download"
+            aria-label={t('common.download')}
           >
             <ArrowDownTrayIcon className="w-6 h-6" />
           </button>
@@ -221,6 +234,7 @@ export function TrackDetailPage() {
 
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4 pb-12">
+<<<<<<< HEAD
         {/* Left: Lyrics + Comments */}
         <div>
           <section className="mb-10">
@@ -237,6 +251,14 @@ export function TrackDetailPage() {
             onSeek={handleSeek}
           />
         </div>
+=======
+        {/* Left: Lyrics */}
+        <section>
+          <h2 className="text-2xl font-bold text-primary mb-4">{t('detail.lyrics')}</h2>
+          {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
+          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
+        </section>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
 
         {/* Right: Artist card */}
         <aside>
@@ -253,7 +275,11 @@ export function TrackDetailPage() {
             />
             <div className="min-w-0">
               <p className="text-xs text-secondary uppercase tracking-wider font-semibold mb-0.5">
+<<<<<<< HEAD
                 {t('topbar.result.artist')}
+=======
+                {t('detail.artistLabel')}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
               </p>
               <p className="font-bold text-primary group-hover:underline truncate">
                 {track.artist.name}

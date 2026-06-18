@@ -57,6 +57,7 @@ type ArtistData = { artistId: string; artist: Artist | null; related: Track[] }
 type AlbumData = { albumId: string; album: Album | null }
 
 export function NowPlayingPanel() {
+  const { t } = useTranslation()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const queue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
@@ -155,8 +156,13 @@ export function NowPlayingPanel() {
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
+<<<<<<< HEAD
           aria-label={t('player.expandNowPlaying')}
           title={t('player.expandNowPlaying')}
+=======
+          aria-label={t('np.expand')}
+          title={t('np.expand')}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
         >
           {currentTrack && (
             <img
@@ -175,18 +181,31 @@ export function NowPlayingPanel() {
     return (
       <aside style={{ width }} className={panelClass}>
         <div className="flex items-center justify-between p-4">
+<<<<<<< HEAD
           <h2 className="text-base font-bold text-primary">{t('player.nowPlaying')}</h2>
           <button
             onClick={() => setNowPlayingCollapsed(true)}
             className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
             aria-label={t('player.collapseNowPlaying')}
             title={t('player.collapseNowPlaying')}
+=======
+          <h2 className="text-base font-bold text-primary">{t('np.title')}</h2>
+          <button
+            onClick={() => setNowPlayingCollapsed(true)}
+            className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            aria-label={t('np.collapse')}
+            title={t('np.collapse')}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           >
             <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">
+<<<<<<< HEAD
           {t('player.emptyState')}
+=======
+          {t('np.empty')}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
         </p>
         <NowPlayingDragHandle onMouseDown={onDragStart} />
       </aside>
@@ -230,8 +249,8 @@ export function NowPlayingPanel() {
           <button
             onClick={() => setNowPlayingCollapsed(true)}
             className="ml-2 shrink-0 rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label="Collapse now playing"
-            title="Collapse now playing"
+            aria-label={t('np.collapse')}
+            title={t('np.collapse')}
           >
             <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
@@ -260,7 +279,7 @@ export function NowPlayingPanel() {
               </Link>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? 'Unlike' : 'Like'}>
+              <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? t('player.unlike') : t('player.like')}>
                 {isLiked ? (
                   <HeartSolid className="w-6 h-6 text-accent" />
                 ) : (
@@ -277,7 +296,11 @@ export function NowPlayingPanel() {
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (
+<<<<<<< HEAD
           <PanelSection title={t('player.recommended')} subtitle={t('player.basedOnSong')}>
+=======
+          <PanelSection title={t('np.recommended')} subtitle={t('np.recommendedSub')}>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
             <div className="flex flex-col gap-1">
               {relatedTracks.map((track) => (
                 <TrackCard key={track.id} track={track} queue={related} />
@@ -293,7 +316,11 @@ export function NowPlayingPanel() {
           </div>
         ) : (
           artist && (
+<<<<<<< HEAD
             <PanelSection title={t('player.aboutArtist')}>
+=======
+            <PanelSection title={t('np.aboutArtist')}>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
               <div className="relative rounded-lg overflow-hidden bg-elevated">
                 {(artist.headerImageUrl || artist.imageUrl) && (
                   <img
@@ -310,12 +337,20 @@ export function NowPlayingPanel() {
                     {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
                   </div>
                   <div className="flex items-center justify-between mt-1">
+<<<<<<< HEAD
                     <p className="text-xs text-secondary">{t('artist.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
+=======
+                    <p className="text-xs text-secondary">{t('np.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
                     <button
                       onClick={toggleFollow}
                       className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
                     >
+<<<<<<< HEAD
                       {isFollowing ? t('artist.following') : t('artist.follow')}
+=======
+                      {isFollowing ? t('np.following') : t('np.follow')}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
                     </button>
                   </div>
                   {artist.bio && (
@@ -328,7 +363,11 @@ export function NowPlayingPanel() {
         )}
 
         {/* Credits */}
+<<<<<<< HEAD
         <PanelSection title={t('player.credits')}>
+=======
+        <PanelSection title={t('np.credits')}>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
@@ -338,7 +377,11 @@ export function NowPlayingPanel() {
                 >
                   {currentTrack.artist.name}
                 </Link>
+<<<<<<< HEAD
                 <p className="text-xs text-secondary">{t('player.mainArtist')}</p>
+=======
+                <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
               </div>
               {artist && (
                 <button
@@ -352,7 +395,11 @@ export function NowPlayingPanel() {
             {album?.label && (
               <div>
                 <p className="text-sm font-medium text-primary truncate">{album.label}</p>
+<<<<<<< HEAD
                 <p className="text-xs text-secondary">{t('album.label')}</p>
+=======
+                <p className="text-xs text-secondary">{t('np.label')}</p>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
               </div>
             )}
             {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
@@ -360,7 +407,11 @@ export function NowPlayingPanel() {
         </PanelSection>
 
         {/* Next in queue */}
+<<<<<<< HEAD
         <PanelSection title={t('player.nextInQueue')}>
+=======
+        <PanelSection title={t('np.nextInQueue')}>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           {upNext.length > 0 ? (
             <div className="flex flex-col gap-1">
               {upNext.slice(0, 10).map((track, upNextIdx) => {
@@ -403,7 +454,11 @@ export function NowPlayingPanel() {
               })}
             </div>
           ) : (
+<<<<<<< HEAD
             <p className="text-sm text-secondary">{t('player.queueEmpty')}</p>
+=======
+            <p className="text-sm text-secondary">{t('np.queueEmpty')}</p>
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           )}
         </PanelSection>
       </div>

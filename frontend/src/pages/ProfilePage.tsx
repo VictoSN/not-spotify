@@ -11,8 +11,10 @@ import { TrackRow } from '@/components/cards/TrackRow'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { EditProfileModal } from '@/components/profile/EditProfileModal'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const user = useAuthStore((s) => s.user)
   const { followedArtists, likedSongs, savedPlaylists, fetchLibrary } = useLibraryStore()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -57,11 +59,11 @@ export function ProfilePage() {
             className="h-36 w-36 text-5xl shadow-2xl sm:h-52 sm:w-52"
           />
           <div className="min-w-0 text-center sm:text-left">
-            <p className="text-sm font-bold text-primary">Profile</p>
+            <p className="text-sm font-bold text-primary">{t('profile.eyebrow')}</p>
             <h1 className="my-3 break-words text-5xl font-black text-primary sm:text-7xl">{user.name}</h1>
             <p className="text-sm text-secondary">
-              {publicPlaylists.length} Public Playlist{publicPlaylists.length === 1 ? '' : 's'} ·{' '}
-              {followedArtists.length} Following
+              {t('profile.publicPlaylists', { n: publicPlaylists.length })} ·{' '}
+              {t('profile.following', { n: followedArtists.length })}
             </p>
           </div>
         </div>
@@ -72,8 +74,8 @@ export function ProfilePage() {
         <Link
           to="/settings"
           className="flex h-9 w-9 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary"
-          title="Settings"
-          aria-label="Settings"
+          title={t('settings.title')}
+          aria-label={t('settings.title')}
         >
           <Cog6ToothIcon className="h-6 w-6" />
         </Link>
@@ -82,15 +84,15 @@ export function ProfilePage() {
           className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
         >
           <PencilIcon className="h-4 w-4" />
-          Edit profile
+          {t('profile.edit')}
         </button>
       </div>
 
       {/* Top artists */}
       {followedArtists.length > 0 && (
         <section className="mb-8 px-6">
-          <SectionHeader title="Top artists this month" href="/library?tab=artists" />
-          <p className="-mt-3 mb-4 text-xs text-secondary">Only visible to you</p>
+          <SectionHeader title={t('profile.topArtists')} href="/library?tab=artists" />
+          <p className="-mt-3 mb-4 text-xs text-secondary">{t('profile.onlyVisible')}</p>
           <HorizontalScroller>
             {followedArtists.map((artist) => (
               <ArtistCard key={artist.id} artist={artist} />
@@ -103,8 +105,8 @@ export function ProfilePage() {
       {topTracks.length > 0 && (
         <section className="mb-8 px-4">
           <div className="px-2">
-            <SectionHeader title="Top tracks this month" />
-            <p className="-mt-3 mb-2 text-xs text-secondary">Only visible to you</p>
+            <SectionHeader title={t('profile.topTracks')} />
+            <p className="-mt-3 mb-2 text-xs text-secondary">{t('profile.onlyVisible')}</p>
           </div>
           {topTracks.map((track, i) => (
             <TrackRow key={track.id} track={track} index={i} queue={topTracks} showAlbum />
@@ -115,7 +117,7 @@ export function ProfilePage() {
       {/* Public playlists */}
       {publicPlaylists.length > 0 && (
         <section className="mb-8 px-6">
-          <SectionHeader title="Public playlists" />
+          <SectionHeader title={t('profile.publicPlaylistsHeader')} />
           <HorizontalScroller>
             {publicPlaylists.map((playlist) => (
               <PlaylistCard key={playlist.id} playlist={playlist} />

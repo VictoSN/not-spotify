@@ -10,6 +10,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 export function PlayerControls() {
+  const { t } = useTranslation()
   const {
     isPlaying,
     currentTrack,
@@ -85,7 +86,11 @@ export function PlayerControls() {
             ? 'text-accent'
             : 'text-secondary hover:text-primary',
         )}
+<<<<<<< HEAD
         aria-label={`${t('player.repeat')}: ${repeatLabel}`}
+=======
+        aria-label={`${t('player.repeat')}: ${t('player.repeat.' + repeatMode)}`}
+>>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
       >
         <ArrowPathIcon className="w-4 h-4" />
         {repeatMode === 'one' && (

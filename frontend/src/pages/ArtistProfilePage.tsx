@@ -21,8 +21,10 @@ import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
+import { useTranslation } from '@/i18n/useTranslation'
 
 export function ArtistProfilePage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [artist, setArtist] = useState<Artist | null>(null)
   useDocumentTitle(artist?.name ?? null)
@@ -56,12 +58,12 @@ export function ArtistProfilePage() {
         <Spinner size="lg" />
       </div>
     )
-  if (!artist) return <div className="p-8 text-secondary">Artist not found.</div>
+  if (!artist) return <div className="p-8 text-secondary">{t('detail.artistNotFound')}</div>
 
   const isFollowing = followedArtistIds.has(artist.id)
   const toggleFollow = () => {
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Follow artists with a free account', imageUrl: artist.imageUrl })
+      openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
       return
     }
     if (isFollowing) unfollowArtist(artist.id)
@@ -89,10 +91,10 @@ export function ArtistProfilePage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
               {artist.verified && <CheckBadgeIcon className="w-5 h-5 text-accent" />}
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Artist</span>
+              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('detail.artistLabel')}</span>
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-primary drop-shadow-lg truncate">{artist.name}</h1>
-            <p className="text-secondary text-sm mt-1">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
+            <p className="text-secondary text-sm mt-1">{t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
           </div>
         </div>
       </div>
@@ -101,29 +103,29 @@ export function ArtistProfilePage() {
       <div className="flex items-center gap-4 px-6 py-4">
         {topTracks.length > 0 && (
           <Button onClick={() => playWithGate(topTracks[0], topTracks)} size="lg" className="gap-2">
-            <PlayIcon className="w-5 h-5" /> Play
+            <PlayIcon className="w-5 h-5" /> {t('common.play')}
           </Button>
         )}
         <Button variant={isFollowing ? 'outline' : 'secondary'} onClick={toggleFollow}>
-          {isFollowing ? 'Following' : 'Follow'}
+          {isFollowing ? t('common.following') : t('common.follow')}
         </Button>
         <button
           onClick={async () => {
-            const r = await shareLink(`/artist/${artist.id}`, { title: artist.name, text: `Check out ${artist.name} on not-spotify` })
+            const r = await shareLink(`/artist/${artist.id}`, { title: artist.name, text: t('detail.shareArtistText', { name: artist.name }) })
             if (r === 'copied') { setShareCopied(true); setTimeout(() => setShareCopied(false), 1500) }
           }}
-          title="Share this artist"
+          title={t('detail.shareArtist')}
           className="flex items-center gap-2 text-sm font-semibold text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
         >
           <ShareIcon className="w-5 h-5" />
-          {shareCopied ? 'Link copied' : 'Share'}
+          {shareCopied ? t('common.linkCopied') : t('common.share')}
         </button>
       </div>
 
       {/* Popular tracks */}
       {topTracks.length > 0 && (
         <section className="px-4 mb-8">
-          <SectionHeader title="Popular" />
+          <SectionHeader title={t('detail.popular')} />
           {topTracks.map((track, i) => (
             <TrackRow key={track.id} track={track} index={i} queue={topTracks} showPlayCount />
           ))}
@@ -133,7 +135,7 @@ export function ArtistProfilePage() {
       {/* Albums */}
       {albums.length > 0 && (
         <section className="px-6 mb-8">
-          <SectionHeader title="Discography" />
+          <SectionHeader title={t('detail.discography')} />
           <HorizontalScroller>
             {albums.map((album) => (
               <AlbumCard key={album.id} album={album} />
@@ -145,7 +147,7 @@ export function ArtistProfilePage() {
       {/* Fans also like */}
       {related.length > 0 && (
         <section className="px-6 mb-8">
-          <SectionHeader title="Fans also like" />
+          <SectionHeader title={t('detail.fansAlsoLike')} />
           <HorizontalScroller>
             {related.map((a) => (
               <ArtistCard key={a.id} artist={a} />
@@ -157,7 +159,7 @@ export function ArtistProfilePage() {
       {/* Bio */}
       {artist.bio && (
         <section className="px-6 mb-8">
-          <SectionHeader title="About" />
+          <SectionHeader title={t('detail.about')} />
           <div className="bg-surface rounded-xl p-6 relative overflow-hidden">
             {artist.headerImageUrl && (
               <img
@@ -167,7 +169,7 @@ export function ArtistProfilePage() {
               />
             )}
             <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
-            <p className="text-xs text-muted mt-4 relative z-10">{formatNumber(artist.followerCount)} followers</p>
+            <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
           </div>
         </section>
       )}

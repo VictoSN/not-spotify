@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useTranslation } from '@/i18n/useTranslation'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -20,6 +21,7 @@ import { formatMs } from '@/utils/formatTime'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 
 export function AlbumDetailPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [album, setAlbum] = useState<Album | null>(null)
   const [tracks, setTracks] = useState<Track[]>([])
@@ -50,7 +52,7 @@ export function AlbumDetailPage() {
         <Spinner size="lg" />
       </div>
     )
-  if (!album) return <div className="p-8 text-secondary">Album not found.</div>
+  if (!album) return <div className="p-8 text-secondary">{t('detail.albumNotFound')}</div>
 
   const isSaved = savedAlbumIds.has(album.id)
   const totalDuration = tracks.reduce((acc, t) => acc + t.durationMs, 0)
@@ -66,7 +68,7 @@ export function AlbumDetailPage() {
 
   const toggleSave = () => {
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Save music with a free account', imageUrl: album.coverUrl })
+      openAuthPrompt({ title: t('detail.saveMusicPrompt'), imageUrl: album.coverUrl })
       return
     }
     if (isSaved) unsaveAlbum(album.id)
@@ -104,11 +106,11 @@ export function AlbumDetailPage() {
             )}
             <span className="flex items-center gap-1 text-sm text-secondary">
               <PlayIcon className="w-4 h-4" />
-              {(album.totalPlays ?? 0).toLocaleString()} plays
+              {t('detail.plays', { n: (album.totalPlays ?? 0).toLocaleString() })}
             </span>
             <span className="flex items-center gap-1 text-sm text-secondary">
               <HeartSolid className="w-4 h-4 text-accent" />
-              {(album.totalSaves ?? 0).toLocaleString()} saves
+              {t('detail.saves', { n: (album.totalSaves ?? 0).toLocaleString() })}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -122,7 +124,7 @@ export function AlbumDetailPage() {
             <span className="text-secondary">{album.releaseDate.slice(0, 4)}</span>
             <span className="text-secondary">·</span>
             <span className="text-secondary">
-              {tracks.length} songs, {formatMs(totalDuration)}
+              {t('detail.songsCount', { count: tracks.length, dur: formatMs(totalDuration) })}
             </span>
           </div>
         </div>
@@ -130,11 +132,11 @@ export function AlbumDetailPage() {
 
       <div className="flex items-center gap-3 px-4 sm:px-6 py-4 flex-wrap">
         <Button onClick={() => tracks.length && playWithGate(tracks[0], tracks)} size="lg" className="gap-2">
-          <PlayIcon className="w-5 h-5" /> Play
+          <PlayIcon className="w-5 h-5" /> {t('common.play')}
         </Button>
         <button
           onClick={toggleSave}
-          title={isSaved ? 'Remove from library' : 'Save to library'}
+          title={isSaved ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
             isSaved
               ? 'border-accent text-accent hover:border-red-400 hover:text-red-400'
@@ -142,27 +144,27 @@ export function AlbumDetailPage() {
           }`}
         >
           {isSaved ? <HeartSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
-          {isSaved ? 'Saved' : 'Save to library'}
+          {isSaved ? t('common.saved') : t('detail.saveToLibrary')}
         </button>
         {isPremium ? (
           <button
             onClick={handleDownload}
             disabled={downloading}
-            title="Download album as ZIP"
+            title={t('detail.downloadAlbum')}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
           >
             <ArrowDownTrayIcon className="w-5 h-5" />
-            {downloading ? 'Downloading…' : 'Download'}
+            {downloading ? t('common.downloading') : t('common.download')}
           </button>
         ) : (
           <Link
             to="/premium"
-            title="Download is a Premium feature"
+            title={t('detail.downloadPremiumTitle')}
             className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-accent hover:text-accent transition-colors"
           >
             <ArrowDownTrayIcon className="w-5 h-5" />
-            Download
-            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+            {t('common.download')}
+            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">{t('common.premium')}</span>
           </Link>
         )}
       </div>
@@ -173,8 +175,8 @@ export function AlbumDetailPage() {
           style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
         >
           <span className="text-xs text-secondary">#</span>
-          <span className="text-xs text-secondary uppercase tracking-wider">Title</span>
-          <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">Plays</span>
+          <span className="text-xs text-secondary uppercase tracking-wider">{t('detail.colTitle')}</span>
+          <span className="text-xs text-secondary uppercase tracking-wider hidden md:block">{t('detail.colPlays')}</span>
           <div className="grid grid-cols-[32px_50px_32px] sm:grid-cols-[80px_32px_50px_32px] items-center gap-1.5 sm:gap-2 justify-end w-[114px] sm:w-[194px] ml-auto">
             <span className="hidden sm:block" />
             <span />

@@ -152,6 +152,18 @@ public record ChartEntryDto(int Rank, int PlaysThisWeek, TrackDto Track);
 /// <summary>A genre-based "Daily Mix" of tracks built for the listener.</summary>
 public record DailyMixDto(string Id, string Title, string Subtitle, string? Color, IEnumerable<TrackDto> Tracks);
 
+public record TrackCommentDto(
+    Guid Id,
+    Guid TrackId,
+    UserRefDto User,
+    string Body,
+    Guid? ParentId,
+    long? TimestampMs,
+    DateTime CreatedAt
+);
+
+public record CreateCommentRequest(string Body, Guid? ParentId = null);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

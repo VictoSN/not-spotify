@@ -574,6 +574,130 @@ public class TracksController : ControllerBase
         return Ok(new LyricsDto(null, null, "not_found"));
     }
 
+    /// <summary>
+    /// Returns comments for a track, newest first. Public (no auth needed to read).
+    /// </summary>
+    [HttpGet("{id:guid}/comments")]
+    public async Task<ActionResult<IEnumerable<TrackCommentDto>>> GetComments(Guid id, [FromQuery] int limit = 50, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 200);
+
+        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
+        if (!trackExists) return NotFound();
+
+        var comments = await _db.TrackComments
+            .Where(c => c.TrackId == id && c.ParentId == null)
+            .Include(c => c.User)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        var dtos = comments.Select(c => new TrackCommentDto(
+            c.Id, c.TrackId, _mapper.ToRef(c.User), c.Body,
+            c.ParentId, c.TimestampMs, c.CreatedAt));
+
+        return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Returns replies for a specific comment.
+    /// </summary>
+    [HttpGet("{id:guid}/comments/{commentId:guid}/replies")]
+    public async Task<ActionResult<IEnumerable<TrackCommentDto>>> GetCommentReplies(Guid id, Guid commentId, CancellationToken ct = default)
+    {
+        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
+        if (!trackExists) return NotFound();
+
+        var replies = await _db.TrackComments
+            .Where(c => c.TrackId == id && c.ParentId == commentId)
+            .Include(c => c.User)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct);
+
+        var dtos = replies.Select(c => new TrackCommentDto(
+            c.Id, c.TrackId, _mapper.ToRef(c.User), c.Body,
+            c.ParentId, c.TimestampMs, c.CreatedAt));
+
+        return Ok(dtos);
+    }
+
+    /// <summary>
+    /// Post a comment on a track. Must be authenticated.
+    /// </summary>
+    [HttpPost("{id:guid}/comments")]
+    [Authorize]
+    public async Task<ActionResult<TrackCommentDto>> PostComment(Guid id, [FromBody] CreateCommentRequest req, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(req.Body) || req.Body.Length > 1000)
+            return BadRequest(new { message = "Comment body must be 1–1000 characters." });
+
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
+        if (!trackExists) return NotFound();
+
+        // If it's a reply, verify the parent comment exists on this track.
+        if (req.ParentId is { } parentId)
+        {
+            var parentExists = await _db.TrackComments.AnyAsync(c => c.Id == parentId && c.TrackId == id, ct);
+            if (!parentExists) return BadRequest(new { message = "Parent comment not found on this track." });
+        }
+
+        var comment = new Models.TrackComment
+        {
+            TrackId = id,
+            UserId = userId,
+            Body = req.Body.Trim(),
+            ParentId = req.ParentId,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.TrackComments.Add(comment);
+        await _db.SaveChangesAsync(ct);
+
+        // Load the user for the response.
+        await _db.Entry(comment).Reference(c => c.User).LoadAsync(ct);
+
+        var dto = new TrackCommentDto(
+            comment.Id, comment.TrackId, _mapper.ToRef(comment.User), comment.Body,
+            comment.ParentId, comment.TimestampMs, comment.CreatedAt);
+
+        return CreatedAtAction(nameof(GetComments), new { id }, dto);
+    }
+
+    /// <summary>
+    /// Delete a comment. Only the comment author or an admin may delete.
+    /// </summary>
+    [HttpDelete("{id:guid}/comments/{commentId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteComment(Guid id, Guid commentId, CancellationToken ct = default)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        var comment = await _db.TrackComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.TrackId == id, ct);
+
+        if (comment is null) return NotFound();
+
+        var isAdmin = User.IsInRole("Admin");
+        if (comment.UserId != userId && !isAdmin)
+            return StatusCode(403, new { message = "You can only delete your own comments." });
+
+        // Also delete replies to this comment.
+        var replies = await _db.TrackComments
+            .Where(c => c.ParentId == commentId)
+            .ToListAsync(ct);
+        _db.TrackComments.RemoveRange(replies);
+        _db.TrackComments.Remove(comment);
+        await _db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
     private async Task<ActionResult<IEnumerable<TrackDto>>> TrendingFallback(int limit, CancellationToken ct)
     {
         var tracks = await BaseQuery()

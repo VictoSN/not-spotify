@@ -17,6 +17,7 @@ import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { Spinner } from '@/components/ui/Spinner'
 import { LyricsView } from '@/components/player/LyricsView'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { CommentSection } from '@/components/comments/CommentSection'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
@@ -209,12 +210,16 @@ export function TrackDetailPage() {
 
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4 pb-12">
-        {/* Left: Lyrics */}
-        <section>
-          <h2 className="text-2xl font-bold text-primary mb-4">Lyrics</h2>
-          {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
-          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
-        </section>
+        {/* Left: Lyrics + Comments */}
+        <div>
+          <section className="mb-10">
+            <h2 className="text-2xl font-bold text-primary mb-4">Lyrics</h2>
+            {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
+            <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
+          </section>
+
+          <CommentSection trackId={track.id} trackTitle={track.title} />
+        </div>
 
         {/* Right: Artist card */}
         <aside>

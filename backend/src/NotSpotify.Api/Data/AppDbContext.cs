@@ -32,6 +32,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<TrackComment> TrackComments => Set<TrackComment>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -363,6 +364,29 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             // Bell query: "my notifications, newest first" + unread filter.
             e.HasIndex(x => new { x.UserId, x.CreatedAt });
             e.HasIndex(x => new { x.UserId, x.IsRead });
+        });
+
+        b.Entity<TrackComment>(e =>
+        {
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Parent)
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.Property(x => x.Body).HasMaxLength(1000).IsRequired();
+
+            // "Comments for track X, newest first" — the primary read query.
+            e.HasIndex(x => new { x.TrackId, x.CreatedAt });
         });
     }
 }

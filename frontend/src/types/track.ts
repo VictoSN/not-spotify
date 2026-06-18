@@ -24,3 +24,19 @@ export interface Track {
   reviewNote?: string | null
   lyrics?: string | null
 }
+
+export interface UserRef {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
+
+export interface TrackComment {
+  id: string
+  trackId: string
+  user: UserRef
+  body: string
+  parentId: string | null
+  timestampMs: number | null
+  createdAt: string
+}

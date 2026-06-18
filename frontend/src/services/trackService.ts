@@ -1,4 +1,4 @@
-import type { Track } from '@/types/track'
+import type { Track, TrackComment } from '@/types/track'
 import { api } from './api'
 
 function downloadFilename(contentDisposition: string | undefined, fallback: string): string {
@@ -165,5 +165,24 @@ export const trackService = {
   async getLyrics(id: string): Promise<{ lyrics: string | null; syncedLyrics: string | null; source: string }> {
     const res = await api.get<{ lyrics: string | null; syncedLyrics: string | null; source: string }>(`/tracks/${id}/lyrics`)
     return res.data
+  },
+
+  async getComments(trackId: string, limit = 50): Promise<TrackComment[]> {
+    const res = await api.get<TrackComment[]>(`/tracks/${trackId}/comments`, { params: { limit } })
+    return res.data
+  },
+
+  async getCommentReplies(trackId: string, commentId: string): Promise<TrackComment[]> {
+    const res = await api.get<TrackComment[]>(`/tracks/${trackId}/comments/${commentId}/replies`)
+    return res.data
+  },
+
+  async postComment(trackId: string, body: string, parentId?: string): Promise<TrackComment> {
+    const res = await api.post<TrackComment>(`/tracks/${trackId}/comments`, { body, parentId: parentId ?? null })
+    return res.data
+  },
+
+  async deleteComment(trackId: string, commentId: string): Promise<void> {
+    await api.delete(`/tracks/${trackId}/comments/${commentId}`)
   },
 }

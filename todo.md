@@ -30,7 +30,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **Genre browse playlists + tracks** — `/genres/{slug}/playlists` + genre detail rows for public playlists and popular tracks. *(Mood/activity tagging remains migration-gated above.)*
 - [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
 - [x] **Mood / activity browse** — `/moods` search-backed rows, with mood-like browse cards routed there. *(Tag taxonomy remains migration-gated above.)*
-- [ ] **Track comments** (non-timed) — precursor to waveform timed comments.
+- [x] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
 - [ ] **Reposts** — extension of the follow graph.

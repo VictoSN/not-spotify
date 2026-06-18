@@ -10,6 +10,7 @@ import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useJamStore } from '@/stores/jamStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import { useTranslation } from '@/i18n/useTranslation'
 
 // Inline SVG: rectangle with small inset rectangle â€” standard PiP icon
 function PipIcon({ className }: { className?: string }) {
@@ -22,6 +23,7 @@ function PipIcon({ className }: { className?: string }) {
 }
 
 export function BottomPlayerBar() {
+  const { t } = useTranslation()
   const { toggleNowPlaying, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
   const jamRole = useJamStore((s) => s.role)
   const startHosting = useJamStore((s) => s.startHosting)
@@ -44,7 +46,7 @@ export function BottomPlayerBar() {
           className="flex items-center gap-3 px-3 h-16 cursor-pointer"
           onClick={toggleNowPlaying}
           role="button"
-          aria-label="Open now playing"
+          aria-label={t('player.openNowPlaying')}
         >
           <img
             src={currentTrack.album.coverUrl}
@@ -63,7 +65,7 @@ export function BottomPlayerBar() {
               else resume()
             }}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-page hover:scale-105 active:scale-95 transition-all shrink-0"
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? t('player.pause') : t('player.play')}
           >
             {isPlaying
               ? <PauseIcon className="w-5 h-5" />
@@ -98,9 +100,9 @@ export function BottomPlayerBar() {
           <button
             onClick={toggleKaraoke}
             className={`transition-all hover:scale-110 active:scale-90 ${isKaraokeOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-            aria-label="Lyrics"
+            aria-label={t('player.lyrics')}
             aria-pressed={isKaraokeOpen}
-            title="Lyrics"
+            title={t('player.lyrics')}
           >
             <MicrophoneIcon className="w-5 h-5" />
           </button>
@@ -109,9 +111,9 @@ export function BottomPlayerBar() {
         <button
           onClick={() => (jamRole === 'host' ? stopJam() : startHosting())}
           className={`hidden sm:block transition-all hover:scale-110 active:scale-90 ${jamRole === 'host' ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-          aria-label={jamRole === 'host' ? 'End jam' : 'Start a jam (listen along)'}
+          aria-label={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
           aria-pressed={jamRole === 'host'}
-          title={jamRole === 'host' ? 'End jam' : 'Start a jam (listen along)'}
+          title={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
         >
           <UserGroupIcon className="w-5 h-5" />
         </button>
@@ -120,8 +122,8 @@ export function BottomPlayerBar() {
           <button
             onClick={enterPip}
             className="hidden sm:block transition-all hover:scale-110 active:scale-90 text-secondary hover:text-primary"
-            aria-label="Picture in picture"
-            title="Picture in picture"
+            aria-label={t('player.pip')}
+            title={t('player.pip')}
           >
             <PipIcon className="w-5 h-5" />
           </button>
@@ -129,9 +131,9 @@ export function BottomPlayerBar() {
         <Link
           to="/queue"
           className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-          aria-label="Open queue"
+          aria-label={t('player.queue')}
           aria-current={queueOpen ? 'page' : undefined}
-          title="Queue"
+          title={t('player.queue')}
         >
           <QueueListIcon className="w-5 h-5" />
         </Link>

@@ -16,6 +16,7 @@ import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 const NP_KEY = 'ns-nowplaying-width'
@@ -56,6 +57,7 @@ type ArtistData = { artistId: string; artist: Artist | null; related: Track[] }
 type AlbumData = { albumId: string; album: Album | null }
 
 export function NowPlayingPanel() {
+  const { t } = useTranslation()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const queue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
@@ -153,8 +155,8 @@ export function NowPlayingPanel() {
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
-          aria-label="Expand now playing"
-          title="Expand now playing"
+          aria-label={t('np.expand')}
+          title={t('np.expand')}
         >
           {currentTrack && (
             <img
@@ -173,18 +175,18 @@ export function NowPlayingPanel() {
     return (
       <aside style={{ width }} className={panelClass}>
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-base font-bold text-primary">Now playing</h2>
+          <h2 className="text-base font-bold text-primary">{t('np.title')}</h2>
           <button
             onClick={() => setNowPlayingCollapsed(true)}
             className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label="Collapse now playing"
-            title="Collapse now playing"
+            aria-label={t('np.collapse')}
+            title={t('np.collapse')}
           >
             <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">
-          Play a song to see what's playing, related tracks and artist info here.
+          {t('np.empty')}
         </p>
         <NowPlayingDragHandle onMouseDown={onDragStart} />
       </aside>
@@ -228,8 +230,8 @@ export function NowPlayingPanel() {
           <button
             onClick={() => setNowPlayingCollapsed(true)}
             className="ml-2 shrink-0 rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label="Collapse now playing"
-            title="Collapse now playing"
+            aria-label={t('np.collapse')}
+            title={t('np.collapse')}
           >
             <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
@@ -258,7 +260,7 @@ export function NowPlayingPanel() {
               </Link>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? 'Unlike' : 'Like'}>
+              <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? t('player.unlike') : t('player.like')}>
                 {isLiked ? (
                   <HeartSolid className="w-6 h-6 text-accent" />
                 ) : (
@@ -275,7 +277,7 @@ export function NowPlayingPanel() {
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (
-          <PanelSection title="Recommended" subtitle="Based on this song">
+          <PanelSection title={t('np.recommended')} subtitle={t('np.recommendedSub')}>
             <div className="flex flex-col gap-1">
               {relatedTracks.map((track) => (
                 <TrackCard key={track.id} track={track} queue={related} />
@@ -291,7 +293,7 @@ export function NowPlayingPanel() {
           </div>
         ) : (
           artist && (
-            <PanelSection title="About the artist">
+            <PanelSection title={t('np.aboutArtist')}>
               <div className="relative rounded-lg overflow-hidden bg-elevated">
                 {(artist.headerImageUrl || artist.imageUrl) && (
                   <img
@@ -308,12 +310,12 @@ export function NowPlayingPanel() {
                     {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-secondary">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
+                    <p className="text-xs text-secondary">{t('np.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
                     <button
                       onClick={toggleFollow}
                       className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
                     >
-                      {isFollowing ? 'Following' : 'Follow'}
+                      {isFollowing ? t('np.following') : t('np.follow')}
                     </button>
                   </div>
                   {artist.bio && (
@@ -326,7 +328,7 @@ export function NowPlayingPanel() {
         )}
 
         {/* Credits */}
-        <PanelSection title="Credits">
+        <PanelSection title={t('np.credits')}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
@@ -336,7 +338,7 @@ export function NowPlayingPanel() {
                 >
                   {currentTrack.artist.name}
                 </Link>
-                <p className="text-xs text-secondary">Main Artist</p>
+                <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
               </div>
               {artist && (
                 <button
@@ -350,7 +352,7 @@ export function NowPlayingPanel() {
             {album?.label && (
               <div>
                 <p className="text-sm font-medium text-primary truncate">{album.label}</p>
-                <p className="text-xs text-secondary">Label</p>
+                <p className="text-xs text-secondary">{t('np.label')}</p>
               </div>
             )}
             {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
@@ -358,7 +360,7 @@ export function NowPlayingPanel() {
         </PanelSection>
 
         {/* Next in queue */}
-        <PanelSection title="Next in queue">
+        <PanelSection title={t('np.nextInQueue')}>
           {upNext.length > 0 ? (
             <div className="flex flex-col gap-1">
               {upNext.slice(0, 10).map((track, upNextIdx) => {
@@ -401,7 +403,7 @@ export function NowPlayingPanel() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-secondary">Nothing queued up next.</p>
+            <p className="text-sm text-secondary">{t('np.queueEmpty')}</p>
           )}
         </PanelSection>
       </div>

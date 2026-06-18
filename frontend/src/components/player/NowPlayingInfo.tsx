@@ -3,9 +3,11 @@ import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { useTranslation } from '@/i18n/useTranslation'
 import { StarRating } from './StarRating'
 
 export function NowPlayingInfo() {
+  const { t } = useTranslation()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
 
@@ -42,7 +44,7 @@ export function NowPlayingInfo() {
           <StarRating track={currentTrack} />
         </div>
       </div>
-      <button onClick={toggleLike} aria-label={isLiked ? 'Unlike' : 'Like'}>
+      <button onClick={toggleLike} aria-label={isLiked ? t('player.unlike') : t('player.like')}>
         {isLiked ? (
           <HeartSolid className="w-4 h-4 text-accent" />
         ) : (

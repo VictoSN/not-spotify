@@ -13,12 +13,14 @@ import {
   saveEqualizerSettings,
 } from '@/services/equalizerPrefs'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 const RATES = [1, 1.25, 1.5, 2, 0.75]
 const TIMER_OPTIONS = [15, 30, 45, 60]
 
 export function EqualizerButton() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [settings, setSettings] = useState(getEqualizerSettings)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -63,9 +65,9 @@ export function EqualizerButton() {
           'transition-all hover:scale-110 active:scale-90',
           active ? 'text-accent' : 'text-secondary hover:text-primary',
         )}
-        aria-label="Equalizer"
+        aria-label={t('player.equalizer')}
         aria-pressed={active}
-        title="Equalizer"
+        title={t('player.equalizer')}
       >
         <AdjustmentsHorizontalIcon className="w-5 h-5" />
       </button>
@@ -75,9 +77,9 @@ export function EqualizerButton() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-full right-0 z-50 mb-3 w-72 rounded-md border border-secondary/10 bg-elevated p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">Equalizer</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">{t('player.equalizer')}</p>
               <select
-                aria-label="Equalizer preset"
+                aria-label={t('player.eq.preset')}
                 value={settings.preset}
                 onChange={(e) => applyPreset(e.target.value as EqualizerPresetId)}
                 className="rounded-md border border-secondary/20 bg-surface px-2 py-1 text-xs font-semibold text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
@@ -87,7 +89,7 @@ export function EqualizerButton() {
                     {preset.label}
                   </option>
                 ))}
-                <option value="custom">Custom</option>
+                <option value="custom">{t('player.eq.custom')}</option>
               </select>
             </div>
 
@@ -101,7 +103,7 @@ export function EqualizerButton() {
                     max={12}
                     step={1}
                     onValueChange={(value) => setGain(i, value)}
-                    aria-label={`${band.label} gain`}
+                    aria-label={t('player.eq.bandGain', { band: band.label })}
                     trackClassName="bg-surface"
                     thumbClassName="opacity-100 md:opacity-100"
                   />
@@ -120,6 +122,7 @@ export function EqualizerButton() {
 
 /** Playback-speed cycler — shows the current rate, clicks advance through RATES. */
 export function PlaybackSpeedButton() {
+  const { t } = useTranslation()
   const playbackRate = usePlayerStore((s) => s.playbackRate)
   const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -132,8 +135,8 @@ export function PlaybackSpeedButton() {
       className={`w-9 text-xs font-bold tabular-nums transition-all hover:scale-110 active:scale-90 ${
         playbackRate !== 1 ? 'text-accent' : 'text-secondary hover:text-primary'
       }`}
-      aria-label={`Playback speed ${playbackRate}x — click for ${next}x`}
-      title={`Playback speed (${playbackRate}×)`}
+      aria-label={t('player.speed.aria', { rate: playbackRate, next })}
+      title={t('player.speed.title', { rate: playbackRate })}
     >
       {playbackRate}×
     </button>
@@ -142,6 +145,7 @@ export function PlaybackSpeedButton() {
 
 /** Sleep timer — moon icon with a small popover; pauses playback when it elapses. */
 export function SleepTimerButton() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const sleepTimerEndsAt = usePlayerStore((s) => s.sleepTimerEndsAt)
@@ -169,9 +173,9 @@ export function SleepTimerButton() {
       <button
         onClick={() => setOpen((v) => !v)}
         className={`transition-all hover:scale-110 active:scale-90 ${active ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-        aria-label={active ? `Sleep timer: ${minutesLeft} min left` : 'Sleep timer'}
+        aria-label={active ? t('player.sleep.left', { n: minutesLeft ?? 0 }) : t('player.sleep')}
         aria-pressed={active}
-        title={active ? `Sleep timer: ~${minutesLeft} min left` : 'Sleep timer'}
+        title={active ? t('player.sleep.left', { n: minutesLeft ?? 0 }) : t('player.sleep')}
       >
         {active ? <MoonSolid className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
       </button>
@@ -181,7 +185,7 @@ export function SleepTimerButton() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute bottom-full right-0 z-50 mb-3 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-2xl">
             <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-secondary">
-              Sleep timer
+              {t('player.sleep')}
             </p>
             {TIMER_OPTIONS.map((m) => (
               <button
@@ -189,7 +193,7 @@ export function SleepTimerButton() {
                 onClick={() => pick(m)}
                 className="block w-full px-3 py-2 text-left text-sm font-semibold text-primary transition-colors hover:bg-surface"
               >
-                {m} minutes
+                {t('player.sleep.minutes', { n: m })}
               </button>
             ))}
             {active && (
@@ -199,7 +203,7 @@ export function SleepTimerButton() {
                   onClick={() => pick(null)}
                   className="block w-full px-3 py-2 text-left text-sm font-semibold text-accent transition-colors hover:bg-surface"
                 >
-                  Turn off ({minutesLeft} min left)
+                  {t('player.sleep.turnOff', { n: minutesLeft ?? 0 })}
                 </button>
               </>
             )}

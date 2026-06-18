@@ -5,6 +5,7 @@ import type { TrackComment } from '@/types/track'
 import { trackService } from '@/services/trackService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useTranslation } from '@/i18n/useTranslation'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
 import { notify } from '@/utils/toast'
@@ -31,6 +32,7 @@ function CommentRow({
   const [replies, setReplies] = useState<TrackComment[]>([])
   const [repliesOpen, setRepliesOpen] = useState(false)
   const [loadingReplies, setLoadingReplies] = useState(false)
+  const { t } = useTranslation()
 
   const loadReplies = useCallback(async () => {
     if (repliesOpen) {
@@ -83,16 +85,16 @@ function CommentRow({
               className="text-xs text-secondary hover:text-primary transition-colors flex items-center gap-1"
             >
               <ChatBubbleLeftIcon className="w-3.5 h-3.5" />
-              Reply
+              {t('track.reply')}
             </button>
             {isOwner && (
               <button
                 onClick={() => onDelete(comment.id)}
                 className="text-xs text-secondary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 flex items-center gap-1"
-                aria-label="Delete comment"
+                aria-label={t('track.delete')}
               >
                 <TrashIcon className="w-3.5 h-3.5" />
-                Delete
+                {t('track.delete')}
               </button>
             )}
           </div>
@@ -105,14 +107,14 @@ function CommentRow({
           onClick={loadReplies}
           className="text-xs text-secondary hover:text-primary transition-colors mb-1"
         >
-          {repliesOpen ? 'Hide replies' : `View replies`}
+          {repliesOpen ? t('track.hideReplies') : t('track.viewReplies')}
         </button>
         {repliesOpen && (
           <div className="border-l-2 border-elevated pl-4">
             {loadingReplies ? (
               <Spinner size="sm" className="py-2" />
             ) : replies.length === 0 ? (
-              <p className="text-xs text-secondary py-2">No replies yet.</p>
+              <p className="text-xs text-secondary py-2">{t('track.noReplies')}</p>
             ) : (
               replies.map((r) => (
                 <div key={r.id} className="flex gap-3 py-2">
@@ -158,6 +160,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
   const [posting, setPosting] = useState(false)
   const [replyingTo, setReplyingTo] = useState<TrackComment | null>(null)
 
+  const { t } = useTranslation()
   const { isAuthenticated, user } = useAuthStore()
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
 
@@ -180,7 +183,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
   const handlePost = async () => {
     if (!body.trim()) return
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Sign in to leave a comment' })
+      openAuthPrompt({ title: t('track.signInToComment') })
       return
     }
     setPosting(true)
@@ -191,16 +194,15 @@ export function CommentSection({ trackId, trackTitle }: Props) {
         replyingTo?.id,
       )
       if (replyingTo) {
-        // Refresh the parent's replies — simpler to just re-fetch all
         setComments((prev) => [...prev])
         setReplyingTo(null)
       } else {
         setComments((prev) => [newComment, ...prev])
       }
       setBody('')
-      notify.success(replyingTo ? 'Reply posted' : 'Comment posted')
+      notify.success(replyingTo ? t('track.replyPosted') : t('track.commentPosted'))
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Could not post comment')
+      notify.error(err?.response?.data?.message || t('common.error'))
     } finally {
       setPosting(false)
     }
@@ -210,38 +212,37 @@ export function CommentSection({ trackId, trackTitle }: Props) {
     try {
       await trackService.deleteComment(trackId, commentId)
       setComments((prev) => prev.filter((c) => c.id !== commentId))
-      notify.success('Comment deleted')
+      notify.success(t('track.commentDeleted'))
     } catch (err: any) {
-      notify.error(err?.response?.data?.message || 'Could not delete comment')
+      notify.error(err?.response?.data?.message || t('common.error'))
     }
   }
 
   const handleReply = (parent: TrackComment) => {
     if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Sign in to reply' })
+      openAuthPrompt({ title: t('track.signInToReply') })
       return
     }
     setReplyingTo(parent)
-    // Focus the input
     const input = document.getElementById('comment-input')
     input?.focus()
   }
 
   return (
     <section>
-      <h2 className="text-2xl font-bold text-primary mb-4">Comments</h2>
+      <h2 className="text-2xl font-bold text-primary mb-4">{t('track.comments')}</h2>
 
       {/* Comment form */}
       <div className="mb-6">
         {replyingTo && (
           <div className="flex items-center gap-2 mb-2 text-sm text-secondary">
-            <span>Replying to</span>
+            <span>{t('track.replyTo')}</span>
             <span className="font-semibold text-primary">{replyingTo.user.name}</span>
             <button
               onClick={() => setReplyingTo(null)}
               className="text-accent hover:underline text-xs"
             >
-              Cancel
+              {t('track.cancelReply')}
             </button>
           </div>
         )}
@@ -263,9 +264,9 @@ export function CommentSection({ trackId, trackTitle }: Props) {
               placeholder={
                 isAuthenticated
                   ? replyingTo
-                    ? 'Write a reply...'
-                    : `What do you think of "${trackTitle}"?`
-                  : 'Sign in to leave a comment'
+                    ? t('track.reply')
+                    : t('track.writeComment', { title: trackTitle })
+                  : t('track.signInToComment')
               }
               maxLength={1000}
               rows={3}
@@ -284,7 +285,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
                 disabled={!body.trim() || posting}
                 className="px-4 py-1.5 rounded-full bg-accent hover:bg-accent/80 disabled:opacity-50 text-white text-sm font-semibold transition-colors"
               >
-                {posting ? 'Posting...' : replyingTo ? 'Reply' : 'Comment'}
+                {posting ? t('track.posting') : replyingTo ? t('track.reply') : t('track.postComment')}
               </button>
             </div>
           </div>
@@ -298,7 +299,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
         </div>
       ) : comments.length === 0 ? (
         <p className="text-secondary text-sm py-8 text-center">
-          No comments yet. Be the first to share your thoughts!
+          {t('track.noComments')}
         </p>
       ) : (
         <div className="divide-y divide-elevated">

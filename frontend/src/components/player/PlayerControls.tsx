@@ -23,13 +23,6 @@ export function PlayerControls() {
     cycleRepeat,
   } = usePlayerStore()
 
-  const { t } = useTranslation()
-
-  const repeatLabel =
-    repeatMode === 'one' ? t('player.repeatOne')
-    : repeatMode === 'all' ? t('player.repeatAll')
-    : t('player.repeatOff')
-
   return (
     <div className="grid grid-cols-[20px_20px_36px_20px_20px] items-center justify-items-center gap-5">
       <button
@@ -86,11 +79,7 @@ export function PlayerControls() {
             ? 'text-accent'
             : 'text-secondary hover:text-primary',
         )}
-<<<<<<< HEAD
-        aria-label={`${t('player.repeat')}: ${repeatLabel}`}
-=======
         aria-label={`${t('player.repeat')}: ${t('player.repeat.' + repeatMode)}`}
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
       >
         <ArrowPathIcon className="w-4 h-4" />
         {repeatMode === 'one' && (

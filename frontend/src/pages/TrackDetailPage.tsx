@@ -37,7 +37,6 @@ export function TrackDetailPage() {
 
   useDocumentTitle(track ? `${track.title} · ${track.artist.name}` : null)
 
-  const { t } = useTranslation()
   const heroColor = useDominantColor(track?.album.coverUrl)
   const playWithGate = usePlaybackGate()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
@@ -115,11 +114,7 @@ export function TrackDetailPage() {
   }
 
   if (loadError || !track) {
-<<<<<<< HEAD
-    return <div className="p-8 text-secondary">{t('track.notFound')}</div>
-=======
     return <div className="p-8 text-secondary">{t('detail.songNotFound')}</div>
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
   }
 
   const releaseYear = track.album.releaseDate.slice(0, 4)
@@ -144,11 +139,7 @@ export function TrackDetailPage() {
 
         {/* Meta */}
         <div className="min-w-0 pb-2">
-<<<<<<< HEAD
-          <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">{t('track.song')}</p>
-=======
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">{t('detail.song')}</p>
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-3 break-words">
             {track.title}
             {track.explicit && (
@@ -183,11 +174,7 @@ export function TrackDetailPage() {
             <span className="text-secondary">·</span>
             <span className="text-secondary">{formatMs(track.durationMs)}</span>
             <span className="text-secondary">·</span>
-<<<<<<< HEAD
-            <span className="text-secondary">{t('track.plays', { n: formatNumber(track.playCount) })}</span>
-=======
             <span className="text-secondary">{t('detail.plays', { n: formatNumber(track.playCount) })}</span>
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           </div>
         </div>
       </div>
@@ -234,11 +221,10 @@ export function TrackDetailPage() {
 
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4 pb-12">
-<<<<<<< HEAD
         {/* Left: Lyrics + Comments */}
         <div>
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-primary mb-4">{t('track.lyrics')}</h2>
+            <h2 className="text-2xl font-bold text-primary mb-4">{t('detail.lyrics')}</h2>
             {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
             <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
           </section>
@@ -251,14 +237,6 @@ export function TrackDetailPage() {
             onSeek={handleSeek}
           />
         </div>
-=======
-        {/* Left: Lyrics */}
-        <section>
-          <h2 className="text-2xl font-bold text-primary mb-4">{t('detail.lyrics')}</h2>
-          {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
-          <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
-        </section>
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
 
         {/* Right: Artist card */}
         <aside>
@@ -275,11 +253,7 @@ export function TrackDetailPage() {
             />
             <div className="min-w-0">
               <p className="text-xs text-secondary uppercase tracking-wider font-semibold mb-0.5">
-<<<<<<< HEAD
-                {t('topbar.result.artist')}
-=======
                 {t('detail.artistLabel')}
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
               </p>
               <p className="font-bold text-primary group-hover:underline truncate">
                 {track.artist.name}

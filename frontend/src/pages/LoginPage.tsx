@@ -22,7 +22,6 @@ export function LoginPage() {
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
-  const { t } = useTranslation()
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
@@ -55,13 +54,8 @@ export function LoginPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
           <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
-<<<<<<< HEAD
-          <h1 className="text-5xl font-black leading-tight text-primary">Welcome back</h1>
-          <p className="mt-3 text-sm font-medium text-secondary">{t('auth.login')} with your account or continue with a provider.</p>
-=======
           <h1 className="text-5xl font-black leading-tight text-primary">{t('auth.login.title')}</h1>
           <p className="mt-3 text-sm font-medium text-secondary">{t('auth.login.subtitle')}</p>
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
         </div>
 
         <SocialAuthButtons
@@ -124,11 +118,7 @@ export function LoginPage() {
           )}
 
           <Button type="submit" size="lg" className="mt-2 w-full" disabled={isLoading}>
-<<<<<<< HEAD
-            {isLoading ? <Spinner size="sm" /> : t('auth.loginButton')}
-=======
             {isLoading ? <Spinner size="sm" /> : t('auth.login.submit')}
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           </Button>
         </form>
 
@@ -153,15 +143,9 @@ export function LoginPage() {
         )}
 
         <div className="mt-8 text-center">
-<<<<<<< HEAD
-          <p className="text-secondary text-sm">{t('auth.noAccount')}</p>
-          <Link to="/signup" className="mt-2 inline-flex text-base font-black text-primary transition-colors hover:text-accent">
-            {t('auth.signupLink')}
-=======
           <p className="text-secondary text-sm">{t('auth.login.noAccount')}</p>
           <Link to="/signup" className="mt-2 inline-flex text-base font-black text-primary transition-colors hover:text-accent">
             {t('auth.login.signupLink')}
->>>>>>> dfcb47679fe886229488a4a8db238dbce172d7c8
           </Link>
         </div>
       </div>

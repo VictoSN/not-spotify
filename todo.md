@@ -17,7 +17,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **Smart playlists** — **done (2026-06-18)**. JSONB rules on `Playlists` with AND-combined genre / minimum rating / minimum play-count / recently-added filters plus a result cap. Tracks resolve dynamically from the approved catalogue; Library has a smart-playlist builder, detail pages show/edit rule chips, and manual add/remove is disabled while rules are active. Migration is idempotent and covered by backend unit tests.
 - [ ] **Waveform + timed comments** — Med–High. ffmpeg peak extraction at upload + a comments table pinned to timestamps. SoundCloud signature.
 - [x] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
-- [ ] **Mood / activity tagging taxonomy** — Med. Optional hardening beyond the shipped search-backed mood page; add tag taxonomy/joins for tracks/playlists + admin tagging.
+- [x] **Mood / activity tagging taxonomy** — **done (2026-06-19)**. Real `MoodTags` taxonomy (mood vs activity `Kind`, color, heroicon, search-query fallback) with `TrackMoodTags` / `PlaylistMoodTags` join tables. Idempotent migration seeds 9 canonical tags + a one-time genre-derived backfill so `/moods` has content on the shared DB. Public `MoodsController` (list/get/tracks/playlists), admin `AdminMoodTagsController` (taxonomy CRUD + track/playlist assignment). Frontend: `/moods` loads the real taxonomy (grouped, search fallback) and links to a new `/moods/:slug` detail page; admin track form has a mood-tag chip picker.
 
 ### 1B — No migration (frontend / query only)
 - [x] **Admin restructure** *(Account 2)* — dedicated admin sidebar/topbar layout (`/adminlogin` guard already exists).
@@ -29,7 +29,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **PiP fast-forward / rewind** — Media Session seek handlers drive the real audio player and clamp to track duration.
 - [x] **Genre browse playlists + tracks** — `/genres/{slug}/playlists` + genre detail rows for public playlists and popular tracks. *(Mood/activity tagging remains migration-gated above.)*
 - [x] **Editorial / featured playlists** — admin-curated via public playlists owned by Admin users; falls back to top public playlists (no migration/flag).
-- [x] **Mood / activity browse** — `/moods` search-backed rows, with mood-like browse cards routed there. *(Tag taxonomy remains migration-gated above.)*
+- [x] **Mood / activity browse** — `/moods` now backed by the real mood/activity tag taxonomy (see 1A) with a search fallback; mood-like browse cards route there.
 - [x] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).

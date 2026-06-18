@@ -7,6 +7,7 @@ import { api } from '@/services/api'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
+import { useTranslation } from '@/i18n/useTranslation'
 import { useEffect, useState } from 'react'
 
 interface FormValues {
@@ -25,6 +26,7 @@ export function SignupPage() {
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
@@ -44,66 +46,67 @@ export function SignupPage() {
     <div className="min-h-screen bg-base px-4 py-8 text-primary">
       <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary transition-colors">
         <ArrowLeftIcon className="h-4 w-4" />
-        Back to home
+        {t('auth.backHome')}
       </Link>
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
         <div className="mb-8 flex flex-col items-center text-center">
           <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
-          <h1 className="text-5xl font-black leading-tight text-primary">Create your account</h1>
-          <p className="mt-3 text-sm font-medium text-secondary">Join with email or start with a provider.</p>
+          <h1 className="text-5xl font-black leading-tight text-primary">{t('auth.signup.title')}</h1>
+          <p className="mt-3 text-sm font-medium text-secondary">{t('auth.signup.subtitle')}</p>
         </div>
 
         <SocialAuthButtons
           onUnavailable={(provider) => {
-            setSocialNotice(`${provider[0].toUpperCase()}${provider.slice(1)} sign-up needs OAuth credentials before it can be enabled.`)
+            const name = `${provider[0].toUpperCase()}${provider.slice(1)}`
+            setSocialNotice(t('auth.signup.socialUnavailable', { provider: name }))
             clearError()
           }}
         />
 
         <div className="my-6 flex items-center gap-4">
           <div className="h-px flex-1 bg-elevated" />
-          <span className="text-sm font-bold text-primary">or</span>
+          <span className="text-sm font-bold text-primary">{t('auth.or')}</span>
           <div className="h-px flex-1 bg-elevated" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div>
-            <label className="block text-sm font-semibold text-primary mb-1">Name</label>
+            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.name')}</label>
             <input
               type="text"
-              {...register('name', { required: 'Name is required' })}
+              {...register('name', { required: t('auth.err.nameRequired') })}
               className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder="Your name"
+              placeholder={t('auth.namePlaceholder')}
             />
             {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-primary mb-1">Email</label>
+            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.email')}</label>
             <input
               type="email"
-              {...register('email', { required: 'Email is required' })}
+              {...register('email', { required: t('auth.err.emailRequired') })}
               className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder="email@example.com"
+              placeholder={t('auth.emailPlaceholder')}
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-primary mb-1">Password</label>
+            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.password')}</label>
             <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'}
-                {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
+                {...register('password', { required: t('auth.err.passwordRequired'), minLength: { value: 8, message: t('auth.err.passwordMin8') } })}
                 className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 pr-11 text-sm focus:outline-none transition-colors"
-                placeholder="Password (min 8 characters)"
+                placeholder={t('auth.signup.passwordPlaceholder')}
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                 tabIndex={-1}
-                aria-label={showPw ? 'Hide password' : 'Show password'}
+                aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
               >
                 {showPw ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
               </button>
@@ -112,23 +115,23 @@ export function SignupPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-primary mb-1">Confirm Password</label>
+            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.confirmPassword')}</label>
             <div className="relative">
               <input
                 type={showConfirmPw ? 'text' : 'password'}
                 {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: (v) => v === watch('password') || 'Passwords do not match',
+                  required: t('auth.err.confirmRequired'),
+                  validate: (v) => v === watch('password') || t('auth.err.passwordsNoMatch'),
                 })}
                 className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 pr-11 text-sm focus:outline-none transition-colors"
-                placeholder="Confirm password"
+                placeholder={t('auth.confirmPlaceholder')}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPw((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
                 tabIndex={-1}
-                aria-label={showConfirmPw ? 'Hide password' : 'Show password'}
+                aria-label={showConfirmPw ? t('auth.hidePassword') : t('auth.showPassword')}
               >
                 {showConfirmPw ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
               </button>
@@ -143,8 +146,8 @@ export function SignupPage() {
               className="mt-0.5 accent-accent w-4 h-4 shrink-0"
             />
             <div>
-              <p className="text-sm font-semibold text-primary">I want to be an artist</p>
-              <p className="text-xs text-secondary">Submits an application — admins will review and approve it</p>
+              <p className="text-sm font-semibold text-primary">{t('auth.signup.artistTitle')}</p>
+              <p className="text-xs text-secondary">{t('auth.signup.artistSub')}</p>
             </div>
           </label>
 
@@ -160,14 +163,14 @@ export function SignupPage() {
           )}
 
           <Button type="submit" size="lg" className="mt-2 w-full" disabled={isLoading}>
-            {isLoading ? <Spinner size="sm" /> : 'Sign up'}
+            {isLoading ? <Spinner size="sm" /> : t('auth.signup.submit')}
           </Button>
         </form>
 
         <div className="mt-8 text-center">
-          <p className="text-secondary text-sm">Already have an account?</p>
+          <p className="text-secondary text-sm">{t('auth.signup.haveAccount')}</p>
           <Link to="/login" className="mt-2 inline-flex text-base font-black text-primary transition-colors hover:text-accent">
-            Log in
+            {t('auth.signup.loginLink')}
           </Link>
         </div>
       </div>

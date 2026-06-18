@@ -16,6 +16,7 @@ import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 const NP_KEY = 'ns-nowplaying-width'
@@ -66,6 +67,7 @@ export function NowPlayingPanel() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
+  const { t } = useTranslation()
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
@@ -153,8 +155,8 @@ export function NowPlayingPanel() {
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
-          aria-label="Expand now playing"
-          title="Expand now playing"
+          aria-label={t('player.expandNowPlaying')}
+          title={t('player.expandNowPlaying')}
         >
           {currentTrack && (
             <img
@@ -173,18 +175,18 @@ export function NowPlayingPanel() {
     return (
       <aside style={{ width }} className={panelClass}>
         <div className="flex items-center justify-between p-4">
-          <h2 className="text-base font-bold text-primary">Now playing</h2>
+          <h2 className="text-base font-bold text-primary">{t('player.nowPlaying')}</h2>
           <button
             onClick={() => setNowPlayingCollapsed(true)}
             className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label="Collapse now playing"
-            title="Collapse now playing"
+            aria-label={t('player.collapseNowPlaying')}
+            title={t('player.collapseNowPlaying')}
           >
             <ChevronDoubleRightIcon className="w-5 h-5" />
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">
-          Play a song to see what's playing, related tracks and artist info here.
+          {t('player.emptyState')}
         </p>
         <NowPlayingDragHandle onMouseDown={onDragStart} />
       </aside>
@@ -275,7 +277,7 @@ export function NowPlayingPanel() {
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (
-          <PanelSection title="Recommended" subtitle="Based on this song">
+          <PanelSection title={t('player.recommended')} subtitle={t('player.basedOnSong')}>
             <div className="flex flex-col gap-1">
               {relatedTracks.map((track) => (
                 <TrackCard key={track.id} track={track} queue={related} />
@@ -291,7 +293,7 @@ export function NowPlayingPanel() {
           </div>
         ) : (
           artist && (
-            <PanelSection title="About the artist">
+            <PanelSection title={t('player.aboutArtist')}>
               <div className="relative rounded-lg overflow-hidden bg-elevated">
                 {(artist.headerImageUrl || artist.imageUrl) && (
                   <img
@@ -308,12 +310,12 @@ export function NowPlayingPanel() {
                     {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
                   </div>
                   <div className="flex items-center justify-between mt-1">
-                    <p className="text-xs text-secondary">{formatNumber(artist.monthlyListeners)} monthly listeners</p>
+                    <p className="text-xs text-secondary">{t('artist.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
                     <button
                       onClick={toggleFollow}
                       className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
                     >
-                      {isFollowing ? 'Following' : 'Follow'}
+                      {isFollowing ? t('artist.following') : t('artist.follow')}
                     </button>
                   </div>
                   {artist.bio && (
@@ -326,7 +328,7 @@ export function NowPlayingPanel() {
         )}
 
         {/* Credits */}
-        <PanelSection title="Credits">
+        <PanelSection title={t('player.credits')}>
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div className="min-w-0">
@@ -336,21 +338,21 @@ export function NowPlayingPanel() {
                 >
                   {currentTrack.artist.name}
                 </Link>
-                <p className="text-xs text-secondary">Main Artist</p>
+                <p className="text-xs text-secondary">{t('player.mainArtist')}</p>
               </div>
               {artist && (
                 <button
                   onClick={toggleFollow}
                   className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
                 >
-                  {isFollowing ? 'Following' : 'Follow'}
+                  {isFollowing ? t('artist.following') : t('artist.follow')}
                 </button>
               )}
             </div>
             {album?.label && (
               <div>
                 <p className="text-sm font-medium text-primary truncate">{album.label}</p>
-                <p className="text-xs text-secondary">Label</p>
+                <p className="text-xs text-secondary">{t('album.label')}</p>
               </div>
             )}
             {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
@@ -358,7 +360,7 @@ export function NowPlayingPanel() {
         </PanelSection>
 
         {/* Next in queue */}
-        <PanelSection title="Next in queue">
+        <PanelSection title={t('player.nextInQueue')}>
           {upNext.length > 0 ? (
             <div className="flex flex-col gap-1">
               {upNext.slice(0, 10).map((track, upNextIdx) => {
@@ -401,7 +403,7 @@ export function NowPlayingPanel() {
               })}
             </div>
           ) : (
-            <p className="text-sm text-secondary">Nothing queued up next.</p>
+            <p className="text-sm text-secondary">{t('player.queueEmpty')}</p>
           )}
         </PanelSection>
       </div>

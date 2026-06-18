@@ -262,6 +262,66 @@ using (var scope = app.Services.CreateScope())
             ON ""UserFollows""(""FollowerId"");
     ");
 
+    // Ensure TrackComments table exists (same guard pattern — shared Supabase DB
+    // sometimes stamps EF migrations without applying the DDL).
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""TrackComments"" (
+            ""Id""          uuid NOT NULL,
+            ""TrackId""     uuid NOT NULL,
+            ""UserId""      uuid NOT NULL,
+            ""Body""        character varying(1000) NOT NULL,
+            ""ParentId""    uuid NULL,
+            ""TimestampMs"" bigint NULL,
+            ""CreatedAt""   timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_TrackComments"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_TrackComments_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_TrackComments_Tracks_TrackId""
+                FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_TrackComments_TrackComments_ParentId""
+                FOREIGN KEY (""ParentId"") REFERENCES ""TrackComments""(""Id"") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_TrackComments_TrackId_CreatedAt""
+            ON ""TrackComments""(""TrackId"", ""CreatedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_TrackComments_ParentId""
+            ON ""TrackComments""(""ParentId"");
+        CREATE INDEX IF NOT EXISTS ""IX_TrackComments_UserId""
+            ON ""TrackComments""(""UserId"");
+    ");
+
+    // Ensure Reposts table exists (same guard pattern).
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Reposts"" (
+            ""Id""         uuid NOT NULL,
+            ""UserId""     uuid NOT NULL,
+            ""TrackId""    uuid NULL,
+            ""AlbumId""    uuid NULL,
+            ""PlaylistId"" uuid NULL,
+            ""CreatedAt""  timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_Reposts"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_Reposts_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_Reposts_Tracks_TrackId""
+                FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_Reposts_Albums_AlbumId""
+                FOREIGN KEY (""AlbumId"") REFERENCES ""Albums""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_Reposts_Playlists_PlaylistId""
+                FOREIGN KEY (""PlaylistId"") REFERENCES ""Playlists""(""Id"") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_TrackId""
+            ON ""Reposts""(""UserId"", ""TrackId"") WHERE ""TrackId"" IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_AlbumId""
+            ON ""Reposts""(""UserId"", ""AlbumId"") WHERE ""AlbumId"" IS NOT NULL;
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_Reposts_UserId_PlaylistId""
+            ON ""Reposts""(""UserId"", ""PlaylistId"") WHERE ""PlaylistId"" IS NOT NULL;
+        CREATE INDEX IF NOT EXISTS ""IX_Reposts_UserId_CreatedAt""
+            ON ""Reposts""(""UserId"", ""CreatedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_Reposts_AlbumId""
+            ON ""Reposts""(""AlbumId"");
+        CREATE INDEX IF NOT EXISTS ""IX_Reposts_PlaylistId""
+            ON ""Reposts""(""PlaylistId"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

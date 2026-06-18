@@ -277,6 +277,15 @@ const en: Dict = {
   'player.rateTrack': 'Rate this track',
   'player.share': 'Share',
   'player.repost': 'Repost',
+  'player.expandNowPlaying': 'Expand now playing',
+  'player.collapseNowPlaying': 'Collapse now playing',
+  'player.emptyState': 'Play a song to see what\'s playing, related tracks and artist info here.',
+  'player.recommended': 'Recommended',
+  'player.basedOnSong': 'Based on this song',
+  'player.aboutArtist': 'About the artist',
+  'player.credits': 'Credits',
+  'player.mainArtist': 'Main Artist',
+  'player.nextInQueue': 'Next in queue',
 
   // Track detail
   'track.song': 'Song',
@@ -671,6 +680,15 @@ const es: Dict = {
   'player.rateTrack': 'Calificar canción',
   'player.share': 'Compartir',
   'player.repost': 'Republicar',
+  'player.expandNowPlaying': 'Expandir reproducción actual',
+  'player.collapseNowPlaying': 'Contraer reproducción actual',
+  'player.emptyState': 'Reproduce una canción para ver información, pistas relacionadas y el artista.',
+  'player.recommended': 'Recomendado',
+  'player.basedOnSong': 'Basado en esta canción',
+  'player.aboutArtist': 'Acerca del artista',
+  'player.credits': 'Créditos',
+  'player.mainArtist': 'Artista principal',
+  'player.nextInQueue': 'Siguiente en la cola',
 
   // Detalle de canción
   'track.song': 'Canción',
@@ -1065,6 +1083,15 @@ const fr: Dict = {
   'player.rateTrack': 'Noter ce titre',
   'player.share': 'Partager',
   'player.repost': 'Reposter',
+  'player.expandNowPlaying': 'Agrandir la lecture en cours',
+  'player.collapseNowPlaying': 'Réduire la lecture en cours',
+  'player.emptyState': 'Lancez un titre pour voir ce qui joue, les morceaux similaires et l\'artiste.',
+  'player.recommended': 'Recommandé',
+  'player.basedOnSong': 'Basé sur ce titre',
+  'player.aboutArtist': 'À propos de l\'artiste',
+  'player.credits': 'Crédits',
+  'player.mainArtist': 'Artiste principal',
+  'player.nextInQueue': 'À venir dans la file',
 
   // Détail du titre
   'track.song': 'Titre',

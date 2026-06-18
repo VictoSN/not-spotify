@@ -59,6 +59,15 @@ const en: Dict = {
   'detail.fansAlsoLike': 'Fans also like',
   'detail.about': 'About',
   'detail.followers': '{n} followers',
+  // ── Profile page ───────────────────────────────────────────────────────────
+  'profile.eyebrow': 'Profile',
+  'profile.publicPlaylists': '{n} Public Playlists',
+  'profile.following': '{n} Following',
+  'profile.edit': 'Edit profile',
+  'profile.topArtists': 'Top artists this month',
+  'profile.topTracks': 'Top tracks this month',
+  'profile.onlyVisible': 'Only visible to you',
+  'profile.publicPlaylistsHeader': 'Public playlists',
   // ── Now Playing panel ──────────────────────────────────────────────────────
   'np.title': 'Now playing',
   'np.expand': 'Expand now playing',
@@ -404,6 +413,15 @@ const es: Dict = {
   'detail.fansAlsoLike': 'A los fans también les gusta',
   'detail.about': 'Acerca de',
   'detail.followers': '{n} seguidores',
+  // ── Profile page ───────────────────────────────────────────────────────────
+  'profile.eyebrow': 'Perfil',
+  'profile.publicPlaylists': '{n} listas públicas',
+  'profile.following': '{n} siguiendo',
+  'profile.edit': 'Editar perfil',
+  'profile.topArtists': 'Tus artistas top este mes',
+  'profile.topTracks': 'Tus canciones top este mes',
+  'profile.onlyVisible': 'Solo visible para ti',
+  'profile.publicPlaylistsHeader': 'Listas públicas',
   // ── Now Playing panel ──────────────────────────────────────────────────────
   'np.title': 'Reproduciendo',
   'np.expand': 'Expandir reproducción actual',
@@ -749,6 +767,15 @@ const fr: Dict = {
   'detail.fansAlsoLike': 'Les fans aiment aussi',
   'detail.about': 'À propos',
   'detail.followers': '{n} abonnés',
+  // ── Profile page ───────────────────────────────────────────────────────────
+  'profile.eyebrow': 'Profil',
+  'profile.publicPlaylists': '{n} playlists publiques',
+  'profile.following': '{n} abonnements',
+  'profile.edit': 'Modifier le profil',
+  'profile.topArtists': 'Vos artistes du mois',
+  'profile.topTracks': 'Vos titres du mois',
+  'profile.onlyVisible': 'Visible uniquement par vous',
+  'profile.publicPlaylistsHeader': 'Playlists publiques',
   // ── Now Playing panel ──────────────────────────────────────────────────────
   'np.title': 'Lecture en cours',
   'np.expand': 'Développer la lecture en cours',

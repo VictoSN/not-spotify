@@ -878,7 +878,10 @@ public class MeController : ControllerBase
     [HttpPost("artist-profile/image")]
     [Authorize(Roles = "Artist")]
     [RequestSizeLimit(5_000_000)]
-    public async Task<ActionResult<ArtistDto>> UploadArtistProfileImage([FromForm] ArtistImageUploadRequest req, CancellationToken ct = default)
+    public async Task<ActionResult<ArtistDto>> UploadArtistProfileImage(
+        [FromForm] ArtistImageUploadRequest req,
+        [FromQuery] string type = "profile",
+        CancellationToken ct = default)
     {
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
@@ -896,7 +899,8 @@ public class MeController : ControllerBase
         if (!allowed.Contains(ext))
             return BadRequest(new { message = $"Unsupported file type '{ext}'." });
 
-        var key = $"images/artists/{Guid.NewGuid()}{ext}";
+        var folder = type == "header" ? "headers" : "images/artists";
+        var key = $"{folder}/{Guid.NewGuid()}{ext}";
         try
         {
             await using var stream = file.OpenReadStream();
@@ -908,8 +912,17 @@ public class MeController : ControllerBase
             return StatusCode(500, new { message = $"Upload failed: {ex.Message}" });
         }
 
-        artist.ImageKey = key;
-        artist.ImageUrl = null;
+        if (type == "header")
+        {
+            artist.HeaderImageKey = key;
+            artist.HeaderImageUrl = null;
+        }
+        else
+        {
+            artist.ImageKey = key;
+            artist.ImageUrl = null;
+        }
+
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(artist));
     }

@@ -69,6 +69,7 @@ export function ArtistDashboardPage() {
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [profileImageUploading, setProfileImageUploading] = useState(false)
+  const [headerImageUploading, setHeaderImageUploading] = useState(false)
 
   // Resubmit form state
   const [resubmitAlbumId, setResubmitAlbumId] = useState<string | null>(null)
@@ -555,6 +556,26 @@ export function ArtistDashboardPage() {
     }
   }
 
+  const handleHeaderImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setHeaderImageUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await api.post<ArtistProfile>('/me/artist-profile/image?type=header', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setArtistProfile(res.data)
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(msg ?? 'Failed to upload header image.')
+    } finally {
+      setHeaderImageUploading(false)
+      e.target.value = ''
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────────────────
 
   const openTrackForm = (albumId: string, trackCount: number) => {
@@ -617,7 +638,22 @@ export function ArtistDashboardPage() {
       {/* ── Profile card ──────────────────────────────────────────────────── */}
       <div className="bg-surface border border-elevated/40 rounded-xl overflow-hidden">
         {/* Header / banner strip */}
-        <div className="h-24 bg-gradient-to-r from-accent/30 via-accent/10 to-transparent" />
+        <label className="relative block h-24 cursor-pointer group overflow-hidden">
+          {headerImageUploading ? (
+            <div className="w-full h-full bg-elevated flex items-center justify-center">
+              <Spinner size="sm" />
+            </div>
+          ) : artistProfile?.headerImageUrl ? (
+            <img src={artistProfile.headerImageUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-accent/30 via-accent/10 to-transparent" />
+          )}
+          <div className="absolute inset-0 bg-black/20 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <PhotoIcon className="w-4 h-4 text-white" />
+            <span className="text-xs font-semibold text-white">Change banner</span>
+          </div>
+          <input type="file" accept="image/*" onChange={handleHeaderImageChange} className="hidden" disabled={headerImageUploading} />
+        </label>
 
         <div className="px-6 pb-6">
           {/* Avatar row */}

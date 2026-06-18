@@ -322,6 +322,24 @@ using (var scope = app.Services.CreateScope())
             ON ""Reposts""(""PlaylistId"");
     ");
 
+    // Ensure Playlist featured/sort columns exist (same guard pattern —
+    // shared Supabase DB sometimes stamps EF migrations without applying DDL).
+    await db.Database.ExecuteSqlRawAsync(@"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'Playlists' AND column_name = 'IsFeatured') THEN
+                ALTER TABLE ""Playlists"" ADD COLUMN ""IsFeatured"" boolean NOT NULL DEFAULT false;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'Playlists' AND column_name = 'SortOrder') THEN
+                ALTER TABLE ""Playlists"" ADD COLUMN ""SortOrder"" integer NOT NULL DEFAULT 0;
+            END IF;
+        END $$;
+        CREATE INDEX IF NOT EXISTS ""IX_Playlists_IsFeatured_SortOrder""
+            ON ""Playlists""(""IsFeatured"", ""SortOrder"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

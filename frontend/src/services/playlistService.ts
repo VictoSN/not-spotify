@@ -95,4 +95,15 @@ export const playlistService = {
     a.click()
     URL.revokeObjectURL(url)
   },
+
+  // ── Admin ──
+  async adminList(search?: string): Promise<Playlist[]> {
+    const res = await api.get<Playlist[]>('/admin/playlists', { params: search ? { search } : {} })
+    return res.data
+  },
+
+  async setFeatured(playlistId: string, isFeatured?: boolean, sortOrder?: number): Promise<Playlist> {
+    const res = await api.patch<Playlist>(`/admin/playlists/${playlistId}/feature`, { isFeatured, sortOrder })
+    return res.data
+  },
 }

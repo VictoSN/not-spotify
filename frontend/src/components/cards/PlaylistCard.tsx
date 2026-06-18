@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PlayIcon, HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+import { HeartIcon as HeartSolid, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { useHueStore } from '@/stores/hueStore'
 import { getDominantColor } from '@/hooks/useDominantColor'
@@ -76,7 +76,10 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
           )}
         </button>
       </div>
-      <p className="text-sm font-semibold text-primary truncate">{playlist.name}</p>
+      <p className="text-sm font-semibold text-primary truncate flex items-center gap-1">
+        {playlist.isFeatured && <StarIcon className="w-3.5 h-3.5 text-accent shrink-0" title="Featured" />}
+        <span className="truncate">{playlist.name}</span>
+      </p>
       {playlist.description && <p className="text-xs text-secondary mt-0.5 line-clamp-2">{playlist.description}</p>}
     </Link>
   )

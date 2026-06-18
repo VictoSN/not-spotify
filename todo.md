@@ -16,7 +16,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 ⚠️ Shared Supabase DB — coordinate first. **Always `dotnet build` before `dotnet run` after `migrations add`**, and prefer idempotent `CREATE … IF NOT EXISTS` migrations.
 - [ ] **Smart playlists** — Med. Rules engine (genre / rating / play-count / date-added); pairs with star ratings. Rules column on `Playlists`.
 - [ ] **Waveform + timed comments** — Med–High. ffmpeg peak extraction at upload + a comments table pinned to timestamps. SoundCloud signature.
-- [ ] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
+- [x] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
 - [ ] **Mood / activity tagging taxonomy** — Med. Optional hardening beyond the shipped search-backed mood page; add tag taxonomy/joins for tracks/playlists + admin tagging.
 
 ### 1B — No migration (frontend / query only)

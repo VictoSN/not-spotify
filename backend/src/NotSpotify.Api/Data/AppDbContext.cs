@@ -123,6 +123,10 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .WithMany(u => u.Playlists)
                 .HasForeignKey(x => x.OwnerId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            e.Property(x => x.IsFeatured).HasDefaultValue(false);
+            e.Property(x => x.SortOrder).HasDefaultValue(0);
+            e.HasIndex(x => new { x.IsFeatured, x.SortOrder });
         });
 
         b.Entity<UserSavedPlaylist>(e =>

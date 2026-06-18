@@ -8,6 +8,7 @@ import {
   ChevronRightIcon,
   ClipboardDocumentListIcon,
   MusicalNoteIcon,
+  QueueListIcon,
   RectangleStackIcon,
   ShieldCheckIcon,
   UserGroupIcon,
@@ -45,6 +46,7 @@ const navSections: { label: string; items: AdminNavItem[] }[] = [
       { to: '/admin/artists', label: 'Artists', description: 'Profiles and publishing status', icon: UserGroupIcon },
       { to: '/admin/albums', label: 'Albums', description: 'Releases and metadata', icon: RectangleStackIcon },
       { to: '/admin/tracks', label: 'Tracks', description: 'Audio, reviews, and stats', icon: MusicalNoteIcon },
+      { to: '/admin/playlists', label: 'Playlists', description: 'Featured flags and curation', icon: QueueListIcon },
     ],
   },
   {

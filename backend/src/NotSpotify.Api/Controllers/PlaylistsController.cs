@@ -89,7 +89,9 @@ public class PlaylistsController : ControllerBase
             q = q.Where(p => adminIds.Contains(p.OwnerId));
 
         var playlists = await q
-            .OrderByDescending(p => p.FollowerCount)
+            .OrderByDescending(p => p.IsFeatured)
+            .ThenBy(p => p.SortOrder)
+            .ThenByDescending(p => p.FollowerCount)
             .ThenByDescending(p => p.UpdatedAt)
             .Take(limit)
             .ToListAsync(ct);

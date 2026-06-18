@@ -19,6 +19,10 @@ export interface Playlist {
   isPublic: boolean
   /** Three-state visibility. Falls back to isPublic when absent. */
   visibility?: PlaylistVisibility
+  /** Admin-curated featured flag for homepage / browse priority. */
+  isFeatured?: boolean
+  /** Manual ordering weight — lower numbers appear first when featured. */
+  sortOrder?: number
   owner: UserRef
   collaborators?: UserRef[]
   /** Whether the current user is a collaborator (not the owner). */

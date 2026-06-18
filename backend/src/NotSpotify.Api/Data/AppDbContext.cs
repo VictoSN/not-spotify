@@ -33,6 +33,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<TrackComment> TrackComments => Set<TrackComment>();
+    public DbSet<Repost> Reposts => Set<Repost>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -387,6 +388,37 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // "Comments for track X, newest first" — the primary read query.
             e.HasIndex(x => new { x.TrackId, x.CreatedAt });
+        });
+
+        b.Entity<Repost>(e =>
+        {
+            // One repost per user per track/album/playlist — no duplicates.
+            e.HasIndex(x => new { x.UserId, x.TrackId }).IsUnique().HasFilter("\"TrackId\" IS NOT NULL");
+            e.HasIndex(x => new { x.UserId, x.AlbumId }).IsUnique().HasFilter("\"AlbumId\" IS NOT NULL");
+            e.HasIndex(x => new { x.UserId, x.PlaylistId }).IsUnique().HasFilter("\"PlaylistId\" IS NOT NULL");
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Album)
+                .WithMany()
+                .HasForeignKey(x => x.AlbumId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Playlist)
+                .WithMany()
+                .HasForeignKey(x => x.PlaylistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Feed query: "reposts by users I follow, newest first".
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
         });
     }
 }

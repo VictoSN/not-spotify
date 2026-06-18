@@ -33,7 +33,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [x] **Track comments** (non-timed) — precursor to waveform timed comments.
 - [x] **Full "Wrapped"** — year-end view on top of the existing `/stats` mini-Wrapped.
 - [x] **New-release / followed-artist notifications** — add producers for releases by followed artists (pairs with the follow graph).
-- [ ] **Reposts** — extension of the follow graph.
+- [x] **Reposts** — extension of the follow graph.
 - [x] **Share-to-chat rich cards** — send a track into 1:1 chat as a rich message. Track menu → "Share to chat" → friend picker modal sends a sentinel-token message (zero backend change); recipient's thread renders a rich `SharedTrackBubble` (cover/title/artist + play). `utils/chatShare.ts` encode/parse is unit-tested.
 - [x] **Playlist folders + pinning** — **done (2026-06-16)**, client-side / no migration. Pinning (`utils/pinnedLibrary.ts`) floats items to the top of the sidebar; **folders** (`utils/libraryFolders.ts`) are collapsible groups created via the Create dropdown (Playlist/Folder), renamed/deleted from a folder menu, with items moved in/out from each row's ⋯ menu (menu-based, **not** drag-and-drop). All localStorage; sidebar syncs on `ns-pinned-change` / `ns-folders-change`. *(Duplicate detection is moot — backend 409s duplicate adds.)*
 - [x] **Discover Weekly** — collaborative filtering over `PlayHistories`.

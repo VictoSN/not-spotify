@@ -164,6 +164,20 @@ public record TrackCommentDto(
 
 public record CreateCommentRequest(string Body, Guid? ParentId = null);
 
+public record RepostDto(
+    Guid Id,
+    UserRefDto User,
+    Guid? TrackId,
+    Guid? AlbumId,
+    Guid? PlaylistId,
+    TrackDto? Track,
+    AlbumDto? Album,
+    PlaylistSummaryDto? Playlist,
+    DateTime CreatedAt
+);
+
+public record CreateRepostRequest(Guid? TrackId, Guid? AlbumId, Guid? PlaylistId);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

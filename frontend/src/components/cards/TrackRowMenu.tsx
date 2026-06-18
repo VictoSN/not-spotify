@@ -31,6 +31,7 @@ import { trackService } from '@/services/trackService'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
 import { shareLink } from '@/utils/share'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
+import { repostService } from '@/services/repostService'
 import { notify } from '@/utils/toast'
 
 interface TrackRowMenuProps {
@@ -211,6 +212,17 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
     if (result === 'copied') notify.success('Link copied to clipboard')
     else if (result === 'failed') notify.error("Couldn't copy link")
     // 'shared' → the native share sheet already gave feedback.
+  }
+
+  const handleRepost = async () => {
+    try {
+      await repostService.createRepost({ trackId: track.id })
+      notify.success('Reposted to your followers')
+    } catch (err: any) {
+      const msg = err?.response?.data?.message
+      if (msg) notify.error(msg)
+      else notify.error("Couldn't repost")
+    }
   }
 
   // Stops the row's onClick (which would otherwise play the track) from firing
@@ -644,6 +656,23 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4" />
                   Share to chat
+                </button>
+              </MenuItem>
+            )}
+
+            {isAuthenticated && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    void handleRepost()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <ArrowPathIcon className="w-4 h-4" />
+                  Repost
                 </button>
               </MenuItem>
             )}

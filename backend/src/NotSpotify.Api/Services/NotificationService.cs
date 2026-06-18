@@ -56,6 +56,54 @@ public class NotificationService
         }
     }
 
+    /// <summary>
+    /// Notifies followers that a user reposted something. Best-effort — never throws.
+    /// </summary>
+    public async Task NotifyFollowersOfRepostAsync(Guid userId, Models.Repost repost, CancellationToken ct = default)
+    {
+        try
+        {
+            // Load the user's name for the notification.
+            var user = await _db.Users.FindAsync(new object[] { userId }, ct);
+            if (user is null) return;
+
+            var followerIds = await _db.UserFollows
+                .Where(f => f.FolloweeId == userId)
+                .Select(f => f.FollowerId)
+                .ToListAsync(ct);
+
+            if (followerIds.Count == 0) return;
+
+            var description = repost.TrackId is not null ? "a track"
+                : repost.AlbumId is not null ? "an album"
+                : repost.PlaylistId is not null ? "a playlist"
+                : "something";
+
+            var link = repost.TrackId is not null ? $"/track/{repost.TrackId}"
+                : repost.AlbumId is not null ? $"/album/{repost.AlbumId}"
+                : repost.PlaylistId is not null ? $"/playlist/{repost.PlaylistId}"
+                : null;
+
+            _db.Notifications.AddRange(followerIds.Select(fid => new Notification
+            {
+                UserId = fid,
+                Type = "repost",
+                Title = $"{user.Name} reposted {description}",
+                LinkUrl = link,
+                ImageUrl = user.AvatarUrl,
+            }));
+
+            await _db.SaveChangesAsync(ct);
+
+            foreach (var fid in followerIds)
+                await _hub.Clients.Group($"user-{fid}").SendAsync("NotificationReceived", ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create repost notifications for user {UserId}", userId);
+        }
+    }
+
     public async Task NotifyArtistFollowersOfReleaseAsync(
         Guid artistId,
         string artistName,

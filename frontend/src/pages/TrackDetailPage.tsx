@@ -23,6 +23,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
+import { usePlayerStore } from '@/stores/playerStore'
 
 export function TrackDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -43,6 +44,8 @@ export function TrackDetailPage() {
   const isPremium = user?.plan === 'premium'
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const [downloading, setDownloading] = useState(false)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const seek = usePlayerStore((s) => s.seek)
 
   const isLiked = track ? likedTrackIds.has(track.id) : false
 
@@ -71,6 +74,12 @@ export function TrackDetailPage() {
 
   const handlePlay = () => {
     if (track) playWithGate(track, [track])
+  }
+
+  const handleSeek = (seconds: number) => {
+    if (!track) return
+    if (currentTrack?.id !== track.id) playWithGate(track, [track])
+    seek(seconds)
   }
 
   const toggleLike = () => {
@@ -220,7 +229,13 @@ export function TrackDetailPage() {
             <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
           </section>
 
-          <CommentSection trackId={track.id} trackTitle={track.title} />
+          <CommentSection
+            trackId={track.id}
+            trackTitle={track.title}
+            durationMs={track.durationMs}
+            waveform={track.waveform}
+            onSeek={handleSeek}
+          />
         </div>
 
         {/* Right: Artist card */}

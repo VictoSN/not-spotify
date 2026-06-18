@@ -21,15 +21,19 @@ public class AdminTracksController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
-    private readonly IStorageService _storage;
     private readonly NotificationService _notifications;
+    private readonly AudioWaveformService _waveforms;
 
-    public AdminTracksController(AppDbContext db, MediaMapper mapper, IStorageService storage, NotificationService notifications)
+    public AdminTracksController(
+        AppDbContext db,
+        MediaMapper mapper,
+        NotificationService notifications,
+        AudioWaveformService waveforms)
     {
         _db = db;
         _mapper = mapper;
-        _storage = storage;
         _notifications = notifications;
+        _waveforms = waveforms;
     }
 
     [HttpGet]
@@ -174,8 +178,8 @@ public class AdminTracksController : ControllerBase
             return BadRequest(new { message = $"Unsupported file type '{ext}'." });
 
         var key = $"audio/{Guid.NewGuid()}{ext}";
-        await using var stream = file.OpenReadStream();
-        await _storage.UploadAsync(key, stream, file.ContentType ?? "audio/mpeg", ct);
+        t.Waveform = await _waveforms.UploadAndExtractAsync(
+            file, key, file.ContentType ?? "audio/mpeg", ct);
 
         t.AudioKey = key;
         t.AudioUrl = string.Empty;

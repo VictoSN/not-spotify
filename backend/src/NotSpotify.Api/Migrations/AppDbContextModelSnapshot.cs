@@ -969,6 +969,9 @@ namespace NotSpotify.Api.Migrations
                     b.Property<int>("TrackNumber")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Waveform")
+                        .HasColumnType("jsonb");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AlbumId");

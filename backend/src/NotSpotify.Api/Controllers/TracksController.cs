@@ -582,8 +582,11 @@ public class TracksController : ControllerBase
     {
         limit = Math.Clamp(limit, 1, 200);
 
-        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
-        if (!trackExists) return NotFound();
+        var track = await _db.Tracks
+            .Where(t => t.Id == id && t.Status == "approved")
+            .Select(t => new { t.DurationMs })
+            .FirstOrDefaultAsync(ct);
+        if (track is null) return NotFound();
 
         var comments = await _db.TrackComments
             .Where(c => c.TrackId == id && c.ParentId == null)
@@ -605,8 +608,11 @@ public class TracksController : ControllerBase
     [HttpGet("{id:guid}/comments/{commentId:guid}/replies")]
     public async Task<ActionResult<IEnumerable<TrackCommentDto>>> GetCommentReplies(Guid id, Guid commentId, CancellationToken ct = default)
     {
-        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
-        if (!trackExists) return NotFound();
+        var track = await _db.Tracks
+            .Where(t => t.Id == id && t.Status == "approved")
+            .Select(t => new { t.DurationMs })
+            .FirstOrDefaultAsync(ct);
+        if (track is null) return NotFound();
 
         var replies = await _db.TrackComments
             .Where(c => c.TrackId == id && c.ParentId == commentId)
@@ -635,8 +641,11 @@ public class TracksController : ControllerBase
             ?? User.FindFirstValue("sub");
         if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
 
-        var trackExists = await _db.Tracks.AnyAsync(t => t.Id == id && t.Status == "approved", ct);
-        if (!trackExists) return NotFound();
+        var track = await _db.Tracks
+            .Where(t => t.Id == id && t.Status == "approved")
+            .Select(t => new { t.DurationMs })
+            .FirstOrDefaultAsync(ct);
+        if (track is null) return NotFound();
 
         // If it's a reply, verify the parent comment exists on this track.
         if (req.ParentId is { } parentId)
@@ -644,6 +653,10 @@ public class TracksController : ControllerBase
             var parentExists = await _db.TrackComments.AnyAsync(c => c.Id == parentId && c.TrackId == id, ct);
             if (!parentExists) return BadRequest(new { message = "Parent comment not found on this track." });
         }
+        if (req.ParentId is not null && req.TimestampMs is not null)
+            return BadRequest(new { message = "Replies cannot be pinned to the waveform." });
+        if (req.TimestampMs is < 0 || req.TimestampMs > track.DurationMs)
+            return BadRequest(new { message = "Comment timestamp must be within the track duration." });
 
         var comment = new Models.TrackComment
         {
@@ -651,6 +664,7 @@ public class TracksController : ControllerBase
             UserId = userId,
             Body = req.Body.Trim(),
             ParentId = req.ParentId,
+            TimestampMs = req.TimestampMs,
             CreatedAt = DateTime.UtcNow,
         };
 

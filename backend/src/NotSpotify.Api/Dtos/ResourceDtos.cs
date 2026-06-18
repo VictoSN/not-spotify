@@ -42,7 +42,8 @@ public record TrackDto(
     string? Status = null,
     string? ReviewNote = null,
     int SavedCount = 0,
-    string? Lyrics = null
+    string? Lyrics = null,
+    IEnumerable<double>? Waveform = null
 );
 
 public record ArtistDto(
@@ -183,7 +184,7 @@ public record TrackCommentDto(
     DateTime CreatedAt
 );
 
-public record CreateCommentRequest(string Body, Guid? ParentId = null);
+public record CreateCommentRequest(string Body, Guid? ParentId = null, long? TimestampMs = null);
 
 public record RepostDto(
     Guid Id,

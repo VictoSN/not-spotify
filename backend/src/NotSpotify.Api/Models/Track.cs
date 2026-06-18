@@ -14,6 +14,8 @@ public class Track
     public long PlayCount { get; set; }
     public int RatingCount { get; set; }
     public int RatingSum { get; set; }
+    /// <summary>JSON array of normalized 0..1 waveform peaks extracted at upload.</summary>
+    public string? Waveform { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>

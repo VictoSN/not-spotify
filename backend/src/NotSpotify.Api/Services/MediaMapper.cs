@@ -1,3 +1,4 @@
+using System.Text.Json;
 using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Models;
 
@@ -71,7 +72,8 @@ public class MediaMapper
             myRating,
             t.Status,
             t.ReviewNote,
-            Lyrics: t.Lyrics
+            Lyrics: t.Lyrics,
+            Waveform: DeserializeWaveform(t.Waveform)
         );
     }
 
@@ -84,6 +86,13 @@ public class MediaMapper
             list.Add(await ToDtoAsync(t, ct, myRating));
         }
         return list;
+    }
+
+    private static double[]? DeserializeWaveform(string? waveform)
+    {
+        if (string.IsNullOrWhiteSpace(waveform)) return null;
+        try { return JsonSerializer.Deserialize<double[]>(waveform); }
+        catch (JsonException) { return null; }
     }
 
     public ArtistDto ToDto(Artist a, IEnumerable<string>? genres = null) => new(

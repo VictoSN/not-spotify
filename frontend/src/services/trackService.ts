@@ -177,8 +177,12 @@ export const trackService = {
     return res.data
   },
 
-  async postComment(trackId: string, body: string, parentId?: string): Promise<TrackComment> {
-    const res = await api.post<TrackComment>(`/tracks/${trackId}/comments`, { body, parentId: parentId ?? null })
+  async postComment(trackId: string, body: string, parentId?: string, timestampMs?: number): Promise<TrackComment> {
+    const res = await api.post<TrackComment>(`/tracks/${trackId}/comments`, {
+      body,
+      parentId: parentId ?? null,
+      timestampMs: timestampMs ?? null,
+    })
     return res.data
   },
 

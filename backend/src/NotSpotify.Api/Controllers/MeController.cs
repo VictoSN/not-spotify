@@ -28,6 +28,7 @@ public class MeController : ControllerBase
     private readonly IStorageService _storage;
     private readonly LyricsService _lyrics;
     private readonly ILogger<MeController> _logger;
+    private readonly AudioWaveformService _waveforms;
 
     public MeController(
         AppDbContext db,
@@ -35,7 +36,8 @@ public class MeController : ControllerBase
         UserManager<ApplicationUser> users,
         IStorageService storage,
         LyricsService lyrics,
-        ILogger<MeController> logger)
+        ILogger<MeController> logger,
+        AudioWaveformService waveforms)
     {
         _db = db;
         _mapper = mapper;
@@ -43,6 +45,7 @@ public class MeController : ControllerBase
         _storage = storage;
         _lyrics = lyrics;
         _logger = logger;
+        _waveforms = waveforms;
     }
 
     private Guid? CurrentUserId()
@@ -822,8 +825,8 @@ public class MeController : ControllerBase
         var key = $"audio/{Guid.NewGuid()}{ext}";
         try
         {
-            await using var stream = file.OpenReadStream();
-            await _storage.UploadAsync(key, stream, file.ContentType ?? "audio/mpeg", ct);
+            track.Waveform = await _waveforms.UploadAndExtractAsync(
+                file, key, file.ContentType ?? "audio/mpeg", ct);
         }
         catch (Exception ex)
         {

@@ -79,6 +79,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             e.HasIndex(x => x.Title);
             e.HasIndex(x => x.Status);
+            e.Property(x => x.Waveform).HasColumnType("jsonb");
         });
 
         b.Entity<ArtistApplication>(e =>

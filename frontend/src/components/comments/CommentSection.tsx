@@ -10,10 +10,15 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
 import { notify } from '@/utils/toast'
 import { timeAgo } from '@/utils/formatTime'
+import { formatSeconds } from '@/utils/formatTime'
+import { usePlayerStore } from '@/stores/playerStore'
 
 interface Props {
   trackId: string
   trackTitle: string
+  durationMs: number
+  waveform?: number[] | null
+  onSeek: (seconds: number) => void
 }
 
 function CommentRow({
@@ -22,12 +27,14 @@ function CommentRow({
   isOwner,
   onDelete,
   onReply,
+  onSeek,
 }: {
   comment: TrackComment
   trackId: string
   isOwner: boolean
   onDelete: (id: string) => void
   onReply: (parent: TrackComment) => void
+  onSeek: (seconds: number) => void
 }) {
   const [replies, setReplies] = useState<TrackComment[]>([])
   const [repliesOpen, setRepliesOpen] = useState(false)
@@ -75,6 +82,14 @@ function CommentRow({
             <span className="text-xs text-secondary">
               {timeAgo(comment.createdAt)}
             </span>
+            {comment.timestampMs != null && (
+              <button
+                onClick={() => onSeek(comment.timestampMs! / 1000)}
+                className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent hover:bg-accent/25"
+              >
+                {formatSeconds(comment.timestampMs / 1000)}
+              </button>
+            )}
           </div>
           <p className="text-sm text-primary mt-1 whitespace-pre-wrap break-words">
             {comment.body}
@@ -153,12 +168,15 @@ function CommentRow({
   )
 }
 
-export function CommentSection({ trackId, trackTitle }: Props) {
+export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSeek }: Props) {
   const [comments, setComments] = useState<TrackComment[]>([])
   const [loading, setLoading] = useState(true)
   const [body, setBody] = useState('')
   const [posting, setPosting] = useState(false)
   const [replyingTo, setReplyingTo] = useState<TrackComment | null>(null)
+  const [timestampMs, setTimestampMs] = useState<number | null>(null)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const currentTime = usePlayerStore((s) => s.currentTime)
 
   const { t } = useTranslation()
   const { isAuthenticated, user } = useAuthStore()
@@ -192,6 +210,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
         trackId,
         body.trim(),
         replyingTo?.id,
+        replyingTo ? undefined : timestampMs ?? undefined,
       )
       if (replyingTo) {
         setComments((prev) => [...prev])
@@ -200,6 +219,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
         setComments((prev) => [newComment, ...prev])
       }
       setBody('')
+      setTimestampMs(null)
       notify.success(replyingTo ? t('track.replyPosted') : t('track.commentPosted'))
     } catch (err: any) {
       notify.error(err?.response?.data?.message || t('common.error'))
@@ -224,6 +244,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
       return
     }
     setReplyingTo(parent)
+    setTimestampMs(null)
     const input = document.getElementById('comment-input')
     input?.focus()
   }
@@ -231,6 +252,44 @@ export function CommentSection({ trackId, trackTitle }: Props) {
   return (
     <section>
       <h2 className="text-2xl font-bold text-primary mb-4">{t('track.comments')}</h2>
+
+      {waveform && waveform.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-2 text-xs text-secondary">Click the waveform to pin a comment to that moment.</p>
+          <div
+            className="relative flex h-24 cursor-crosshair items-center gap-px overflow-hidden rounded-lg bg-elevated px-2"
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect()
+              const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+              const ms = Math.round(ratio * durationMs)
+              setTimestampMs(ms)
+              onSeek(ms / 1000)
+            }}
+          >
+            {waveform.map((peak, index) => (
+              <span
+                key={index}
+                className="min-w-0 flex-1 rounded-full bg-accent/70"
+                style={{ height: `${Math.max(8, peak * 88)}%` }}
+              />
+            ))}
+            {comments.filter((comment) => comment.timestampMs != null).map((comment) => (
+              <button
+                key={comment.id}
+                type="button"
+                title={`${comment.user.name}: ${comment.body}`}
+                aria-label={`Play comment at ${formatSeconds(comment.timestampMs! / 1000)}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onSeek(comment.timestampMs! / 1000)
+                }}
+                className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-accent shadow"
+                style={{ left: `${(comment.timestampMs! / Math.max(1, durationMs)) * 100}%` }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Comment form */}
       <div className="mb-6">
@@ -279,7 +338,23 @@ export function CommentSection({ trackId, trackTitle }: Props) {
               }}
             />
             <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-secondary">{body.length}/1000</span>
+              <div className="flex items-center gap-2 text-xs text-secondary">
+                <span>{body.length}/1000</span>
+                {!replyingTo && currentTrack?.id === trackId && (
+                  <button
+                    type="button"
+                    onClick={() => setTimestampMs(Math.round(currentTime * 1000))}
+                    className="text-accent hover:underline"
+                  >
+                    Pin at {formatSeconds(currentTime)}
+                  </button>
+                )}
+                {timestampMs != null && (
+                  <button type="button" onClick={() => setTimestampMs(null)} className="rounded-full bg-accent/15 px-2 py-0.5 text-accent">
+                    {formatSeconds(timestampMs / 1000)} ×
+                  </button>
+                )}
+              </div>
               <button
                 onClick={handlePost}
                 disabled={!body.trim() || posting}
@@ -311,6 +386,7 @@ export function CommentSection({ trackId, trackTitle }: Props) {
               isOwner={user?.id === c.user.id}
               onDelete={handleDelete}
               onReply={handleReply}
+              onSeek={onSeek}
             />
           ))}
         </div>

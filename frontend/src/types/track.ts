@@ -23,6 +23,7 @@ export interface Track {
   status?: 'approved' | 'pending' | 'rejected'
   reviewNote?: string | null
   lyrics?: string | null
+  waveform?: number[] | null
 }
 
 export interface UserRef {

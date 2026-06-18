@@ -1,6 +1,7 @@
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
+import type { MoodTag } from '@/types/mood'
 import { api } from './api'
 
 export interface ArtistApplication {
@@ -302,6 +303,22 @@ export const adminService = {
 
   async rejectApplication(id: string, note?: string): Promise<ArtistApplication> {
     const res = await api.patch<ArtistApplication>(`/admin/applications/${id}/reject`, { note })
+    return res.data
+  },
+
+  // ---- Mood / activity tags ----
+  async listMoodTags(): Promise<MoodTag[]> {
+    const res = await api.get<MoodTag[]>('/admin/mood-tags')
+    return res.data
+  },
+
+  async getTrackMoodTags(trackId: string): Promise<MoodTag[]> {
+    const res = await api.get<MoodTag[]>(`/admin/tracks/${trackId}/mood-tags`)
+    return res.data
+  },
+
+  async setTrackMoodTags(trackId: string, moodTagIds: string[]): Promise<MoodTag[]> {
+    const res = await api.put<MoodTag[]>(`/admin/tracks/${trackId}/mood-tags`, { moodTagIds })
     return res.data
   },
 }

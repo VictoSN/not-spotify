@@ -5,6 +5,7 @@ import { ArrowLeftIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import type { Artist } from '@/types/artist'
+import type { MoodTag } from '@/types/mood'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -39,6 +40,9 @@ export function AdminTrackFormPage() {
   const [durationMs, setDurationMs] = useState<number>(0)
   const audioRef = useRef<HTMLAudioElement>(null)
 
+  const [moodTags, setMoodTags] = useState<MoodTag[]>([])
+  const [selectedMoodIds, setSelectedMoodIds] = useState<Set<string>>(new Set())
+
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<FormValues>({
     defaultValues: { title: '', albumId: '', artistId: '', trackNumber: 1, discNumber: 1, explicit: false },
   })
@@ -57,14 +61,18 @@ export function AdminTrackFormPage() {
     let cancelled = false
     ;(async () => {
       try {
-        const [albumList, artistList, existingTrack] = await Promise.all([
+        const [albumList, artistList, existingTrack, allMoodTags, trackMoodTags] = await Promise.all([
           adminService.listAlbums(),
           adminService.listArtists(),
           isEdit && id ? adminService.getTrack(id) : Promise.resolve(null),
+          adminService.listMoodTags(),
+          isEdit && id ? adminService.getTrackMoodTags(id) : Promise.resolve([]),
         ])
         if (cancelled) return
         setAlbums(albumList)
         setArtists(artistList)
+        setMoodTags(allMoodTags)
+        setSelectedMoodIds(new Set(trackMoodTags.map((t) => t.id)))
         if (existingTrack) {
           setTrack(existingTrack)
           setDurationMs(existingTrack.durationMs)
@@ -122,6 +130,8 @@ export function AdminTrackFormPage() {
       }
 
       if (audioFile) await adminService.uploadTrackAudio(saved.id, audioFile)
+
+      await adminService.setTrackMoodTags(saved.id, [...selectedMoodIds])
 
       navigate('/admin/tracks')
     } catch (err) {
@@ -221,6 +231,42 @@ export function AdminTrackFormPage() {
           <input type="checkbox" {...register('explicit')} className="w-4 h-4" />
           Explicit content
         </label>
+
+        {/* Mood / activity tags */}
+        {moodTags.length > 0 && (
+          <div>
+            <label className="block text-sm font-semibold text-primary mb-2">Mood &amp; activity tags</label>
+            <p className="text-xs text-secondary mb-2">Powers the Moods &amp; activities browse pages.</p>
+            <div className="flex flex-wrap gap-2">
+              {moodTags.map((tag) => {
+                const selected = selectedMoodIds.has(tag.id)
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedMoodIds((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(tag.id)) next.delete(tag.id)
+                        else next.add(tag.id)
+                        return next
+                      })
+                    }
+                    aria-pressed={selected}
+                    className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors border ${
+                      selected
+                        ? 'text-white border-transparent'
+                        : 'text-secondary border-elevated/60 hover:text-primary hover:border-primary/40'
+                    }`}
+                    style={selected ? { backgroundColor: tag.color } : undefined}
+                  >
+                    {tag.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Audio file */}
         <div>

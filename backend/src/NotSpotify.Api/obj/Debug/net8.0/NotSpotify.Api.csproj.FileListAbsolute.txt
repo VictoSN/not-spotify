@@ -396,3 +396,13 @@ C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\re
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\NotSpotify.Api.pdb
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\NotSpotify.Api.genruntimeconfig.cache
 C:\Main\Project\Cloud\not-spotify\backend\src\NotSpotify.Api\obj\Debug\net8.0\ref\NotSpotify.Api.dll
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\appsettings.Development.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\appsettings.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\skills-lock.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.staticwebassets.runtime.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.staticwebassets.endpoints.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.exe
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.deps.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.runtimeconfig.json
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.dll
+C:\Users\User\AppData\Local\Temp\ns-1a-verify\NotSpotify.Api.pdb

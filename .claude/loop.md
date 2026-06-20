@@ -5,18 +5,32 @@ order makes sense, until every realistically-shippable item is checked off.
 
 ## Scope
 
-- **In scope:** every unchecked `[ ]` item in **Phase 1** — sections **1B**,
-  **1C** (large subsystems, migrations OK), and **1D** (stretch). Pick whatever
-  order is most efficient (finish in-progress work first; do contained items
-  before sprawling ones). Migrations against the shared Supabase DB are allowed
-  — keep them **idempotent** (`CREATE … IF NOT EXISTS`) and always
-  `dotnet build` before any `dotnet run`.
-- **Skip silently** (leave unchecked, don't stop the loop over them): items
-  blocked by something unavailable in this environment — paid/third-party API
-  keys (Concert/tour info), missing toolchains (Tauri needs Rust), or work
-  explicitly deferred to **Phase 2 storage** (Streaming quality, Adaptive
-  streaming, Personal uploads locker, Music videos' heavy storage). Note them
-  in the summary so the user knows why they're still open.
+- **Finish EVERY unchecked `[ ]` item in Phase 1 — no exceptions, no skips.**
+  Sections **1B**, **1C** (large subsystems), and **1D** (stretch). This now
+  explicitly **includes the items that were previously deferred**: Streaming
+  quality, Adaptive streaming / quality selection, Music videos, Personal
+  uploads locker, Family / Duo / Student plans, Audio recognition, Concert/tour
+  info, and the Desktop wrapper (Tauri). Get them all done.
+- **Nothing is "environment-blocked" anymore.** Ship a **working, honest,
+  demo-scale** version of each, with or without a migration:
+  - No real object storage? Use the existing storage service / Supabase / seed
+    data / public sample assets — demo scale is fine.
+  - No paid/third-party API key (Concert/tour, AcoustID)? Build it against a
+    free/no-key source, a local heuristic, or seeded/stub data — a real working
+    feature, not a "Coming soon" placeholder.
+  - Missing toolchain (Tauri needs Rust we can't build here)? Commit the full
+    wrapper **scaffold + config + docs** so it's ready to `tauri build` on a
+    machine that has Rust; that counts as done.
+  - Stripe plans need price IDs from a dashboard? Wire the code + config keys +
+    member-invite system so it works the moment the IDs are set; seed/test-mode
+    fallbacks are fine.
+  - Don't ship anything dishonest (no toggle/button that lies, no fake premium
+    bypass) — but DO ship the smallest **real** version that works.
+- Migrations against the shared Supabase DB are allowed — keep them
+  **idempotent** (`CREATE … IF NOT EXISTS`, the Program.cs raw-SQL guard
+  pattern) and always `dotnet build` before any `dotnet run`. Migrations are
+  **optional**: prefer them when they make the feature real, skip them when a
+  client-only / seed-only version is genuinely complete.
 - **1A** is already complete; leave it. Do not start Phase 2, 3, or 4.
 
 ## Each iteration
@@ -49,8 +63,8 @@ order makes sense, until every realistically-shippable item is checked off.
 
 - A build or test fails and you can't fix it after one focused attempt —
   show the error, don't work around it.
-- Every realistically-shippable Phase 1 item is checked off (only the
-  environment-blocked items above remain) — Phase 1 is done. Stop the loop
-  and wait for redirection; do not proceed into Phase 2/3/4 on your own.
+- **Every** unchecked Phase 1 item is now checked off — all of 1B/1C/1D are
+  done. Phase 1 is complete. Stop the loop and wait for redirection; do not
+  proceed into Phase 2/3/4 on your own.
 
 Don't ask permission for anything at all. Anything is acceptable to achieve the main tasks. As long as it is not damaging to the user's computer.

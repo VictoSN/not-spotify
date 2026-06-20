@@ -50,6 +50,33 @@ function readNormalizeEnabled(): boolean {
   }
 }
 
+/**
+ * Streaming-quality tier → low-pass cutoff (Hz). With a single source file per
+ * track we can't fetch a smaller transcode, so we deliver the *perceptual* side
+ * of lower quality honestly client-side: lower tiers roll off the highs the way
+ * a lower bitrate would. "auto"/"veryhigh" are transparent (full bandwidth).
+ * For real adaptive (HLS) sources this is layered on top of hls.js level caps.
+ */
+const QUALITY_CUTOFF_HZ: Record<string, number> = {
+  low: 8000,
+  normal: 13000,
+  high: 17000,
+  veryhigh: 22050,
+  auto: 22050,
+}
+
+/** Streaming quality tier. Persisted by Settings under ns-pref-quality. */
+function readQuality(): string {
+  try {
+    const raw = window.localStorage.getItem('ns-pref-quality')
+    if (raw == null) return 'auto'
+    const v = JSON.parse(raw) as unknown
+    return typeof v === 'string' ? v : 'auto'
+  } catch {
+    return 'auto'
+  }
+}
+
 const clampVol = (v: number) => Math.max(0, Math.min(1, v))
 
 class AudioEngine {
@@ -63,9 +90,12 @@ class AudioEngine {
   // loud songs + a makeup gain that lifts quiet ones (volume normalization).
   private normalizer: DynamicsCompressorNode | null = null
   private normalizeGain: GainNode | null = null
+  // Per-deck low-pass that enforces the streaming-quality tier (see QUALITY_CUTOFF_HZ).
+  private deckQuality: [BiquadFilterNode | null, BiquadFilterNode | null] = [null, null]
   private equalizerGains = getEqualizerSettings().gains
   private crossfadeSec = readCrossfadeSeconds()
   private normalizeEnabled = readNormalizeEnabled()
+  private quality = readQuality()
   private fadeRaf: number | null = null
   /** Deck currently ramping out during a crossfade (so we can stop it on cancel). */
   private fadingOut: HTMLAudioElement | null = null
@@ -87,7 +117,9 @@ class AudioEngine {
     this.onPrefChange = () => {
       this.crossfadeSec = readCrossfadeSeconds()
       this.normalizeEnabled = readNormalizeEnabled()
+      this.quality = readQuality()
       this.applyNormalize()
+      this.applyQuality()
     }
     this.onEqualizerChange = (event) => {
       const next = event instanceof CustomEvent
@@ -137,10 +169,12 @@ class AudioEngine {
       this.connectDeckToGraph(1)
       this.applyEqualizerGains()
       this.applyNormalize()
+      this.applyQuality()
     } catch {
       this.audioContext = null
       this.deckSources = [null, null]
       this.deckFilters = [[], []]
+      this.deckQuality = [null, null]
       this.normalizer = null
       this.normalizeGain = null
     }
@@ -163,12 +197,26 @@ class AudioEngine {
       const next = filters[i + 1]
       if (next) filter.connect(next)
     })
-    // Feed the shared normalizer stage (falls back to the raw output if, for any
-    // reason, the normalizer failed to construct).
-    filters[filters.length - 1].connect(this.normalizer ?? this.audioContext.destination)
+    // Streaming-quality low-pass after the EQ chain, before the shared normalizer
+    // (falls back to the raw output if the normalizer failed to construct).
+    const lowpass = this.audioContext.createBiquadFilter()
+    lowpass.type = 'lowpass'
+    lowpass.Q.value = 0.707
+    filters[filters.length - 1].connect(lowpass)
+    lowpass.connect(this.normalizer ?? this.audioContext.destination)
 
     this.deckSources[index] = source
     this.deckFilters[index] = filters
+    this.deckQuality[index] = lowpass
+  }
+
+  private applyQuality() {
+    if (!this.audioContext) return
+    const cutoff = QUALITY_CUTOFF_HZ[this.quality] ?? 22050
+    const now = this.audioContext.currentTime
+    this.deckQuality.forEach((filter) => {
+      filter?.frequency.setTargetAtTime(cutoff, now, 0.02)
+    })
   }
 
   private applyEqualizerGains() {

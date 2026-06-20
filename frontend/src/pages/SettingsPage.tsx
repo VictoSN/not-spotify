@@ -66,16 +66,6 @@ function Switch({
   )
 }
 
-/** Small pill marking a control that exists in the UI but isn't wired yet. */
-function ComingSoon() {
-  const { t } = useTranslation()
-  return (
-    <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary">
-      {t('common.comingSoon')}
-    </span>
-  )
-}
-
 function Select({
   value,
   onChange,
@@ -160,10 +150,9 @@ export function SettingsPage() {
   // Back-compat: the old toggle stored a boolean.
   const [crossfadeRaw, setCrossfadeRaw] = usePref<number | boolean>('ns-pref-crossfade', 0)
   const crossfade = typeof crossfadeRaw === 'boolean' ? (crossfadeRaw ? 6 : 0) : crossfadeRaw
-  // Streaming quality stays disabled ("Coming soon") — it needs backend
-  // transcoding (Phase 2).
-  const [streamingQuality] = usePref('ns-pref-quality', 'auto')
-  const noop = () => {}
+  // Streaming quality is live: read by the two-deck audioEngine, which rolls off
+  // the highs at lower tiers (and caps adaptive/HLS levels where present).
+  const [streamingQuality, setStreamingQuality] = usePref('ns-pref-quality', 'auto')
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-6">
@@ -225,13 +214,11 @@ export function SettingsPage() {
         <Row
           label={t('settings.audio.streaming')}
           sub={t('settings.audio.streamingSub')}
-          badge={<ComingSoon />}
           control={
             <Select
               label={t('settings.audio.streaming')}
               value={streamingQuality}
-              onChange={noop}
-              disabled
+              onChange={setStreamingQuality}
               options={[
                 { value: 'auto', label: t('quality.auto') },
                 { value: 'low', label: t('quality.low') },

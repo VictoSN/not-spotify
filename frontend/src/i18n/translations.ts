@@ -221,6 +221,7 @@ const en: Dict = {
   'home.section.newReleases': 'New releases',
   'home.section.popularAlbums': 'Popular albums and singles',
   'home.section.podcasts': 'Podcasts',
+  'home.section.musicVideos': 'Music videos',
 
   // Library page
   'library.title': 'Your Library',
@@ -742,6 +743,7 @@ const es: Dict = {
   'home.section.newReleases': 'Nuevos lanzamientos',
   'home.section.popularAlbums': 'Álbumes y sencillos populares',
   'home.section.podcasts': 'Pódcasts',
+  'home.section.musicVideos': 'Videos musicales',
 
   // Biblioteca
   'library.title': 'Tu biblioteca',
@@ -1263,6 +1265,7 @@ const fr: Dict = {
   'home.section.newReleases': 'Nouveautés',
   'home.section.popularAlbums': 'Albums et singles populaires',
   'home.section.podcasts': 'Podcasts',
+  'home.section.musicVideos': 'Clips musicaux',
 
   // Bibliothèque
   'library.title': 'Votre bibliothèque',

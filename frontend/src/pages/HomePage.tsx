@@ -13,7 +13,9 @@ import { albumService } from '@/services/albumService'
 import { artistService } from '@/services/artistService'
 import { podcastService } from '@/services/podcastService'
 import type { PodcastSummary } from '@/types/podcast'
-import { MicrophoneIcon } from '@heroicons/react/24/solid'
+import { videoService } from '@/services/videoService'
+import type { MusicVideo } from '@/types/musicVideo'
+import { MicrophoneIcon, FilmIcon } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { SparklesIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -52,6 +54,7 @@ export function HomePage() {
   const [popularInCountry, setPopularInCountry] = useState<Track[]>([])
   const [dailyMixes, setDailyMixes] = useState<DailyMix[]>([])
   const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
+  const [musicVideos, setMusicVideos] = useState<MusicVideo[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -74,7 +77,7 @@ export function HomePage() {
         setLoading(false)
 
         // Wave 2: secondary sections (staggered after paint)
-        const [ml, nm, rp, nr, pa, dm, pic, pods] = await Promise.all([
+        const [ml, nm, rp, nr, pa, dm, pic, pods, mv] = await Promise.all([
           trackService.getMostLiked(PREVIEW_LIMIT),
           trackService.getNewMusic(PREVIEW_LIMIT),
           playlistService.getRecommended(PREVIEW_LIMIT),
@@ -83,6 +86,7 @@ export function HomePage() {
           trackService.getDailyMixes(4).catch(() => [] as DailyMix[]),
           trackService.getPopularInCountry(user?.country, PREVIEW_LIMIT).catch(() => [] as Track[]),
           podcastService.getAll().catch(() => [] as PodcastSummary[]),
+          videoService.list().catch(() => [] as MusicVideo[]),
         ])
         if (cancelled) return
         setMostLiked(ml)
@@ -93,6 +97,7 @@ export function HomePage() {
         setDailyMixes(dm)
         setPopularInCountry(pic)
         setPodcasts(pods)
+        setMusicVideos(mv)
       } catch {
         if (!cancelled) setLoading(false)
       }
@@ -399,6 +404,31 @@ export function HomePage() {
                   </div>
                   <div className="truncate font-bold text-primary">{p.title}</div>
                   <div className="truncate text-sm text-secondary">{p.author}</div>
+                </Link>
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* Music videos */}
+        {musicVideos.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title={t('home.section.musicVideos')} href="/videos" />
+            <HorizontalScroller>
+              {musicVideos.map((v) => (
+                <Link key={v.id} to={`/videos/${v.id}`} className="group w-64 shrink-0 rounded-lg bg-surface p-2 transition-colors hover:bg-elevated">
+                  <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
+                    {v.thumbnailUrl
+                      ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />
+                      : <FilmIcon className="h-8 w-8 text-secondary/60" />}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-page">
+                        <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+                      </span>
+                    </div>
+                  </div>
+                  <div className="truncate px-1 font-semibold text-primary">{v.title}</div>
+                  <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
                 </Link>
               ))}
             </HorizontalScroller>

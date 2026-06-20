@@ -307,6 +307,18 @@ public record UpsertAdRequest(
 
 public record AdSettingsDto(int AdsPerNTracks, bool IsEnabled);
 
+public record MusicVideoDto(
+    Guid Id,
+    string Title,
+    ArtistRefDto Artist,
+    Guid? TrackId,
+    string VideoUrl,
+    string? ThumbnailUrl,
+    long DurationMs,
+    long ViewCount,
+    DateTime CreatedAt
+);
+
 public record UserUploadDto(
     Guid Id,
     string Title,

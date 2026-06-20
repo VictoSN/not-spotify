@@ -546,6 +546,51 @@ using (var scope = app.Services.CreateScope())
             ON ""UserUploads""(""UserId"", ""CreatedAt"");
     ");
 
+    // Music videos (same idempotent guard pattern). One-time-seeds a few videos
+    // linked to top tracks using public sample footage so the catalogue plays.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""MusicVideos"" (
+            ""Id""           uuid NOT NULL,
+            ""Title""        text NOT NULL,
+            ""ArtistId""     uuid NOT NULL,
+            ""TrackId""      uuid NULL,
+            ""VideoUrl""     text NOT NULL DEFAULT '',
+            ""VideoKey""     text NULL,
+            ""ThumbnailUrl"" text NULL,
+            ""ThumbnailKey"" text NULL,
+            ""DurationMs""   bigint NOT NULL DEFAULT 0,
+            ""ViewCount""    bigint NOT NULL DEFAULT 0,
+            ""CreatedAt""    timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_MusicVideos"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_MusicVideos_Artists_ArtistId""
+                FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_MusicVideos_Tracks_TrackId""
+                FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideos_CreatedAt"" ON ""MusicVideos""(""CreatedAt"");
+
+        INSERT INTO ""MusicVideos""
+            (""Id"",""Title"",""ArtistId"",""TrackId"",""VideoUrl"",""ThumbnailUrl"",""DurationMs"",""ViewCount"",""CreatedAt"")
+        SELECT gen_random_uuid(),
+               t.""Title"" || ' (Official Video)',
+               t.""ArtistId"", t.""Id"",
+               (ARRAY[
+                   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                   'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4'
+               ])[((t.rn - 1) % 4) + 1],
+               al.""CoverUrl"",
+               60000, 0, now()
+        FROM (
+            SELECT tr.""Id"", tr.""Title"", tr.""ArtistId"", tr.""AlbumId"",
+                   ROW_NUMBER() OVER (ORDER BY tr.""PlayCount"" DESC, tr.""CreatedAt"" DESC) AS rn
+            FROM ""Tracks"" tr WHERE tr.""Status"" = 'approved'
+        ) t
+        JOIN ""Albums"" al ON al.""Id"" = t.""AlbumId""
+        WHERE t.rn <= 4 AND NOT EXISTS (SELECT 1 FROM ""MusicVideos"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

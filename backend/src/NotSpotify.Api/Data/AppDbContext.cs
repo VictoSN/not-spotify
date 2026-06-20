@@ -43,6 +43,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<AdSettings> AdSettings => Set<AdSettings>();
     public DbSet<PendingAction> PendingActions => Set<PendingAction>();
     public DbSet<UserUpload> UserUploads => Set<UserUpload>();
+    public DbSet<MusicVideo> MusicVideos => Set<MusicVideo>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -518,6 +519,21 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // "My uploads, newest first."
             e.HasIndex(x => new { x.UserId, x.CreatedAt });
+        });
+
+        b.Entity<MusicVideo>(e =>
+        {
+            e.HasOne(x => x.Artist)
+                .WithMany()
+                .HasForeignKey(x => x.ArtistId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.HasIndex(x => x.CreatedAt);
         });
     }
 }

@@ -53,5 +53,4 @@ order makes sense, until every realistically-shippable item is checked off.
   environment-blocked items above remain) — Phase 1 is done. Stop the loop
   and wait for redirection; do not proceed into Phase 2/3/4 on your own.
 
-Don't ask permission for low-stakes choices (naming, ordering, file
-placement) — proceed and note the choice in the summary.
+Don't ask permission for anything at all. Anything is acceptable to achieve the main tasks. As long as it is not damaging to the user's computer.

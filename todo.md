@@ -40,7 +40,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 
 ### 1C — Large subsystems (each its own session + migration)
 - [ ] **RBAC** — High. Master admin grants/revokes admin; role tiers + granular permissions; approval workflow (`PendingAction` table — flagged roles enqueue instead of executing); "Team & roles" + "Approvals" UI. Seed one master. Highest-risk.
-- [ ] **Location-based discovery** — Med. Add `Country`/`Market` to `Artists`/`Albums` (users already have `Country`); `GET /tracks/popular?country=XX`; "Popular in {country}" home rows + seed values.
+- [x] **Location-based discovery** — **done (2026-06-20)**. `Country` (ISO alpha-2) on `Artists`/`Albums` via idempotent `AddContentCountry` migration (`ADD COLUMN IF NOT EXISTS` + a one-time spread/inherit backfill so the shared DB has market content). `GET /tracks/popular?country=XX` ranks by 30-day plays from users in that country (+0.5 same-market boost), padding with market then global top tracks; falls back to the caller's country or `US`. DbSeeder sets per-artist/album countries; artist/album submit + update write paths accept `Country`; `ArtistDto`/`AlbumDto` expose it. Frontend: `trackService.getPopularInCountry` + a "Popular in {country}" Home row (ISO→region name via `Intl.DisplayNames`), en/es/fr. *(Admin/artist form Country inputs not added — API accepts it; seed/backfill provides data.)*
 - [ ] **Ads engine** — High. `Advertisement` + `AdSettings` (ads-per-N-tracks); `GET /ads/next` (date window + country + weighted random); player inserts audio ads for free tier (premium = none → makes "ad-free" real); admin CRUD + scheduling + targeting + impressions. Self-recorded house ads.
 - [ ] **Podcasts** — High (cheaper). `Podcast` + `Episode`; reuses the artist-upload/review flow + audio player; `/podcasts` catalogue.
 - [ ] **Music videos** — High, **storage-heavy** (do alongside Phase 2). `MusicVideo` + `<video>` player + catalogue; could gate behind premium.
@@ -48,7 +48,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 ### 1D — Stretch
 - [ ] **Desktop wrapper (Tauri)** — nearly free on top of the PWA.
 - [ ] **Adaptive streaming / quality selection** — ffmpeg + hls.js; storage-gated.
-- [ ] **Embeddable iframe mini-player**.
+- [x] **Embeddable iframe mini-player** — **done (2026-06-20)**, frontend-only. Standalone `/embed/track/:id` route (`EmbedTrackPage`) renders bare — outside AppShell, no auth — with its own `<audio>` element and explicit (theme-independent) colors so it looks right inside any host page. Cover/title/artist link out via `target="_top"`. TrackDetailPage's action bar gains a "Copy embed code" button (CodeBracketIcon) that copies a ready `<iframe>` snippet; i18n keys added (en/es/fr).
 - [ ] **Personal uploads locker** — demo-scale only (storage).
 - [ ] **Family / Duo / Student plans** — extra Stripe test prices + member invites.
 - [ ] **Audio recognition** (hum/play to find) — AcoustID/Chromaprint; disproportionate effort.

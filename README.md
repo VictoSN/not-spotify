@@ -16,7 +16,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
 - **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped), live language selector (en/es/fr across Settings, shell navigation, Home, Search, and Library).
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`.
-- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback).
+- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page).
 
 **Being worked on next:** waveform + timed comments, remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 

@@ -45,11 +45,15 @@ import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
 import { QueuePage } from '@/pages/QueuePage'
+import { EmbedTrackPage } from '@/pages/EmbedTrackPage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 
 export const router = createBrowserRouter([
   // Dev-only harness for the karaoke lyrics view; excluded from production builds.
   ...(import.meta.env.DEV ? [{ path: '/dev/karaoke', element: <DevKaraokePage /> }] : []),
+  // Standalone embeddable mini-player — rendered bare (no shell/auth) so it can
+  // be dropped into an <iframe> on any external page.
+  { path: '/embed/track/:id', element: <EmbedTrackPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },

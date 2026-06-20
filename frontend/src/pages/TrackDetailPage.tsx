@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   PlayIcon,
   ArrowDownTrayIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { HeartIcon } from '@heroicons/react/24/outline'
@@ -90,6 +91,18 @@ export function TrackDetailPage() {
     }
     if (isLiked) unlikeTrack(track.id)
     else likeTrack(track)
+  }
+
+  const handleCopyEmbed = async () => {
+    if (!track) return
+    const src = `${window.location.origin}/embed/track/${track.id}`
+    const code = `<iframe src="${src}" width="100%" height="152" frameborder="0" loading="lazy" title="${track.title} — ${track.artist.name}" style="border-radius:12px"></iframe>`
+    try {
+      await navigator.clipboard.writeText(code)
+      notify.success(t('detail.embedCopied'))
+    } catch {
+      notify.error(t('detail.embedCopyError'))
+    }
   }
 
   const handleDownload = async () => {
@@ -214,6 +227,16 @@ export function TrackDetailPage() {
             <ArrowDownTrayIcon className="w-6 h-6" />
           </button>
         )}
+
+        {/* Copy embed code */}
+        <button
+          onClick={handleCopyEmbed}
+          className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors"
+          aria-label={t('detail.embed')}
+          title={t('detail.embed')}
+        >
+          <CodeBracketIcon className="w-6 h-6" />
+        </button>
 
         {/* More options menu */}
         <TrackRowMenu track={track} alwaysVisible />

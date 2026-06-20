@@ -22,6 +22,7 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline'
 import { billingService, type BillingSubscription } from '@/services/billingService'
+import { PlanMembersCard } from '@/components/settings/PlanMembersCard'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
@@ -264,6 +265,11 @@ export function AccountSettingsPage() {
           />
         )}
       </Section>
+
+      {/* Duo/Family seat management + incoming plan invites (self-hides when N/A) */}
+      <div className="mt-4">
+        <PlanMembersCard />
+      </div>
 
       <Section title="Payment">
         <SettingRow icon={DocumentTextIcon} label="Payment history" disabled />

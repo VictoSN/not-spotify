@@ -8,6 +8,13 @@ public class ApplicationUser : IdentityUser<Guid>
     public string? AvatarUrl { get; set; }
     public string? AvatarKey { get; set; }
     public string Plan { get; set; } = "free";
+    // The premium tier this user pays for: individual | duo | family | student.
+    // Only meaningful when they own a subscription (Plan == "premium" and
+    // PlanOwnerId is null). Drives how many member seats they can share.
+    public string PlanTier { get; set; } = "individual";
+    // When set, this user's premium is a shared seat on another user's
+    // duo/family plan (a PlanMembership). Their own subscription is null.
+    public Guid? PlanOwnerId { get; set; }
     public string Country { get; set; } = "US";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? StripeCustomerId { get; set; }

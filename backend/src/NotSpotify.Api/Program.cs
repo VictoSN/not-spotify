@@ -591,6 +591,41 @@ using (var scope = app.Services.CreateScope())
         WHERE t.rn <= 4 AND NOT EXISTS (SELECT 1 FROM ""MusicVideos"");
     ");
 
+    // Multi-seat plans (Duo/Family/Student): per-user tier + shared-seat owner
+    // columns, plus the membership/invite table. Same idempotent guard pattern —
+    // the shared Supabase DB may already have these from a teammate's run.
+    await db.Database.ExecuteSqlRawAsync(@"
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'AspNetUsers' AND column_name = 'PlanTier') THEN
+                ALTER TABLE ""AspNetUsers"" ADD COLUMN ""PlanTier"" text NOT NULL DEFAULT 'individual';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'AspNetUsers' AND column_name = 'PlanOwnerId') THEN
+                ALTER TABLE ""AspNetUsers"" ADD COLUMN ""PlanOwnerId"" uuid NULL;
+            END IF;
+        END $$;
+
+        CREATE TABLE IF NOT EXISTS ""PlanMemberships"" (
+            ""Id""           uuid NOT NULL,
+            ""OwnerId""      uuid NOT NULL,
+            ""InvitedEmail"" text NOT NULL DEFAULT '',
+            ""MemberId""     uuid NULL,
+            ""Status""       text NOT NULL DEFAULT 'invited',
+            ""CreatedAt""    timestamp with time zone NOT NULL DEFAULT now(),
+            ""AcceptedAt""   timestamp with time zone NULL,
+            CONSTRAINT ""PK_PlanMemberships"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_PlanMemberships_AspNetUsers_OwnerId""
+                FOREIGN KEY (""OwnerId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_PlanMemberships_AspNetUsers_MemberId""
+                FOREIGN KEY (""MemberId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_PlanMemberships_OwnerId"" ON ""PlanMemberships""(""OwnerId"");
+        CREATE INDEX IF NOT EXISTS ""IX_PlanMemberships_MemberId"" ON ""PlanMemberships""(""MemberId"");
+        CREATE INDEX IF NOT EXISTS ""IX_PlanMemberships_InvitedEmail"" ON ""PlanMemberships""(""InvitedEmail"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

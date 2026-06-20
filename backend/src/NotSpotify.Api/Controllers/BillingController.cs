@@ -112,8 +112,13 @@ public class BillingController : ControllerBase
             catch { /* best-effort; still downgrade locally */ }
         }
 
+        // Release any shared seats (Duo/Family) so members don't keep Premium
+        // after the plan they ride on is gone; also resets the owner's tier.
+        await PlanSeats.ReleaseAllForOwnerAsync(_db, user.Id, ct);
+
         // Downgrade the user to free immediately regardless of Stripe response.
         user.Plan = "free";
+        user.PlanOwnerId = null;
         user.StripeSubscriptionStatus = "canceled";
         user.StripeCancelAtPeriodEnd = false;
         user.StripeSubscriptionId = null;

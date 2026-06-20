@@ -106,6 +106,14 @@ public class StripeWebhookController : ControllerBase
         if (user is null) return;
 
         ApplySubscription(user, subscription);
+
+        // If this subscription lapsed, release any shared seats so members don't
+        // keep Premium after the owner's plan ended.
+        if (string.Equals(user.Plan, "free", StringComparison.OrdinalIgnoreCase))
+        {
+            await PlanSeats.ReleaseAllForOwnerAsync(_db, user.Id, ct);
+            user.PlanOwnerId = null;
+        }
     }
 
     private async Task HandleInvoiceAsync(JsonElement invoice, CancellationToken ct)
@@ -167,6 +175,32 @@ public class StripeWebhookController : ControllerBase
         user.StripeCurrentPeriodEnd = GetUnixTime(subscription, "current_period_end");
         user.StripeCancelAtPeriodEnd = GetBool(subscription, "cancel_at_period_end") ?? false;
         user.Plan = IsPremiumStatus(status) ? "premium" : "free";
+
+        // Record which tier this subscription is on so we know the seat allowance.
+        // Prefer the subscription metadata, fall back to resolving the price id.
+        if (string.Equals(user.Plan, "premium", StringComparison.OrdinalIgnoreCase))
+        {
+            var tier = MetadataValue(subscription, "tier")
+                ?? _stripe.PlanForPriceId(GetSubscriptionPriceId(subscription))?.Tier
+                ?? "individual";
+            user.PlanTier = tier;
+        }
+        else
+        {
+            user.PlanTier = "individual";
+        }
+    }
+
+    private static string? GetSubscriptionPriceId(JsonElement subscription)
+    {
+        if (subscription.TryGetProperty("items", out var items) &&
+            items.TryGetProperty("data", out var data) &&
+            data.ValueKind == JsonValueKind.Array &&
+            data.GetArrayLength() > 0)
+        {
+            return GetNestedString(data[0], "price", "id");
+        }
+        return null;
     }
 
     private bool VerifySignature(string payload, string signatureHeader)

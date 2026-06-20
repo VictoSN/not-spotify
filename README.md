@@ -246,6 +246,16 @@ dotnet user-secrets set "Stripe:CancelUrl" "http://localhost:5173/premium?checko
 dotnet user-secrets set "Stripe:PortalReturnUrl" "http://localhost:5173/account"
 ```
 
+**Optional — multi-account / discounted tiers.** Duo, Family, and Student are extra recurring Prices. Create one Stripe Price for each (any test amount) and add its ID; any tier left unset just shows as "not configured" on the Premium page and stays disabled — monthly/yearly keep working on their own.
+
+```powershell
+dotnet user-secrets set "Stripe:DuoPriceId" "price_your_duo_recurring_price_id"
+dotnet user-secrets set "Stripe:FamilyPriceId" "price_your_family_recurring_price_id"
+dotnet user-secrets set "Stripe:StudentPriceId" "price_your_student_recurring_price_id"
+```
+
+Duo (2 seats) and Family (6 seats) owners invite members by email in **Account → Subscription**; an accepted member gets full Premium for free while the plan is active (and is dropped back to Free if the owner cancels or the seat is removed). Student is a single-seat discounted tier.
+
 Get `Stripe:SecretKey` from **Developers -> API keys** in Stripe test mode. It must start with `sk_test_`, not `pk_test_`.
 
 ### 4. Add Public Business Name

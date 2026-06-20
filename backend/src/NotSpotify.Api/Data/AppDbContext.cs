@@ -44,6 +44,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<PendingAction> PendingActions => Set<PendingAction>();
     public DbSet<UserUpload> UserUploads => Set<UserUpload>();
     public DbSet<MusicVideo> MusicVideos => Set<MusicVideo>();
+    public DbSet<PlanMembership> PlanMemberships => Set<PlanMembership>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -534,6 +535,30 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .OnDelete(DeleteBehavior.SetNull);
 
             e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<PlanMembership>(e =>
+        {
+            // Two FKs to the user (owner + member) — mirror Friendship's setup.
+            // Owner cascade-deletes seats; member set-null (the seat row outlives
+            // a deleted member account and is cleaned up by the owner).
+            e.HasOne(x => x.Owner)
+                .WithMany()
+                .HasForeignKey(x => x.OwnerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Member)
+                .WithMany()
+                .HasForeignKey(x => x.MemberId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.Property(x => x.InvitedEmail).HasMaxLength(256);
+            e.Property(x => x.Status).HasMaxLength(16);
+
+            // "Seats on my plan" and "invites/seat for this user/email".
+            e.HasIndex(x => x.OwnerId);
+            e.HasIndex(x => x.MemberId);
+            e.HasIndex(x => x.InvitedEmail);
         });
     }
 }

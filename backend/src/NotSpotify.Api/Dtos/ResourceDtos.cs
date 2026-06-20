@@ -307,6 +307,36 @@ public record UpsertAdRequest(
 
 public record AdSettingsDto(int AdsPerNTracks, bool IsEnabled);
 
+// ── RBAC ────────────────────────────────────────────────────────────────────
+
+public record TeamMemberDto(
+    Guid Id,
+    string Name,
+    string Email,
+    string? AvatarUrl,
+    bool IsMaster,
+    bool IsAdmin,
+    DateTime CreatedAt
+);
+
+public record GrantAdminRequest(string Email);
+
+public record PendingActionDto(
+    Guid Id,
+    string ActionType,
+    Guid TargetUserId,
+    string TargetEmail,
+    string Status,
+    Guid RequestedByUserId,
+    string RequestedByName,
+    DateTime RequestedAt,
+    string? ReviewedByName,
+    DateTime? ReviewedAt,
+    string? ReviewNote
+);
+
+public record ReviewActionRequest(string? Note);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

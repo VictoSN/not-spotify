@@ -10,6 +10,9 @@ public static class DbSeeder
     private static Guid G(string s) => new(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(s)));
 
     public const string AdminRole = "Admin";
+    // RBAC top tier: a master admin can grant/revoke Admin and approve the
+    // approval queue. Regular admins must enqueue those actions for a master.
+    public const string MasterRole = "Master";
 
     public static async Task SeedAsync(IServiceProvider sp)
     {
@@ -20,6 +23,8 @@ public static class DbSeeder
         // Always-run (idempotent): ensure required roles exist.
         if (!await roles.RoleExistsAsync(AdminRole))
             await roles.CreateAsync(new IdentityRole<Guid>(AdminRole) { Id = Guid.NewGuid() });
+        if (!await roles.RoleExistsAsync(MasterRole))
+            await roles.CreateAsync(new IdentityRole<Guid>(MasterRole) { Id = Guid.NewGuid() });
         if (!await roles.RoleExistsAsync("Artist"))
             await roles.CreateAsync(new IdentityRole<Guid>("Artist") { Id = Guid.NewGuid() });
 
@@ -46,6 +51,10 @@ public static class DbSeeder
 
         if (!await users.IsInRoleAsync(demoUser, AdminRole))
             await users.AddToRoleAsync(demoUser, AdminRole);
+        // Seed exactly one master (the demo admin) so the approval workflow has
+        // an approver out of the box.
+        if (!await users.IsInRoleAsync(demoUser, MasterRole))
+            await users.AddToRoleAsync(demoUser, MasterRole);
 
         if (await db.Artists.AnyAsync()) return;
 

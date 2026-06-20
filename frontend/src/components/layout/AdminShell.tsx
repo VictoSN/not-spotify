@@ -61,6 +61,13 @@ const navSections: { label: string; items: AdminNavItem[] }[] = [
     ],
   },
   {
+    label: 'Governance',
+    items: [
+      { to: '/admin/team', label: 'Team & roles', description: 'Grant or revoke admin access', icon: ShieldCheckIcon },
+      { to: '/admin/approvals', label: 'Approvals', description: 'Privileged-action requests', icon: ClipboardDocumentListIcon },
+    ],
+  },
+  {
     label: 'System',
     items: [
       { to: '/admin/dev', label: 'Dev Tools', description: 'Seed and diagnostics tools', icon: WrenchScrewdriverIcon },

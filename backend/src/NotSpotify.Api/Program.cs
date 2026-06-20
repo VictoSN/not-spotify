@@ -502,6 +502,30 @@ using (var scope = app.Services.CreateScope())
         WHERE t.rn <= 2 AND NOT EXISTS (SELECT 1 FROM ""Advertisements"");
     ");
 
+    // RBAC approval queue (same idempotent guard pattern). Non-master admins'
+    // privileged actions land here pending a master admin's approval.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""PendingActions"" (
+            ""Id""                uuid NOT NULL,
+            ""ActionType""        text NOT NULL,
+            ""TargetUserId""      uuid NOT NULL,
+            ""TargetEmail""       text NOT NULL DEFAULT '',
+            ""Status""            text NOT NULL DEFAULT 'pending',
+            ""RequestedByUserId"" uuid NOT NULL,
+            ""RequestedByName""   text NOT NULL DEFAULT '',
+            ""RequestedAt""       timestamp with time zone NOT NULL DEFAULT now(),
+            ""ReviewedByUserId""  uuid NULL,
+            ""ReviewedByName""    text NULL,
+            ""ReviewedAt""        timestamp with time zone NULL,
+            ""ReviewNote""        text NULL,
+            CONSTRAINT ""PK_PendingActions"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_PendingActions_Status_RequestedAt""
+            ON ""PendingActions""(""Status"", ""RequestedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_PendingActions_RequestedByUserId""
+            ON ""PendingActions""(""RequestedByUserId"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

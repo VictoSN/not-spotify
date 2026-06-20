@@ -119,6 +119,32 @@ export interface ReviewHistoryEntry {
   reviewedAt: string
 }
 
+// ── RBAC ──────────────────────────────────────────────────────────────────────
+
+export interface TeamMember {
+  id: string
+  name: string
+  email: string
+  avatarUrl: string | null
+  isMaster: boolean
+  isAdmin: boolean
+  createdAt: string
+}
+
+export interface PendingAction {
+  id: string
+  actionType: 'grant-admin' | 'revoke-admin'
+  targetUserId: string
+  targetEmail: string
+  status: 'pending' | 'approved' | 'rejected'
+  requestedByUserId: string
+  requestedByName: string
+  requestedAt: string
+  reviewedByName: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const adminService = {
@@ -319,6 +345,40 @@ export const adminService = {
 
   async setTrackMoodTags(trackId: string, moodTagIds: string[]): Promise<MoodTag[]> {
     const res = await api.put<MoodTag[]>(`/admin/tracks/${trackId}/mood-tags`, { moodTagIds })
+    return res.data
+  },
+
+  // ---- RBAC: team & approvals ----
+  async getTeam(): Promise<TeamMember[]> {
+    const res = await api.get<TeamMember[]>('/admin/team')
+    return res.data
+  },
+
+  /** Master executes immediately (200); a regular admin enqueues (202). */
+  async grantAdmin(email: string): Promise<{ enqueued: boolean }> {
+    const res = await api.post('/admin/team/grant', { email })
+    return { enqueued: res.status === 202 }
+  },
+
+  async revokeAdmin(userId: string): Promise<{ enqueued: boolean }> {
+    const res = await api.post(`/admin/team/${userId}/revoke`)
+    return { enqueued: res.status === 202 }
+  },
+
+  async getApprovals(status?: string): Promise<PendingAction[]> {
+    const res = await api.get<PendingAction[]>('/admin/approvals', {
+      params: status ? { status } : undefined,
+    })
+    return res.data
+  },
+
+  async approveAction(id: string, note?: string): Promise<PendingAction> {
+    const res = await api.post<PendingAction>(`/admin/approvals/${id}/approve`, { note: note || null })
+    return res.data
+  },
+
+  async rejectAction(id: string, note?: string): Promise<PendingAction> {
+    const res = await api.post<PendingAction>(`/admin/approvals/${id}/reject`, { note: note || null })
     return res.data
   },
 }

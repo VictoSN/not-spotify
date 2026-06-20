@@ -41,6 +41,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Episode> Episodes => Set<Episode>();
     public DbSet<Advertisement> Advertisements => Set<Advertisement>();
     public DbSet<AdSettings> AdSettings => Set<AdSettings>();
+    public DbSet<PendingAction> PendingActions => Set<PendingAction>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -498,6 +499,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         b.Entity<AdSettings>(e =>
         {
             e.Property(x => x.AdsPerNTracks).HasDefaultValue(3);
+        });
+
+        b.Entity<PendingAction>(e =>
+        {
+            // "Open approvals, newest first" + "this user's requests".
+            e.HasIndex(x => new { x.Status, x.RequestedAt });
+            e.HasIndex(x => x.RequestedByUserId);
         });
     }
 }

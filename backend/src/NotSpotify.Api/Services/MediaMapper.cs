@@ -147,6 +147,54 @@ public class MediaMapper
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);
 
+    public async Task<EpisodeDto> ToDtoAsync(Episode ep, CancellationToken ct = default)
+    {
+        var audioUrl = await ResolveAudioAsync(ep.AudioKey, ep.AudioUrl, ct);
+        return new EpisodeDto(
+            ep.Id,
+            ep.PodcastId,
+            ep.Podcast?.Title ?? string.Empty,
+            ep.Title,
+            ep.Description,
+            audioUrl,
+            ep.DurationMs,
+            ep.EpisodeNumber,
+            ResolveImage(ep.Podcast?.ImageKey, ep.Podcast?.ImageUrl),
+            ep.PublishedAt
+        );
+    }
+
+    public PodcastSummaryDto ToSummary(Podcast p) => new(
+        p.Id,
+        p.Title,
+        p.Author,
+        p.Description,
+        p.Category,
+        ResolveImage(p.ImageKey, p.ImageUrl),
+        p.Episodes?.Count ?? 0,
+        p.CreatedAt
+    );
+
+    public async Task<PodcastDto> ToDtoAsync(Podcast p, CancellationToken ct = default)
+    {
+        var episodes = new List<EpisodeDto>();
+        foreach (var ep in (p.Episodes ?? new List<Episode>()).OrderBy(e => e.EpisodeNumber).ThenByDescending(e => e.PublishedAt))
+        {
+            ep.Podcast ??= p;
+            episodes.Add(await ToDtoAsync(ep, ct));
+        }
+        return new PodcastDto(
+            p.Id,
+            p.Title,
+            p.Author,
+            p.Description,
+            p.Category,
+            ResolveImage(p.ImageKey, p.ImageUrl),
+            p.CreatedAt,
+            episodes
+        );
+    }
+
     public MoodTagDto ToDto(MoodTag m)
         => new(m.Id, m.Name, m.Slug, m.Kind, m.Color, m.Icon, m.SearchQuery, m.SortOrder);
 

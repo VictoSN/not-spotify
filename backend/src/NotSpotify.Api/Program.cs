@@ -376,6 +376,78 @@ using (var scope = app.Services.CreateScope())
         END $$;
     ");
 
+    // Podcasts subsystem (same guard pattern — shared Supabase DB may already
+    // have these tables; create them idempotently regardless of EF history).
+    // The one-time seed draws episode audio straight from the existing approved
+    // catalogue so episodes actually play through the unchanged audio engine.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Podcasts"" (
+            ""Id""          uuid NOT NULL,
+            ""Title""       text NOT NULL,
+            ""Author""      text NOT NULL DEFAULT '',
+            ""Description"" text NULL,
+            ""Category""    text NULL,
+            ""ImageUrl""    text NULL,
+            ""ImageKey""    text NULL,
+            ""CreatedAt""   timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_Podcasts"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_Podcasts_Title"" ON ""Podcasts""(""Title"");
+        CREATE INDEX IF NOT EXISTS ""IX_Podcasts_CreatedAt"" ON ""Podcasts""(""CreatedAt"");
+
+        CREATE TABLE IF NOT EXISTS ""Episodes"" (
+            ""Id""            uuid NOT NULL,
+            ""PodcastId""     uuid NOT NULL,
+            ""Title""         text NOT NULL,
+            ""Description""   text NULL,
+            ""AudioUrl""      text NOT NULL DEFAULT '',
+            ""AudioKey""      text NULL,
+            ""DurationMs""    bigint NOT NULL DEFAULT 0,
+            ""EpisodeNumber"" integer NOT NULL DEFAULT 0,
+            ""PublishedAt""   timestamp with time zone NOT NULL DEFAULT now(),
+            ""CreatedAt""     timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_Episodes"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_Episodes_Podcasts_PodcastId""
+                FOREIGN KEY (""PodcastId"") REFERENCES ""Podcasts""(""Id"") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_Episodes_PodcastId_PublishedAt""
+            ON ""Episodes""(""PodcastId"", ""PublishedAt"");
+
+        DO $$
+        DECLARE p1 uuid; p2 uuid;
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM ""Podcasts"") THEN
+                p1 := gen_random_uuid();
+                p2 := gen_random_uuid();
+                INSERT INTO ""Podcasts"" (""Id"",""Title"",""Author"",""Description"",""Category"",""CreatedAt"") VALUES
+                    (p1, 'The Not Spotify Show', 'NS Studios',
+                     'Weekly conversations about the songs, artists and stories shaping the catalogue.',
+                     'Music', now()),
+                    (p2, 'Indie Spotlight', 'NS Studios',
+                     'Deep dives and long-form chats with the rising independent artists on the platform.',
+                     'Music', now());
+
+                INSERT INTO ""Episodes""
+                    (""Id"",""PodcastId"",""Title"",""Description"",""AudioUrl"",""AudioKey"",""DurationMs"",""EpisodeNumber"",""PublishedAt"",""CreatedAt"")
+                SELECT gen_random_uuid(),
+                       CASE WHEN t.rn <= 3 THEN p1 ELSE p2 END,
+                       'Episode ' || (((t.rn - 1) % 3) + 1) || ': ' || t.""Title"",
+                       'On this episode we dig into “' || t.""Title"" || '” and the sounds around it.',
+                       t.""AudioUrl"", t.""AudioKey"",
+                       GREATEST(t.""DurationMs"", 60000),
+                       ((t.rn - 1) % 3) + 1,
+                       now() - ((t.rn || ' days')::interval),
+                       now()
+                FROM (
+                    SELECT ""Title"", ""AudioUrl"", ""AudioKey"", ""DurationMs"",
+                           ROW_NUMBER() OVER (ORDER BY ""PlayCount"" DESC, ""CreatedAt"" DESC) AS rn
+                    FROM ""Tracks"" WHERE ""Status"" = 'approved'
+                ) t
+                WHERE t.rn <= 6;
+            END IF;
+        END $$;
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

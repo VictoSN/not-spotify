@@ -22,6 +22,8 @@ import { GenreBrowsePage } from '@/pages/GenreBrowsePage'
 import { GenreDetailPage } from '@/pages/GenreDetailPage'
 import { MoodActivityPage } from '@/pages/MoodActivityPage'
 import { MoodDetailPage } from '@/pages/MoodDetailPage'
+import { PodcastsPage } from '@/pages/PodcastsPage'
+import { PodcastDetailPage } from '@/pages/PodcastDetailPage'
 import { TrendingPage } from '@/pages/browse/TrendingPage'
 import { ChartsPage } from '@/pages/browse/ChartsPage'
 import { StatsPage } from '@/pages/StatsPage'
@@ -80,6 +82,8 @@ export const router = createBrowserRouter([
           { path: 'genres/:slug', element: <GenreDetailPage /> },
           { path: 'moods', element: <MoodActivityPage /> },
           { path: 'moods/:slug', element: <MoodDetailPage /> },
+          { path: 'podcasts', element: <PodcastsPage /> },
+          { path: 'podcasts/:id', element: <PodcastDetailPage /> },
           { path: 'trending', element: <TrendingPage /> },
           { path: 'charts', element: <ChartsPage /> },
           { path: 'recommended-tracks', element: <RecommendedTracksPage /> },

@@ -37,6 +37,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<TrackComment> TrackComments => Set<TrackComment>();
     public DbSet<Repost> Reposts => Set<Repost>();
+    public DbSet<Podcast> Podcasts => Set<Podcast>();
+    public DbSet<Episode> Episodes => Set<Episode>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -464,6 +466,24 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // Feed query: "reposts by users I follow, newest first".
             e.HasIndex(x => new { x.UserId, x.CreatedAt });
+        });
+
+        b.Entity<Podcast>(e =>
+        {
+            e.Property(x => x.Title).IsRequired();
+            e.HasIndex(x => x.Title);
+            e.HasIndex(x => x.CreatedAt);
+        });
+
+        b.Entity<Episode>(e =>
+        {
+            e.HasOne(x => x.Podcast)
+                .WithMany(p => p.Episodes)
+                .HasForeignKey(x => x.PodcastId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // "Episodes for podcast X, newest first" — the primary read query.
+            e.HasIndex(x => new { x.PodcastId, x.PublishedAt });
         });
     }
 }

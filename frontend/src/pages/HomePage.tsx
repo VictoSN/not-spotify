@@ -11,6 +11,9 @@ import { trackService } from '@/services/trackService'
 import { playlistService } from '@/services/playlistService'
 import { albumService } from '@/services/albumService'
 import { artistService } from '@/services/artistService'
+import { podcastService } from '@/services/podcastService'
+import type { PodcastSummary } from '@/types/podcast'
+import { MicrophoneIcon } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { SparklesIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -48,6 +51,7 @@ export function HomePage() {
   const [popularArtists, setPopularArtists] = useState<Artist[]>([])
   const [popularInCountry, setPopularInCountry] = useState<Track[]>([])
   const [dailyMixes, setDailyMixes] = useState<DailyMix[]>([])
+  const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -70,7 +74,7 @@ export function HomePage() {
         setLoading(false)
 
         // Wave 2: secondary sections (staggered after paint)
-        const [ml, nm, rp, nr, pa, dm, pic] = await Promise.all([
+        const [ml, nm, rp, nr, pa, dm, pic, pods] = await Promise.all([
           trackService.getMostLiked(PREVIEW_LIMIT),
           trackService.getNewMusic(PREVIEW_LIMIT),
           playlistService.getRecommended(PREVIEW_LIMIT),
@@ -78,6 +82,7 @@ export function HomePage() {
           artistService.getPopular(PREVIEW_LIMIT),
           trackService.getDailyMixes(4).catch(() => [] as DailyMix[]),
           trackService.getPopularInCountry(user?.country, PREVIEW_LIMIT).catch(() => [] as Track[]),
+          podcastService.getAll().catch(() => [] as PodcastSummary[]),
         ])
         if (cancelled) return
         setMostLiked(ml)
@@ -87,6 +92,7 @@ export function HomePage() {
         setPopularArtists(pa)
         setDailyMixes(dm)
         setPopularInCountry(pic)
+        setPodcasts(pods)
       } catch {
         if (!cancelled) setLoading(false)
       }
@@ -368,6 +374,32 @@ export function HomePage() {
             <HorizontalScroller>
               {newReleases.slice(0, PREVIEW_LIMIT).map((album) => (
                 <AlbumCard key={album.id} album={album} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* Podcasts */}
+        {podcasts.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title={t('home.section.podcasts')} href="/podcasts" />
+            <HorizontalScroller>
+              {podcasts.map((p) => (
+                <Link
+                  key={p.id}
+                  to={`/podcasts/${p.id}`}
+                  className="group w-40 shrink-0 rounded-lg bg-surface p-4 transition-colors hover:bg-elevated"
+                >
+                  <div className="mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <MicrophoneIcon className="h-10 w-10 text-secondary/60" />
+                    )}
+                  </div>
+                  <div className="truncate font-bold text-primary">{p.title}</div>
+                  <div className="truncate text-sm text-secondary">{p.author}</div>
+                </Link>
               ))}
             </HorizontalScroller>
           </section>

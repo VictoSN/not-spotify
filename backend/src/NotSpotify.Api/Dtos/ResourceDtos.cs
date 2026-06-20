@@ -227,6 +227,41 @@ public record RepostDto(
 
 public record CreateRepostRequest(Guid? TrackId, Guid? AlbumId, Guid? PlaylistId);
 
+public record EpisodeDto(
+    Guid Id,
+    Guid PodcastId,
+    string PodcastTitle,
+    string Title,
+    string? Description,
+    string AudioUrl,
+    long DurationMs,
+    int EpisodeNumber,
+    string? ImageUrl,
+    DateTime PublishedAt
+);
+
+public record PodcastSummaryDto(
+    Guid Id,
+    string Title,
+    string Author,
+    string? Description,
+    string? Category,
+    string? ImageUrl,
+    int EpisodeCount,
+    DateTime CreatedAt
+);
+
+public record PodcastDto(
+    Guid Id,
+    string Title,
+    string Author,
+    string? Description,
+    string? Category,
+    string? ImageUrl,
+    DateTime CreatedAt,
+    IEnumerable<EpisodeDto> Episodes
+);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

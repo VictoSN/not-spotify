@@ -52,6 +52,7 @@ import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
 import { QueuePage } from '@/pages/QueuePage'
 import { UploadsPage } from '@/pages/UploadsPage'
+import { RecognizePage } from '@/pages/RecognizePage'
 import { EmbedTrackPage } from '@/pages/EmbedTrackPage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 
@@ -102,6 +103,7 @@ export const router = createBrowserRouter([
           { path: 'user/:userId', element: <UserProfilePage /> },
           { path: 'track/:id', element: <TrackDetailPage /> },
           { path: 'queue', element: <QueuePage /> },
+          { path: 'recognize', element: <RecognizePage /> },
           {
             element: <ProtectedRoute />,
             children: [

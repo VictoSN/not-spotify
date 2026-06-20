@@ -18,6 +18,7 @@ import {
   XMarkIcon,
   RssIcon,
   ChartBarIcon,
+  MicrophoneIcon,
 } from '@heroicons/react/24/outline'
 import {
   ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolid,
@@ -691,6 +692,14 @@ export function TopBar() {
               >
                 <ArrowUpTrayIcon className={userMenuIconClass} />
                 {t('topbar.yourUploads')}
+              </Link>
+              <Link
+                to="/recognize"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                <MicrophoneIcon className={userMenuIconClass} />
+                {t('topbar.identifySong')}
               </Link>
               <InstallAppMenuItem className={userMenuItemClass} onSelect={() => setShowMenu(false)} />
 

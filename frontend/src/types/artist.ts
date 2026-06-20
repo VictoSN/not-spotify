@@ -25,3 +25,12 @@ export interface Artist {
   revokedAt?: string | null
   country?: string | null
 }
+
+export interface TourDate {
+  id: string
+  eventDate: string
+  city: string
+  venue: string
+  country: string
+  ticketUrl: string | null
+}

@@ -60,6 +60,8 @@ const en: Dict = {
   'detail.shareArtist': 'Share this artist',
   'detail.shareArtistText': 'Check out {name} on not-spotify',
   'detail.fansAlsoLike': 'Fans also like',
+  'detail.onTour': 'On tour',
+  'detail.tickets': 'Tickets',
   'detail.about': 'About',
   'detail.followers': '{n} followers',
   // ── Profile page ───────────────────────────────────────────────────────────
@@ -585,6 +587,8 @@ const es: Dict = {
   'detail.shareArtist': 'Compartir este artista',
   'detail.shareArtistText': 'Descubre a {name} en not-spotify',
   'detail.fansAlsoLike': 'A los fans también les gusta',
+  'detail.onTour': 'De gira',
+  'detail.tickets': 'Entradas',
   'detail.about': 'Acerca de',
   'detail.followers': '{n} seguidores',
   // ── Profile page ───────────────────────────────────────────────────────────
@@ -1110,6 +1114,8 @@ const fr: Dict = {
   'detail.shareArtist': 'Partager cet artiste',
   'detail.shareArtistText': 'Découvrez {name} sur not-spotify',
   'detail.fansAlsoLike': 'Les fans aiment aussi',
+  'detail.onTour': 'En tournée',
+  'detail.tickets': 'Billets',
   'detail.about': 'À propos',
   'detail.followers': '{n} abonnés',
   // ── Profile page ───────────────────────────────────────────────────────────

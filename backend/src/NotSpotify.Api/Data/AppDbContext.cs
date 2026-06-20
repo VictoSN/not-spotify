@@ -44,6 +44,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<PendingAction> PendingActions => Set<PendingAction>();
     public DbSet<UserUpload> UserUploads => Set<UserUpload>();
     public DbSet<MusicVideo> MusicVideos => Set<MusicVideo>();
+    public DbSet<TourDate> TourDates => Set<TourDate>();
     public DbSet<PlanMembership> PlanMemberships => Set<PlanMembership>();
 
     protected override void OnModelCreating(ModelBuilder b)

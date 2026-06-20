@@ -3,8 +3,8 @@ import { useParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
-import { ShareIcon } from '@heroicons/react/24/outline'
-import type { Artist } from '@/types/artist'
+import { ShareIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import type { Artist, TourDate } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { artistService } from '@/services/artistService'
@@ -31,6 +31,7 @@ export function ArtistProfilePage() {
   const [topTracks, setTopTracks] = useState<Track[]>([])
   const [albums, setAlbums] = useState<Album[]>([])
   const [related, setRelated] = useState<Artist[]>([])
+  const [tourDates, setTourDates] = useState<TourDate[]>([])
   const [loading, setLoading] = useState(true)
   const [shareCopied, setShareCopied] = useState(false)
   const playWithGate = usePlaybackGate()
@@ -48,8 +49,9 @@ export function ArtistProfilePage() {
         setLoading(false)
       },
     )
-    // Related artists load independently — never block the page on them.
+    // Related artists + tour dates load independently — never block the page.
     artistService.getRelated(id, 8).then(setRelated).catch(() => setRelated([]))
+    artistService.getTourDates(id).then(setTourDates).catch(() => setTourDates([]))
   }, [id])
 
   if (loading)
@@ -170,6 +172,49 @@ export function ArtistProfilePage() {
             )}
             <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
             <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
+          </div>
+        </section>
+      )}
+
+      {/* On tour */}
+      {tourDates.length > 0 && (
+        <section className="px-6 mb-8">
+          <SectionHeader title={t('detail.onTour')} />
+          <div className="flex flex-col gap-2">
+            {tourDates.map((d) => {
+              const date = new Date(d.eventDate)
+              const region = (() => {
+                try { return new Intl.DisplayNames(undefined, { type: 'region' }).of(d.country) ?? d.country }
+                catch { return d.country }
+              })()
+              return (
+                <div key={d.id} className="flex items-center gap-4 rounded-lg bg-surface px-4 py-3">
+                  <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-elevated text-center leading-none">
+                    <span className="text-[10px] font-bold uppercase text-secondary">
+                      {date.toLocaleDateString(undefined, { month: 'short' })}
+                    </span>
+                    <span className="text-lg font-black text-primary">{date.getDate()}</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-primary">{d.city}, {region}</p>
+                    <p className="truncate text-xs text-secondary">
+                      <MapPinIcon className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
+                      {d.venue}
+                    </p>
+                  </div>
+                  {d.ticketUrl && (
+                    <a
+                      href={d.ticketUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-full border border-secondary/50 px-4 py-1.5 text-xs font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
+                    >
+                      {t('detail.tickets')}
+                    </a>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </section>
       )}

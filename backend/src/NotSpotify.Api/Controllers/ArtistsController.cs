@@ -141,4 +141,18 @@ public class ArtistsController : ControllerBase
             .ToListAsync(ct);
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
+
+    /// <summary>GET /artists/{id}/tour — upcoming concert/tour dates (seeded).</summary>
+    [HttpGet("{id:guid}/tour")]
+    public async Task<ActionResult<IEnumerable<TourDateDto>>> Tour(Guid id, CancellationToken ct = default)
+    {
+        var dates = await _db.TourDates
+            .Where(t => t.ArtistId == id && t.EventDate >= DateTime.UtcNow)
+            .OrderBy(t => t.EventDate)
+            .Take(12)
+            .ToListAsync(ct);
+
+        return Ok(dates.Select(t => new TourDateDto(
+            t.Id.ToString(), t.EventDate, t.City, t.Venue, t.Country, t.TicketUrl)));
+    }
 }

@@ -591,6 +591,42 @@ using (var scope = app.Services.CreateScope())
         WHERE t.rn <= 4 AND NOT EXISTS (SELECT 1 FROM ""MusicVideos"");
     ");
 
+    // Concert/tour info — seeded upcoming dates per artist. The real concert
+    // APIs (Bandsintown/Songkick) need approved keys, so we seed plausible
+    // future shows + a generic web-search ticket link. Same idempotent guard;
+    // seeds only when the table is empty.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""TourDates"" (
+            ""Id""        uuid NOT NULL,
+            ""ArtistId""  uuid NOT NULL,
+            ""EventDate"" timestamp with time zone NOT NULL,
+            ""City""      text NOT NULL DEFAULT '',
+            ""Venue""     text NOT NULL DEFAULT '',
+            ""Country""   text NOT NULL DEFAULT '',
+            ""TicketUrl"" text NULL,
+            CONSTRAINT ""PK_TourDates"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_TourDates_Artists_ArtistId""
+                FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_TourDates_ArtistId_EventDate""
+            ON ""TourDates""(""ArtistId"",""EventDate"");
+
+        INSERT INTO ""TourDates""
+            (""Id"",""ArtistId"",""EventDate"",""City"",""Venue"",""Country"",""TicketUrl"")
+        SELECT gen_random_uuid(),
+               a.""Id"",
+               now() + (((g.n * 18) + 12) || ' days')::interval,
+               (ARRAY['London','New York','Tokyo','Berlin','Paris','Sydney','Toronto','Sao Paulo'])[(((g.n + a.rn) % 8) + 1)],
+               (ARRAY['The O2','Madison Square Garden','Nippon Budokan','Mercedes-Benz Arena','Accor Arena','Qudos Bank Arena','Scotiabank Arena','Allianz Parque'])[(((g.n + a.rn) % 8) + 1)],
+               (ARRAY['GB','US','JP','DE','FR','AU','CA','BR'])[(((g.n + a.rn) % 8) + 1)],
+               'https://www.google.com/search?q=' || replace(a.""Name"", ' ', '+') || '+tour+tickets'
+        FROM (
+            SELECT ""Id"", ""Name"", ROW_NUMBER() OVER (ORDER BY ""Name"") AS rn FROM ""Artists""
+        ) a
+        CROSS JOIN generate_series(0, 2) AS g(n)
+        WHERE NOT EXISTS (SELECT 1 FROM ""TourDates"");
+    ");
+
     // Multi-seat plans (Duo/Family/Student): per-user tier + shared-seat owner
     // columns, plus the membership/invite table. Same idempotent guard pattern —
     // the shared Supabase DB may already have these from a teammate's run.

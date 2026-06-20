@@ -42,6 +42,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Advertisement> Advertisements => Set<Advertisement>();
     public DbSet<AdSettings> AdSettings => Set<AdSettings>();
     public DbSet<PendingAction> PendingActions => Set<PendingAction>();
+    public DbSet<UserUpload> UserUploads => Set<UserUpload>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -506,6 +507,17 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             // "Open approvals, newest first" + "this user's requests".
             e.HasIndex(x => new { x.Status, x.RequestedAt });
             e.HasIndex(x => x.RequestedByUserId);
+        });
+
+        b.Entity<UserUpload>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // "My uploads, newest first."
+            e.HasIndex(x => new { x.UserId, x.CreatedAt });
         });
     }
 }

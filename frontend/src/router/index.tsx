@@ -49,6 +49,7 @@ import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
 import { QueuePage } from '@/pages/QueuePage'
+import { UploadsPage } from '@/pages/UploadsPage'
 import { EmbedTrackPage } from '@/pages/EmbedTrackPage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 
@@ -103,6 +104,7 @@ export const router = createBrowserRouter([
               { path: 'profile', element: <ProfilePage /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: 'stats', element: <StatsPage /> },
+              { path: 'uploads', element: <UploadsPage /> },
               { path: 'messages', element: <MessagesPage /> },
             ],
           },

@@ -526,6 +526,26 @@ using (var scope = app.Services.CreateScope())
             ON ""PendingActions""(""RequestedByUserId"");
     ");
 
+    // Personal uploads locker (same idempotent guard pattern). Per-user private
+    // audio — never part of the public catalogue.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UserUploads"" (
+            ""Id""         uuid NOT NULL,
+            ""UserId""     uuid NOT NULL,
+            ""Title""      text NOT NULL DEFAULT '',
+            ""Artist""     text NULL,
+            ""AudioUrl""   text NOT NULL DEFAULT '',
+            ""AudioKey""   text NULL,
+            ""DurationMs"" bigint NOT NULL DEFAULT 0,
+            ""CreatedAt""  timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_UserUploads"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_UserUploads_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_UserUploads_UserId_CreatedAt""
+            ON ""UserUploads""(""UserId"", ""CreatedAt"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

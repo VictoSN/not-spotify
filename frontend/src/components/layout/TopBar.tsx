@@ -11,6 +11,7 @@ import {
   UserIcon,
   UserCircleIcon,
   ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
   ClockIcon,
   UsersIcon,
   ChatBubbleLeftRightIcon,
@@ -679,6 +680,14 @@ export function TopBar() {
               >
                 <ChartBarIcon className={userMenuIconClass} />
                 {t('topbar.listeningStats')}
+              </Link>
+              <Link
+                to="/uploads"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                <ArrowUpTrayIcon className={userMenuIconClass} />
+                {t('topbar.yourUploads')}
               </Link>
 
               <div className="my-1 border-t border-secondary/10" />

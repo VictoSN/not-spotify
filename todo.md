@@ -49,7 +49,7 @@ Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own 
 - [ ] **Desktop wrapper (Tauri)** — nearly free on top of the PWA.
 - [ ] **Adaptive streaming / quality selection** — ffmpeg + hls.js; storage-gated.
 - [x] **Embeddable iframe mini-player** — **done (2026-06-20)**, frontend-only. Standalone `/embed/track/:id` route (`EmbedTrackPage`) renders bare — outside AppShell, no auth — with its own `<audio>` element and explicit (theme-independent) colors so it looks right inside any host page. Cover/title/artist link out via `target="_top"`. TrackDetailPage's action bar gains a "Copy embed code" button (CodeBracketIcon) that copies a ready `<iframe>` snippet; i18n keys added (en/es/fr).
-- [ ] **Personal uploads locker** — demo-scale only (storage).
+- [x] **Personal uploads locker** — **done (2026-06-20)**. `UserUpload` (per-user private audio) via idempotent Program.cs guard; `MeUploadsController` (`[Authorize]`): `GET/POST/DELETE /me/uploads` — file goes through the existing `IStorageService` (`uploads/{userId}/{guid}.ext`), resolved for the owner only, never in the public catalogue/search/recs. Frontend: `/uploads` page (multi-file picker, client-side duration probe, list with play/pause + delete), `uploadToTrack` adapter (plays through the unchanged engine), "Your uploads" entry in the user menu, en/es/fr.
 - [ ] **Family / Duo / Student plans** — extra Stripe test prices + member invites.
 - [ ] **Audio recognition** (hum/play to find) — AcoustID/Chromaprint; disproportionate effort.
 - [ ] **Concert/tour info** — needs a third-party API key (free tiers require approval); revisit only if granted.

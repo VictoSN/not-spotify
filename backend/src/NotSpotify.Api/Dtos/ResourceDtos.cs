@@ -307,6 +307,15 @@ public record UpsertAdRequest(
 
 public record AdSettingsDto(int AdsPerNTracks, bool IsEnabled);
 
+public record UserUploadDto(
+    Guid Id,
+    string Title,
+    string? Artist,
+    string AudioUrl,
+    long DurationMs,
+    DateTime CreatedAt
+);
+
 // ── RBAC ────────────────────────────────────────────────────────────────────
 
 public record TeamMemberDto(

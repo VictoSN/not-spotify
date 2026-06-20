@@ -34,6 +34,7 @@ import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
 import { FriendPanel } from '@/components/friends/FriendPanel'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
+import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
@@ -437,6 +438,7 @@ export function TopBar() {
         <div className="flex items-center justify-end gap-5 text-sm font-bold text-secondary">
           <div className="hidden items-center gap-5 2xl:flex">
             <Link to="/premium" className="transition-colors hover:text-primary">{t('topbar.premium')}</Link>
+            <InstallAppButton className="transition-colors hover:text-primary" />
             <button className="transition-colors hover:text-primary">{t('topbar.support')}</button>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
@@ -533,6 +535,7 @@ export function TopBar() {
           <Link to="/premium" className="transition-colors hover:text-primary">
             {t('topbar.premium')}
           </Link>
+          <InstallAppButton className="transition-colors hover:text-primary" />
           <button type="button" className="transition-colors hover:text-primary">
             {t('topbar.support')}
           </button>
@@ -689,6 +692,7 @@ export function TopBar() {
                 <ArrowUpTrayIcon className={userMenuIconClass} />
                 {t('topbar.yourUploads')}
               </Link>
+              <InstallAppMenuItem className={userMenuItemClass} onSelect={() => setShowMenu(false)} />
 
               <div className="my-1 border-t border-secondary/10" />
 

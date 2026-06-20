@@ -1,3 +1,4 @@
+import Hls from 'hls.js'
 import { usePlayerStore } from '@/stores/playerStore'
 import { resolvePlaybackSrc } from '@/services/offlineAudio'
 import {
@@ -92,6 +93,10 @@ class AudioEngine {
   private normalizeGain: GainNode | null = null
   // Per-deck low-pass that enforces the streaming-quality tier (see QUALITY_CUTOFF_HZ).
   private deckQuality: [BiquadFilterNode | null, BiquadFilterNode | null] = [null, null]
+  // Per-deck hls.js instance when the source is an adaptive HLS manifest (.m3u8).
+  // null for plain single-file sources (the whole seed catalogue), which keep the
+  // untouched native <audio> path. Adaptive bitrate is capped by the quality tier.
+  private hls: [Hls | null, Hls | null] = [null, null]
   private equalizerGains = getEqualizerSettings().gains
   private crossfadeSec = readCrossfadeSeconds()
   private normalizeEnabled = readNormalizeEnabled()
@@ -120,6 +125,7 @@ class AudioEngine {
       this.quality = readQuality()
       this.applyNormalize()
       this.applyQuality()
+      this.applyHlsQuality()
     }
     this.onEqualizerChange = (event) => {
       const next = event instanceof CustomEvent
@@ -217,6 +223,60 @@ class AudioEngine {
     this.deckQuality.forEach((filter) => {
       filter?.frequency.setTargetAtTime(cutoff, now, 0.02)
     })
+  }
+
+  // ── Adaptive (HLS) streaming ──────────────────────────────────────────────
+  // A track whose audio is an HLS manifest streams adaptively via hls.js with
+  // the bitrate ladder capped by the user's quality tier. Single-file MP3/AAC
+  // sources (the entire current catalogue) never enter this path.
+  private static isHlsSrc(src: string): boolean {
+    return /\.m3u8(\?|#|$)/i.test(src)
+  }
+
+  /** Map the quality tier → hls.js max auto level (−1 = uncapped/full ABR). */
+  private qualityLevelCap(): number {
+    switch (this.quality) {
+      case 'low': return 0
+      case 'normal': return 1
+      case 'high': return 2
+      default: return -1 // auto / veryhigh → let ABR pick the best rendition
+    }
+  }
+
+  /** Push the current quality tier onto any live hls.js instances. */
+  private applyHlsQuality() {
+    const cap = this.qualityLevelCap()
+    this.hls.forEach((h) => { if (h) h.autoLevelCapping = cap })
+  }
+
+  private destroyHls(index: number) {
+    const h = this.hls[index]
+    if (h) {
+      h.destroy()
+      this.hls[index] = null
+    }
+  }
+
+  /**
+   * Loads `src` into deck `index`. HLS manifests go through hls.js (unless the
+   * browser plays HLS natively, e.g. Safari); everything else uses the plain
+   * native path, byte-for-byte the previous behaviour. Records this.srcs[index].
+   */
+  private loadSource(index: number, src: string) {
+    const deck = this.decks[index]
+    this.destroyHls(index)
+    const nativeHls = deck.canPlayType('application/vnd.apple.mpegurl') !== ''
+    if (AudioEngine.isHlsSrc(src) && !nativeHls && Hls.isSupported()) {
+      const hls = new Hls({ enableWorker: true })
+      hls.attachMedia(deck)
+      hls.loadSource(src)
+      hls.autoLevelCapping = this.qualityLevelCap()
+      this.hls[index] = hls
+    } else {
+      deck.src = src
+      deck.load()
+    }
+    this.srcs[index] = src
   }
 
   private applyEqualizerGains() {
@@ -318,10 +378,8 @@ class AudioEngine {
     if (this.fadingOut === idle) return // still draining a previous crossfade
     const src = resolvePlaybackSrc(next)
     if (this.srcs[this.idleIndex] !== src) {
-      idle.src = src
-      this.srcs[this.idleIndex] = src
       idle.volume = 0
-      idle.load()
+      this.loadSource(this.idleIndex, src)
     }
     this.preloadedId = next.id
   }
@@ -370,9 +428,7 @@ class AudioEngine {
 
     // Reuse the pre-buffered deck when it already holds this src (gapless); else load.
     if (this.srcs[newIndex] !== src) {
-      newDeck.src = src
-      this.srcs[newIndex] = src
-      newDeck.load()
+      this.loadSource(newIndex, src)
     }
     newDeck.currentTime = 0
     newDeck.playbackRate = playbackRate
@@ -400,6 +456,7 @@ class AudioEngine {
     this.cancelFade()
     this.decks.forEach((deck, i) => {
       deck.pause()
+      this.destroyHls(i)
       deck.src = ''
       this.srcs[i] = ''
     })
@@ -566,8 +623,9 @@ class AudioEngine {
     window.removeEventListener('ns-pref-change', this.onPrefChange)
     window.removeEventListener(EQUALIZER_EVENT, this.onEqualizerChange)
     this.cancelFade()
-    this.decks.forEach((deck) => {
+    this.decks.forEach((deck, i) => {
       deck.pause()
+      this.destroyHls(i)
       deck.src = ''
     })
     this.audioContext?.close().catch(() => {})

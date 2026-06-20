@@ -15,7 +15,8 @@ public class AudioWaveformServiceTests
         var peaks = AudioWaveformService.BuildPeaks(bytes, 4);
 
         Assert.Equal(4, peaks.Length);
-        Assert.Equal(0.0313, peaks[0], 4);
+        // 0.03125 rounds to 0.0312 under .NET's banker's rounding (round-half-to-even).
+        Assert.Equal(0.0312, peaks[0], 4);
         Assert.Equal(0.125, peaks[1], 4);
         Assert.Equal(0.5, peaks[2], 4);
         Assert.Equal(1, peaks[3], 4);

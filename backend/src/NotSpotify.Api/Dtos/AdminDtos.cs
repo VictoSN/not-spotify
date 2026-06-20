@@ -108,7 +108,8 @@ public record ArtistUpdateProfileRequest(
     string? Bio,
     string? Instagram,
     string? Twitter,
-    string? Website
+    string? Website,
+    string? Country = null
 );
 
 public record ResubmitRequest(string? Note);
@@ -120,7 +121,8 @@ public record ArtistSubmitAlbumRequest(
     string Type = "album",   // album | single | ep
     DateOnly? ReleaseDate = null,
     string? Label = null,
-    string? Copyright = null
+    string? Copyright = null,
+    string? Country = null
 );
 
 // ── Artist — album update (pending only) ─────────────────────────────────────
@@ -130,7 +132,8 @@ public record ArtistUpdateAlbumRequest(
     string? Type,
     DateOnly? ReleaseDate,
     string? Label,
-    string? Copyright
+    string? Copyright,
+    string? Country = null
 );
 
 // ── Artist — track update (track number / title / explicit) ──────────────────

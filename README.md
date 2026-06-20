@@ -10,7 +10,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 **What works today (highlights):**
 - **Playback:** full player, queue + premium drag-reorder, **crossfade + gapless**, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
-- **Discovery:** trending, for-you, new music, recents, **weekly Top 50 charts**, **search by lyrics**, **song radio**, **"Fans also like"**, **Daily Mixes**.
+- **Discovery:** trending, for-you, new music, recents, **weekly Top 50 charts**, **search by lyrics**, **song radio**, **"Fans also like"**, **Daily Mixes**, **"Popular in {country}"** (location-based).
 - **Library/playlists:** create/edit/delete, **smart playlists** (genre/rating/play-count/date-added rules), public/friends/private visibility, collaborative playlists, JSON export/import, library + track sorting, cover-art mosaics.
 - **Social:** friends, **asymmetric follows** (follower/following counts + public profile top tracks), real-time presence, Friend Activity rail, 1:1 chat, notifications center, friends-only playlists, Blend, listen-along/Jam.
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
@@ -352,6 +352,16 @@ ORDER BY Tracks.CreatedAt DESC
 - No scoring — pure recency sort.
 - Ensures newly uploaded tracks are discoverable before they appear in trending or most-liked.
 - **Data used:** `Tracks.CreatedAt`
+
+---
+
+### Popular in Country — `GET /tracks/popular?country=XX`
+
+The **"Popular in {country}"** home row. Ranks approved tracks by plays from users **located in that country** over the last 30 days (`PlayHistories` joined to `Users.Country`), with a **+0.5 boost** when the track's artist or album is tagged to that market.
+
+- `country` is an ISO-3166 alpha-2 code; when omitted it falls back to the **caller's** country, then `US`.
+- Pads thin results first with content tagged to the market, then with global top tracks, so the row always fills.
+- **Data used:** `PlayHistories` (last 30 days), `Users.Country`, `Artists.Country`, `Albums.Country`, `Tracks.PlayCount`
 
 ---
 

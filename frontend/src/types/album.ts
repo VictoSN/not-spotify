@@ -29,4 +29,5 @@ export interface Album {
   averageRating?: number
   ratingCount?: number
   totalSaves?: number
+  country?: string | null
 }

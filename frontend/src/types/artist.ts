@@ -23,4 +23,5 @@ export interface Artist {
   isRevoked?: boolean
   revocationNote?: string | null
   revokedAt?: string | null
+  country?: string | null
 }

@@ -13,6 +13,8 @@ public class Album
     public string? Label { get; set; }
     public string? Copyright { get; set; }
     public int Popularity { get; set; }
+    /// <summary>ISO-3166 alpha-2 market code (e.g. "US"). Null = inherit/unspecified.</summary>
+    public string? Country { get; set; }
 
     public string Status { get; set; } = "approved"; // approved | pending | rejected
     public string? ReviewNote { get; set; }

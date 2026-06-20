@@ -54,6 +54,13 @@ public class MeController : ControllerBase
         return Guid.TryParse(id, out var g) ? g : null;
     }
 
+    /// <summary>Trim to an upper-case ISO alpha-2 code; empty/blank → null.</summary>
+    private static string? NormalizeCountry(string? raw)
+    {
+        var c = raw?.Trim();
+        return string.IsNullOrEmpty(c) ? null : c.ToUpperInvariant();
+    }
+
     [HttpPatch("profile")]
     public async Task<ActionResult<UserDto>> UpdateProfile([FromBody] UpdateProfileRequest req, CancellationToken ct = default)
     {
@@ -599,6 +606,7 @@ public class MeController : ControllerBase
             ReleaseDate = req.ReleaseDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
             Label = req.Label,
             Copyright = req.Copyright,
+            Country = NormalizeCountry(req.Country),
             Status = "pending",
             SubmittedByUserId = me.Value,
             CoverUrl = string.Empty,
@@ -873,6 +881,7 @@ public class MeController : ControllerBase
         if (req.Instagram is not null) artist.Instagram = req.Instagram == "" ? null : req.Instagram;
         if (req.Twitter is not null) artist.Twitter = req.Twitter == "" ? null : req.Twitter;
         if (req.Website is not null) artist.Website = req.Website == "" ? null : req.Website;
+        if (req.Country is not null) artist.Country = NormalizeCountry(req.Country);
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(artist));
@@ -1022,6 +1031,7 @@ public class MeController : ControllerBase
         if (req.ReleaseDate.HasValue) album.ReleaseDate = req.ReleaseDate.Value;
         if (req.Label is not null) album.Label = req.Label;
         if (req.Copyright is not null) album.Copyright = req.Copyright;
+        if (req.Country is not null) album.Country = NormalizeCountry(req.Country);
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(album));

@@ -217,6 +217,7 @@ const en: Dict = {
   'home.section.recommendedPlaylists': 'Recommended playlists',
   'home.section.newMusic': 'New music',
   'home.section.popularArtists': 'Popular artists',
+  'home.section.popularInCountry': 'Popular in {country}',
   'home.section.newReleases': 'New releases',
   'home.section.popularAlbums': 'Popular albums and singles',
 
@@ -733,6 +734,7 @@ const es: Dict = {
   'home.section.recommendedPlaylists': 'Listas recomendadas',
   'home.section.newMusic': 'Música nueva',
   'home.section.popularArtists': 'Artistas populares',
+  'home.section.popularInCountry': 'Popular en {country}',
   'home.section.newReleases': 'Nuevos lanzamientos',
   'home.section.popularAlbums': 'Álbumes y sencillos populares',
 
@@ -1249,6 +1251,7 @@ const fr: Dict = {
   'home.section.recommendedPlaylists': 'Playlists recommandées',
   'home.section.newMusic': 'Nouveautés musicales',
   'home.section.popularArtists': 'Artistes populaires',
+  'home.section.popularInCountry': 'Populaire en {country}',
   'home.section.newReleases': 'Nouveautés',
   'home.section.popularAlbums': 'Albums et singles populaires',
 

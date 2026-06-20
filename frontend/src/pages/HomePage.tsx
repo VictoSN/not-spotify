@@ -46,6 +46,7 @@ export function HomePage() {
   const [newReleases, setNewReleases] = useState<Album[]>([])
   const [recents, setRecents] = useState<Track[]>([])
   const [popularArtists, setPopularArtists] = useState<Artist[]>([])
+  const [popularInCountry, setPopularInCountry] = useState<Track[]>([])
   const [dailyMixes, setDailyMixes] = useState<DailyMix[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -69,13 +70,14 @@ export function HomePage() {
         setLoading(false)
 
         // Wave 2: secondary sections (staggered after paint)
-        const [ml, nm, rp, nr, pa, dm] = await Promise.all([
+        const [ml, nm, rp, nr, pa, dm, pic] = await Promise.all([
           trackService.getMostLiked(PREVIEW_LIMIT),
           trackService.getNewMusic(PREVIEW_LIMIT),
           playlistService.getRecommended(PREVIEW_LIMIT),
           albumService.getNewReleases(PREVIEW_LIMIT),
           artistService.getPopular(PREVIEW_LIMIT),
           trackService.getDailyMixes(4).catch(() => [] as DailyMix[]),
+          trackService.getPopularInCountry(user?.country, PREVIEW_LIMIT).catch(() => [] as Track[]),
         ])
         if (cancelled) return
         setMostLiked(ml)
@@ -84,6 +86,7 @@ export function HomePage() {
         setNewReleases(nr)
         setPopularArtists(pa)
         setDailyMixes(dm)
+        setPopularInCountry(pic)
       } catch {
         if (!cancelled) setLoading(false)
       }
@@ -124,6 +127,15 @@ export function HomePage() {
   }
 
   const quickPicks = savedPlaylists.slice(0, 6)
+
+  // ISO alpha-2 → display name (e.g. "US" → "United States"); falls back to the code.
+  const countryCode = (user?.country || 'US').toUpperCase()
+  let countryName = countryCode
+  try {
+    countryName = new Intl.DisplayNames(undefined, { type: 'region' }).of(countryCode) || countryCode
+  } catch {
+    /* Intl.DisplayNames unsupported — keep the raw code */
+  }
 
   return (
     <div className="relative">
@@ -293,6 +305,18 @@ export function HomePage() {
             <HorizontalScroller>
               {mostLiked.map((track) => (
                 <TrackTile key={track.id} track={track} queue={mostLiked} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
+
+        {/* Popular in the listener's country */}
+        {popularInCountry.length > 0 && (
+          <section className="mb-8">
+            <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} />
+            <HorizontalScroller>
+              {popularInCountry.map((track) => (
+                <TrackTile key={track.id} track={track} queue={popularInCountry} />
               ))}
             </HorizontalScroller>
           </section>

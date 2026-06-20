@@ -60,7 +60,8 @@ public record ArtistDto(
     DateTime CreatedAt,
     bool IsRevoked = false,
     string? RevocationNote = null,
-    DateTime? RevokedAt = null
+    DateTime? RevokedAt = null,
+    string? Country = null
 );
 
 public record ReviewHistoryDto(
@@ -93,7 +94,8 @@ public record AlbumDto(
     long TotalPlays = 0,
     double AverageRating = 0.0,
     int RatingCount = 0,
-    int TotalSaves = 0
+    int TotalSaves = 0,
+    string? Country = null
 );
 
 public record GenreDto(Guid Id, string Name, string Slug, string Color, string? ImageUrl);

@@ -105,6 +105,11 @@ export const trackService = {
     return res.data
   },
 
+  async getPopularInCountry(country?: string, limit = 10): Promise<Track[]> {
+    const res = await api.get<Track[]>('/tracks/popular', { params: { country, limit } })
+    return res.data
+  },
+
   async getForYou(limit = 10): Promise<Track[]> {
     const res = await api.get<Track[]>('/tracks/for-you', { params: { limit } })
     return res.data

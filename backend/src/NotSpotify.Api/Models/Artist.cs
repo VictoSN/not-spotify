@@ -12,6 +12,8 @@ public class Artist
     public long MonthlyListeners { get; set; }
     public long FollowerCount { get; set; }
     public bool Verified { get; set; }
+    /// <summary>ISO-3166 alpha-2 market/origin code (e.g. "US"). Null = unspecified.</summary>
+    public string? Country { get; set; }
     public string? Instagram { get; set; }
     public string? Twitter { get; set; }
     public string? Website { get; set; }

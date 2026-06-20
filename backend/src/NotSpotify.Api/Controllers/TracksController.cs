@@ -166,6 +166,82 @@ public class TracksController : ControllerBase
     }
 
     /// <summary>
+    /// Popular in a country: ranks approved tracks by plays from users located in
+    /// that country over the last 30 days (join PlayHistories → user.Country),
+    /// with a small boost for tracks whose artist/album is from that market.
+    /// `country` is an ISO alpha-2 code; when omitted it falls back to the caller's
+    /// country (or "US"). Pads with market content, then global top tracks.
+    /// </summary>
+    [HttpGet("popular")]
+    public async Task<ActionResult<IEnumerable<TrackDto>>> Popular(
+        [FromQuery] string? country = null,
+        [FromQuery] int limit = 10,
+        CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 50);
+
+        if (string.IsNullOrWhiteSpace(country))
+        {
+            var uid = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            if (Guid.TryParse(uid, out var userId))
+                country = await _db.Users.Where(u => u.Id == userId).Select(u => u.Country).FirstOrDefaultAsync(ct);
+        }
+        country = string.IsNullOrWhiteSpace(country) ? "US" : country.Trim().ToUpperInvariant();
+
+        var cutoff = DateTime.UtcNow.AddDays(-30);
+
+        // Plays by users located in this country.
+        var countryCounts = await _db.PlayHistories
+            .Where(h => h.PlayedAt >= cutoff && h.User.Country == country)
+            .GroupBy(h => h.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(limit * 4)
+            .ToListAsync(ct);
+
+        var countMap = countryCounts.ToDictionary(c => c.TrackId, c => c.Count);
+        var ids = countryCounts.Select(c => c.TrackId).ToList();
+
+        var ranked = new List<Models.Track>();
+        if (ids.Count > 0)
+        {
+            var tracks = await BaseQuery().Where(t => ids.Contains(t.Id)).ToListAsync(ct);
+            ranked = tracks
+                // +0.5 boost when the artist or album is tagged to this market.
+                .OrderByDescending(t => countMap.GetValueOrDefault(t.Id)
+                    + (t.Artist.Country == country || t.Album.Country == country ? 0.5 : 0))
+                .ThenByDescending(t => t.PlayCount)
+                .Take(limit)
+                .ToList();
+        }
+
+        // Pad: first with content tagged to this market, then global top tracks.
+        if (ranked.Count < limit)
+        {
+            var have = ranked.Select(t => t.Id).ToHashSet();
+            var fromMarket = await BaseQuery()
+                .Where(t => (t.Artist.Country == country || t.Album.Country == country) && !have.Contains(t.Id))
+                .OrderByDescending(t => t.PlayCount)
+                .Take(limit - ranked.Count)
+                .ToListAsync(ct);
+            ranked.AddRange(fromMarket);
+
+            if (ranked.Count < limit)
+            {
+                have = ranked.Select(t => t.Id).ToHashSet();
+                var fillers = await BaseQuery()
+                    .Where(t => !have.Contains(t.Id))
+                    .OrderByDescending(t => t.PlayCount)
+                    .Take(limit - ranked.Count)
+                    .ToListAsync(ct);
+                ranked.AddRange(fillers);
+            }
+        }
+
+        return Ok(await _mapper.ToDtoListAsync(ranked, ct));
+    }
+
+    /// <summary>
     /// Most Liked: tracks with ≥ 2 ratings ranked by a confidence-weighted score.
     /// Score = averageRating × log₂(ratingCount + 1).
     /// The logarithm prevents a single 5-star rating from outranking a track with

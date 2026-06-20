@@ -109,7 +109,8 @@ public class MediaMapper
         a.CreatedAt,
         a.IsRevoked,
         a.RevocationNote,
-        a.RevokedAt
+        a.RevokedAt,
+        a.Country
     );
 
     public AlbumDto ToDto(Album a, IEnumerable<string>? genres = null, int totalSaves = 0)
@@ -139,7 +140,8 @@ public class MediaMapper
             totalPlays,
             Math.Round(avgRating, 1),
             ratingCount,
-            totalSaves
+            totalSaves,
+            a.Country
         );
     }
 

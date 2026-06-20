@@ -39,6 +39,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<Repost> Reposts => Set<Repost>();
     public DbSet<Podcast> Podcasts => Set<Podcast>();
     public DbSet<Episode> Episodes => Set<Episode>();
+    public DbSet<Advertisement> Advertisements => Set<Advertisement>();
+    public DbSet<AdSettings> AdSettings => Set<AdSettings>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -484,6 +486,18 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // "Episodes for podcast X, newest first" — the primary read query.
             e.HasIndex(x => new { x.PodcastId, x.PublishedAt });
+        });
+
+        b.Entity<Advertisement>(e =>
+        {
+            e.Property(x => x.Title).IsRequired();
+            // "Active ads in flight" — the next-ad pick filters on these.
+            e.HasIndex(x => new { x.IsActive, x.Country });
+        });
+
+        b.Entity<AdSettings>(e =>
+        {
+            e.Property(x => x.AdsPerNTracks).HasDefaultValue(3);
         });
     }
 }

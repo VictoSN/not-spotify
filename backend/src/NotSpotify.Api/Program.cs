@@ -448,6 +448,60 @@ using (var scope = app.Services.CreateScope())
         END $$;
     ");
 
+    // Ads engine (same idempotent guard pattern). One-time seeds the singleton
+    // settings row + two house ads whose audio is borrowed from the existing
+    // catalogue so they actually play through the dedicated client ad element.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""Advertisements"" (
+            ""Id""              uuid NOT NULL,
+            ""Title""           text NOT NULL,
+            ""Advertiser""      text NOT NULL DEFAULT '',
+            ""AudioUrl""        text NOT NULL DEFAULT '',
+            ""AudioKey""        text NULL,
+            ""ImageUrl""        text NULL,
+            ""ImageKey""        text NULL,
+            ""ClickUrl""        text NULL,
+            ""DurationMs""      bigint NOT NULL DEFAULT 0,
+            ""Country""         text NULL,
+            ""Weight""          integer NOT NULL DEFAULT 1,
+            ""IsActive""        boolean NOT NULL DEFAULT true,
+            ""StartsAt""        timestamp with time zone NULL,
+            ""EndsAt""          timestamp with time zone NULL,
+            ""ImpressionCount"" bigint NOT NULL DEFAULT 0,
+            ""CreatedAt""       timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_Advertisements"" PRIMARY KEY (""Id"")
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_Advertisements_IsActive_Country""
+            ON ""Advertisements""(""IsActive"", ""Country"");
+
+        CREATE TABLE IF NOT EXISTS ""AdSettings"" (
+            ""Id""            uuid NOT NULL,
+            ""AdsPerNTracks"" integer NOT NULL DEFAULT 3,
+            ""IsEnabled""     boolean NOT NULL DEFAULT true,
+            ""UpdatedAt""     timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_AdSettings"" PRIMARY KEY (""Id"")
+        );
+
+        INSERT INTO ""AdSettings"" (""Id"",""AdsPerNTracks"",""IsEnabled"",""UpdatedAt"")
+        SELECT gen_random_uuid(), 3, true, now()
+        WHERE NOT EXISTS (SELECT 1 FROM ""AdSettings"");
+
+        INSERT INTO ""Advertisements""
+            (""Id"",""Title"",""Advertiser"",""AudioUrl"",""AudioKey"",""DurationMs"",""Weight"",""IsActive"",""CreatedAt"")
+        SELECT gen_random_uuid(),
+               'Go Premium — listen ad-free',
+               'Not Spotify',
+               t.""AudioUrl"", t.""AudioKey"",
+               LEAST(GREATEST(t.""DurationMs"", 10000), 30000),
+               1, true, now()
+        FROM (
+            SELECT ""AudioUrl"", ""AudioKey"", ""DurationMs"",
+                   ROW_NUMBER() OVER (ORDER BY ""PlayCount"" DESC, ""CreatedAt"" DESC) AS rn
+            FROM ""Tracks"" WHERE ""Status"" = 'approved'
+        ) t
+        WHERE t.rn <= 2 AND NOT EXISTS (SELECT 1 FROM ""Advertisements"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 

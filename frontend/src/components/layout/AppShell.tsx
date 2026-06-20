@@ -8,6 +8,7 @@ import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
 import { FriendActivityPanel } from '@/components/friends/FriendActivityPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
+import { AdPlayer } from '@/components/player/AdPlayer'
 import { KaraokeView } from '@/components/player/KaraokeView'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -108,6 +109,7 @@ export function AppShell() {
       </div>
 
       {isAuthenticated && <JamBar />}
+      {isAuthenticated && <AdPlayer />}
       {isAuthenticated && <BottomPlayerBar />}
       {isMobile && <MobileNav />}
       {isMobile && isAuthenticated && <MobileNowPlayingSheet />}

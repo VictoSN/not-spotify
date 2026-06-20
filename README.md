@@ -16,7 +16,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
 - **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped), live language selector (en/es/fr across Settings, shell navigation, Home, Search, and Library).
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`.
-- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page); **podcasts** (`/podcasts` catalogue + show pages, episodes play through the same audio engine as tracks).
+- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page); **podcasts** (`/podcasts` catalogue + show pages, episodes play through the same audio engine as tracks); **audio ads engine** (free tier hears a house ad every N tracks via a separate non-skippable ad player; premium is genuinely ad-free; admin ad CRUD + weighted/targeted serving).
 
 **Being worked on next:** waveform + timed comments, remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 
@@ -131,6 +131,7 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 | Shuffle | Always on, cannot be turned off | Toggle on/off |
 | Repeat | Not available (locked) | Repeat all / repeat one |
 | Track selection | Random start — clicking a specific track shuffles the whole playlist | Play any track directly |
+| Audio ads | Plays a house ad every N tracks | **Ad-free** — never interrupted |
 | Downloads | ✗ | Download songs, albums, and playlists as ZIP files |
 | Liked Songs | Full access — like, unlike, view | Full access |
 | Save albums | Full access | Full access |

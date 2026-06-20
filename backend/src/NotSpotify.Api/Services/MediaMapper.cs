@@ -147,6 +147,41 @@ public class MediaMapper
 
     public GenreDto ToDto(Genre g) => new(g.Id, g.Name, g.Slug, g.Color, g.ImageUrl);
 
+    public async Task<AdDto> ToDtoAsync(Advertisement ad, CancellationToken ct = default)
+    {
+        var audioUrl = await ResolveAudioAsync(ad.AudioKey, ad.AudioUrl, ct);
+        return new AdDto(
+            ad.Id,
+            ad.Title,
+            ad.Advertiser,
+            audioUrl,
+            ResolveImage(ad.ImageKey, ad.ImageUrl),
+            ad.ClickUrl,
+            ad.DurationMs
+        );
+    }
+
+    public async Task<AdAdminDto> ToAdminDtoAsync(Advertisement ad, CancellationToken ct = default)
+    {
+        var audioUrl = await ResolveAudioAsync(ad.AudioKey, ad.AudioUrl, ct);
+        return new AdAdminDto(
+            ad.Id,
+            ad.Title,
+            ad.Advertiser,
+            audioUrl,
+            ResolveImage(ad.ImageKey, ad.ImageUrl),
+            ad.ClickUrl,
+            ad.DurationMs,
+            ad.Country,
+            ad.Weight,
+            ad.IsActive,
+            ad.StartsAt,
+            ad.EndsAt,
+            ad.ImpressionCount,
+            ad.CreatedAt
+        );
+    }
+
     public async Task<EpisodeDto> ToDtoAsync(Episode ep, CancellationToken ct = default)
     {
         var audioUrl = await ResolveAudioAsync(ep.AudioKey, ep.AudioUrl, ct);

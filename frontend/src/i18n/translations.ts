@@ -513,6 +513,8 @@ const en: Dict = {
   'admin.loginPrompt': 'Admin access requires separate authentication.',
 
   // Premium
+  'ad.label': 'Advertisement',
+  'ad.goAdFree': 'Go ad-free',
   'premium.title': 'Get Premium',
   'premium.subtitle': 'Listen without limits. Try Premium free for 1 month.',
   'premium.monthly': 'Monthly',
@@ -1031,6 +1033,8 @@ const es: Dict = {
   'admin.loginPrompt': 'El acceso de administrador requiere autenticación separada.',
 
   // Premium
+  'ad.label': 'Anuncio',
+  'ad.goAdFree': 'Quita los anuncios',
   'premium.title': 'Obtén Premium',
   'premium.subtitle': 'Escucha sin límites. Prueba Premium gratis 1 mes.',
   'premium.monthly': 'Mensual',
@@ -1549,6 +1553,8 @@ const fr: Dict = {
   'admin.loginPrompt': 'L’accès admin nécessite une authentification séparée.',
 
   // Premium
+  'ad.label': 'Publicité',
+  'ad.goAdFree': 'Sans publicité',
   'premium.title': 'Passez à Premium',
   'premium.subtitle': 'Écoutez sans limites. Essayez Premium gratuitement 1 mois.',
   'premium.monthly': 'Mensuel',

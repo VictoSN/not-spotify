@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import type { Track } from '@/types/track'
+import type { Ad } from '@/types/ad'
 import { trackService } from '@/services/trackService'
+import { adService } from '@/services/adService'
 import { useAuthStore } from './authStore'
 
 // Fire-and-forget play tracking. We dedupe within a short window so seeking/re-clicking
@@ -19,6 +21,68 @@ function recordPlay(trackId: string) {
 
 function isFreeUser(): boolean {
   return useAuthStore.getState().user?.capabilities?.unlimitedPlayback === false
+}
+
+// --- Free-tier ad insertion ----------------------------------------------
+// Premium never hears ads (that's the perk). For free users we play one house
+// ad every N tracks, where N comes from the backend AdSettings. The ad plays
+// through a dedicated element (see AdPlayer) so the two-deck engine is left
+// untouched; while it plays we hold the next track in `pendingAfterAd`.
+let adConfig = { adsPerNTracks: 3, isEnabled: true }
+let adConfigLoaded = false
+let tracksSinceAd = 0
+let pendingAfterAd: { track: Track; index: number } | null = null
+
+function loadAdConfig() {
+  if (adConfigLoaded) return
+  adConfigLoaded = true
+  adService.getSettings().then((s) => { adConfig = s }).catch(() => { })
+}
+
+/** Commit an advance to `next`, pushing the outgoing track onto history. */
+function commitAdvance(next: Track, nextIndex: number) {
+  const s = usePlayerStore.getState()
+  const newHistory = s.currentTrack ? [...s.history, s.currentTrack].slice(-50) : s.history
+  usePlayerStore.setState({
+    currentTrack: next,
+    queueIndex: nextIndex,
+    currentTime: 0,
+    isPlaying: true,
+    history: newHistory,
+  })
+  recordPlay(next.id)
+}
+
+/**
+ * Advance to `next`, but for free users insert an ad first every Nth track.
+ * When it's ad-time we pause, fetch an ad, and (if one is returned) enter ad
+ * mode — AdPlayer then plays it and calls endAd() to release the held track.
+ */
+function advanceWithAdGate(next: Track, nextIndex: number) {
+  if (!isFreeUser()) { commitAdvance(next, nextIndex); return }
+  loadAdConfig()
+  tracksSinceAd += 1
+  const n = adConfig.adsPerNTracks
+  const adDue = adConfig.isEnabled && n > 0 && tracksSinceAd > n && usePlayerStore.getState().currentAd == null
+  if (!adDue) { commitAdvance(next, nextIndex); return }
+
+  tracksSinceAd = 0
+  pendingAfterAd = { track: next, index: nextIndex }
+  usePlayerStore.setState({ isPlaying: false })
+  const country = useAuthStore.getState().user?.country ?? undefined
+  adService.getNext(country)
+    .then((ad) => {
+      if (ad && pendingAfterAd) {
+        usePlayerStore.setState({ currentAd: ad })
+      } else {
+        pendingAfterAd = null
+        commitAdvance(next, nextIndex)
+      }
+    })
+    .catch(() => {
+      pendingAfterAd = null
+      commitAdvance(next, nextIndex)
+    })
 }
 
 export type RepeatMode = 'off' | 'one' | 'all'
@@ -51,8 +115,11 @@ interface PlayerState {
   isNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
   isKaraokeOpen: boolean
+  /** A free-tier audio ad currently playing (blocks transport until it ends). */
+  currentAd: Ad | null
 
   play: (track: Track, queue?: Track[]) => void
+  endAd: () => void
   pause: () => void
   resume: () => void
   togglePlayPause: () => void
@@ -96,8 +163,19 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isNowPlayingOpen: true,
   isNowPlayingCollapsed: false,
   isKaraokeOpen: false,
+  currentAd: null,
+
+  endAd: () => {
+    const p = pendingAfterAd
+    pendingAfterAd = null
+    set({ currentAd: null })
+    if (p) commitAdvance(p.track, p.index)
+  },
 
   play: (track, queue) => {
+    // A deliberate track pick cancels any in-progress ad gate.
+    pendingAfterAd = null
+    if (get().currentAd) set({ currentAd: null })
     let newQueue = queue ?? [track]
     let targetTrack = track
     const free = isFreeUser()
@@ -125,16 +203,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   pause: () => set({ isPlaying: false }),
-  resume: () => set({ isPlaying: true }),
+  resume: () => { if (!get().currentAd) set({ isPlaying: true }) },
 
   togglePlayPause: () => {
-    const { isPlaying, currentTrack } = get()
-    if (!currentTrack) return
+    const { isPlaying, currentTrack, currentAd } = get()
+    if (currentAd || !currentTrack) return // transport is locked while an ad plays
     set({ isPlaying: !isPlaying })
   },
 
   skipNext: () => {
-    const { queue, queueIndex, repeatMode, shuffleEnabled, currentTrack, history } = get()
+    if (get().currentAd) return // ads are non-skippable
+    const { queue, queueIndex, repeatMode, shuffleEnabled, currentTrack } = get()
     if (repeatMode === 'one') {
       set({ currentTime: 0, isPlaying: true })
       return
@@ -170,12 +249,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       else { set({ isPlaying: false }); return }
     }
     const next = queue[nextIndex]
-    const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
-    set({ currentTrack: next, queueIndex: nextIndex, currentTime: 0, isPlaying: true, history: newHistory })
-    recordPlay(next.id)
+    advanceWithAdGate(next, nextIndex)
   },
 
   skipPrevious: () => {
+    if (get().currentAd) return // ads are non-skippable
     const { currentTime, queueIndex, queue, history } = get()
     if (currentTime > 3) {
       set({ currentTime: 0 })
@@ -289,6 +367,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 // Subscribe to auth state changes to pause and reset playback on logout
 useAuthStore.subscribe((state) => {
   if (!state.isAuthenticated) {
+    pendingAfterAd = null
+    tracksSinceAd = 0
     usePlayerStore.setState({
       currentTrack: null,
       isPlaying: false,
@@ -298,6 +378,7 @@ useAuthStore.subscribe((state) => {
       queueIndex: -1,
       history: [],
       isKaraokeOpen: false,
+      currentAd: null,
     })
   }
 })

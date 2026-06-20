@@ -262,6 +262,51 @@ public record PodcastDto(
     IEnumerable<EpisodeDto> Episodes
 );
 
+public record AdDto(
+    Guid Id,
+    string Title,
+    string Advertiser,
+    string AudioUrl,
+    string? ImageUrl,
+    string? ClickUrl,
+    long DurationMs
+);
+
+/// <summary>Full ad row for the admin list (adds targeting + flight + stats).</summary>
+public record AdAdminDto(
+    Guid Id,
+    string Title,
+    string Advertiser,
+    string AudioUrl,
+    string? ImageUrl,
+    string? ClickUrl,
+    long DurationMs,
+    string? Country,
+    int Weight,
+    bool IsActive,
+    DateTime? StartsAt,
+    DateTime? EndsAt,
+    long ImpressionCount,
+    DateTime CreatedAt
+);
+
+public record UpsertAdRequest(
+    string Title,
+    string Advertiser,
+    string AudioUrl,
+    string? AudioKey = null,
+    string? ImageUrl = null,
+    string? ClickUrl = null,
+    long DurationMs = 0,
+    string? Country = null,
+    int Weight = 1,
+    bool IsActive = true,
+    DateTime? StartsAt = null,
+    DateTime? EndsAt = null
+);
+
+public record AdSettingsDto(int AdsPerNTracks, bool IsEnabled);
+
 public record SearchResultsDto(
     IEnumerable<TrackDto> Tracks,
     IEnumerable<ArtistDto> Artists,

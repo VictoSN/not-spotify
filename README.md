@@ -18,7 +18,9 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`; **RBAC** — a master-admin tier that grants/revokes admin, with a `PendingAction` approval queue (a regular admin's grant/revoke enqueues for master sign-off) and Team & Approvals admin pages.
 - **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page); **podcasts** (`/podcasts` catalogue + show pages, episodes play through the same audio engine as tracks); **personal uploads locker** (`/uploads` — upload your own audio to a private, owner-only locker and play it); **music videos** (`/videos` catalogue + watch pages with a `<video>` player that pauses audio playback); **audio ads engine** (free tier hears a house ad every N tracks via a separate non-skippable ad player; premium is genuinely ad-free; admin ad CRUD + weighted/targeted serving).
 
-**Being worked on next:** waveform + timed comments, remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
+- **Desktop:** optional **Tauri** wrapper (`frontend/src-tauri`) that loads the same frontend in a native window — see [Desktop app (Tauri)](#desktop-app-tauri-optional).
+
+**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 
 ### Run everything at once (Windows)
 Instead of three manual terminals, **double-click [`dev.cmd`](dev.cmd)** (or run `./dev.sh` from Git Bash). It opens the backend, the Stripe webhook listener, and the frontend in separate windows. (Stripe CLI must be installed + `stripe login` done once.) Manual steps are below.
@@ -104,6 +106,27 @@ Ensure you have the following installed:
    npm run dev
    ```
    *The client will start running on **`http://localhost:5173`**.*
+
+---
+
+### Desktop app (Tauri, optional)
+
+The same React frontend can run as a native desktop window via [Tauri](https://tauri.app) v2. The wrapper lives in [`frontend/src-tauri`](frontend/src-tauri) and embeds the **already-built `dist/`** — it adds no second copy of the UI and no web server, just a native window around the PWA.
+
+**Prerequisites (one-time):**
+- [Rust](https://www.rust-lang.org/tools/install) (stable, `rustup`).
+- On Windows: the **WebView2 runtime** (preinstalled on Windows 10/11).
+- `npm install` in `frontend/` (installs the `@tauri-apps/cli` dev dependency).
+
+**Run it (from `frontend/`):**
+```bash
+npm run tauri:dev     # launches the Vite dev server + a native window (hot reload)
+npm run tauri:build   # builds dist (dev mode) + a packaged installer in src-tauri/target/release/bundle
+```
+
+- **It talks to the same backend.** `tauri:dev` loads `http://localhost:5173`; `tauri:build` runs `npm run build:desktop` (`vite build --mode development`) so the bundled app uses `VITE_API_URL` from `.env.development` (`https://localhost:7045`). **Start the backend first** (`dotnet run`) — the desktop app is a client, not a server.
+- **Icons** are derived from the PWA icons by [`src-tauri/icons/generate-icons.mjs`](frontend/src-tauri/icons/generate-icons.mjs) (re-run with `node generate-icons.mjs` if the source art changes).
+- `src-tauri/target/` is git-ignored; `Cargo.lock` is committed (this is an application crate).
 
 ---
 

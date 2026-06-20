@@ -1,6 +1,12 @@
 import { api } from './api'
 
+export type PlanKey = 'monthly' | 'yearly' | 'duo' | 'family' | 'student'
+export type PlanTier = 'individual' | 'duo' | 'family' | 'student'
+
 export interface BillingPlan {
+  plan: PlanKey
+  tier: PlanTier
+  maxMembers: number
   interval: 'monthly' | 'yearly'
   label: string
   priceId: string
@@ -29,8 +35,8 @@ export const billingService = {
     return res.data
   },
 
-  async createCheckoutSession(interval: BillingPlan['interval']): Promise<string> {
-    const res = await api.post<{ url: string }>('/billing/checkout-session', { interval })
+  async createCheckoutSession(plan: PlanKey): Promise<string> {
+    const res = await api.post<{ url: string }>('/billing/checkout-session', { plan })
     return res.data.url
   },
 

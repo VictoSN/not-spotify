@@ -33,11 +33,10 @@ public class BillingController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<BillingPlanDto>>> Plans(CancellationToken ct = default)
     {
-        return Ok(new[]
-        {
-            await BuildPlanAsync("monthly", "Premium Monthly", _stripe.Options.MonthlyPriceId, null, ct),
-            await BuildPlanAsync("yearly", "Premium Yearly", _stripe.Options.YearlyPriceId, "15% cheaper, billed annually", ct),
-        });
+        var plans = new List<BillingPlanDto>();
+        foreach (var info in StripeBillingService.Catalogue)
+            plans.Add(await BuildPlanAsync(info, _stripe.PriceIdForPlan(info.Plan) ?? string.Empty, ct));
+        return Ok(plans);
     }
 
     [HttpGet("subscription")]
@@ -66,11 +65,12 @@ public class BillingController : ControllerBase
         if (!_stripe.HasSecretKey)
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Stripe is not configured." });
 
-        var interval = NormalizeInterval(req.Interval);
-        if (interval is null) return BadRequest(new { message = "Interval must be monthly or yearly." });
+        // Prefer the new `plan` key; fall back to the legacy `interval` field.
+        var plan = StripeBillingService.PlanFor(req.Plan ?? req.Interval);
+        if (plan is null) return BadRequest(new { message = "Unknown plan. Use monthly, yearly, duo, family or student." });
 
-        var priceId = _stripe.PriceIdFor(interval);
-        if (priceId is null) return BadRequest(new { message = $"Stripe {interval} price id is not configured." });
+        var priceId = _stripe.PriceIdForPlan(plan.Plan);
+        if (priceId is null) return BadRequest(new { message = $"Stripe price id for the {plan.Plan} plan is not configured." });
 
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
@@ -86,7 +86,7 @@ public class BillingController : ControllerBase
                 await _db.SaveChangesAsync(ct);
             }
 
-            var url = await _stripe.CreateCheckoutSessionAsync(user, priceId, interval, ct);
+            var url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
             return Ok(new BillingRedirectDto(url));
         }
         catch (InvalidOperationException ex)
@@ -149,22 +149,13 @@ public class BillingController : ControllerBase
         }
     }
 
-    private static string? NormalizeInterval(string interval) => interval.Trim().ToLowerInvariant() switch
-    {
-        "monthly" or "month" => "monthly",
-        "yearly" or "annual" or "annually" or "year" => "yearly",
-        _ => null,
-    };
-
     private async Task<BillingPlanDto> BuildPlanAsync(
-        string interval,
-        string label,
+        StripeBillingService.PlanInfo info,
         string priceId,
-        string? discountLabel,
         CancellationToken ct)
     {
         var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(priceId)) missing.Add($"{interval} Price ID");
+        if (string.IsNullOrWhiteSpace(priceId)) missing.Add($"{info.Plan} Price ID");
         if (!_stripe.HasSecretKey) missing.Add("Stripe secret key");
 
         string? displayPrice = null;
@@ -176,7 +167,7 @@ public class BillingController : ControllerBase
                 var amount = GetLong(price, "unit_amount");
                 var currency = GetString(price, "currency");
                 if (amount is not null && currency is not null)
-                    displayPrice = FormatPrice(amount.Value, currency, interval);
+                    displayPrice = FormatPrice(amount.Value, currency, info.Interval);
             }
             catch
             {
@@ -185,11 +176,14 @@ public class BillingController : ControllerBase
         }
 
         return new BillingPlanDto(
-            interval,
-            label,
+            info.Plan,
+            info.Tier,
+            info.MaxMembers,
+            info.Interval,
+            info.Label,
             priceId,
             missing.Count == 0,
-            discountLabel,
+            info.DiscountLabel,
             displayPrice,
             missing.Count == 0 ? null : $"Configure {string.Join(" and ", missing)}."
         );

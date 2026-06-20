@@ -18,12 +18,67 @@ public class StripeBillingService
 
     public bool HasSecretKey => !string.IsNullOrWhiteSpace(Options.SecretKey);
 
-    public string? PriceIdFor(string interval) => interval.Trim().ToLowerInvariant() switch
+    // The plan catalogue. Each plan is a distinct recurring Stripe Price; the
+    // multi-seat tiers (duo/family) manage seats in-app via PlanMembership, so
+    // their Checkout Session still uses quantity 1.
+    public sealed record PlanInfo(string Plan, string Tier, int MaxMembers, string Interval, string Label, string? DiscountLabel);
+
+    public static readonly IReadOnlyList<PlanInfo> Catalogue = new[]
     {
-        "monthly" or "month" => string.IsNullOrWhiteSpace(Options.MonthlyPriceId) ? null : Options.MonthlyPriceId,
-        "yearly" or "annual" or "annually" or "year" => string.IsNullOrWhiteSpace(Options.YearlyPriceId) ? null : Options.YearlyPriceId,
+        new PlanInfo("monthly", "individual", 1, "monthly", "Premium Monthly", null),
+        new PlanInfo("yearly",  "individual", 1, "yearly",  "Premium Yearly",  "15% cheaper, billed annually"),
+        new PlanInfo("duo",     "duo",        2, "monthly", "Premium Duo",     "For 2 people"),
+        new PlanInfo("family",  "family",     6, "monthly", "Premium Family",  "Up to 6 people"),
+        new PlanInfo("student", "student",    1, "monthly", "Premium Student", "Discounted for students"),
+    };
+
+    public static PlanInfo? PlanFor(string? plan)
+        => Catalogue.FirstOrDefault(p => string.Equals(p.Plan, NormalizePlan(plan), StringComparison.OrdinalIgnoreCase));
+
+    // Maps a tier (as recorded on a subscription) back to its seat allowance.
+    public static int MaxMembersForTier(string? tier)
+        => Catalogue.FirstOrDefault(p => string.Equals(p.Tier, tier, StringComparison.OrdinalIgnoreCase))?.MaxMembers ?? 1;
+
+    private static string? NormalizePlan(string? plan) => plan?.Trim().ToLowerInvariant() switch
+    {
+        "monthly" or "month" => "monthly",
+        "yearly" or "annual" or "annually" or "year" => "yearly",
+        "duo" => "duo",
+        "family" => "family",
+        "student" => "student",
         _ => null,
     };
+
+    public string? PriceIdForPlan(string? plan)
+    {
+        var key = NormalizePlan(plan);
+        var id = key switch
+        {
+            "monthly" => Options.MonthlyPriceId,
+            "yearly" => Options.YearlyPriceId,
+            "duo" => Options.DuoPriceId,
+            "family" => Options.FamilyPriceId,
+            "student" => Options.StudentPriceId,
+            _ => null,
+        };
+        return string.IsNullOrWhiteSpace(id) ? null : id;
+    }
+
+    // Resolve a Stripe price id back to its plan (used by the webhook to record
+    // which tier a subscription is on).
+    public PlanInfo? PlanForPriceId(string? priceId)
+    {
+        if (string.IsNullOrWhiteSpace(priceId)) return null;
+        string? plan =
+            priceId == Options.MonthlyPriceId ? "monthly" :
+            priceId == Options.YearlyPriceId ? "yearly" :
+            priceId == Options.DuoPriceId ? "duo" :
+            priceId == Options.FamilyPriceId ? "family" :
+            priceId == Options.StudentPriceId ? "student" : null;
+        return PlanFor(plan);
+    }
+
+    public string? PriceIdFor(string interval) => PriceIdForPlan(interval);
 
     public async Task<string> CreateCustomerAsync(ApplicationUser user, CancellationToken ct = default)
     {
@@ -38,11 +93,13 @@ public class StripeBillingService
             ?? throw new InvalidOperationException("Stripe did not return a customer id.");
     }
 
-    public async Task<string> CreateCheckoutSessionAsync(ApplicationUser user, string priceId, string interval, CancellationToken ct = default)
+    public async Task<string> CreateCheckoutSessionAsync(ApplicationUser user, string priceId, PlanInfo plan, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(user.StripeCustomerId))
             throw new InvalidOperationException("User must have a Stripe customer id before checkout.");
 
+        // No payment_method_types — Stripe selects eligible methods dynamically
+        // from Dashboard settings (per Stripe best practices for subscriptions).
         var root = await PostFormAsync("checkout/sessions", new[]
         {
             Pair("mode", "subscription"),
@@ -54,9 +111,11 @@ public class StripeBillingService
             Pair("line_items[0][price]", priceId),
             Pair("line_items[0][quantity]", "1"),
             Pair("metadata[userId]", user.Id.ToString()),
-            Pair("metadata[interval]", interval),
+            Pair("metadata[interval]", plan.Interval),
+            Pair("metadata[tier]", plan.Tier),
             Pair("subscription_data[metadata][userId]", user.Id.ToString()),
-            Pair("subscription_data[metadata][interval]", interval),
+            Pair("subscription_data[metadata][interval]", plan.Interval),
+            Pair("subscription_data[metadata][tier]", plan.Tier),
         }, ct);
 
         return root.GetProperty("url").GetString()

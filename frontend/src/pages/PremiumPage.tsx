@@ -148,7 +148,7 @@ export function PremiumPage() {
   const { user, isAuthenticated } = useAuthStore()
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
-  const [busyInterval, setBusyInterval] = useState<string | null>(null)
+  const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [plansFocused, setPlansFocused] = useState(false)
 
@@ -161,26 +161,26 @@ export function PremiumPage() {
     billingService.getSubscription().then(setSubscription).catch(() => setSubscription(null))
   }, [isAuthenticated])
 
-  const checkout = async (interval: BillingPlan['interval']) => {
+  const checkout = async (plan: BillingPlan['plan']) => {
     if (!isAuthenticated) {
       navigate('/login')
       return
     }
-    setBusyInterval(interval)
+    setBusyPlan(plan)
     setError(null)
     try {
-      const url = await billingService.createCheckoutSession(interval)
+      const url = await billingService.createCheckoutSession(plan)
       window.location.assign(url)
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Could not start checkout.')
     } finally {
-      setBusyInterval(null)
+      setBusyPlan(null)
     }
   }
 
   const manageBilling = async () => {
-    setBusyInterval('portal')
+    setBusyPlan('portal')
     setError(null)
     try {
       const url = await billingService.createPortalSession()
@@ -189,7 +189,7 @@ export function PremiumPage() {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Billing portal is not available for this account yet.')
     } finally {
-      setBusyInterval(null)
+      setBusyPlan(null)
     }
   }
 
@@ -238,11 +238,11 @@ export function PremiumPage() {
             {isPremium && (
               <button
                 onClick={manageBilling}
-                disabled={busyInterval === 'portal'}
+                disabled={busyPlan === 'portal'}
                 className="inline-flex items-center gap-2 rounded-full border border-white/35 px-8 py-3 text-sm font-bold text-white transition-all hover:scale-105 hover:border-white active:scale-95"
               >
                 <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                {busyInterval === 'portal' ? 'Opening…' : 'Manage billing'}
+                {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
               </button>
             )}
           </div>
@@ -263,8 +263,9 @@ export function PremiumPage() {
         )}
         {hasMissingBillingConfig && (
           <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-secondary/20 bg-surface px-4 py-3 text-sm text-secondary">
-            <span className="font-bold text-primary">Billing setup required.</span> Add the Stripe secret key plus
-            monthly and yearly Price IDs in backend user-secrets to enable checkout.
+            <span className="font-bold text-primary">Billing setup required.</span> Add the Stripe secret key plus the
+            plan Price IDs (monthly, yearly, duo, family, student) in backend user-secrets to enable checkout. Plans
+            without a configured Price ID stay disabled.
           </div>
         )}
 
@@ -347,7 +348,7 @@ export function PremiumPage() {
 
             {plans.map((plan, i) => (
               <PlanCard
-                key={plan.interval}
+                key={plan.plan}
                 eyebrow="Premium"
                 name={plan.label}
                 headerClass={cn(
@@ -360,16 +361,20 @@ export function PremiumPage() {
                     ? `${plan.interval === 'yearly' ? 'Billed yearly' : 'Billed monthly'} · secure via Stripe`
                     : (plan.missingConfiguration ?? 'Billing not configured')
                 }
-                badge={plan.discountLabel}
-                perks={PREMIUM_PERKS}
+                badge={plan.maxMembers > 1 ? `Up to ${plan.maxMembers}` : plan.discountLabel}
+                perks={
+                  plan.maxMembers > 1
+                    ? [`${plan.maxMembers} accounts under one bill`, 'Each member gets full Premium', ...PREMIUM_PERKS.slice(0, 3)]
+                    : PREMIUM_PERKS
+                }
                 footer={
                   <Button
-                    onClick={() => checkout(plan.interval)}
-                    disabled={!plan.isConfigured || busyInterval === plan.interval}
+                    onClick={() => checkout(plan.plan)}
+                    disabled={!plan.isConfigured || busyPlan === plan.plan}
                     className="w-full gap-2"
                   >
                     <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                    {busyInterval === plan.interval ? 'Opening…' : 'Choose plan'}
+                    {busyPlan === plan.plan ? 'Opening…' : 'Choose plan'}
                   </Button>
                 }
               />
@@ -390,11 +395,11 @@ export function PremiumPage() {
               </div>
               <button
                 onClick={manageBilling}
-                disabled={busyInterval === 'portal'}
+                disabled={busyPlan === 'portal'}
                 className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:opacity-50"
               >
                 <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                {busyInterval === 'portal' ? 'Opening…' : 'Manage billing'}
+                {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
               </button>
             </div>
           </div>

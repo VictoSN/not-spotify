@@ -21,15 +21,19 @@ public class StripeBillingService
     // The plan catalogue. Each plan is a distinct recurring Stripe Price; the
     // multi-seat tiers (duo/family) manage seats in-app via PlanMembership, so
     // their Checkout Session still uses quantity 1.
-    public sealed record PlanInfo(string Plan, string Tier, int MaxMembers, string Interval, string Label, string? DiscountLabel);
+    // DisplayPrice is the hard-coded shown price (MYR, average Malaysian streaming
+    // rates) so the Premium page always shows a price even when Stripe isn't
+    // configured. Keep these in sync with the amounts entered in Stripe and in
+    // docs/stripe-setup.md.
+    public sealed record PlanInfo(string Plan, string Tier, int MaxMembers, string Interval, string Label, string? DiscountLabel, string? DisplayPrice = null);
 
     public static readonly IReadOnlyList<PlanInfo> Catalogue = new[]
     {
-        new PlanInfo("monthly", "individual", 1, "monthly", "Premium Monthly", null),
-        new PlanInfo("yearly",  "individual", 1, "yearly",  "Premium Yearly",  "15% cheaper, billed annually"),
-        new PlanInfo("duo",     "duo",        2, "monthly", "Premium Duo",     "For 2 people"),
-        new PlanInfo("family",  "family",     6, "monthly", "Premium Family",  "Up to 6 people"),
-        new PlanInfo("student", "student",    1, "monthly", "Premium Student", "Discounted for students"),
+        new PlanInfo("monthly", "individual", 1, "monthly", "Premium Monthly", null,                            "MYR 17.90/month"),
+        new PlanInfo("yearly",  "individual", 1, "yearly",  "Premium Yearly",  "15% cheaper, billed annually",  "MYR 182.90/year"),
+        new PlanInfo("duo",     "duo",        2, "monthly", "Premium Duo",     "For 2 people",                  "MYR 23.90/month"),
+        new PlanInfo("family",  "family",     6, "monthly", "Premium Family",  "Up to 6 people",                "MYR 29.90/month"),
+        new PlanInfo("student", "student",    1, "monthly", "Premium Student", "Discounted for students",       "MYR 8.90/month"),
     };
 
     public static PlanInfo? PlanFor(string? plan)

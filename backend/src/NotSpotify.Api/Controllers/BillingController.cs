@@ -163,8 +163,11 @@ public class BillingController : ControllerBase
         if (string.IsNullOrWhiteSpace(priceId)) missing.Add($"{info.Plan} Price ID");
         if (!_stripe.HasSecretKey) missing.Add("Stripe secret key");
 
-        string? displayPrice = null;
-        if (missing.Count == 0)
+        // Prefer the hard-coded MYR price so the card always shows an amount (even
+        // when Stripe isn't configured). Fall back to the live Stripe amount only
+        // if a plan has no hard-coded price.
+        string? displayPrice = info.DisplayPrice;
+        if (displayPrice is null && missing.Count == 0)
         {
             try
             {

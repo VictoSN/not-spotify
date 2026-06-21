@@ -57,6 +57,8 @@ The browser fetches audio cross-origin (for playback *and* the "identify a song"
 
 ## 3. Get credentials
 
+> **AWS Academy (Path B)? Skip straight to "Path B" below.** You **cannot** create an IAM user (the `voclabs` lab role blocks `iam:CreateUser` — that error is expected, not your fault) and you don't need one: the lab credentials already have S3 access. The IAM-user steps are **Path A only**.
+
 ### Path A — create an IAM user (permanent key)
 
 1. AWS Console → **IAM** → **Users** → **Create user**. Name it e.g. `not-spotify-app`. Do **not** give console access.

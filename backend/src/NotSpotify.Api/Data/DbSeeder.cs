@@ -56,6 +56,15 @@ public static class DbSeeder
         if (!await users.IsInRoleAsync(demoUser, MasterRole))
             await users.AddToRoleAsync(demoUser, MasterRole);
 
+        // Keep the demo admin's password at the documented default (Password123!)
+        // so the seed login always works — including on a brand-new database (e.g.
+        // a fresh AWS RDS). Idempotent: only resets when the password has drifted.
+        if (!await users.CheckPasswordAsync(demoUser, "Password123!"))
+        {
+            var resetToken = await users.GeneratePasswordResetTokenAsync(demoUser);
+            await users.ResetPasswordAsync(demoUser, resetToken, "Password123!");
+        }
+
         if (await db.Artists.AnyAsync()) return;
 
         // Genres

@@ -45,6 +45,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<UserUpload> UserUploads => Set<UserUpload>();
     public DbSet<MusicVideo> MusicVideos => Set<MusicVideo>();
     public DbSet<TourDate> TourDates => Set<TourDate>();
+    public DbSet<TourDateTrack> TourDateTracks => Set<TourDateTrack>();
     public DbSet<PlanMembership> PlanMemberships => Set<PlanMembership>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -163,6 +164,21 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasOne(x => x.MoodTag)
                 .WithMany(m => m.PlaylistMoodTags)
                 .HasForeignKey(x => x.MoodTagId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<TourDateTrack>(e =>
+        {
+            e.HasKey(x => new { x.TourDateId, x.TrackId });
+
+            e.HasOne(x => x.TourDate)
+                .WithMany(t => t.Setlist)
+                .HasForeignKey(x => x.TourDateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

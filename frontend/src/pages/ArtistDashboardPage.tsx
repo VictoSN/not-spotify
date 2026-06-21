@@ -19,6 +19,7 @@ import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
+import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 
@@ -1657,6 +1658,13 @@ export function ArtistDashboardPage() {
         </div>
       )}
       </div>
+
+      {/* ── Tours & concerts ──────────────────────────────────────────────── */}
+      {!loading && (
+        <div className="mt-8">
+          <ArtistTourManager tracks={albums.flatMap((a) => a.trackList).map((t) => ({ id: t.id, title: t.title }))} />
+        </div>
+      )}
     </div>
   )
 }

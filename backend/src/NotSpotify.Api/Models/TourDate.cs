@@ -1,10 +1,11 @@
 namespace NotSpotify.Api.Models;
 
 /// <summary>
-/// An upcoming concert/tour date for an artist. Demo-scale and seeded — the
-/// real concert APIs (Bandsintown / Songkick) need approved keys, so instead
-/// the table is seeded with plausible future dates and a ticket link that
-/// points at a generic web search (a real, working link — not a fake checkout).
+/// A concert/tour date for an artist. Initially seeded with plausible dates, but
+/// artists can now manage their own from the dashboard: add/edit/cancel a show,
+/// attach a <see cref="Setlist"/> of songs, and point <see cref="TicketUrl"/> at
+/// wherever they actually sell tickets. No on-site payments — the ticket link is
+/// just an external link the artist supplies (seeded rows default to a web search).
 /// </summary>
 public class TourDate
 {
@@ -19,4 +20,7 @@ public class TourDate
     /// <summary>ISO alpha-2 country code (matches the Country fields elsewhere).</summary>
     public string Country { get; set; } = string.Empty;
     public string? TicketUrl { get; set; }
+
+    /// <summary>Ordered setlist — the songs the artist plans to play at this show.</summary>
+    public ICollection<TourDateTrack> Setlist { get; set; } = new List<TourDateTrack>();
 }

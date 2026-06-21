@@ -62,6 +62,7 @@ const en: Dict = {
   'detail.fansAlsoLike': 'Fans also like',
   'detail.onTour': 'On tour',
   'detail.tickets': 'Tickets',
+  'detail.setlist': 'Setlist',
   'detail.about': 'About',
   'detail.followers': '{n} followers',
   // ── Profile page ───────────────────────────────────────────────────────────
@@ -589,6 +590,7 @@ const es: Dict = {
   'detail.fansAlsoLike': 'A los fans también les gusta',
   'detail.onTour': 'De gira',
   'detail.tickets': 'Entradas',
+  'detail.setlist': 'Repertorio',
   'detail.about': 'Acerca de',
   'detail.followers': '{n} seguidores',
   // ── Profile page ───────────────────────────────────────────────────────────
@@ -1116,6 +1118,7 @@ const fr: Dict = {
   'detail.fansAlsoLike': 'Les fans aiment aussi',
   'detail.onTour': 'En tournée',
   'detail.tickets': 'Billets',
+  'detail.setlist': 'Setlist',
   'detail.about': 'À propos',
   'detail.followers': '{n} abonnés',
   // ── Profile page ───────────────────────────────────────────────────────────

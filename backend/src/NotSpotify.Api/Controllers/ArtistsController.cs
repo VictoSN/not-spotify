@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
+using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Controllers;
@@ -142,7 +143,7 @@ public class ArtistsController : ControllerBase
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
 
-    /// <summary>GET /artists/{id}/tour — upcoming concert/tour dates (seeded).</summary>
+    /// <summary>GET /artists/{id}/tour — upcoming concert/tour dates with setlists.</summary>
     [HttpGet("{id:guid}/tour")]
     public async Task<ActionResult<IEnumerable<TourDateDto>>> Tour(Guid id, CancellationToken ct = default)
     {
@@ -150,9 +151,16 @@ public class ArtistsController : ControllerBase
             .Where(t => t.ArtistId == id && t.EventDate >= DateTime.UtcNow)
             .OrderBy(t => t.EventDate)
             .Take(12)
+            .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
             .ToListAsync(ct);
 
-        return Ok(dates.Select(t => new TourDateDto(
-            t.Id.ToString(), t.EventDate, t.City, t.Venue, t.Country, t.TicketUrl)));
+        return Ok(dates.Select(ToDto));
     }
+
+    internal static TourDateDto ToDto(TourDate t) => new(
+        t.Id.ToString(), t.EventDate, t.City, t.Venue, t.Country, t.TicketUrl,
+        t.Setlist
+            .OrderBy(s => s.Position)
+            .Select(s => new TourSongDto(s.TrackId.ToString(), s.Track.Title, s.Track.Artist.Name, s.Track.DurationMs))
+            .ToList());
 }

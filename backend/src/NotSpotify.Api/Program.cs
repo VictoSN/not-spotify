@@ -26,6 +26,15 @@ builder.Configuration.AddEnvironmentVariables();
 
 Console.WriteLine($"[Env] ASPNETCORE_ENVIRONMENT = {builder.Environment.EnvironmentName}");
 
+// One-time storage migration CLI (`dotnet run -- migrate-storage [--dry-run]`):
+// copies every DB-referenced object from Supabase to S3 under the same keys.
+// Short-circuits before the web host so it needs no JWT/Stripe/etc. config.
+if (args.Contains("migrate-storage"))
+{
+    await StorageMigration.RunAsync(builder.Configuration, args);
+    return;
+}
+
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 builder.Services.AddSingleton(jwt);
@@ -638,6 +647,23 @@ using (var scope = app.Services.CreateScope())
         ) a
         CROSS JOIN generate_series(0, 2) AS g(n)
         WHERE NOT EXISTS (SELECT 1 FROM ""TourDates"");
+    ");
+
+    // Tour setlists — ordered songs the artist plans to play at a show. Idempotent
+    // guard (no seed; artists fill this in from the dashboard).
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""TourDateTracks"" (
+            ""TourDateId"" uuid NOT NULL,
+            ""TrackId""    uuid NOT NULL,
+            ""Position""   integer NOT NULL DEFAULT 0,
+            CONSTRAINT ""PK_TourDateTracks"" PRIMARY KEY (""TourDateId"",""TrackId""),
+            CONSTRAINT ""FK_TourDateTracks_TourDates_TourDateId""
+                FOREIGN KEY (""TourDateId"") REFERENCES ""TourDates""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_TourDateTracks_Tracks_TrackId""
+                FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_TourDateTracks_TrackId""
+            ON ""TourDateTracks""(""TrackId"");
     ");
 
     // Multi-seat plans (Duo/Family/Student): per-user tier + shared-seat owner

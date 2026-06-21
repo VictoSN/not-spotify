@@ -1,6 +1,15 @@
 import type { Track } from '@/types/track'
 import type { User } from '@/types/user'
+import type { TourDate } from '@/types/artist'
 import { api } from './api'
+
+export interface TourDatePayload {
+  eventDate: string
+  city: string
+  venue: string
+  country?: string | null
+  ticketUrl?: string | null
+}
 
 export interface RecentSearch {
   id: string
@@ -72,6 +81,31 @@ export const meService = {
 
   async getArtistStats(days = 14): Promise<ArtistStats> {
     const res = await api.get<ArtistStats>('/me/artist-stats', { params: { days } })
+    return res.data
+  },
+
+  // Artist-managed tour/concert dates (Artist role).
+  async getArtistTour(): Promise<TourDate[]> {
+    const res = await api.get<TourDate[]>('/me/artist-tour')
+    return res.data
+  },
+
+  async createArtistTourDate(payload: TourDatePayload): Promise<TourDate> {
+    const res = await api.post<TourDate>('/me/artist-tour', payload)
+    return res.data
+  },
+
+  async updateArtistTourDate(id: string, payload: TourDatePayload): Promise<TourDate> {
+    const res = await api.put<TourDate>(`/me/artist-tour/${id}`, payload)
+    return res.data
+  },
+
+  async deleteArtistTourDate(id: string): Promise<void> {
+    await api.delete(`/me/artist-tour/${id}`)
+  },
+
+  async setArtistTourSetlist(id: string, trackIds: string[]): Promise<TourDate> {
+    const res = await api.put<TourDate>(`/me/artist-tour/${id}/setlist`, { trackIds })
     return res.data
   },
 

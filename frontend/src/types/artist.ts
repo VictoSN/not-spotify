@@ -26,6 +26,13 @@ export interface Artist {
   country?: string | null
 }
 
+export interface TourSong {
+  trackId: string
+  title: string
+  artistName: string
+  durationMs: number
+}
+
 export interface TourDate {
   id: string
   eventDate: string
@@ -33,4 +40,5 @@ export interface TourDate {
   venue: string
   country: string
   ticketUrl: string | null
+  songs: TourSong[]
 }

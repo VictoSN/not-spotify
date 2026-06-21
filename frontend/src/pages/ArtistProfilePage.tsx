@@ -188,29 +188,41 @@ export function ArtistProfilePage() {
                 catch { return d.country }
               })()
               return (
-                <div key={d.id} className="flex items-center gap-4 rounded-lg bg-surface px-4 py-3">
-                  <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-elevated text-center leading-none">
-                    <span className="text-[10px] font-bold uppercase text-secondary">
-                      {date.toLocaleDateString(undefined, { month: 'short' })}
-                    </span>
-                    <span className="text-lg font-black text-primary">{date.getDate()}</span>
+                <div key={d.id} className="rounded-lg bg-surface px-4 py-3">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-elevated text-center leading-none">
+                      <span className="text-[10px] font-bold uppercase text-secondary">
+                        {date.toLocaleDateString(undefined, { month: 'short' })}
+                      </span>
+                      <span className="text-lg font-black text-primary">{date.getDate()}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-primary">{d.city}, {region}</p>
+                      <p className="truncate text-xs text-secondary">
+                        <MapPinIcon className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
+                        {d.venue}
+                      </p>
+                    </div>
+                    {d.ticketUrl && (
+                      <a
+                        href={d.ticketUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="shrink-0 rounded-full border border-secondary/50 px-4 py-1.5 text-xs font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
+                      >
+                        {t('detail.tickets')}
+                      </a>
+                    )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-primary">{d.city}, {region}</p>
-                    <p className="truncate text-xs text-secondary">
-                      <MapPinIcon className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
-                      {d.venue}
-                    </p>
-                  </div>
-                  {d.ticketUrl && (
-                    <a
-                      href={d.ticketUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="shrink-0 rounded-full border border-secondary/50 px-4 py-1.5 text-xs font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
-                    >
-                      {t('detail.tickets')}
-                    </a>
+                  {d.songs.length > 0 && (
+                    <div className="mt-3 border-t border-elevated/60 pt-2 sm:pl-16">
+                      <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-secondary">{t('detail.setlist')}</p>
+                      <ol className="list-inside list-decimal space-y-0.5 text-xs text-secondary">
+                        {d.songs.map((s) => (
+                          <li key={s.trackId} className="truncate">{s.title}</li>
+                        ))}
+                      </ol>
+                    </div>
                   )}
                 </div>
               )

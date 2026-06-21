@@ -939,6 +939,157 @@ public class MeController : ControllerBase
         return Ok(_mapper.ToDto(artist));
     }
 
+    // ──────────────────────────────────────────────
+    // Artist — tour / concert management (Artist role required)
+    // ──────────────────────────────────────────────
+
+    /// <summary>GET /me/artist-tour — the signed-in artist's own dates (incl. past) with setlists, for management.</summary>
+    [HttpGet("artist-tour")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<IEnumerable<TourDateDto>>> GetArtistTour(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var dates = await _db.TourDates
+            .Where(t => t.ArtistId == user.ArtistId)
+            .OrderBy(t => t.EventDate)
+            .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
+            .ToListAsync(ct);
+
+        return Ok(dates.Select(ArtistsController.ToDto));
+    }
+
+    /// <summary>POST /me/artist-tour — announce a new show.</summary>
+    [HttpPost("artist-tour")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TourDateDto>> CreateArtistTourDate([FromBody] TourDateUpsertRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+        var artist = await _db.Artists.FindAsync([user.ArtistId.Value], ct);
+        if (artist is { IsRevoked: true }) return Forbid();
+
+        if (string.IsNullOrWhiteSpace(req.City) || string.IsNullOrWhiteSpace(req.Venue))
+            return BadRequest(new { message = "City and venue are required." });
+
+        var date = new TourDate
+        {
+            Id = Guid.NewGuid(),
+            ArtistId = user.ArtistId.Value,
+            EventDate = req.EventDate.ToUniversalTime(),
+            City = req.City.Trim(),
+            Venue = req.Venue.Trim(),
+            Country = NormalizeCountry(req.Country) ?? string.Empty,
+            TicketUrl = NormalizeUrl(req.TicketUrl),
+        };
+        _db.TourDates.Add(date);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(ArtistsController.ToDto(date));
+    }
+
+    /// <summary>PUT /me/artist-tour/{id} — edit / reschedule a show.</summary>
+    [HttpPut("artist-tour/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TourDateDto>> UpdateArtistTourDate(Guid id, [FromBody] TourDateUpsertRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var date = await _db.TourDates
+            .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
+            .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (date is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(req.City) || string.IsNullOrWhiteSpace(req.Venue))
+            return BadRequest(new { message = "City and venue are required." });
+
+        date.EventDate = req.EventDate.ToUniversalTime();
+        date.City = req.City.Trim();
+        date.Venue = req.Venue.Trim();
+        date.Country = NormalizeCountry(req.Country) ?? string.Empty;
+        date.TicketUrl = NormalizeUrl(req.TicketUrl);
+        await _db.SaveChangesAsync(ct);
+
+        return Ok(ArtistsController.ToDto(date));
+    }
+
+    /// <summary>DELETE /me/artist-tour/{id} — cancel a show (cascades the setlist).</summary>
+    [HttpDelete("artist-tour/{id:guid}")]
+    [Authorize(Roles = "Artist")]
+    public async Task<IActionResult> DeleteArtistTourDate(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var date = await _db.TourDates.FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (date is null) return NotFound();
+
+        _db.TourDates.Remove(date);
+        await _db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    /// <summary>PUT /me/artist-tour/{id}/setlist — replace the show's setlist with these of the artist's own tracks, in order.</summary>
+    [HttpPut("artist-tour/{id:guid}/setlist")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<TourDateDto>> SetArtistTourSetlist(Guid id, [FromBody] TourSetlistRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user?.ArtistId is null) return Forbid();
+
+        var date = await _db.TourDates
+            .Include(t => t.Setlist)
+            .FirstOrDefaultAsync(t => t.Id == id && t.ArtistId == user.ArtistId, ct);
+        if (date is null) return NotFound();
+
+        // Parse + de-dup requested ids, preserving order.
+        var requested = new List<Guid>();
+        foreach (var raw in req.TrackIds ?? [])
+            if (Guid.TryParse(raw, out var g) && !requested.Contains(g)) requested.Add(g);
+
+        // Keep only the artist's own existing tracks (a setlist is your own songs).
+        var validSet = (await _db.Tracks
+            .Where(t => requested.Contains(t.Id) && t.ArtistId == user.ArtistId)
+            .Select(t => t.Id)
+            .ToListAsync(ct)).ToHashSet();
+
+        _db.TourDateTracks.RemoveRange(date.Setlist);
+        var pos = 0;
+        foreach (var tid in requested)
+            if (validSet.Contains(tid))
+                _db.TourDateTracks.Add(new TourDateTrack { TourDateId = date.Id, TrackId = tid, Position = pos++ });
+
+        await _db.SaveChangesAsync(ct);
+
+        var fresh = await _db.TourDates
+            .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
+            .FirstAsync(t => t.Id == id, ct);
+        return Ok(ArtistsController.ToDto(fresh));
+    }
+
+    /// <summary>Trim a user-supplied URL and ensure it has an http(s) scheme, or null when empty.</summary>
+    private static string? NormalizeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var u = url.Trim();
+        if (!u.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !u.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            u = "https://" + u;
+        return u;
+    }
+
     [HttpGet("artist-albums/{id:guid}/review-history")]
     [Authorize(Roles = "Artist")]
     public async Task<ActionResult<IEnumerable<ReviewHistoryDto>>> GetArtistAlbumHistory(Guid id, CancellationToken ct = default)

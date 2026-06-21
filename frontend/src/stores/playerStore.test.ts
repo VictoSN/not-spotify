@@ -20,6 +20,7 @@ vi.mock('@/services/artistService', () => ({
 
 import { usePlayerStore } from './playerStore'
 import { useAuthStore } from './authStore'
+import { artistService } from '@/services/artistService'
 
 const track = (id: string): Track =>
   ({
@@ -156,6 +157,55 @@ describe('playerStore — transport & queue', () => {
     expect(usePlayerStore.getState().isPlaying).toBe(false)
   })
 
+  it('skipNext autoplays more from the artist when a premium queue runs out', async () => {
+    setPremium()
+    vi.mocked(artistService.getTopTracks).mockResolvedValue([track('x'), track('y')])
+    // autoplay defaults on (no ns-pref-autoplay set); end of a sequential queue.
+    usePlayerStore.setState({ queue: [track('a'), track('b')], queueIndex: 1, currentTrack: track('b'), isPlaying: true })
+    usePlayerStore.getState().skipNext()
+    await flush()
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('x')
+    expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'x', 'y'])
+  })
+
+  it('togglePlayPause flips play state when a track is loaded', () => {
+    setPremium()
+    usePlayerStore.setState({ currentTrack: track('a'), isPlaying: false, currentAd: null })
+    usePlayerStore.getState().togglePlayPause()
+    expect(usePlayerStore.getState().isPlaying).toBe(true)
+    usePlayerStore.getState().togglePlayPause()
+    expect(usePlayerStore.getState().isPlaying).toBe(false)
+  })
+
+  it('setQueue replaces the queue and starts from the given index', () => {
+    setPremium()
+    usePlayerStore.getState().setQueue([track('a'), track('b'), track('c')], 2)
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('c')
+    expect(s.queueIndex).toBe(2)
+    expect(s.isPlaying).toBe(true)
+  })
+
+  it('playNext starts playback immediately when nothing is playing', () => {
+    setPremium()
+    usePlayerStore.setState({ currentTrack: null, queue: [], queueIndex: -1, isPlaying: false })
+    usePlayerStore.getState().playNext(track('n'))
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('n')
+    expect(s.queue.map((t) => t.id)).toEqual(['n'])
+    expect(s.isPlaying).toBe(true)
+  })
+
+  it('skipPrevious steps back by queue index when there is no history', () => {
+    setPremium()
+    usePlayerStore.setState({ currentTrack: track('b'), currentTime: 1, history: [], queue: [track('a'), track('b')], queueIndex: 1 })
+    usePlayerStore.getState().skipPrevious()
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('a')
+    expect(s.queueIndex).toBe(0)
+  })
+
   it('skipPrevious restarts the track when past 3s, else steps back through history', () => {
     setPremium()
     usePlayerStore.setState({ currentTrack: track('b'), currentTime: 10, queue: [track('a'), track('b')], queueIndex: 1 })
@@ -286,5 +336,14 @@ describe('playerStore — audio ads', () => {
     const s = usePlayerStore.getState()
     expect(s.currentAd).toBeNull()
     expect(s.isPlaying).toBe(true) // playback resumes on the held track
+  })
+
+  it('endAd with no held track just clears the ad without advancing', () => {
+    setFree()
+    usePlayerStore.setState({ currentTrack: track('a'), currentAd: { id: 'x' } as never, isPlaying: false })
+    usePlayerStore.getState().endAd()
+    const s = usePlayerStore.getState()
+    expect(s.currentAd).toBeNull()
+    expect(s.currentTrack?.id).toBe('a') // nothing was queued behind the ad, so nothing advances
   })
 })

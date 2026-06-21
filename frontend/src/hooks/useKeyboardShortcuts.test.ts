@@ -93,6 +93,14 @@ describe('useKeyboardShortcuts', () => {
     expect(unlikeTrack).toHaveBeenCalledWith('t1')
   })
 
+  it('leaves Space alone when a button is focused (so it activates the button)', () => {
+    const btn = document.createElement('button')
+    document.body.appendChild(btn)
+    press(' ', { on: btn })
+    expect(spies.togglePlayPause).not.toHaveBeenCalled()
+    btn.remove()
+  })
+
   it('ignores shortcuts while typing in an input', () => {
     const input = document.createElement('input')
     document.body.appendChild(input)

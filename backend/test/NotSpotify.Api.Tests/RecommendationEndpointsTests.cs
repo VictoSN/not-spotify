@@ -236,6 +236,25 @@ public class RecommendationEndpointsTests
         Assert.Equal(track.Id, dtos[0].Id);
     }
 
+    [Fact]
+    public async Task Popular_NoCountryParam_RanksByTheAuthenticatedCallersCountry()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum();
+        var frUser = db.AddUser(Guid.NewGuid(), "fr");
+        frUser.Country = "FR";
+        var frHit = db.AddTrack("FR hit", artist, album, playCount: 1);
+        var globalHit = db.AddTrack("Global", artist, album, playCount: 9999);
+        db.AddPlay(frUser, frHit, daysAgo: 1);
+        db.AddPlay(frUser, frHit, daysAgo: 2);
+        await db.SaveChangesAsync();
+
+        // No country param → the endpoint resolves the caller's own country (FR).
+        var dtos = Ok(await Controller(db).AsUser(frUser.Id).Popular());
+
+        Assert.Equal(frHit.Id, dtos[0].Id); // FR plays win over the higher global play count
+    }
+
     // ── Song radio ────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -270,6 +289,37 @@ public class RecommendationEndpointsTests
         var ids = dtos.Select(d => d.Id).ToList();
         Assert.True(ids.IndexOf(sameGenre.Id) < ids.IndexOf(unrelated.Id));
         Assert.True(ids.IndexOf(sameArtist.Id) < ids.IndexOf(unrelated.Id));
+    }
+
+    [Fact]
+    public async Task Radio_RanksCoListenedTracksAboveGenreOnlyMatches()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (a1, al1) = db.AddArtistAlbum("Seed artist");
+        var (a2, al2) = db.AddArtistAlbum("Other artist");
+        var g1 = db.AddGenre("G1", "g1");
+        var g2 = db.AddGenre("G2", "g2");
+        var u1 = db.AddUser(Guid.NewGuid(), "u1");
+        var u2 = db.AddUser(Guid.NewGuid(), "u2");
+
+        var seed = db.AddTrack("Seed", a1, al1);
+        var coListened = db.AddTrack("Co-listened", a2, al2); // no genre/artist overlap — only co-play
+        var genreOnly = db.AddTrack("Genre only", a2, al2);   // shares the seed genre, never co-played
+        db.Tag(seed, g1);
+        db.Tag(genreOnly, g1);
+        db.Tag(coListened, g2);
+        // Everyone who played the seed also played the co-listened track.
+        db.AddPlay(u1, seed); db.AddPlay(u1, coListened);
+        db.AddPlay(u2, seed); db.AddPlay(u2, coListened);
+        await db.SaveChangesAsync();
+
+        var dtos = Ok(await Controller(db).Radio(seed.Id));
+
+        Assert.Equal(seed.Id, dtos[0].Id);
+        var ids = dtos.Select(d => d.Id).ToList();
+        // Co-listen similarity is weighted ×3 vs a genre overlap ×1, so it must win
+        // even though the co-listened track shares neither artist nor genre with the seed.
+        Assert.True(ids.IndexOf(coListened.Id) < ids.IndexOf(genreOnly.Id));
     }
 
     // ── Daily mixes ────────────────────────────────────────────────────────────────

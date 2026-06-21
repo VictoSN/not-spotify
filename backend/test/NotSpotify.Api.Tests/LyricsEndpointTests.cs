@@ -93,6 +93,47 @@ public class LyricsEndpointTests
     }
 
     [Fact]
+    public async Task GetLyrics_LegacyEmptyMiss_ReprobesAndCachesNewlyFoundSynced()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum();
+        var track = db.AddTrack("Recheck", artist, album);
+        track.Lyrics = "plain";
+        track.SyncedLyrics = ""; // legacy "looked up & missed" marker → re-probe once with the new scoring
+        await db.SaveChangesAsync();
+
+        var controller = Controller(db, LrclibReturning(LrclibSyncedJson));
+        var ok = Assert.IsType<OkObjectResult>((await controller.GetLyrics(track.Id)).Result);
+        var dto = Assert.IsType<LyricsDto>(ok.Value);
+
+        Assert.Equal(SyncedLrc, dto.SyncedLyrics);
+        var reloaded = await db.Tracks.AsNoTracking().FirstAsync(t => t.Id == track.Id);
+        Assert.Equal(SyncedLrc, reloaded.SyncedLyrics); // upgraded from "" to the real synced text
+    }
+
+    [Fact]
+    public async Task GetLyrics_CjkTitleWithRomanizedSynced_ReprobesForScriptMatch()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum();
+        var track = db.AddTrack("ありがとう", artist, album); // CJK title
+        track.Lyrics = "arigatou (romaji)";
+        track.SyncedLyrics = "[00:01.00]arigatou"; // poisoned: romanized synced for a CJK title
+        await db.SaveChangesAsync();
+
+        // The re-probe returns a script-matching (original-script) synced version.
+        var controller = Controller(db, LrclibReturning(
+            """[{"plainLyrics":"ありがとう","syncedLyrics":"[00:01.00]ありがとう","instrumental":false,"duration":1}]"""));
+        var ok = Assert.IsType<OkObjectResult>((await controller.GetLyrics(track.Id)).Result);
+        var dto = Assert.IsType<LyricsDto>(ok.Value);
+
+        Assert.NotNull(dto.SyncedLyrics);
+        Assert.True(LyricsService.ContainsCjk(dto.SyncedLyrics!)); // replaced the romanized duplicate
+        var reloaded = await db.Tracks.AsNoTracking().FirstAsync(t => t.Id == track.Id);
+        Assert.True(LyricsService.ContainsCjk(reloaded.SyncedLyrics!));
+    }
+
+    [Fact]
     public async Task GetLyrics_StoredPlainNeverLookedUp_NoSyncedFound_WritesSentinel()
     {
         await using var db = TestHelpers.NewDb();

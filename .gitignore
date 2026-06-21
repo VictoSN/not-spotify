@@ -9,3 +9,11 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Dependencies (restored via `npm install` from the committed lockfiles)
+node_modules/
+
+# Build output
+bin/
+obj/
+dist/

@@ -80,6 +80,16 @@ internal static class TestHelpers
         return controller;
     }
 
+    /// <summary>
+    /// Attaches an anonymous (unauthenticated) ClaimsPrincipal — what the framework
+    /// supplies for a guest. Distinct from leaving <c>User</c> null, which throws.
+    /// </summary>
+    public static T AsGuest<T>(this T controller) where T : ControllerBase
+    {
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+        return controller;
+    }
+
     /// <summary>Adds a bare user (id + name) to the context.</summary>
     public static ApplicationUser AddUser(this AppDbContext db, Guid id, string name)
     {
@@ -98,4 +108,116 @@ internal static class TestHelpers
             Status = FriendshipStatus.Accepted,
         });
     }
+
+    /// <summary>An IHttpClientFactory whose clients all use the supplied handler.</summary>
+    public static IHttpClientFactory NewHttpFactory(HttpMessageHandler handler)
+    {
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient(handler));
+        return factory.Object;
+    }
+
+    /// <summary>A LyricsService whose external HTTP calls are answered by <paramref name="responder"/>.</summary>
+    public static LyricsService NewLyrics(Func<HttpRequestMessage, HttpResponseMessage> responder)
+        => new(NewHttpFactory(new StubHttpMessageHandler(responder)), NullLogger<LyricsService>.Instance);
+
+    /// <summary>
+    /// A LyricsService that throws on any HTTP call. Use it to prove a code path
+    /// never reached the network (the throw is not one of the swallowed exceptions).
+    /// </summary>
+    public static LyricsService NewOfflineLyrics()
+        => NewLyrics(_ => throw new InvalidOperationException("network should not be called"));
+
+    /// <summary>An AudioDownloadService over stub storage — not exercised by recommendation tests.</summary>
+    public static AudioDownloadService NewAudioDownloads()
+        => new(new Mock<IStorageService>().Object, NewHttpFactory(new StubHttpMessageHandler(
+            _ => new HttpResponseMessage(System.Net.HttpStatusCode.NotFound))));
+
+    /// <summary>Adds an approved track (with artist + album) to the context.</summary>
+    public static Models.Track AddTrack(
+        this AppDbContext db,
+        string title,
+        Artist artist,
+        Album album,
+        long playCount = 0,
+        int ratingCount = 0,
+        int ratingSum = 0,
+        int daysOld = 1,
+        string status = "approved")
+    {
+        var track = new Models.Track
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            Artist = artist,
+            ArtistId = artist.Id,
+            Album = album,
+            AlbumId = album.Id,
+            AudioUrl = $"audio/{Guid.NewGuid()}.mp3",
+            Status = status,
+            PlayCount = playCount,
+            RatingCount = ratingCount,
+            RatingSum = ratingSum,
+            CreatedAt = DateTime.UtcNow.AddDays(-daysOld),
+        };
+        db.Tracks.Add(track);
+        return track;
+    }
+
+    /// <summary>Records a play of <paramref name="track"/> by <paramref name="user"/> some days ago.</summary>
+    public static void AddPlay(this AppDbContext db, ApplicationUser user, Models.Track track, int daysAgo = 0)
+    {
+        db.PlayHistories.Add(new PlayHistory
+        {
+            Id = Guid.NewGuid(),
+            User = user,
+            UserId = user.Id,
+            Track = track,
+            TrackId = track.Id,
+            PlayedAt = DateTime.UtcNow.AddDays(-daysAgo),
+        });
+    }
+
+    /// <summary>Tags a track with a genre (creating the join row).</summary>
+    public static void Tag(this AppDbContext db, Models.Track track, Genre genre)
+    {
+        db.TrackGenres.Add(new TrackGenre { Track = track, TrackId = track.Id, Genre = genre, GenreId = genre.Id });
+    }
+
+    /// <summary>Adds an artist + album pair (optionally tagged to a market country) and returns both.</summary>
+    public static (Artist artist, Album album) AddArtistAlbum(this AppDbContext db, string name = "Artist", string? country = null)
+    {
+        var artist = new Artist { Id = Guid.NewGuid(), Name = name, Country = country };
+        var album = new Album
+        {
+            Id = Guid.NewGuid(),
+            Title = $"{name} Album",
+            Artist = artist,
+            ArtistId = artist.Id,
+            CoverUrl = "",
+            ReleaseDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Country = country,
+        };
+        db.AddRange(artist, album);
+        return (artist, album);
+    }
+
+    /// <summary>Adds a genre row and returns it.</summary>
+    public static Genre AddGenre(this AppDbContext db, string name, string slug)
+    {
+        var genre = new Genre { Id = Guid.NewGuid(), Name = name, Slug = slug, Color = "#123456" };
+        db.Genres.Add(genre);
+        return genre;
+    }
+}
+
+/// <summary>A test double for HttpMessageHandler that answers requests from a delegate.</summary>
+public sealed class StubHttpMessageHandler : HttpMessageHandler
+{
+    private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
+
+    public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(_responder(request));
 }

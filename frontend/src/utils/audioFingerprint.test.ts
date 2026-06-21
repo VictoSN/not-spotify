@@ -73,4 +73,31 @@ describe('fingerprint + matchLandmarks', () => {
     const selfTop = matchLandmarks(fingerprint(makeSong(0), TARGET_SAMPLE_RATE), db)[0].score
     expect(top).toBeLessThan(selfTop)
   })
+
+  it('returns nothing when the database is empty', () => {
+    const db: FingerprintDb = new Map()
+    expect(matchLandmarks(fingerprint(makeSong(1), TARGET_SAMPLE_RATE), db)).toEqual([])
+  })
+
+  it('matches a clip taken from a later offset of the same track', () => {
+    const db: FingerprintDb = new Map()
+    for (let id = 0; id < 3; id++) {
+      addToDb(db, `track-${id}`, fingerprint(makeSong(id), TARGET_SAMPLE_RATE))
+    }
+    const full = makeSong(1)
+    const start = TARGET_SAMPLE_RATE * 4 // 4s in — different time offset than indexing
+    const clip = full.slice(start, start + TARGET_SAMPLE_RATE * 3)
+    const results = matchLandmarks(fingerprint(clip, TARGET_SAMPLE_RATE), db)
+    expect(results[0].id).toBe('track-1')
+  })
+
+  it('does not confidently match a silent clip', () => {
+    const db: FingerprintDb = new Map()
+    addToDb(db, 'track-0', fingerprint(makeSong(0), TARGET_SAMPLE_RATE))
+    const silence = new Float32Array(TARGET_SAMPLE_RATE * 3) // all zeros
+    const results = matchLandmarks(fingerprint(silence, TARGET_SAMPLE_RATE), db)
+    const selfTop = matchLandmarks(fingerprint(makeSong(0), TARGET_SAMPLE_RATE), db)[0].score
+    const top = results[0]?.score ?? 0
+    expect(top).toBeLessThan(selfTop)
+  })
 })

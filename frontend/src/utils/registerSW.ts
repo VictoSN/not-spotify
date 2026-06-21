@@ -7,15 +7,33 @@ export function registerServiceWorker() {
   // hot reload. Only register for the built (production) app.
   if (!import.meta.env.PROD) {
     // Defensive cleanup: a SW left over from a prior `npm run preview` keeps
-    // intercepting localhost and serves its stale PROD bundle (whose hashed
-    // chunks the dev server doesn't have) → a blank white screen. Unregister any
+    // intercepting localhost and serving stale cached bytes for module URLs
+    // (e.g. a cached image returned for `/src/.../*.tsx`, which the browser
+    // rejects as a bad MIME type) → a blank white screen. Unregister any
     // leftover SW + drop its caches so `dev` runs clean after `preview`.
-    navigator.serviceWorker.getRegistrations?.()
-      .then((regs) => regs.forEach((r) => r.unregister()))
-      .catch(() => {})
-    window.caches?.keys?.()
-      .then((keys) => keys.forEach((k) => caches.delete(k)))
-      .catch(() => {})
+    //
+    // Crucially, `unregister()`/`caches.delete()` do NOT stop the SW that is
+    // already CONTROLLING the current page — it keeps intercepting for this
+    // whole load. So when we detect a controller in dev, we clean up and then
+    // force a single reload (guarded against a loop) to come back uncontrolled.
+    const hadController = !!navigator.serviceWorker.controller
+    Promise.allSettled([
+      navigator.serviceWorker.getRegistrations?.()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister()))) ??
+        Promise.resolve(),
+      window.caches?.keys?.()
+        .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
+        Promise.resolve(),
+    ]).finally(() => {
+      const RELOAD_FLAG = 'ns-sw-dev-reloaded'
+      if (hadController && !sessionStorage.getItem(RELOAD_FLAG)) {
+        sessionStorage.setItem(RELOAD_FLAG, '1')
+        window.location.reload()
+      } else if (!hadController) {
+        // Clean load — clear the guard so a future stale SW can self-heal again.
+        sessionStorage.removeItem(RELOAD_FLAG)
+      }
+    })
     return
   }
 

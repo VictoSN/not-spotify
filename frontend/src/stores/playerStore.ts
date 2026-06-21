@@ -26,7 +26,7 @@ function isFreeUser(): boolean {
 // --- Free-tier ad insertion ----------------------------------------------
 // Premium never hears ads (that's the perk). For free users we play one house
 // ad every N tracks, where N comes from the backend AdSettings. The ad plays
-// through a dedicated element (see AdPlayer) so the two-deck engine is left
+// through a dedicated element (see PromoPlayer) so the two-deck engine is left
 // untouched; while it plays we hold the next track in `pendingAfterAd`.
 let adConfig = { adsPerNTracks: 3, isEnabled: true }
 let adConfigLoaded = false
@@ -56,7 +56,7 @@ function commitAdvance(next: Track, nextIndex: number) {
 /**
  * Advance to `next`, but for free users insert an ad first every Nth track.
  * When it's ad-time we pause, fetch an ad, and (if one is returned) enter ad
- * mode — AdPlayer then plays it and calls endAd() to release the held track.
+ * mode — PromoPlayer then plays it and calls endAd() to release the held track.
  */
 function advanceWithAdGate(next: Track, nextIndex: number) {
   if (!isFreeUser()) { commitAdvance(next, nextIndex); return }

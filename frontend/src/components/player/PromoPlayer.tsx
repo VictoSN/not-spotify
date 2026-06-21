@@ -12,7 +12,7 @@ import { useTranslation } from '@/i18n/useTranslation'
  * playback ends (or the audio errors / autoplay is blocked, which we treat as
  * "ad over" so the listener is never stuck).
  */
-export function AdPlayer() {
+export function PromoPlayer() {
   const { t } = useTranslation()
   const ad = usePlayerStore((s) => s.currentAd)
   const endAd = usePlayerStore((s) => s.endAd)

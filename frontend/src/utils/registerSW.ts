@@ -5,7 +5,19 @@ export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return
   // Never run the caching SW in dev — it would cache Vite HMR modules and break
   // hot reload. Only register for the built (production) app.
-  if (!import.meta.env.PROD) return
+  if (!import.meta.env.PROD) {
+    // Defensive cleanup: a SW left over from a prior `npm run preview` keeps
+    // intercepting localhost and serves its stale PROD bundle (whose hashed
+    // chunks the dev server doesn't have) → a blank white screen. Unregister any
+    // leftover SW + drop its caches so `dev` runs clean after `preview`.
+    navigator.serviceWorker.getRegistrations?.()
+      .then((regs) => regs.forEach((r) => r.unregister()))
+      .catch(() => {})
+    window.caches?.keys?.()
+      .then((keys) => keys.forEach((k) => caches.delete(k)))
+      .catch(() => {})
+    return
+  }
 
   window.addEventListener('load', () => {
     navigator.serviceWorker

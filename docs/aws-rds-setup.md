@@ -77,7 +77,14 @@ When you **Start Lab**, the RDS instance is usually **stopped**. RDS → select 
 ## Account budget & switching
 
 - Each Learner Lab account has its **own** credit (commonly ~$50 — confirm yours) and budgets **cannot be pooled** across accounts. Three accounts = three separate buckets, not one shared $150.
-- "Moving to a teammate's account" is a **re-provision**, not a live move: create a new RDS there and `pg_dump` → `pg_restore` (a few minutes); recreate the S3 bucket and re-sync the files. **Keep a recent `pg_dump` backup** so this is quick if you ever need it — and this is exactly why keeping Supabase as a fallback is worth it.
+- "Moving to a teammate's account" is a **re-provision**, not a live move:
+  - **RDS** → create a new instance there, then `pg_dump` your current DB → `pg_restore` into it (a few minutes). Keep a recent `pg_dump` backup so this is quick.
+  - **S3** → create a new bucket there, add its creds as an `S3StorageDest:*` user-secret section (BucketName/Region/AccessKeyId/SecretAccessKey/SessionToken), then copy bucket-to-bucket — no Supabase needed:
+    ```powershell
+    dotnet run -- migrate-storage --source S3Storage --dest S3StorageDest
+    ```
+    Then point the app's `S3Storage:*` at the new bucket and drop `S3StorageDest`.
+- Keeping Supabase as a dormant fallback also makes this trivial — you can always re-run the plain `migrate-storage` from Supabase into any new bucket.
 
 ## Troubleshooting
 

@@ -1,22 +1,27 @@
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NotSpotify.Api.Data;
 
 namespace NotSpotify.Api.Services;
 
 /// <summary>
 /// One-time storage migration CLI. Copies every storage object referenced by the
-/// database from the current Supabase bucket to the configured S3 bucket, under
-/// the <b>same keys</b> (so the stored <c>*Key</c> columns keep resolving after the
-/// provider flips to S3).
+/// database from one provider/bucket to another, under the <b>same keys</b> (so the
+/// stored <c>*Key</c> columns keep resolving).
 ///
 /// Run from <c>backend/src/NotSpotify.Api</c>:
 /// <code>
-///   dotnet run -- migrate-storage            # copy
-///   dotnet run -- migrate-storage --dry-run  # list what would copy, write nothing
+///   dotnet run -- migrate-storage                                   # SupabaseStorage -> S3Storage (default)
+///   dotnet run -- migrate-storage --dry-run                         # preview, writes nothing
+///   dotnet run -- migrate-storage --source S3Storage --dest S3StorageDest   # S3 -> S3 (e.g. moving to a new account)
 /// </code>
-/// Both <c>SupabaseStorage:*</c> (source) and <c>S3Storage:*</c> (destination) must
-/// be set in user-secrets at the same time. Idempotent — re-runs just upsert.
+/// <para>
+/// <c>--source</c>/<c>--dest</c> name config sections (default <c>SupabaseStorage</c> →
+/// <c>S3Storage</c>). A section with a <c>Url</c> is treated as Supabase; a section with a
+/// <c>BucketName</c> is treated as S3 (so two S3 sections with different creds copy
+/// bucket-to-bucket across accounts). Idempotent — re-runs just upsert.
+/// </para>
 /// </summary>
 public static class StorageMigration
 {
@@ -25,35 +30,37 @@ public static class StorageMigration
     public static async Task RunAsync(IConfiguration config, string[] args)
     {
         var dryRun = args.Contains("--dry-run");
+        var sourceSection = ArgValue(args, "--source") ?? "SupabaseStorage";
+        var destSection = ArgValue(args, "--dest") ?? "S3Storage";
 
-        var supaUrl = config["SupabaseStorage:Url"];
-        var s3Bucket = config["S3Storage:BucketName"];
-        if (string.IsNullOrWhiteSpace(supaUrl))
+        if (string.Equals(sourceSection, destSection, StringComparison.OrdinalIgnoreCase))
         {
-            Console.WriteLine("[Migrate] SupabaseStorage:Url is not set — nothing to copy FROM. Aborting.");
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(s3Bucket))
-        {
-            Console.WriteLine("[Migrate] S3Storage:BucketName is not set — nothing to copy TO. Aborting.");
+            Console.WriteLine($"[Migrate] --source and --dest are both '{sourceSection}' — they must differ. Aborting.");
             return;
         }
 
         var services = new ServiceCollection();
         services.AddHttpClient();
-        services.Configure<SupabaseStorageOptions>(config.GetSection("SupabaseStorage"));
-        services.Configure<S3StorageOptions>(config.GetSection("S3Storage"));
-        services.AddSingleton<SupabaseStorageService>();
-        services.AddSingleton<S3StorageService>();
         services.AddDbContext<AppDbContext>(o => o.UseNpgsql(config.GetConnectionString("Postgres")));
 
         await using var sp = services.BuildServiceProvider();
         using var scope = sp.CreateScope();
-        var source = scope.ServiceProvider.GetRequiredService<SupabaseStorageService>();
-        var dest = scope.ServiceProvider.GetRequiredService<S3StorageService>();
+
+        IStorageService source, dest;
+        try
+        {
+            source = BuildStorage(config, sourceSection, scope.ServiceProvider);
+            dest = BuildStorage(config, destSection, scope.ServiceProvider);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Migrate] {ex.Message}");
+            return;
+        }
+
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        Console.WriteLine($"[Migrate] Supabase '{supaUrl}' -> S3 bucket '{s3Bucket}'{(dryRun ? "  (DRY RUN)" : "")}");
+        Console.WriteLine($"[Migrate] {sourceSection} -> {destSection}{(dryRun ? "  (DRY RUN)" : "")}");
 
         var keys = await CollectKeysAsync(db);
         Console.WriteLine($"[Migrate] {keys.Count} distinct storage keys referenced by the DB.");
@@ -94,6 +101,27 @@ public static class StorageMigration
         if (failed > 0) Console.WriteLine("[Migrate] Some objects failed — re-run is safe (upsert). Check the keys above.");
     }
 
+    /// <summary>Build the right <see cref="IStorageService"/> from a named config section.</summary>
+    private static IStorageService BuildStorage(IConfiguration config, string section, IServiceProvider sp)
+    {
+        var sec = config.GetSection(section);
+
+        if (!string.IsNullOrWhiteSpace(sec["Url"]))
+        {
+            var opt = sec.Get<SupabaseStorageOptions>() ?? new SupabaseStorageOptions();
+            return new SupabaseStorageService(Options.Create(opt), sp.GetRequiredService<IHttpClientFactory>());
+        }
+
+        if (!string.IsNullOrWhiteSpace(sec["BucketName"]))
+        {
+            var opt = sec.Get<S3StorageOptions>() ?? new S3StorageOptions();
+            return new S3StorageService(Options.Create(opt));
+        }
+
+        throw new InvalidOperationException(
+            $"Config section '{section}' isn't a usable storage config — it needs a 'Url' (Supabase) or a 'BucketName' (S3). Set it in user-secrets.");
+    }
+
     /// <summary>Every distinct non-empty storage key the DB references, normalised (no leading slash).</summary>
     private static async Task<List<string>> CollectKeysAsync(AppDbContext db)
     {
@@ -119,6 +147,12 @@ public static class StorageMigration
         Add(await db.Advertisements.Select(a => a.ImageKey).ToListAsync());
 
         return keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+    }
+
+    private static string? ArgValue(string[] args, string name)
+    {
+        var i = Array.IndexOf(args, name);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
     private static string ContentTypeFor(string key)

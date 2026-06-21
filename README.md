@@ -36,7 +36,7 @@ Ensure you have the following installed:
 * [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 * [Node.js (LTS)](https://nodejs.org/)
 
-> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared **Supabase** Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below.
+> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared **Supabase** Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md).)*
 
 ---
 

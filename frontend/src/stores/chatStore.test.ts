@@ -61,4 +61,49 @@ describe('chatStore', () => {
     expect(t.find((m) => m.id === 'm1')!.readAt).toBe(readAt)
     expect(t.find((m) => m.id === 'm2')!.readAt).toBeNull()
   })
+
+  it('receiveMessage bumps unread for an inbound message to an inactive conversation', () => {
+    useChatStore.setState({
+      conversations: [convo({ userId: 'friend', unreadCount: 0 })],
+      activeUserId: null,
+    })
+    useChatStore.getState().receiveMessage(msg({ id: 'm1', senderId: 'friend', recipientId: 'me', body: 'hi' }))
+    const c = useChatStore.getState().conversations.find((c) => c.userId === 'friend')!
+    expect(c.unreadCount).toBe(1)
+    expect(c.lastMessage?.id).toBe('m1')
+  })
+
+  it('receiveMessage does not bump unread for my own outbound message', () => {
+    useChatStore.setState({
+      conversations: [convo({ userId: 'friend', unreadCount: 0 })],
+      activeUserId: null,
+    })
+    useChatStore.getState().receiveMessage(msg({ id: 'm2', senderId: 'me', recipientId: 'friend', body: 'yo' }))
+    const c = useChatStore.getState().conversations.find((c) => c.userId === 'friend')!
+    expect(c.unreadCount).toBe(0)
+    expect(c.lastMessage?.id).toBe('m2')
+  })
+
+  it('receiveMessage replaces a matching optimistic bubble in a loaded thread', () => {
+    useChatStore.setState({
+      conversations: [convo({ userId: 'friend', unreadCount: 0 })],
+      threads: { friend: [msg({ id: 'temp', senderId: 'me', recipientId: 'friend', body: 'hello', pending: true })] },
+      activeUserId: null,
+    })
+    useChatStore.getState().receiveMessage(msg({ id: 'real', senderId: 'me', recipientId: 'friend', body: 'hello' }))
+    const t = useChatStore.getState().threads.friend
+    expect(t).toHaveLength(1)
+    expect(t[0].id).toBe('real')
+    expect(t[0].pending).toBeUndefined()
+  })
+
+  it('receiveMessage dedupes a message id already in the thread', () => {
+    useChatStore.setState({
+      conversations: [convo({ userId: 'friend', unreadCount: 0 })],
+      threads: { friend: [msg({ id: 'dup', senderId: 'friend', recipientId: 'me', body: 'hi' })] },
+      activeUserId: null,
+    })
+    useChatStore.getState().receiveMessage(msg({ id: 'dup', senderId: 'friend', recipientId: 'me', body: 'hi' }))
+    expect(useChatStore.getState().threads.friend).toHaveLength(1)
+  })
 })

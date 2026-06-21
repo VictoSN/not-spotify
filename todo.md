@@ -80,21 +80,21 @@ Licensed major-label catalogue · spatial audio · real ad-network/royalties at 
 **Harness + smoke layer are now in place (2026-06-15).** Deepening per the 3-way split below is still open.
 
 **Setup (once, together):**
-- [x] Backend: xUnit project `backend/test/NotSpotify.Api.Tests` (registered in `NotSpotify.slnx`); EF Core **InMemory** so tests never touch the shared DB; `IStorageService` mocked, `NotificationService` built over InMemory + no-op hub, `IHubContext` mocked. `dotnet test` → **9 passing** (Friends + Chat controller guards/persistence/real-time push).
-- [x] Frontend: **Vitest** + jsdom + Testing Library wired via a standalone `vitest.config.ts` (kept separate from `vite.config.ts` to avoid the vite-8/vitest-3 plugin-type clash); test files excluded from `tsc -b`. `npm run test` → **9 passing** (formatNumber, formatTime, chatStore reducers). `npm run build` + lint stay clean.
+- [x] Backend: xUnit project `backend/test/NotSpotify.Api.Tests` (registered in `NotSpotify.slnx`); EF Core **InMemory** so tests never touch the shared DB; `IStorageService` mocked, `NotificationService` built over InMemory + no-op hub, `IHubContext` mocked. `dotnet test` → **16 passing** (Friends + Chat controller guards/persistence/real-time push; `SmartPlaylistService`; `AudioWaveformService`; `S3StorageService` URL-building).
+- [x] Frontend: **Vitest** + jsdom + Testing Library wired via a standalone `vitest.config.ts` (kept separate from `vite.config.ts` to avoid the vite-8/vitest-3 plugin-type clash); test files excluded from `tsc -b`. `npm run test` → **16 passing** (formatNumber, formatTime, chatStore reducers, `chatShare` encode/parse, `audioFingerprint` FFT/match/reject). `npm run build` + lint stay clean.
 - [x] `test` / `test:watch` scripts wired (frontend); backend via `dotnet test`. Smoke layer done — now **deepen** by the split below.
 
-**Split (each person owns unit tests for their slice):**
+**Split (each person owns unit tests for their slice).** ⚠️ **Re-scoped 2026-06-21** — the original 3-way split predated a lot of shipped features (RBAC, location discovery, ads, podcasts, music videos, plans/memberships, uploads locker, recognition, HLS, smart playlists, moods/taxonomy, reposts, folders/pinning, S3 storage). The parts below now fold those in so nothing ships untested. Existing tests already cover some of this (`SmartPlaylistService`, `AudioWaveformService`, `audioFingerprint`, `chatShare`, `S3StorageService` URL-building, Friends/Chat controllers) — **extend** rather than restart.
 
-- [ ] **Part A — Playback / Player / Discovery / Lyrics — Owner: ____**
-  - Backend: recommendation endpoints (trending/most-liked/for-you/charts/radio/daily-mixes/search-by-lyrics) ranking + empty/guest fallbacks; `LyricsService`.
-  - Frontend: `playerStore` (transport, free-vs-premium shuffle/repeat gating, queue/play-next/reorder, sleep timer, rate), two-deck `audioEngine` transitions, keyboard-shortcut hook, rating store.
-- [ ] **Part B — Library / Playlists / Search / Social — Owner: ____**
-  - Backend: playlist CRUD + visibility 403 matrix, collaborative add/remove, friends graph (mutual/suggestions/blend), **follows** (follow/idempotent/unfollow/self-403/counts/lists), search.
-  - Frontend: `libraryStore`, `friendStore`, export/import matching, `FollowListModal`, search debounce/recents.
-- [ ] **Part C — Artist / Admin / Auth / Billing / Platform — Owner: ____**
-  - Backend: auth (signup/login/refresh, rate-limit 429), role/route guards (401/403), artist application→review, admin CRUD + approval/revoke + `ReviewHistory`, `AudioDownloadService` premium gating, Stripe webhook (mocked), `NotificationService`.
-  - Frontend: `authStore` (login/logout/refresh, capabilities), wired settings toggles, admin guards, offline-audio save/resolve.
+- [ ] **Part A — Playback / Audio pipeline / Discovery / Lyrics — Owner: ____**
+  - Backend: recommendation endpoints (trending / most-liked / for-you / new-music / charts / radio / daily-mixes / **popular-in-country** / **discover-weekly** / search-by-lyrics) ranking + empty/guest fallbacks; `LyricsService`.
+  - Frontend: `playerStore` (transport, free-vs-premium shuffle/repeat gating, queue/play-next/reorder, sleep timer, rate); two-deck `audioEngine` (crossfade/gapless transitions, `loadSource` MP3-vs-HLS branch, EQ / normalize / quality-lowpass filters, teardown); keyboard-shortcut hook; `ratingStore`; **audio-ads insertion** (every-N-tracks, non-skippable lock, premium bypass); **audio recognition** match/reject (extend `audioFingerprint`).
+- [ ] **Part B — Library / Playlists / Social / Browse — Owner: ____**
+  - Backend: playlist CRUD + visibility 403 matrix, collaborative add/remove, **smart-playlist** rule resolution (extend), friends graph (mutual/suggestions/blend), **follows** (idempotent/unfollow/self-403/counts/lists), **reposts**, search; **moods / genres** taxonomy endpoints (list/tracks/playlists).
+  - Frontend: `libraryStore`, `friendStore`, **playlist folders + pinning** (`libraryFolders` / `pinnedLibrary`), export/import matching, `FollowListModal`, search debounce/recents, **share-to-chat** (extend `chatShare`), timed `CommentSection`.
+- [ ] **Part C — Artist / Admin / Auth / Billing & Plans / Platform & Storage — Owner: ____**
+  - Backend: auth (signup/login/refresh, rate-limit 429), role/route guards (401/403), **RBAC** (master/admin grant/revoke + `PendingAction` approval queue), artist application→review, admin CRUD + approval/revoke + `ReviewHistory`, `AudioDownloadService` premium gating, Stripe webhook (mocked) + **plan memberships** (invite/accept/decline/seat release), `NotificationService` (new-release/follow producers); **content subsystems** serve endpoints — podcasts, music videos, ads serving (weighted/targeted/flight-window), uploads locker (owner-scope), tour dates; **`S3StorageService`** (extend URL-building to a mocked upload/read round-trip).
+  - Frontend: `authStore` (login/logout/refresh, capabilities), wired settings toggles (normalize/quality/language), admin guards, offline-audio save/resolve, `PlanMembersCard`, content adapters (`episodeToTrack` / `uploadToTrack` / embed).
 
 > Two-browser manual checks are still required for real-time features (presence, chat, collaborative playlists, listen-along). Seed logins in the README.
 

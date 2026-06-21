@@ -325,6 +325,41 @@ After checkout, the account changes to Premium only after the webhook reaches `/
 
 ---
 
+## Storage Backends (S3 / Supabase / Local)
+
+All media (audio, cover art, avatars, personal uploads) goes through `IStorageService`. The backend picks a provider at startup by **priority: S3 → Supabase → Local**, each keyed off its own config being present — so switching providers is a user-secrets change, not a code change. The active provider is printed to the console on boot (`[Storage] Using …`).
+
+### AWS S3 (the submission target)
+
+`S3StorageService` is provider-agnostic: it targets **AWS S3** by default, but the same class drives any S3-compatible store (Cloudflare R2, Backblaze B2, MinIO) by setting `ServiceUrl`.
+
+**1. Create the AWS resources** (in your student account):
+- An S3 bucket, e.g. `not-spotify-media`, in a region near you (e.g. `ap-southeast-1`).
+- An IAM user with programmatic access and a policy allowing `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` on that bucket. (If you later deploy on EC2, attach a role instead and leave the keys unset — the adapter falls back to the AWS default credential chain.)
+
+**2. Add a bucket CORS policy** so the browser can stream/decode audio:
+```json
+[{ "AllowedOrigins": ["http://localhost:5173"], "AllowedMethods": ["GET", "HEAD"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3000 }]
+```
+(Required for `<audio>` playback *and* the audio-recognition feature, which fetches + decodes catalogue audio client-side.)
+
+**3. Set backend user-secrets** (from `backend/src/NotSpotify.Api`):
+```powershell
+dotnet user-secrets set "S3Storage:BucketName" "not-spotify-media"
+dotnet user-secrets set "S3Storage:Region" "ap-southeast-1"
+dotnet user-secrets set "S3Storage:AccessKeyId" "AKIA..."
+dotnet user-secrets set "S3Storage:SecretAccessKey" "..."
+```
+Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run` (it takes precedence over any Supabase config). Optional keys: `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
+
+**4. Migrate the seed catalogue** — re-upload the existing audio/cover objects from Supabase to the S3 bucket under the **same keys** (`audio/{guid}.ext`, `covers/{guid}.ext`, …) so the stored `AudioKey`/cover keys still resolve. A one-time script (read each object via the Supabase service key, `PutObject` to S3) is enough; then verify playback, album/playlist ZIP downloads, and the uploads locker.
+
+### Supabase Storage (current dev default) / Local
+
+Supabase is selected when `SupabaseStorage:Url` is set (see the shared-DB notes); Local disk (`wwwroot/uploads`) is the fallback when neither S3 nor Supabase is configured — handy for fully offline dev.
+
+---
+
 ## Recommendation Algorithms
 
 All algorithms run server-side in [`TracksController.cs`](backend/src/NotSpotify.Api/Controllers/TracksController.cs). Each endpoint accepts a `limit` query parameter (default 10, max 50).

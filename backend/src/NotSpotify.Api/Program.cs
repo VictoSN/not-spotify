@@ -135,12 +135,25 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
+// Storage provider selection (priority: S3 → Supabase → Local). Each keys off its
+// own config being present, so swapping is a user-secrets change, not a code change.
+builder.Services.AddHttpClient();
+var s3Section = builder.Configuration.GetSection("S3Storage");
+var s3Bucket = s3Section["BucketName"];
 var supabaseStorageSection = builder.Configuration.GetSection("SupabaseStorage");
 var supabaseUrl = supabaseStorageSection["Url"];
-if (!string.IsNullOrWhiteSpace(supabaseUrl))
+if (!string.IsNullOrWhiteSpace(s3Bucket))
+{
+    builder.Services.Configure<S3StorageOptions>(s3Section);
+    builder.Services.AddSingleton<IStorageService, S3StorageService>();
+    var endpoint = string.IsNullOrWhiteSpace(s3Section["ServiceUrl"])
+        ? $"AWS {s3Section["Region"] ?? "us-east-1"}"
+        : s3Section["ServiceUrl"];
+    Console.WriteLine($"[Storage] Using S3: bucket {s3Bucket} (endpoint: {endpoint})");
+}
+else if (!string.IsNullOrWhiteSpace(supabaseUrl))
 {
     builder.Services.Configure<SupabaseStorageOptions>(supabaseStorageSection);
-    builder.Services.AddHttpClient();
     builder.Services.AddSingleton<IStorageService, SupabaseStorageService>();
     Console.WriteLine($"[Storage] Using Supabase: {supabaseUrl} (bucket: {supabaseStorageSection["Bucket"]})");
 }
@@ -148,7 +161,7 @@ else
 {
     builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
     builder.Services.AddSingleton<IStorageService, LocalStorageService>();
-    Console.WriteLine("[Storage] Using LocalStorage (Supabase URL is empty — user-secrets not loaded?)");
+    Console.WriteLine("[Storage] Using LocalStorage (no S3/Supabase config — user-secrets not loaded?)");
 }
 builder.Services.AddScoped<MediaMapper>();
 builder.Services.AddScoped<AudioDownloadService>();

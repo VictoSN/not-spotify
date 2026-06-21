@@ -59,25 +59,19 @@ Licensed major-label catalogue · spatial audio · real ad-network/royalties at 
 
 ---
 
-## Phase 2 — Storage (temporary R2/B2 → permanent student-account S3)
+## Phase 2 — Storage (→ AWS S3, the university submission target)
 
-**Goal:** move audio/media off Supabase Storage (1 GB free tier — the ceiling) to a free object store now, then to the student S3 at the end.
+**Goal:** move audio/media off Supabase Storage (1 GB free tier — the ceiling) to **AWS S3**.
 
-**Why low-risk:** already abstracted behind `IStorageService` (`GetAudioUrl`, `GetPublicUrl`, `Upload`, `Delete`, `Read`) with Supabase + Local impls — a new provider is one class + DI wiring.
+**Decision (2026-06-21):** go **straight to AWS S3**, skipping the R2 interim step. Rationale: the submission rubric requires AWS, so R2 wouldn't count; doing the migration once (not R2-then-S3) avoids re-uploading the catalogue twice under the deadline; and at demo scale the egress cost that originally favoured R2 is negligible (AWS Free Tier + student credits cover it). The adapter is S3-API based, so R2/B2 remain a config-only swap (`ServiceUrl`) if ever needed.
 
-**Plan:** Cloudflare R2 now (10 GB, **$0 egress forever** — every play downloads the file, so egress is what kills streaming budgets; R2 is S3-compatible). Later → real S3 by changing only endpoint + keys (no code rework; protects the **$50 budget** since S3 egress ≈ $0.09/GB). If S3 isn't a hard requirement, R2 could be the final home.
+**Why low-risk:** already abstracted behind `IStorageService` (`GetAudioUrl`, `GetPublicUrl`, `Upload`, `Delete`, `Read`) — a new provider is one class + DI wiring.
 
-| Option | Free tier | Egress | S3-compat | Notes |
-|---|---|---|---|---|
-| **Cloudflare R2** ⭐ | 10 GB + ops | **$0 always** | ✅ | Best fit; trivial swap to S3 later. |
-| **Backblaze B2** | 10 GB | free via Cloudflare CDN | ✅ | Pair with Cloudflare for free bandwidth. |
-| **Cloudinary** | ~25 GB credits | in credits | ⚠️ own API | Audio + transforms; not S3. |
-| **Supabase (current)** | 1 GB | 2 GB/mo | partial | The ceiling we're hitting. |
-
-- [ ] Create a free Cloudflare R2 (and/or B2) account.
-- [ ] Add `R2StorageService : IStorageService` + config selection + user-secrets (keys/endpoint/bucket).
-- [ ] Migrate / re-upload the seed catalogue to R2; verify playback + downloads.
-- [ ] At the end: repoint the same adapter at the student S3 (endpoint + keys only).
+- [x] **`S3StorageService : IStorageService` + `S3StorageOptions` + Program.cs wiring** — **done (2026-06-21)**. Provider-agnostic (AWS S3 by default; any S3-compatible store via `ServiceUrl`, e.g. R2/B2/MinIO). Uses `AWSSDK.S3`; supports explicit keys *or* the AWS default credential chain (IAM role when deployed); presigned GET URLs by default (private bucket) or public-object URLs (`UsePresignedUrls=false`). Selection priority in `Program.cs` is **S3 → Supabase → Local**, each keyed off its own config. Backend builds clean (0W/0E).
+- [ ] **Create the AWS resources** — S3 bucket (e.g. `not-spotify-media`, pick a region) in the student account; an IAM user with `s3:GetObject/PutObject/DeleteObject/ListBucket` (or an instance role if deployed on EC2).
+- [ ] **Add a bucket CORS policy** allowing the frontend origin (`GET`/`HEAD`) — required for `<audio>` playback *and* the audio-recognition feature that fetches + decodes catalogue audio.
+- [ ] **Set backend user-secrets** — `S3Storage:BucketName`, `S3Storage:Region`, `S3Storage:AccessKeyId`, `S3Storage:SecretAccessKey` (see README → Storage Backends). Setting `BucketName` flips the provider to S3 on next `dotnet run`.
+- [ ] **Migrate / re-upload the seed catalogue** from Supabase to the S3 bucket (one-time script keyed on the existing `audio/{guid}.ext` keys); verify playback, ZIP downloads, and uploads locker.
 
 ---
 

@@ -23,6 +23,13 @@ public class S3StorageOptions
     public string SecretAccessKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// Temporary-credential session token. Required when using short-lived keys
+    /// such as AWS Academy Learner Lab (its "AWS Details → AWS CLI" gives an
+    /// <c>aws_session_token</c>). Leave empty for a permanent IAM-user key.
+    /// </summary>
+    public string? SessionToken { get; set; }
+
+    /// <summary>
     /// Custom S3-compatible endpoint (e.g. https://&lt;account&gt;.r2.cloudflarestorage.com).
     /// Leave empty for real AWS S3 — then <see cref="Region"/> is used instead.
     /// </summary>

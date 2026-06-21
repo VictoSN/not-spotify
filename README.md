@@ -331,6 +331,8 @@ All media (audio, cover art, avatars, personal uploads) goes through `IStorageSe
 
 ### AWS S3 (the submission target)
 
+> 📖 **Full click-by-click walkthrough (incl. AWS Academy Learner Lab):** [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md). The summary below is the gist.
+
 `S3StorageService` is provider-agnostic: it targets **AWS S3** by default, but the same class drives any S3-compatible store (Cloudflare R2, Backblaze B2, MinIO) by setting `ServiceUrl`.
 
 **1. Create the AWS resources** (in your student account):
@@ -350,9 +352,15 @@ dotnet user-secrets set "S3Storage:Region" "ap-southeast-1"
 dotnet user-secrets set "S3Storage:AccessKeyId" "AKIA..."
 dotnet user-secrets set "S3Storage:SecretAccessKey" "..."
 ```
-Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run` (it takes precedence over any Supabase config). Optional keys: `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
+Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run` (it takes precedence over any Supabase config). Optional keys: `SessionToken` (**required for temporary creds like AWS Academy Learner Lab**), `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
 
-**4. Migrate the seed catalogue** — re-upload the existing audio/cover objects from Supabase to the S3 bucket under the **same keys** (`audio/{guid}.ext`, `covers/{guid}.ext`, …) so the stored `AudioKey`/cover keys still resolve. A one-time script (read each object via the Supabase service key, `PutObject` to S3) is enough; then verify playback, album/playlist ZIP downloads, and the uploads locker.
+**4. Migrate the seed catalogue** — with the Supabase secrets still in place, run the built-in one-time migration (it copies every DB-referenced object from Supabase to S3 under the **same keys** so `AudioKey`/cover keys still resolve):
+```powershell
+cd backend/src/NotSpotify.Api
+dotnet run -- migrate-storage --dry-run   # preview; writes nothing
+dotnet run -- migrate-storage             # copy (idempotent)
+```
+Then verify playback, album/playlist ZIP downloads, and the uploads locker.
 
 ### Supabase Storage (current dev default) / Local
 

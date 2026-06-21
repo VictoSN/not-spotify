@@ -33,8 +33,10 @@ public class S3StorageService : IStorageService
         }
 
         _s3 = string.IsNullOrWhiteSpace(_opt.AccessKeyId)
-            ? new AmazonS3Client(config)                                          // IAM role / env / instance profile
-            : new AmazonS3Client(_opt.AccessKeyId, _opt.SecretAccessKey, config); // explicit keys (user-secrets)
+            ? new AmazonS3Client(config)                                                              // IAM role / env / instance profile
+            : !string.IsNullOrWhiteSpace(_opt.SessionToken)
+                ? new AmazonS3Client(_opt.AccessKeyId, _opt.SecretAccessKey, _opt.SessionToken, config) // temporary creds (AWS Academy)
+                : new AmazonS3Client(_opt.AccessKeyId, _opt.SecretAccessKey, config);                    // permanent IAM-user key
     }
 
     public Task<string> GetAudioUrlAsync(string key, CancellationToken ct = default)

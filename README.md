@@ -22,8 +22,17 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 **Being worked on next:** remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
 
-### Run everything at once (Windows)
-Instead of three manual terminals, **double-click [`dev.cmd`](dev.cmd)** (or run `./dev.sh` from Git Bash). It opens the backend, the Stripe webhook listener, and the frontend in separate windows. (Stripe CLI must be installed + `stripe login` done once.) Manual steps are below.
+### Run everything at once (quickest start)
+
+**Open [Git Bash](https://git-scm.com/downloads) at the repo root and run:**
+```bash
+./dev.sh
+```
+That launches all three services in their own windows — backend (`https://localhost:7045`), Stripe webhook listener, and frontend (`http://localhost:5173`) — so you don't need three manual terminals. *(On plain Windows you can instead **double-click [`dev.cmd`](dev.cmd)**.)*
+
+- Requires .NET SDK, Node/npm, and (for the webhook window) the Stripe CLI on your PATH, with `stripe login` done once. **Not testing premium?** Just ignore/close the Stripe window — backend + frontend still run fine.
+- Prefer manual control, or first-time setup? Follow the step-by-step below.
+- **Stripe products/prices to create:** see [`docs/stripe-setup.md`](docs/stripe-setup.md).
 
 ---
 
@@ -194,6 +203,8 @@ Premium users see a **Cancel subscription** row in Account → Subscription. Cli
 ## Stripe Billing Setup For Teammates
 
 Stripe is only needed if you want to test the Premium checkout flow. Normal browsing, login, playback, playlists, profile editing, and admin media work without it.
+
+> 📖 **The exact products/prices to create (with MYR amounts and monthly/yearly billing) are in [`docs/stripe-setup.md`](docs/stripe-setup.md).** The walkthrough below covers installing the CLI and wiring secrets.
 
 ### 1. Install Stripe CLI
 

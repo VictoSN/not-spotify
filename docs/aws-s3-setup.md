@@ -145,6 +145,18 @@ That's the migration done — you're submitting on AWS S3.
 
 ---
 
+## Team setup: shared DB, per-machine storage
+
+Important mental model for a team on one shared Supabase **database** but different storage backends:
+
+- The **database is shared** (everyone's `ConnectionStrings:Postgres` points at the same Supabase). The **storage credentials are per-machine**, in each person's local user-secrets — never in the repo or DB.
+- The migration **copies** (doesn't move) files, so after it runs the catalogue exists in **both** Supabase and your S3. Your app serves from S3; a teammate with no `S3Storage` config keeps serving the same catalogue from Supabase. Both work — no key sharing needed.
+- **Split-brain risk with *new* uploads:** an upload goes to whichever backend that app is configured with, but the key is saved in the shared DB. So a track **you** upload while on S3 lands in *your* S3 only — a teammate on Supabase sees the DB row but can't fetch the file (and vice-versa).
+
+**Recommended (Academy creds are personal + temporary):** treat S3 as **your submission/demo config** — keep teammates on Supabase for collaboration, and re-run `dotnet run -- migrate-storage` once right before the demo to pull in anything teammates uploaded to Supabase. Only share one bucket + credentials across the team if you specifically need everyone serving from S3.
+
+---
+
 ## Troubleshooting
 
 - **Console still says `Using Supabase`** → `S3Storage:BucketName` isn't set (or you ran from the wrong folder). `dotnet user-secrets list` to confirm.

@@ -74,6 +74,38 @@ public class S3StorageService : IStorageService
         }
     }
 
+    /// <summary>
+    /// Apply a CORS policy that lets browsers read the bucket's objects cross-origin.
+    /// The frontend extracts the dominant colour of covers/banners/avatars client-side
+    /// (node-vibrant draws the image to a &lt;canvas&gt; and reads its pixels) to drive the
+    /// Spotify-style gradient hues. That canvas read is blocked by the same-origin policy
+    /// unless the image response carries <c>Access-Control-Allow-Origin</c> — without this
+    /// the gradients silently fall back to grey on every page. Idempotent (PUT overwrites).
+    /// </summary>
+    public async Task EnsureBrowserCorsAsync(CancellationToken ct = default)
+    {
+        await _s3.PutCORSConfigurationAsync(new PutCORSConfigurationRequest
+        {
+            BucketName = _opt.BucketName,
+            Configuration = new CORSConfiguration
+            {
+                Rules =
+                [
+                    new CORSRule
+                    {
+                        // Images only ever need read; node-vibrant requests them anonymously
+                        // (crossOrigin="anonymous"), so a "*" origin is safe and dodges the
+                        // dev/prod origin-list drift (Vite hops 5173→5174 when a port is busy).
+                        AllowedMethods = ["GET", "HEAD"],
+                        AllowedOrigins = ["*"],
+                        AllowedHeaders = ["*"],
+                        MaxAgeSeconds = 3600,
+                    },
+                ],
+            },
+        }, ct);
+    }
+
     public async Task DeleteAsync(string key, CancellationToken ct = default)
     {
         await _s3.DeleteObjectAsync(new DeleteObjectRequest

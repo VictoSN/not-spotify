@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
 import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
+import { ImageCropModal } from '@/components/common/ImageCropModal'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 
@@ -46,6 +47,7 @@ function fmtDuration(ms: number) {
 }
 
 type AlbumWithTracks = Album & { trackList: Track[] }
+type CropKind = 'profile' | 'header' | 'album'
 
 export function ArtistDashboardPage() {
   const { user } = useAuthStore()
@@ -94,6 +96,7 @@ export function ArtistDashboardPage() {
   const [albumCoverPreview, setAlbumCoverPreview] = useState<string | null>(null)
   const [albumSubmitting, setAlbumSubmitting] = useState(false)
   const [albumFormError, setAlbumFormError] = useState<string | null>(null)
+  const [cropRequest, setCropRequest] = useState<{ file: File; kind: CropKind } | null>(null)
 
   // Pending album edit state
   const [editAlbumId, setEditAlbumId] = useState<string | null>(null)
@@ -188,11 +191,10 @@ export function ArtistDashboardPage() {
     meService.getArtistStats(14).then(setArtistStats).catch(() => setArtistStats(null))
   }, [isArtist])
 
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null
-    setAlbumCoverFile(file)
-    if (albumCoverPreview) URL.revokeObjectURL(albumCoverPreview)
-    setAlbumCoverPreview(file ? URL.createObjectURL(file) : null)
+  const requestCrop = (kind: CropKind) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) setCropRequest({ file, kind })
   }
 
   const handleCreateAlbum = async (e: React.FormEvent) => {
@@ -537,44 +539,38 @@ export function ArtistDashboardPage() {
     }
   }
 
-  const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setProfileImageUploading(true)
+  const uploadProfileImage = async (file: File, type: 'profile' | 'header') => {
+    const setUploading = type === 'header' ? setHeaderImageUploading : setProfileImageUploading
+    setUploading(true)
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await api.post<ArtistProfile>('/me/artist-profile/image', fd, {
+      const suffix = type === 'header' ? '?type=header' : ''
+      const res = await api.post<ArtistProfile>(`/me/artist-profile/image${suffix}`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setArtistProfile(res.data)
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'Failed to upload image.')
+      setError(msg ?? `Failed to upload ${type} image.`)
     } finally {
-      setProfileImageUploading(false)
-      e.target.value = ''
+      setUploading(false)
     }
   }
 
-  const handleHeaderImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setHeaderImageUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const res = await api.post<ArtistProfile>('/me/artist-profile/image?type=header', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      setArtistProfile(res.data)
-    } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'Failed to upload header image.')
-    } finally {
-      setHeaderImageUploading(false)
-      e.target.value = ''
+  const handleCropComplete = (file: File) => {
+    const kind = cropRequest?.kind
+    setCropRequest(null)
+    if (!kind) return
+
+    if (kind === 'album') {
+      setAlbumCoverFile(file)
+      if (albumCoverPreview) URL.revokeObjectURL(albumCoverPreview)
+      setAlbumCoverPreview(URL.createObjectURL(file))
+      return
     }
+
+    void uploadProfileImage(file, kind)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -653,7 +649,7 @@ export function ArtistDashboardPage() {
             <PhotoIcon className="w-4 h-4 text-white" />
             <span className="text-xs font-semibold text-white">Change banner</span>
           </div>
-          <input type="file" accept="image/*" onChange={handleHeaderImageChange} className="hidden" disabled={headerImageUploading} />
+          <input type="file" accept="image/*" onChange={requestCrop('header')} className="hidden" disabled={headerImageUploading} />
         </label>
 
         <div className="px-6 pb-6">
@@ -672,7 +668,7 @@ export function ArtistDashboardPage() {
                   <PhotoIcon className="w-5 h-5 text-white" />
                 </div>
               </div>
-              <input type="file" accept="image/*" onChange={handleProfileImageChange} className="hidden" disabled={profileImageUploading} />
+              <input type="file" accept="image/*" onChange={requestCrop('profile')} className="hidden" disabled={profileImageUploading} />
             </label>
 
             {!editingProfile && (
@@ -903,7 +899,7 @@ export function ArtistDashboardPage() {
                   <PhotoIcon className="w-8 h-8 text-muted" />
                 )}
               </div>
-              <input type="file" accept="image/*" onChange={handleCoverChange} className="hidden" />
+              <input type="file" accept="image/*" onChange={requestCrop('album')} className="hidden" />
               <p className="text-xs text-muted mt-1 text-center">Cover art</p>
             </label>
 
@@ -1665,6 +1661,15 @@ export function ArtistDashboardPage() {
           <ArtistTourManager tracks={albums.flatMap((a) => a.trackList).map((t) => ({ id: t.id, title: t.title }))} />
         </div>
       )}
+
+      <ImageCropModal
+        file={cropRequest?.file ?? null}
+        aspectRatio={cropRequest?.kind === 'header' ? 3 : 1}
+        outputWidth={cropRequest?.kind === 'header' ? 1800 : 1200}
+        title={cropRequest?.kind === 'header' ? 'Crop artist banner' : cropRequest?.kind === 'profile' ? 'Crop profile image' : 'Crop cover art'}
+        onCancel={() => setCropRequest(null)}
+        onCrop={handleCropComplete}
+      />
     </div>
   )
 }

@@ -35,6 +35,31 @@ if (args.Contains("migrate-storage"))
     return;
 }
 
+// One-time S3 CORS setup (`dotnet run -- ensure-s3-cors`): lets the browser read
+// bucket objects cross-origin so client-side dominant-colour extraction (the page
+// gradient hues) works. Needs s3:PutBucketCors on the bucket. Idempotent.
+if (args.Contains("ensure-s3-cors"))
+{
+    var s3Opt = builder.Configuration.GetSection("S3Storage").Get<S3StorageOptions>();
+    if (s3Opt is null || string.IsNullOrWhiteSpace(s3Opt.BucketName))
+    {
+        Console.WriteLine("[S3 CORS] No 'S3Storage:BucketName' configured — set it in user-secrets/appsettings. Aborting.");
+        return;
+    }
+
+    try
+    {
+        await new S3StorageService(Microsoft.Extensions.Options.Options.Create(s3Opt)).EnsureBrowserCorsAsync();
+        Console.WriteLine($"[S3 CORS] Applied GET/HEAD CORS (AllowedOrigins=*) to bucket '{s3Opt.BucketName}'. Gradients will work once URLs refresh.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[S3 CORS] FAILED: {ex.Message}");
+        Console.WriteLine("[S3 CORS] If this is a permissions error, apply the CORS rule from the AWS console instead (S3 → bucket → Permissions → CORS).");
+    }
+    return;
+}
+
 var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 builder.Services.AddSingleton(jwt);

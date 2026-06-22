@@ -39,9 +39,11 @@ export function ArtistProfilePage() {
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
-  // Page tint follows the artwork driving the hero: the banner if the artist has
-  // one, otherwise the profile picture.
-  const heroColorSource = artist?.headerImageUrl ?? artist?.imageUrl ?? null
+  // The page tint must match the artwork currently driving the hero:
+  // banner takes priority, with the profile picture used only as its fallback.
+  const heroColorSource = artist?.headerImageUrl
+    ? artist.headerImageUrl
+    : artist?.imageUrl
   const derivedHeroHue = useDominantColor(heroColorSource, { resetOnChange: true })
 
   useEffect(() => {
@@ -81,45 +83,60 @@ export function ArtistProfilePage() {
   return (
     <div>
       {/* Hero */}
-      <div className="relative h-72 sm:h-80 overflow-hidden">
+      <div
+        className="relative h-72 w-full overflow-hidden sm:h-auto sm:aspect-[3/1]"
+        style={!artist.headerImageUrl ? {
+          background: `linear-gradient(135deg, ${heroHue} 0%, ${withAlpha(heroHue, 0.68)} 45%, var(--c-page) 120%)`,
+        } : undefined}
+      >
         {artist.headerImageUrl ? (
           <img src={artist.headerImageUrl} alt={artist.name} className="w-full h-full object-cover" />
+        ) : artist.imageUrl ? (
+          <>
+            <img
+              src={artist.imageUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-2xl"
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: `linear-gradient(90deg, ${withAlpha(heroHue, 0.76)} 0%, transparent 75%)` }}
+            />
+          </>
         ) : (
-          <div
-            className="w-full h-full"
-            style={{ background: `linear-gradient(to bottom, ${heroHue} 0%, ${withAlpha(heroHue, 0.5)} 55%, var(--c-page) 100%)` }}
-          />
+          <div className="h-full w-full bg-gradient-to-br from-accent-dim via-elevated to-page" />
         )}
-        <div
-          className="absolute inset-0 bg-gradient-to-t from-page via-page/40 to-transparent"
-          style={{ background: `linear-gradient(to top, var(--c-page) 0%, ${withAlpha(heroHue, 0.35)} 45%, transparent 100%)` }}
-        />
-        <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3 sm:gap-4 sm:bottom-6 sm:left-6 sm:right-6">
-          {artist.imageUrl && (
+        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/5" />
+        <div className="absolute bottom-5 left-5 right-5 flex items-end gap-5 sm:bottom-7 sm:left-7 sm:right-7 lg:gap-7">
+          {!artist.headerImageUrl && artist.imageUrl && (
             <img
               src={artist.imageUrl}
               alt={artist.name}
-              className="w-16 h-16 sm:w-24 sm:h-24 rounded-full object-cover shadow-2xl border-2 border-elevated flex-shrink-0"
+              className="h-28 w-28 flex-shrink-0 rounded-full border-4 border-black/20 object-cover shadow-2xl sm:h-40 sm:w-40 lg:h-52 lg:w-52"
             />
           )}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              {artist.verified && <CheckBadgeIcon className="w-5 h-5 text-accent" />}
-              <span className="text-xs font-semibold text-secondary uppercase tracking-wider">{t('detail.artistLabel')}</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-primary drop-shadow-lg truncate">{artist.name}</h1>
-            <p className="text-secondary text-sm mt-1">{t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
+            {artist.verified && (
+              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-white drop-shadow-md">
+                <CheckBadgeIcon className="h-6 w-6 text-[#4cb3ff]" />
+                <span>Verified artist</span>
+              </div>
+            )}
+            <h1 className="truncate text-5xl font-black leading-none text-white drop-shadow-xl sm:text-7xl lg:text-8xl">
+              {artist.name}
+            </h1>
+            <p className="mt-4 text-sm font-semibold text-white drop-shadow-md">
+              {t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
+            </p>
           </div>
         </div>
       </div>
 
-      <div
-        style={{
-          background: `linear-gradient(180deg, ${withAlpha(heroHue, 0.32)} 0, ${withAlpha(heroHue, 0.12)} 8rem, transparent 20rem)`,
-        }}
-      >
-      {/* Actions */}
-      <div className="flex items-center gap-4 px-6 py-4">
+      <div style={{
+        background: `linear-gradient(180deg, ${withAlpha(heroHue, 0.38)} 0, ${withAlpha(heroHue, 0.16)} 8rem, transparent 20rem)`,
+      }}>
+        {/* Actions */}
+        <div className="flex items-center gap-4 px-6 py-6">
         {topTracks.length > 0 && (
           <Button onClick={() => playWithGate(topTracks[0], topTracks)} size="lg" className="gap-2">
             <PlayIcon className="w-5 h-5" /> {t('common.play')}
@@ -139,114 +156,114 @@ export function ArtistProfilePage() {
           <ShareIcon className="w-5 h-5" />
           {shareCopied ? t('common.linkCopied') : t('common.share')}
         </button>
-      </div>
+        </div>
 
-      {/* Popular tracks */}
-      {topTracks.length > 0 && (
-        <section className="px-4 mb-8">
-          <SectionHeader title={t('detail.popular')} />
-          {topTracks.map((track, i) => (
-            <TrackRow key={track.id} track={track} index={i} queue={topTracks} showPlayCount />
-          ))}
-        </section>
-      )}
-
-      {/* Albums */}
-      {albums.length > 0 && (
-        <section className="px-6 mb-8">
-          <SectionHeader title={t('detail.discography')} />
-          <HorizontalScroller>
-            {albums.map((album) => (
-              <AlbumCard key={album.id} album={album} />
+        {/* Popular tracks */}
+        {topTracks.length > 0 && (
+          <section className="px-4 mb-8">
+            <SectionHeader title={t('detail.popular')} />
+            {topTracks.map((track, i) => (
+              <TrackRow key={track.id} track={track} index={i} queue={topTracks} showPlayCount />
             ))}
-          </HorizontalScroller>
-        </section>
-      )}
+          </section>
+        )}
 
-      {/* Fans also like */}
-      {related.length > 0 && (
-        <section className="px-6 mb-8">
-          <SectionHeader title={t('detail.fansAlsoLike')} />
-          <HorizontalScroller>
-            {related.map((a) => (
-              <ArtistCard key={a.id} artist={a} />
-            ))}
-          </HorizontalScroller>
-        </section>
-      )}
+        {/* Albums */}
+        {albums.length > 0 && (
+          <section className="px-6 mb-8">
+            <SectionHeader title={t('detail.discography')} />
+            <HorizontalScroller>
+              {albums.map((album) => (
+                <AlbumCard key={album.id} album={album} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
 
-      {/* Bio */}
-      {artist.bio && (
-        <section className="px-6 mb-8">
-          <SectionHeader title={t('detail.about')} />
-          <div className="bg-surface rounded-xl p-6 relative overflow-hidden">
-            {artist.headerImageUrl && (
-              <img
-                src={artist.headerImageUrl}
-                alt=""
-                className="absolute inset-0 w-full h-full object-cover opacity-10"
-              />
-            )}
-            <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
-            <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
-          </div>
-        </section>
-      )}
+        {/* Fans also like */}
+        {related.length > 0 && (
+          <section className="px-6 mb-8">
+            <SectionHeader title={t('detail.fansAlsoLike')} />
+            <HorizontalScroller>
+              {related.map((a) => (
+                <ArtistCard key={a.id} artist={a} />
+              ))}
+            </HorizontalScroller>
+          </section>
+        )}
 
-      {/* On tour */}
-      {tourDates.length > 0 && (
-        <section className="px-6 mb-8">
-          <SectionHeader title={t('detail.onTour')} />
-          <div className="flex flex-col gap-2">
-            {tourDates.map((d) => {
-              const date = new Date(d.eventDate)
-              const region = (() => {
-                try { return new Intl.DisplayNames(undefined, { type: 'region' }).of(d.country) ?? d.country }
-                catch { return d.country }
-              })()
-              return (
-                <div key={d.id} className="rounded-lg bg-surface px-4 py-3">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-elevated text-center leading-none">
-                      <span className="text-[10px] font-bold uppercase text-secondary">
-                        {date.toLocaleDateString(undefined, { month: 'short' })}
-                      </span>
-                      <span className="text-lg font-black text-primary">{date.getDate()}</span>
+        {/* Bio */}
+        {artist.bio && (
+          <section className="px-6 mb-8">
+            <SectionHeader title={t('detail.about')} />
+            <div className="bg-surface rounded-xl p-6 relative overflow-hidden">
+              {artist.headerImageUrl && (
+                <img
+                  src={artist.headerImageUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover opacity-10"
+                />
+              )}
+              <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
+              <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
+            </div>
+          </section>
+        )}
+
+        {/* On tour */}
+        {tourDates.length > 0 && (
+          <section className="px-6 mb-8">
+            <SectionHeader title={t('detail.onTour')} />
+            <div className="flex flex-col gap-2">
+              {tourDates.map((d) => {
+                const date = new Date(d.eventDate)
+                const region = (() => {
+                  try { return new Intl.DisplayNames(undefined, { type: 'region' }).of(d.country) ?? d.country }
+                  catch { return d.country }
+                })()
+                return (
+                  <div key={d.id} className="rounded-lg bg-surface px-4 py-3">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-md bg-elevated text-center leading-none">
+                        <span className="text-[10px] font-bold uppercase text-secondary">
+                          {date.toLocaleDateString(undefined, { month: 'short' })}
+                        </span>
+                        <span className="text-lg font-black text-primary">{date.getDate()}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-primary">{d.city}, {region}</p>
+                        <p className="truncate text-xs text-secondary">
+                          <MapPinIcon className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
+                          {d.venue}
+                        </p>
+                      </div>
+                      {d.ticketUrl && (
+                        <a
+                          href={d.ticketUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 rounded-full border border-secondary/50 px-4 py-1.5 text-xs font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
+                        >
+                          {t('detail.tickets')}
+                        </a>
+                      )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-primary">{d.city}, {region}</p>
-                      <p className="truncate text-xs text-secondary">
-                        <MapPinIcon className="mr-1 inline h-3.5 w-3.5 align-text-bottom" />
-                        {d.venue}
-                      </p>
-                    </div>
-                    {d.ticketUrl && (
-                      <a
-                        href={d.ticketUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="shrink-0 rounded-full border border-secondary/50 px-4 py-1.5 text-xs font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
-                      >
-                        {t('detail.tickets')}
-                      </a>
+                    {d.songs.length > 0 && (
+                      <div className="mt-3 border-t border-elevated/60 pt-2 sm:pl-16">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-secondary">{t('detail.setlist')}</p>
+                        <ol className="list-inside list-decimal space-y-0.5 text-xs text-secondary">
+                          {d.songs.map((s) => (
+                            <li key={s.trackId} className="truncate">{s.title}</li>
+                          ))}
+                        </ol>
+                      </div>
                     )}
                   </div>
-                  {d.songs.length > 0 && (
-                    <div className="mt-3 border-t border-elevated/60 pt-2 sm:pl-16">
-                      <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-secondary">{t('detail.setlist')}</p>
-                      <ol className="list-inside list-decimal space-y-0.5 text-xs text-secondary">
-                        {d.songs.map((s) => (
-                          <li key={s.trackId} className="truncate">{s.title}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+                )
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   )

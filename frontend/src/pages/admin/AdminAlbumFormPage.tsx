@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { ArrowLeftIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
@@ -7,6 +7,7 @@ import type { Artist } from '@/types/artist'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { ImageCropModal } from '@/components/common/ImageCropModal'
 
 interface FormValues {
   title: string
@@ -30,6 +31,8 @@ export function AdminAlbumFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverCropSource, setCoverCropSource] = useState<File | null>(null)
+  const coverPreviewUrl = useMemo(() => coverFile ? URL.createObjectURL(coverFile) : null, [coverFile])
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
     defaultValues: { title: '', artistId: '', type: 'album', releaseDate: '', label: '', copyright: '' },
@@ -64,6 +67,11 @@ export function AdminAlbumFormPage() {
     })()
     return () => { cancelled = true }
   }, [id, isEdit, reset])
+
+  useEffect(() => {
+    if (!coverPreviewUrl) return
+    return () => URL.revokeObjectURL(coverPreviewUrl)
+  }, [coverPreviewUrl])
 
   const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true)
@@ -173,8 +181,8 @@ export function AdminAlbumFormPage() {
           <label className="block text-sm font-semibold text-primary mb-2">Cover art</label>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-md bg-elevated overflow-hidden flex-shrink-0">
-              {coverFile ? (
-                <img src={URL.createObjectURL(coverFile)} alt="" className="w-full h-full object-cover" />
+              {coverPreviewUrl ? (
+                <img src={coverPreviewUrl} alt="" className="w-full h-full object-cover" />
               ) : album?.coverUrl ? (
                 <img src={album.coverUrl} alt="" className="w-full h-full object-cover" />
               ) : (
@@ -190,7 +198,11 @@ export function AdminAlbumFormPage() {
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 className="hidden"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  const selected = event.target.files?.[0]
+                  event.target.value = ''
+                  if (selected) setCoverCropSource(selected)
+                }}
               />
             </label>
             {coverFile && (
@@ -219,6 +231,17 @@ export function AdminAlbumFormPage() {
           </Button>
         </div>
       </form>
+
+      <ImageCropModal
+        file={coverCropSource}
+        aspectRatio={1}
+        title="Crop cover art"
+        onCancel={() => setCoverCropSource(null)}
+        onCrop={(cropped) => {
+          setCoverFile(cropped)
+          setCoverCropSource(null)
+        }}
+      />
     </div>
   )
 }

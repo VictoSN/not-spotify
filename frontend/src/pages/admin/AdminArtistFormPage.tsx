@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { ArrowLeftIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline'
@@ -6,6 +6,7 @@ import type { Artist } from '@/types/artist'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { ImageCropModal } from '@/components/common/ImageCropModal'
 
 interface FormValues {
   name: string
@@ -77,8 +78,8 @@ export function AdminArtistFormPage() {
         saved = await adminService.createArtist(payload)
       }
 
-      if (profileFile) saved = await adminService.uploadArtistImage(saved.id, profileFile, 'profile')
-      if (headerFile) saved = await adminService.uploadArtistImage(saved.id, headerFile, 'header')
+      if (profileFile) await adminService.uploadArtistImage(saved.id, profileFile, 'profile')
+      if (headerFile) await adminService.uploadArtistImage(saved.id, headerFile, 'header')
 
       navigate('/admin/artists')
     } catch (err) {
@@ -163,12 +164,14 @@ export function AdminArtistFormPage() {
             current={artist?.imageUrl}
             file={profileFile}
             onChange={setProfileFile}
+            aspectRatio={1}
           />
           <FileField
             label="Header image"
             current={artist?.headerImageUrl}
             file={headerFile}
             onChange={setHeaderFile}
+            aspectRatio={3}
           />
         </div>
 
@@ -196,41 +199,66 @@ interface FileFieldProps {
   current?: string | null
   file: File | null
   onChange: (f: File | null) => void
+  aspectRatio: number
 }
 
-function FileField({ label, current, file, onChange }: FileFieldProps) {
-  const previewUrl = file ? URL.createObjectURL(file) : current
+function FileField({ label, current, file, onChange, aspectRatio }: FileFieldProps) {
+  const [cropSource, setCropSource] = useState<File | null>(null)
+  const filePreviewUrl = useMemo(() => file ? URL.createObjectURL(file) : null, [file])
+  const previewUrl = filePreviewUrl ?? current
+
+  useEffect(() => {
+    if (!filePreviewUrl) return
+    return () => URL.revokeObjectURL(filePreviewUrl)
+  }, [filePreviewUrl])
 
   return (
-    <div>
-      <label className="block text-sm font-semibold text-primary mb-1">{label}</label>
-      <div className="flex items-center gap-3">
-        <div className="w-20 h-20 rounded-md bg-elevated overflow-hidden flex-shrink-0">
-          {previewUrl ? (
-            <img src={previewUrl} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full" />
+    <>
+      <div>
+        <label className="block text-sm font-semibold text-primary mb-1">{label}</label>
+        <div className="flex items-center gap-3">
+          <div className={`${aspectRatio === 1 ? 'h-20 w-20 rounded-full' : 'h-20 w-40 rounded-md'} flex-shrink-0 overflow-hidden bg-elevated`}>
+            {previewUrl ? (
+              <img src={previewUrl} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full" />
+            )}
+          </div>
+          <label className="cursor-pointer">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-primary bg-surface hover:bg-elevated">
+              <ArrowUpTrayIcon className="w-4 h-4" />
+              {file ? 'Change file' : 'Choose file'}
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                const selected = event.target.files?.[0]
+                event.target.value = ''
+                if (selected) setCropSource(selected)
+              }}
+            />
+          </label>
+          {file && (
+            <button type="button" onClick={() => onChange(null)} className="text-secondary hover:text-primary text-xs">
+              Remove
+            </button>
           )}
         </div>
-        <label className="cursor-pointer">
-          <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold text-primary bg-surface hover:bg-elevated">
-            <ArrowUpTrayIcon className="w-4 h-4" />
-            {file ? 'Change file' : 'Choose file'}
-          </span>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={(e) => onChange(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        {file && (
-          <button type="button" onClick={() => onChange(null)} className="text-secondary hover:text-primary text-xs">
-            Remove
-          </button>
-        )}
+        {file && <p className="text-xs text-secondary mt-1">{file.name} ({(file.size / 1024).toFixed(0)} KB)</p>}
       </div>
-      {file && <p className="text-xs text-secondary mt-1">{file.name} ({(file.size / 1024).toFixed(0)} KB)</p>}
-    </div>
+      <ImageCropModal
+        file={cropSource}
+        aspectRatio={aspectRatio}
+        outputWidth={aspectRatio === 1 ? 1200 : 1800}
+        title={`Crop ${label.toLowerCase()}`}
+        onCancel={() => setCropSource(null)}
+        onCrop={(cropped) => {
+          onChange(cropped)
+          setCropSource(null)
+        }}
+      />
+    </>
   )
 }

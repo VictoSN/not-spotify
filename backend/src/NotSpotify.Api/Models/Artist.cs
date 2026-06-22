@@ -23,6 +23,9 @@ public class Artist
     public string? RevocationNote { get; set; }
     public DateTime? RevokedAt { get; set; }
 
+    /// <summary>When this artist's external (Ticketmaster) tour dates were last refreshed. Null = never synced.</summary>
+    public DateTime? TourSyncedAt { get; set; }
+
     public ICollection<Album> Albums { get; set; } = new List<Album>();
     public ICollection<Track> Tracks { get; set; } = new List<Track>();
 }

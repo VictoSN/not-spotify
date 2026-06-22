@@ -18,6 +18,8 @@ import { PremiumPage } from '@/pages/PremiumPage'
 import { PlaylistDetailPage } from '@/pages/PlaylistDetailPage'
 import { AlbumDetailPage } from '@/pages/AlbumDetailPage'
 import { ArtistProfilePage } from '@/pages/ArtistProfilePage'
+import { ArtistEventsPage } from '@/pages/ArtistEventsPage'
+import { ArtistEventDetailPage } from '@/pages/ArtistEventDetailPage'
 import { GenreBrowsePage } from '@/pages/GenreBrowsePage'
 import { GenreDetailPage } from '@/pages/GenreDetailPage'
 import { MoodActivityPage } from '@/pages/MoodActivityPage'
@@ -84,6 +86,8 @@ export const router = createBrowserRouter([
           { path: 'playlist/:id', element: <PlaylistDetailPage /> },
           { path: 'album/:id', element: <AlbumDetailPage /> },
           { path: 'artist/:id', element: <ArtistProfilePage /> },
+          { path: 'artist/:id/events', element: <ArtistEventsPage /> },
+          { path: 'artist/:id/events/:eventId', element: <ArtistEventDetailPage /> },
           { path: 'genres', element: <GenreBrowsePage /> },
           { path: 'genres/:slug', element: <GenreDetailPage /> },
           { path: 'moods', element: <MoodActivityPage /> },

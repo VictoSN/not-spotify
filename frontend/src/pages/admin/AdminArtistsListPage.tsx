@@ -18,6 +18,8 @@ export function AdminArtistsListPage() {
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [actingId, setActingId] = useState<string | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // Revoke note input state
   const [revokeTarget, setRevokeTarget] = useState<string | null>(null)
@@ -76,6 +78,23 @@ export function AdminArtistsListPage() {
     }
   }
 
+  const handleSyncTours = async () => {
+    setSyncing(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const count = await adminService.syncAllTours()
+      setNotice(count > 0
+        ? `Refreshed live tour dates for ${count} artist${count === 1 ? '' : 's'}.`
+        : 'Tour dates are already up to date (or Ticketmaster is not configured).')
+    } catch (err) {
+      const serverMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setError(serverMsg ?? (err instanceof Error ? err.message : 'Tour sync failed'))
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const handleReinstate = async (id: string) => {
     if (!(await confirm({
       title: 'Reinstate this artist?',
@@ -102,15 +121,27 @@ export function AdminArtistsListPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">Artists</h1>
           <p className="text-secondary text-sm mt-1">Manage all artists in the catalogue.</p>
         </div>
-        <Button onClick={() => navigate('/admin/artists/new')}>
-          <PlusCircleIcon className="w-5 h-5" />
-          New artist
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="ghost" onClick={handleSyncTours} disabled={syncing} title="Refresh live concert dates from Ticketmaster">
+            {syncing ? <Spinner size="sm" /> : <ArrowPathIcon className="w-5 h-5" />}
+            Sync tour dates
+          </Button>
+          <Button onClick={() => navigate('/admin/artists/new')}>
+            <PlusCircleIcon className="w-5 h-5" />
+            New artist
+          </Button>
+        </div>
       </div>
 
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
           <p className="text-red-400 text-sm">{error}</p>
+        </div>
+      )}
+
+      {notice && (
+        <div className="mb-4 bg-accent/10 border border-accent/30 rounded-md px-4 py-3">
+          <p className="text-accent text-sm">{notice}</p>
         </div>
       )}
 

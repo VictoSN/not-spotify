@@ -160,4 +160,101 @@ public class ArtistTourTests
         Assert.Equal("KL", only.City);
         Assert.Equal("Hit", Assert.Single(only.Songs).Title);
     }
+
+    private static string TmEventJson(string attraction, string venue, string city, string country, DateTime whenUtc)
+        => $$"""
+        { "_embedded": { "events": [ {
+            "id": "E1",
+            "url": "https://tm.test/e1",
+            "dates": { "start": { "dateTime": "{{whenUtc:yyyy-MM-ddTHH:mm:ssZ}}" } },
+            "_embedded": {
+              "attractions": [ { "name": "{{attraction}}" } ],
+              "venues": [ { "name": "{{venue}}", "city": { "name": "{{city}}" }, "country": { "countryCode": "{{country}}" } } ]
+            }
+        } ] } }
+        """;
+
+    [Fact]
+    public async Task SyncArtist_CachesTicketmasterRows_AndStampsSyncedAt()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artistId = Guid.NewGuid();
+        db.Artists.Add(new Artist { Id = artistId, Name = "Metallica" });
+        await db.SaveChangesAsync();
+
+        var when = DateTime.UtcNow.AddDays(10);
+        var tm = TestHelpers.NewTicketmaster(TmEventJson("Metallica", "Stadium", "London", "GB", when));
+        var sync = TestHelpers.NewTourSync(db, tm);
+
+        var ran = await sync.SyncArtistAsync(artistId, force: true);
+
+        Assert.True(ran);
+        var cached = Assert.Single(db.TourDates.Where(t => t.ArtistId == artistId));
+        Assert.Equal("ticketmaster", cached.Source);
+        Assert.Equal("tm:E1", cached.ExternalId);
+        Assert.Equal("Stadium", cached.Venue);
+        Assert.Equal("GB", cached.Country);
+        Assert.NotNull(db.Artists.Single(a => a.Id == artistId).TourSyncedAt);
+    }
+
+    [Fact]
+    public async Task SyncArtist_RespectsTtl_WhenNotForced()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artistId = Guid.NewGuid();
+        db.Artists.Add(new Artist { Id = artistId, Name = "Metallica", TourSyncedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var tm = TestHelpers.NewTicketmaster(TmEventJson("Metallica", "Stadium", "London", "GB", DateTime.UtcNow.AddDays(10)));
+        var ran = await TestHelpers.NewTourSync(db, tm).SyncArtistAsync(artistId, force: false);
+
+        Assert.False(ran);                                  // synced just now → skipped
+        Assert.Empty(db.TourDates.Where(t => t.ArtistId == artistId));
+    }
+
+    [Fact]
+    public async Task SyncArtist_ReplacesStaleCache_WithoutTouchingArtistRows()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artistId = Guid.NewGuid();
+        db.Artists.Add(new Artist { Id = artistId, Name = "Metallica" });
+        // An artist-authored row and a stale cached TM row.
+        db.TourDates.Add(new TourDate { ArtistId = artistId, Source = "artist", City = "KL", Venue = "Mine", EventDate = DateTime.UtcNow.AddDays(3) });
+        db.TourDates.Add(new TourDate { ArtistId = artistId, Source = "ticketmaster", ExternalId = "OLD", City = "Gone", Venue = "Old", EventDate = DateTime.UtcNow.AddDays(4) });
+        await db.SaveChangesAsync();
+
+        var tm = TestHelpers.NewTicketmaster(TmEventJson("Metallica", "Stadium", "London", "GB", DateTime.UtcNow.AddDays(10)));
+        await TestHelpers.NewTourSync(db, tm).SyncArtistAsync(artistId, force: true);
+
+        var rows = db.TourDates.Where(t => t.ArtistId == artistId).ToList();
+        Assert.Contains(rows, r => r.Source == "artist" && r.Venue == "Mine");   // untouched
+        Assert.DoesNotContain(rows, r => r.ExternalId == "OLD");                  // stale TM row pruned
+        Assert.Contains(rows, r => r.Source == "ticketmaster" && r.ExternalId == "tm:E1");
+    }
+
+    [Fact]
+    public async Task PublicTour_ArtistRowWins_OverCollidingCachedRow()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artistId = Guid.NewGuid();
+        var artist = new Artist { Id = artistId, Name = "artist" };
+        var track = OwnTrack(artistId, artist, "Hit");
+        var when = DateTime.UtcNow.AddDays(5);
+
+        // Same day + venue from both sources; only the artist's (with setlist) should show.
+        var mine = new TourDate { ArtistId = artistId, Source = "artist", City = "KL", Venue = "Arena", EventDate = when };
+        mine.Setlist.Add(new TourDateTrack { TrackId = track.Id, Track = track, Position = 0 });
+        var cached = new TourDate { ArtistId = artistId, Source = "ticketmaster", ExternalId = "E1", City = "KL", Venue = "Arena", EventDate = when.AddHours(1), TicketUrl = "https://tm.test/e1" };
+
+        db.Artists.Add(artist);
+        db.Tracks.Add(track);
+        db.TourDates.AddRange(mine, cached);
+        await db.SaveChangesAsync();
+
+        var result = await new ArtistsController(db, TestHelpers.NewMapper()).Tour(artistId);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var only = Assert.Single(Assert.IsAssignableFrom<IEnumerable<TourDateDto>>(ok.Value));
+        Assert.Equal("Hit", Assert.Single(only.Songs).Title);   // it's the artist row
+    }
 }

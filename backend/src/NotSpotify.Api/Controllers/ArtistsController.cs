@@ -143,18 +143,34 @@ public class ArtistsController : ControllerBase
         return Ok(albums.Select(a => _mapper.ToDto(a)));
     }
 
-    /// <summary>GET /artists/{id}/tour — upcoming concert/tour dates with setlists.</summary>
+    /// <summary>
+    /// GET /artists/{id}/tour — upcoming concert/tour dates with setlists.
+    /// Served entirely from the database: artist-authored dates plus cached
+    /// Ticketmaster events (refreshed in the background by TourSyncService). On a
+    /// same-day/venue collision the artist-authored row wins, since it carries the
+    /// setlist and the artist's own ticket link.
+    /// </summary>
     [HttpGet("{id:guid}/tour")]
     public async Task<ActionResult<IEnumerable<TourDateDto>>> Tour(Guid id, CancellationToken ct = default)
     {
+        if (!await _db.Artists.AnyAsync(a => a.Id == id, ct)) return NotFound();
+
         var dates = await _db.TourDates
             .Where(t => t.ArtistId == id && t.EventDate >= DateTime.UtcNow)
             .OrderBy(t => t.EventDate)
-            .Take(12)
             .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
             .ToListAsync(ct);
 
-        return Ok(dates.Select(ToDto));
+        // Artist-authored rows take precedence over a colliding cached TM row.
+        var seen = new HashSet<(DateTime, string)>();
+        var result = new List<TourDateDto>();
+        foreach (var t in dates.OrderByDescending(t => t.Source == "artist").ThenBy(t => t.EventDate))
+        {
+            if (!seen.Add((t.EventDate.Date, t.Venue.Trim().ToLowerInvariant()))) continue;
+            result.Add(ToDto(t));
+        }
+
+        return Ok(result.OrderBy(d => d.EventDate).Take(20));
     }
 
     internal static TourDateDto ToDto(TourDate t) => new(

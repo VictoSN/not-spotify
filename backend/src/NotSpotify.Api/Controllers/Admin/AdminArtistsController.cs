@@ -21,12 +21,31 @@ public class AdminArtistsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
+    private readonly TourSyncService _tourSync;
 
-    public AdminArtistsController(AppDbContext db, MediaMapper mapper, IStorageService storage)
+    public AdminArtistsController(AppDbContext db, MediaMapper mapper, IStorageService storage, TourSyncService tourSync)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
+        _tourSync = tourSync;
+    }
+
+    /// <summary>Force-refresh cached Ticketmaster tour dates for every artist now (ignores the TTL).</summary>
+    [HttpPost("sync-tour")]
+    public async Task<ActionResult<object>> SyncAllTour(CancellationToken ct = default)
+    {
+        var count = await _tourSync.SyncAllAsync(force: true, ct);
+        return Ok(new { synced = count });
+    }
+
+    /// <summary>Force-refresh cached Ticketmaster tour dates for one artist now (ignores the TTL).</summary>
+    [HttpPost("{id:guid}/sync-tour")]
+    public async Task<ActionResult<object>> SyncArtistTour(Guid id, CancellationToken ct = default)
+    {
+        if (!await _db.Artists.AnyAsync(a => a.Id == id, ct)) return NotFound();
+        var ran = await _tourSync.SyncArtistAsync(id, force: true, ct);
+        return Ok(new { synced = ran });
     }
 
     [HttpPost]

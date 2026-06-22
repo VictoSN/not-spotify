@@ -205,6 +205,10 @@ builder.Services.AddScoped<SmartPlaylistService>();
 builder.Services.AddScoped<AudioWaveformService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
+builder.Services.Configure<TicketmasterOptions>(builder.Configuration.GetSection("Ticketmaster"));
+builder.Services.AddHttpClient<TicketmasterService>();
+builder.Services.AddScoped<TourSyncService>();
+builder.Services.AddHostedService<TourSyncBackgroundService>();
 
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173" };
@@ -638,23 +642,42 @@ using (var scope = app.Services.CreateScope())
         WHERE t.rn <= 4 AND NOT EXISTS (SELECT 1 FROM ""MusicVideos"");
     ");
 
-    // Concert/tour info — seeded upcoming dates per artist. The real concert
-    // APIs (Bandsintown/Songkick) need approved keys, so we seed plausible
-    // future shows + a generic web-search ticket link. Same idempotent guard;
-    // seeds only when the table is empty.
+    // Concert/tour info. Artist-authored rows (Source='artist') are the source of
+    // truth + fallback; rows with Source='ticketmaster' are cached from the live
+    // Discovery API and refreshed in the background by TourSyncService. We still
+    // seed plausible artist dates so the section is never empty before any sync.
+    // Same idempotent guard; seeds only when the table is empty.
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""TourDates"" (
-            ""Id""        uuid NOT NULL,
-            ""ArtistId""  uuid NOT NULL,
-            ""EventDate"" timestamp with time zone NOT NULL,
-            ""City""      text NOT NULL DEFAULT '',
-            ""Venue""     text NOT NULL DEFAULT '',
-            ""Country""   text NOT NULL DEFAULT '',
-            ""TicketUrl"" text NULL,
+            ""Id""         uuid NOT NULL,
+            ""ArtistId""   uuid NOT NULL,
+            ""EventDate""  timestamp with time zone NOT NULL,
+            ""City""       text NOT NULL DEFAULT '',
+            ""Venue""      text NOT NULL DEFAULT '',
+            ""Country""    text NOT NULL DEFAULT '',
+            ""TicketUrl""  text NULL,
+            ""Source""     text NOT NULL DEFAULT 'artist',
+            ""ExternalId"" text NULL,
             CONSTRAINT ""PK_TourDates"" PRIMARY KEY (""Id""),
             CONSTRAINT ""FK_TourDates_Artists_ArtistId""
                 FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE CASCADE
         );
+        -- Shared DBs created before the sync feature: add the new columns idempotently.
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'TourDates' AND column_name = 'Source') THEN
+                ALTER TABLE ""TourDates"" ADD COLUMN ""Source"" text NOT NULL DEFAULT 'artist';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'TourDates' AND column_name = 'ExternalId') THEN
+                ALTER TABLE ""TourDates"" ADD COLUMN ""ExternalId"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                WHERE table_name = 'Artists' AND column_name = 'TourSyncedAt') THEN
+                ALTER TABLE ""Artists"" ADD COLUMN ""TourSyncedAt"" timestamp with time zone NULL;
+            END IF;
+        END $$;
         CREATE INDEX IF NOT EXISTS ""IX_TourDates_ArtistId_EventDate""
             ON ""TourDates""(""ArtistId"",""EventDate"");
 

@@ -50,6 +50,31 @@ internal static class TestHelpers
     public static MediaMapper NewMapper() => new(NewStorageMock().Object);
 
     /// <summary>
+    /// A configured TicketmasterService whose HTTP calls return the given canned
+    /// Discovery-API JSON, so sync logic can be tested without a real network.
+    /// </summary>
+    public static TicketmasterService NewTicketmaster(string responseJson) => new(
+        new HttpClient(new CannedHandler(responseJson)),
+        Microsoft.Extensions.Options.Options.Create(new TicketmasterOptions { ApiKey = "test-key" }),
+        NullLogger<TicketmasterService>.Instance);
+
+    /// <summary>A TourSyncService over the InMemory db and the given Ticketmaster stub.</summary>
+    public static TourSyncService NewTourSync(AppDbContext db, TicketmasterService tm) =>
+        new(db, tm, NullLogger<TourSyncService>.Instance);
+
+    /// <summary>An HttpMessageHandler that returns the same canned 200/JSON for every request.</summary>
+    private sealed class CannedHandler : HttpMessageHandler
+    {
+        private readonly string _json;
+        public CannedHandler(string json) => _json = json;
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+            => Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(_json, System.Text.Encoding.UTF8, "application/json"),
+            });
+    }
+
+    /// <summary>
     /// A PlaylistsController wired over the InMemory db with stub storage, a real
     /// SmartPlaylistService, and an AudioDownloadService (its HTTP path is never hit
     /// by the CRUD/visibility tests). Attach an identity via <c>.AsUser(id)</c> or
@@ -101,7 +126,6 @@ internal static class TestHelpers
         return controller;
     }
 
-<<<<<<< HEAD
     /// <summary>A mockable UserManager over a stub user store (no real persistence).</summary>
     public static Mock<UserManager<ApplicationUser>> MockUserManager()
     {
@@ -110,7 +134,6 @@ internal static class TestHelpers
             store.Object, null!, null!, null!, null!, null!, null!, null!, null!);
     }
 
-=======
     /// <summary>Attaches an anonymous (no-claims) principal so CurrentUserId() resolves to null.</summary>
     public static T AsGuest<T>(this T controller) where T : ControllerBase
     {
@@ -169,7 +192,6 @@ internal static class TestHelpers
     public static void AddFollow(this AppDbContext db, Guid followerId, Guid followeeId)
         => db.UserFollows.Add(new UserFollow { FollowerId = followerId, FolloweeId = followeeId });
 
->>>>>>> 3c4a5402b360f4b6302b12d4735598b4179c87fb
     /// <summary>Adds a bare user (id + name) to the context.</summary>
     public static ApplicationUser AddUser(this AppDbContext db, Guid id, string name)
     {

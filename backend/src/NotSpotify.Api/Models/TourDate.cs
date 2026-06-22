@@ -21,6 +21,16 @@ public class TourDate
     public string Country { get; set; } = string.Empty;
     public string? TicketUrl { get; set; }
 
+    /// <summary>
+    /// Where this row came from: "artist" (entered in the dashboard — the source of
+    /// truth, never touched by the sync) or "ticketmaster" (cached from the external
+    /// API by <c>TourSyncService</c>). Artist rows always win on a collision.
+    /// </summary>
+    public string Source { get; set; } = "artist";
+
+    /// <summary>Provider's event id for synced rows (e.g. a Ticketmaster event id); null for artist rows. Used to upsert.</summary>
+    public string? ExternalId { get; set; }
+
     /// <summary>Ordered setlist — the songs the artist plans to play at this show.</summary>
     public ICollection<TourDateTrack> Setlist { get; set; } = new List<TourDateTrack>();
 }

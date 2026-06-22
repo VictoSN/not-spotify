@@ -188,6 +188,12 @@ export const adminService = {
     return res.data
   },
 
+  /** Force-refresh cached Ticketmaster tour dates for every artist now. Returns how many were synced. */
+  async syncAllTours(): Promise<number> {
+    const res = await api.post<{ synced: number }>('/admin/artists/sync-tour')
+    return res.data.synced
+  },
+
   async uploadArtistImage(id: string, file: File, type: 'profile' | 'header' = 'profile'): Promise<Artist> {
     const fd = new FormData()
     fd.append('file', file)

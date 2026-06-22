@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using NotSpotify.Api.Controllers;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
@@ -34,14 +36,30 @@ internal static class TestHelpers
         return new AppDbContext(options);
     }
 
-    /// <summary>A MediaMapper backed by a stub storage service (public URL = key).</summary>
-    public static MediaMapper NewMapper()
+    /// <summary>A stub storage service whose public/audio URLs are derived from the key.</summary>
+    public static Mock<IStorageService> NewStorageMock()
     {
         var storage = new Mock<IStorageService>();
         storage.Setup(s => s.GetPublicUrl(It.IsAny<string>())).Returns<string>(k => $"https://cdn.test/{k}");
         storage.Setup(s => s.GetAudioUrlAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
                .ReturnsAsync<string, CancellationToken, IStorageService, string>((k, _) => $"https://cdn.test/{k}");
-        return new MediaMapper(storage.Object);
+        return storage;
+    }
+
+    /// <summary>A MediaMapper backed by a stub storage service (public URL = key).</summary>
+    public static MediaMapper NewMapper() => new(NewStorageMock().Object);
+
+    /// <summary>
+    /// A PlaylistsController wired over the InMemory db with stub storage, a real
+    /// SmartPlaylistService, and an AudioDownloadService (its HTTP path is never hit
+    /// by the CRUD/visibility tests). Attach an identity via <c>.AsUser(id)</c> or
+    /// <c>.AsGuest()</c>.
+    /// </summary>
+    public static PlaylistsController NewPlaylistsController(AppDbContext db)
+    {
+        var storage = NewStorageMock();
+        var audio = new AudioDownloadService(storage.Object, new Mock<IHttpClientFactory>().Object);
+        return new PlaylistsController(db, new MediaMapper(storage.Object), storage.Object, audio, new SmartPlaylistService(db));
     }
 
     /// <summary>
@@ -83,6 +101,7 @@ internal static class TestHelpers
         return controller;
     }
 
+<<<<<<< HEAD
     /// <summary>A mockable UserManager over a stub user store (no real persistence).</summary>
     public static Mock<UserManager<ApplicationUser>> MockUserManager()
     {
@@ -91,6 +110,66 @@ internal static class TestHelpers
             store.Object, null!, null!, null!, null!, null!, null!, null!, null!);
     }
 
+=======
+    /// <summary>Attaches an anonymous (no-claims) principal so CurrentUserId() resolves to null.</summary>
+    public static T AsGuest<T>(this T controller) where T : ControllerBase
+    {
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) },
+        };
+        return controller;
+    }
+
+    /// <summary>Adds an approved track (with its own artist + album) and returns it.</summary>
+    public static Track SeedTrack(this AppDbContext db, string title = "Track", long durationMs = 1000)
+    {
+        var artist = new Artist { Id = Guid.NewGuid(), Name = $"{title} Artist" };
+        var album = new Album
+        {
+            Id = Guid.NewGuid(),
+            Title = $"{title} Album",
+            Artist = artist,
+            ArtistId = artist.Id,
+            CoverUrl = "",
+            ReleaseDate = DateOnly.FromDateTime(DateTime.UtcNow),
+        };
+        var track = new Track
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            Artist = artist,
+            ArtistId = artist.Id,
+            Album = album,
+            AlbumId = album.Id,
+            AudioUrl = "",
+            Status = "approved",
+            DurationMs = durationMs,
+        };
+        db.AddRange(artist, album, track);
+        return track;
+    }
+
+    /// <summary>Adds a playlist owned by <paramref name="ownerId"/> with the given visibility.</summary>
+    public static Playlist AddPlaylist(this AppDbContext db, Guid ownerId, string visibility = "public", string name = "List")
+    {
+        var p = new Playlist
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = ownerId,
+            Name = name,
+            Visibility = visibility,
+            IsPublic = visibility == "public",
+        };
+        db.Playlists.Add(p);
+        return p;
+    }
+
+    /// <summary>Adds a one-way follow edge (follower → followee).</summary>
+    public static void AddFollow(this AppDbContext db, Guid followerId, Guid followeeId)
+        => db.UserFollows.Add(new UserFollow { FollowerId = followerId, FolloweeId = followeeId });
+
+>>>>>>> 3c4a5402b360f4b6302b12d4735598b4179c87fb
     /// <summary>Adds a bare user (id + name) to the context.</summary>
     public static ApplicationUser AddUser(this AppDbContext db, Guid id, string name)
     {
@@ -109,4 +188,116 @@ internal static class TestHelpers
             Status = FriendshipStatus.Accepted,
         });
     }
+
+    /// <summary>An IHttpClientFactory whose clients all use the supplied handler.</summary>
+    public static IHttpClientFactory NewHttpFactory(HttpMessageHandler handler)
+    {
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient(It.IsAny<string>())).Returns(() => new HttpClient(handler));
+        return factory.Object;
+    }
+
+    /// <summary>A LyricsService whose external HTTP calls are answered by <paramref name="responder"/>.</summary>
+    public static LyricsService NewLyrics(Func<HttpRequestMessage, HttpResponseMessage> responder)
+        => new(NewHttpFactory(new StubHttpMessageHandler(responder)), NullLogger<LyricsService>.Instance);
+
+    /// <summary>
+    /// A LyricsService that throws on any HTTP call. Use it to prove a code path
+    /// never reached the network (the throw is not one of the swallowed exceptions).
+    /// </summary>
+    public static LyricsService NewOfflineLyrics()
+        => NewLyrics(_ => throw new InvalidOperationException("network should not be called"));
+
+    /// <summary>An AudioDownloadService over stub storage — not exercised by recommendation tests.</summary>
+    public static AudioDownloadService NewAudioDownloads()
+        => new(new Mock<IStorageService>().Object, NewHttpFactory(new StubHttpMessageHandler(
+            _ => new HttpResponseMessage(System.Net.HttpStatusCode.NotFound))));
+
+    /// <summary>Adds an approved track (with artist + album) to the context.</summary>
+    public static Models.Track AddTrack(
+        this AppDbContext db,
+        string title,
+        Artist artist,
+        Album album,
+        long playCount = 0,
+        int ratingCount = 0,
+        int ratingSum = 0,
+        int daysOld = 1,
+        string status = "approved")
+    {
+        var track = new Models.Track
+        {
+            Id = Guid.NewGuid(),
+            Title = title,
+            Artist = artist,
+            ArtistId = artist.Id,
+            Album = album,
+            AlbumId = album.Id,
+            AudioUrl = $"audio/{Guid.NewGuid()}.mp3",
+            Status = status,
+            PlayCount = playCount,
+            RatingCount = ratingCount,
+            RatingSum = ratingSum,
+            CreatedAt = DateTime.UtcNow.AddDays(-daysOld),
+        };
+        db.Tracks.Add(track);
+        return track;
+    }
+
+    /// <summary>Records a play of <paramref name="track"/> by <paramref name="user"/> some days ago.</summary>
+    public static void AddPlay(this AppDbContext db, ApplicationUser user, Models.Track track, int daysAgo = 0)
+    {
+        db.PlayHistories.Add(new PlayHistory
+        {
+            Id = Guid.NewGuid(),
+            User = user,
+            UserId = user.Id,
+            Track = track,
+            TrackId = track.Id,
+            PlayedAt = DateTime.UtcNow.AddDays(-daysAgo),
+        });
+    }
+
+    /// <summary>Tags a track with a genre (creating the join row).</summary>
+    public static void Tag(this AppDbContext db, Models.Track track, Genre genre)
+    {
+        db.TrackGenres.Add(new TrackGenre { Track = track, TrackId = track.Id, Genre = genre, GenreId = genre.Id });
+    }
+
+    /// <summary>Adds an artist + album pair (optionally tagged to a market country) and returns both.</summary>
+    public static (Artist artist, Album album) AddArtistAlbum(this AppDbContext db, string name = "Artist", string? country = null)
+    {
+        var artist = new Artist { Id = Guid.NewGuid(), Name = name, Country = country };
+        var album = new Album
+        {
+            Id = Guid.NewGuid(),
+            Title = $"{name} Album",
+            Artist = artist,
+            ArtistId = artist.Id,
+            CoverUrl = "",
+            ReleaseDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Country = country,
+        };
+        db.AddRange(artist, album);
+        return (artist, album);
+    }
+
+    /// <summary>Adds a genre row and returns it.</summary>
+    public static Genre AddGenre(this AppDbContext db, string name, string slug)
+    {
+        var genre = new Genre { Id = Guid.NewGuid(), Name = name, Slug = slug, Color = "#123456" };
+        db.Genres.Add(genre);
+        return genre;
+    }
+}
+
+/// <summary>A test double for HttpMessageHandler that answers requests from a delegate.</summary>
+public sealed class StubHttpMessageHandler : HttpMessageHandler
+{
+    private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
+
+    public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
+
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        => Task.FromResult(_responder(request));
 }

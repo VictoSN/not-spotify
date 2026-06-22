@@ -28,7 +28,7 @@ const PRELOAD_LEAD = 15 // seconds before the end to start buffering the next de
 const MAX_CROSSFADE = 12 // seconds (Spotify caps here too)
 
 /** Crossfade length in seconds (0 = off). Persisted by Settings under ns-pref-crossfade. */
-function readCrossfadeSeconds(): number {
+export function readCrossfadeSeconds(): number {
   try {
     const raw = window.localStorage.getItem('ns-pref-crossfade')
     if (raw == null) return 0
@@ -43,7 +43,7 @@ function readCrossfadeSeconds(): number {
 }
 
 /** Volume-normalization toggle (off by default). Persisted by Settings under ns-pref-normalize. */
-function readNormalizeEnabled(): boolean {
+export function readNormalizeEnabled(): boolean {
   try {
     return window.localStorage.getItem('ns-pref-normalize') === 'true'
   } catch {
@@ -58,7 +58,7 @@ function readNormalizeEnabled(): boolean {
  * a lower bitrate would. "auto"/"veryhigh" are transparent (full bandwidth).
  * For real adaptive (HLS) sources this is layered on top of hls.js level caps.
  */
-const QUALITY_CUTOFF_HZ: Record<string, number> = {
+export const QUALITY_CUTOFF_HZ: Record<string, number> = {
   low: 8000,
   normal: 13000,
   high: 17000,
@@ -66,8 +66,28 @@ const QUALITY_CUTOFF_HZ: Record<string, number> = {
   auto: 22050,
 }
 
+/** Quality-tier low-pass cutoff in Hz (full bandwidth for unknown tiers). */
+export function qualityCutoffHz(quality: string): number {
+  return QUALITY_CUTOFF_HZ[quality] ?? 22050
+}
+
+/** True when a source URL is an HLS manifest (.m3u8, optionally with query/hash). */
+export function isHlsSource(src: string): boolean {
+  return /\.m3u8(\?|#|$)/i.test(src)
+}
+
+/** Map a quality tier → hls.js max auto level (−1 = uncapped/full ABR). */
+export function qualityToHlsLevelCap(quality: string): number {
+  switch (quality) {
+    case 'low': return 0
+    case 'normal': return 1
+    case 'high': return 2
+    default: return -1 // auto / veryhigh → let ABR pick the best rendition
+  }
+}
+
 /** Streaming quality tier. Persisted by Settings under ns-pref-quality. */
-function readQuality(): string {
+export function readQuality(): string {
   try {
     const raw = window.localStorage.getItem('ns-pref-quality')
     if (raw == null) return 'auto'
@@ -218,7 +238,7 @@ class AudioEngine {
 
   private applyQuality() {
     if (!this.audioContext) return
-    const cutoff = QUALITY_CUTOFF_HZ[this.quality] ?? 22050
+    const cutoff = qualityCutoffHz(this.quality)
     const now = this.audioContext.currentTime
     this.deckQuality.forEach((filter) => {
       filter?.frequency.setTargetAtTime(cutoff, now, 0.02)
@@ -228,24 +248,12 @@ class AudioEngine {
   // ── Adaptive (HLS) streaming ──────────────────────────────────────────────
   // A track whose audio is an HLS manifest streams adaptively via hls.js with
   // the bitrate ladder capped by the user's quality tier. Single-file MP3/AAC
-  // sources (the entire current catalogue) never enter this path.
-  private static isHlsSrc(src: string): boolean {
-    return /\.m3u8(\?|#|$)/i.test(src)
-  }
-
-  /** Map the quality tier → hls.js max auto level (−1 = uncapped/full ABR). */
-  private qualityLevelCap(): number {
-    switch (this.quality) {
-      case 'low': return 0
-      case 'normal': return 1
-      case 'high': return 2
-      default: return -1 // auto / veryhigh → let ABR pick the best rendition
-    }
-  }
+  // sources (the entire current catalogue) never enter this path. The source
+  // detection + tier→level mapping live as pure exported helpers above.
 
   /** Push the current quality tier onto any live hls.js instances. */
   private applyHlsQuality() {
-    const cap = this.qualityLevelCap()
+    const cap = qualityToHlsLevelCap(this.quality)
     this.hls.forEach((h) => { if (h) h.autoLevelCapping = cap })
   }
 
@@ -266,11 +274,11 @@ class AudioEngine {
     const deck = this.decks[index]
     this.destroyHls(index)
     const nativeHls = deck.canPlayType('application/vnd.apple.mpegurl') !== ''
-    if (AudioEngine.isHlsSrc(src) && !nativeHls && Hls.isSupported()) {
+    if (isHlsSource(src) && !nativeHls && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true })
       hls.attachMedia(deck)
       hls.loadSource(src)
-      hls.autoLevelCapping = this.qualityLevelCap()
+      hls.autoLevelCapping = qualityToHlsLevelCap(this.quality)
       this.hls[index] = hls
     } else {
       deck.src = src

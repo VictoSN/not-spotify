@@ -6,7 +6,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useJamStore } from '@/stores/jamStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
-import { useDominantColor } from '@/hooks/useDominantColor'
+import { profileGradient, useDominantColor } from '@/hooks/useDominantColor'
 import { friendService } from '@/services/friendService'
 import { Avatar } from '@/components/ui/Avatar'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
@@ -150,7 +150,7 @@ export function UserProfilePage() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-80"
           style={{
-            background: `linear-gradient(180deg, ${heroColor ?? 'var(--c-accent-dim)'} 0%, transparent 100%)`,
+            background: profileGradient(heroColor),
           }}
         />
         <div className="relative flex flex-col items-center gap-6 px-6 pb-6 pt-16 sm:flex-row sm:items-end">

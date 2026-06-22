@@ -42,11 +42,15 @@ function normalizeHue(hex: string | null): string | null {
 
   const { h, s, l } = rgbToHsl(rgb)
 
-  if (l > 0.72 && s < 0.55) return 'hsl(210 8% 28%)'
-  if (l > 0.68) return `hsl(${Math.round(h)} ${Math.min(s * 55, 24).toFixed(0)}% 30%)`
-  if (s < 0.18) return 'hsl(210 7% 24%)'
+  // Keep enough of the artwork's brightness and saturation for the tint to feel
+  // related to the image. Theme-aware gradients below blend this colour with the
+  // page surface, so it no longer needs to be pre-darkened almost to black.
+  if (l > 0.82 && s < 0.2) return 'hsl(210 8% 58%)'
+  if (s < 0.14) return `hsl(210 7% ${Math.round(Math.min(Math.max(l * 78, 36), 58))}%)`
 
-  return `hsl(${Math.round(h)} ${Math.min(s * 80, 48).toFixed(0)}% ${Math.min(l * 55, 34).toFixed(0)}%)`
+  const saturation = Math.min(Math.max(s * 105, 34), 72)
+  const lightness = Math.min(Math.max(l * 78, 38), 56)
+  return `hsl(${Math.round(h)} ${saturation.toFixed(0)}% ${lightness.toFixed(0)}%)`
 }
 
 /**
@@ -67,7 +71,18 @@ export function withAlpha(color: string, alpha: number): string {
  */
 export function heroGradient(color: string | null | undefined): string | undefined {
   if (!color) return undefined
-  return `linear-gradient(to bottom, ${color} 0%, ${color} 46%, ${withAlpha(color, 0.5)} 72%, ${withAlpha(color, 0.12)} 90%, transparent 100%)`
+  return `linear-gradient(to bottom, color-mix(in srgb, ${color} var(--artwork-hero-strength), var(--c-page)) 0%, color-mix(in srgb, ${color} var(--artwork-hero-strength), var(--c-page)) 46%, color-mix(in srgb, ${color} var(--artwork-fade-strength), transparent) 72%, color-mix(in srgb, ${color} 10%, transparent) 90%, transparent 100%)`
+}
+
+/** A lighter, airier tint for profile headers that adapts to the active theme. */
+export function profileGradient(color: string | null | undefined): string {
+  const tint = color ?? 'var(--c-accent-dim)'
+  return `linear-gradient(180deg, color-mix(in srgb, ${tint} var(--artwork-profile-strength), var(--c-page)) 0%, color-mix(in srgb, ${tint} 18%, transparent) 68%, transparent 100%)`
+}
+
+/** Subtle continuation of an artwork hue into the content below a banner. */
+export function artworkSectionGradient(color: string): string {
+  return `linear-gradient(180deg, color-mix(in srgb, ${color} var(--artwork-section-strength), var(--c-page)) 0, color-mix(in srgb, ${color} 10%, transparent) 8rem, transparent 20rem)`
 }
 
 export async function getDominantColor(url: string): Promise<string | null> {

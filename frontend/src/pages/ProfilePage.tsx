@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Cog6ToothIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { useDominantColor } from '@/hooks/useDominantColor'
+import { profileGradient, useDominantColor } from '@/hooks/useDominantColor'
 import { Avatar } from '@/components/ui/Avatar'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
@@ -47,7 +47,7 @@ export function ProfilePage() {
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-80"
           style={{
-            background: `linear-gradient(180deg, ${heroColor ?? 'var(--c-accent-dim)'} 0%, transparent 100%)`,
+            background: profileGradient(heroColor),
           }}
         />
         <div className="relative flex flex-col items-center gap-6 px-6 pb-6 pt-16 sm:flex-row sm:items-end">

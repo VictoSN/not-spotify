@@ -54,6 +54,12 @@ html[data-theme="dark"] {
   --c-secondary: #b3b3b3;
   --c-muted: #6a6a6a;
 
+  /* Artwork-derived page shading */
+  --artwork-hero-strength: 82%;
+  --artwork-fade-strength: 48%;
+  --artwork-profile-strength: 72%;
+  --artwork-section-strength: 32%;
+
   color-scheme: dark;
   background-color: var(--c-base);
 }
@@ -74,8 +80,22 @@ html[data-theme="light"] {
   --c-secondary: #5f6561;
   --c-muted: #8a918d;
 
+  /* Let artwork read as a soft wash instead of a dark block in light mode. */
+  --artwork-hero-strength: 48%;
+  --artwork-fade-strength: 24%;
+  --artwork-profile-strength: 38%;
+  --artwork-section-strength: 18%;
+
   color-scheme: light;
   background-color: var(--c-base);
+}
+
+.artwork-banner-scrim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.48), rgba(0, 0, 0, 0.06) 55%, transparent);
+}
+
+html[data-theme="light"] .artwork-banner-scrim {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.38), rgba(0, 0, 0, 0.03) 52%, transparent);
 }
 
 *,

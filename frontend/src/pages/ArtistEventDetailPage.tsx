@@ -35,6 +35,39 @@ function regionName(country: string) {
   }
 }
 
+/** The bare host of a ticket link (e.g. "ticketmaster.com"), or null if it isn't a valid URL. */
+function ticketHost(url: string | null | undefined): string | null {
+  if (!url) return null
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The ticketing site's logo (favicon for its domain), or the "Tickets" wordmark when
+ * there's no link or the favicon fails to load. Shows one or the other — never both.
+ * Caller should pass key={host} so state resets when navigating between events.
+ */
+function TicketSiteLogo({ host }: { host: string | null }) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-white">
+      {host && !failed ? (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${host}&sz=128`}
+          alt={host}
+          className="h-10 w-10 object-contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="text-2xl font-black text-blue-600">Tickets</span>
+      )}
+    </div>
+  )
+}
+
 export function ArtistEventDetailPage() {
   const { id, eventId } = useParams<{ id: string; eventId: string }>()
   const [artist, setArtist] = useState<Artist | null>(null)
@@ -75,6 +108,7 @@ export function ArtistEventDetailPage() {
 
   const date = new Date(event.eventDate)
   const venueLocation = `${event.city}, ${regionName(event.country)}`
+  const ticketSite = ticketHost(event.ticketUrl)
 
   return (
     <div className="min-h-full">
@@ -144,13 +178,13 @@ export function ArtistEventDetailPage() {
 
         <section className="mt-12">
           <div className="flex max-w-md overflow-hidden rounded bg-elevated">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center bg-white text-2xl font-black text-blue-600">
-              Tickets
-            </div>
+            {/* Logo of whatever site the ticket link points to (Ticketmaster, Lawson,
+                Pia, JamBase…), pulled from the link's domain favicon. */}
+            <TicketSiteLogo key={ticketSite ?? 'none'} host={ticketSite} />
             <div className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5">
               <div>
                 <p className="text-sm font-bold text-primary">On sale</p>
-                <p className="truncate text-xs text-secondary">{event.venue}</p>
+                <p className="truncate text-xs text-secondary">{ticketSite ?? event.venue}</p>
               </div>
               {event.ticketUrl ? (
                 <a

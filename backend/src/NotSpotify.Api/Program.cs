@@ -644,9 +644,9 @@ using (var scope = app.Services.CreateScope())
 
     // Concert/tour info. Artist-authored rows (Source='artist') are the source of
     // truth + fallback; rows with Source='ticketmaster' are cached from the live
-    // Discovery API and refreshed in the background by TourSyncService. We still
-    // seed plausible artist dates so the section is never empty before any sync.
-    // Same idempotent guard; seeds only when the table is empty.
+    // Discovery API and refreshed in the background by TourSyncService. No fake
+    // seeding — an artist with no events simply shows none until a date is added or
+    // the sync finds one. We also purge the old google-search demo rows on startup.
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""TourDates"" (
             ""Id""         uuid NOT NULL,
@@ -681,20 +681,11 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS ""IX_TourDates_ArtistId_EventDate""
             ON ""TourDates""(""ArtistId"",""EventDate"");
 
-        INSERT INTO ""TourDates""
-            (""Id"",""ArtistId"",""EventDate"",""City"",""Venue"",""Country"",""TicketUrl"")
-        SELECT gen_random_uuid(),
-               a.""Id"",
-               now() + (((g.n * 18) + 12) || ' days')::interval,
-               (ARRAY['London','New York','Tokyo','Berlin','Paris','Sydney','Toronto','Sao Paulo'])[(((g.n + a.rn) % 8) + 1)],
-               (ARRAY['The O2','Madison Square Garden','Nippon Budokan','Mercedes-Benz Arena','Accor Arena','Qudos Bank Arena','Scotiabank Arena','Allianz Parque'])[(((g.n + a.rn) % 8) + 1)],
-               (ARRAY['GB','US','JP','DE','FR','AU','CA','BR'])[(((g.n + a.rn) % 8) + 1)],
-               'https://www.google.com/search?q=' || replace(a.""Name"", ' ', '+') || '+tour+tickets'
-        FROM (
-            SELECT ""Id"", ""Name"", ROW_NUMBER() OVER (ORDER BY ""Name"") AS rn FROM ""Artists""
-        ) a
-        CROSS JOIN generate_series(0, 2) AS g(n)
-        WHERE NOT EXISTS (SELECT 1 FROM ""TourDates"");
+        -- One-time cleanup of the old fake demo dates, identified by their generic
+        -- google-search ticket link. Idempotent: matches nothing once removed.
+        DELETE FROM ""TourDates""
+        WHERE ""Source"" = 'artist'
+          AND ""TicketUrl"" LIKE 'https://www.google.com/search?q=%tour+tickets';
     ");
 
     // Tour setlists — ordered songs the artist plans to play at a show. Idempotent

@@ -23,7 +23,7 @@ import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
 import { useTranslation } from '@/i18n/useTranslation'
-import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { artworkSectionGradient, useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 
 export function ArtistProfilePage() {
   const { t } = useTranslation()
@@ -97,7 +97,7 @@ export function ArtistProfilePage() {
         {artist.headerImageUrl ? (
           <img src={artist.headerImageUrl} alt={artist.name} className="w-full h-full object-cover" />
         ) : null}
-        {artist.headerImageUrl && <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/5" />}
+        {artist.headerImageUrl && <div className="artwork-banner-scrim absolute inset-0" />}
         <div
           className={
             artist.headerImageUrl
@@ -136,7 +136,7 @@ export function ArtistProfilePage() {
       </div>
 
       <div style={{
-        background: `linear-gradient(180deg, ${withAlpha(heroHue, 0.38)} 0, ${withAlpha(heroHue, 0.16)} 8rem, transparent 20rem)`,
+        background: artworkSectionGradient(heroHue),
       }}>
         {/* Actions */}
         <div className="flex items-center gap-4 px-6 py-6">

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Spinner } from '@/components/ui/Spinner'
 import { usePlayerStore } from '@/stores/playerStore'
 import { parseLrc, activeLineIndex } from '@/utils/parseLrc'
 import { cn } from '@/utils/cn'
+import { useTranslation } from '@/i18n/useTranslation'
 
 interface LyricsViewProps {
   lyrics?: string | null
@@ -15,12 +16,22 @@ interface LyricsViewProps {
    * 'full' = fullscreen karaoke view (huge text, fills the parent's height).
    */
   variant?: 'page' | 'card' | 'full'
+  /**
+   * Page variant only: clamp long static lyrics behind a "Show more" toggle so
+   * they don't push the rest of the page (recommendations, comments) far down.
+   */
+  collapsible?: boolean
 }
+
+// Collapsed height (px) for foldable static lyrics; the toggle only appears when
+// the lyrics are actually taller than this.
+const COLLAPSED_LYRICS_PX = 320
 
 // How long after a manual scroll before auto-scroll takes over again.
 const USER_SCROLL_GRACE_MS = 3000
 
-export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = 'page' }: LyricsViewProps) {
+export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = 'page', collapsible = false }: LyricsViewProps) {
+  const { t } = useTranslation()
   const lines = useMemo(() => (syncedLyrics ? parseLrc(syncedLyrics) : null), [syncedLyrics])
 
   // Selector returns just the active line index so we only re-render when it changes,
@@ -40,6 +51,12 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   const userScrollUntil = useRef(0)
   // Fullscreen karaoke only: shown after the user scrolls away; clicking it re-centres.
   const [showSync, setShowSync] = useState(false)
+
+  // Foldable static lyrics (page variant). `expanded` toggles the clamp; `lyricsOverflow`
+  // gates the toggle so short lyrics that already fit show no button.
+  const [expanded, setExpanded] = useState(false)
+  const staticTextRef = useRef<HTMLDivElement>(null)
+  const [lyricsOverflow, setLyricsOverflow] = useState(false)
 
   // Scroll the active line to the vertical centre of the container.
   const centerActiveLine = () => {
@@ -66,7 +83,16 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   useEffect(() => {
     userScrollUntil.current = 0
     setShowSync(false)
+    setExpanded(false)
   }, [trackId])
+
+  // Measure whether the static lyrics exceed the collapsed height (scrollHeight is the
+  // full content height even while clamped, so this stays correct when collapsed).
+  useLayoutEffect(() => {
+    if (!collapsible) return
+    const el = staticTextRef.current
+    if (el) setLyricsOverflow(el.scrollHeight > COLLAPSED_LYRICS_PX + 8)
+  }, [collapsible, lyrics, syncedLyrics])
 
   const onScroll = () => {
     // Ignore the scroll events our own smooth-scroll animation generates.
@@ -174,6 +200,36 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   // always matches what karaoke shows (cached plain lyrics can come from a different
   // provider lookup, e.g. a romanized entry while the synced one is in the original script).
   const staticText = lines ? lines.map((l) => l.text).join('\n') : lyrics
+
+  // Page variant with folding: clamp behind a fade + "Show more" when long.
+  if (variant === 'page' && collapsible) {
+    const clamped = !expanded && lyricsOverflow
+    return (
+      <div>
+        <div className="relative">
+          <div
+            ref={staticTextRef}
+            className={cn('whitespace-pre-wrap text-primary text-sm leading-8', clamped && 'overflow-hidden')}
+            style={clamped ? { maxHeight: COLLAPSED_LYRICS_PX } : undefined}
+          >
+            {staticText}
+          </div>
+          {clamped && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-page to-transparent" />
+          )}
+        </div>
+        {lyricsOverflow && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-3 text-sm font-bold uppercase tracking-wide text-secondary transition-colors hover:text-primary"
+          >
+            {expanded ? t('detail.lyricsShowLess') : t('detail.lyricsShowMore')}
+          </button>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(

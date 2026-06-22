@@ -42,6 +42,10 @@ const en: Dict = {
   'detail.colPlays': 'Plays',
   'detail.popular': 'Popular',
   'detail.discography': 'Discography',
+  'detail.popularTracksBy': 'Popular tracks by {artist}',
+  'detail.popularReleasesBy': 'Popular releases by {artist}',
+  'detail.lyricsShowMore': 'Show more',
+  'detail.lyricsShowLess': 'Show less',
   'detail.monthlyListeners': '{n} monthly listeners',
   'detail.lyrics': 'Lyrics',
   'detail.saveMusicPrompt': 'Save music with a free account',
@@ -466,6 +470,7 @@ const en: Dict = {
   'album.saveAlbum': 'Save album',
   'album.removeAlbum': 'Remove album',
   'album.moreBy': 'More by {artist}',
+  'album.seeDiscography': 'See discography',
 
   // Artist detail
   'artist.verified': 'Verified artist',
@@ -570,6 +575,10 @@ const es: Dict = {
   'detail.colPlays': 'Reproducciones',
   'detail.popular': 'Populares',
   'detail.discography': 'Discografía',
+  'detail.popularTracksBy': 'Canciones populares de {artist}',
+  'detail.popularReleasesBy': 'Lanzamientos populares de {artist}',
+  'detail.lyricsShowMore': 'Mostrar más',
+  'detail.lyricsShowLess': 'Mostrar menos',
   'detail.monthlyListeners': '{n} oyentes mensuales',
   'detail.lyrics': 'Letra',
   'detail.saveMusicPrompt': 'Guarda música con una cuenta gratuita',
@@ -994,6 +1003,7 @@ const es: Dict = {
   'album.saveAlbum': 'Guardar álbum',
   'album.removeAlbum': 'Quitar álbum',
   'album.moreBy': 'Más de {artist}',
+  'album.seeDiscography': 'Ver discografía',
 
   // Detalle de artista
   'artist.verified': 'Artista verificado',
@@ -1098,6 +1108,10 @@ const fr: Dict = {
   'detail.colPlays': 'Écoutes',
   'detail.popular': 'Populaires',
   'detail.discography': 'Discographie',
+  'detail.popularTracksBy': 'Titres populaires de {artist}',
+  'detail.popularReleasesBy': 'Sorties populaires de {artist}',
+  'detail.lyricsShowMore': 'Afficher plus',
+  'detail.lyricsShowLess': 'Afficher moins',
   'detail.monthlyListeners': '{n} auditeurs mensuels',
   'detail.lyrics': 'Paroles',
   'detail.saveMusicPrompt': 'Enregistrez de la musique avec un compte gratuit',
@@ -1522,6 +1536,7 @@ const fr: Dict = {
   'album.saveAlbum': 'Enregistrer l’album',
   'album.removeAlbum': 'Retirer l’album',
   'album.moreBy': 'Plus de {artist}',
+  'album.seeDiscography': 'Voir la discographie',
 
   // Détail de l’artiste
   'artist.verified': 'Artiste vérifié',

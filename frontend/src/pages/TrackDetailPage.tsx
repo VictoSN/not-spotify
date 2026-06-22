@@ -8,18 +8,24 @@ import {
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { HeartIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
+import type { Album } from '@/types/album'
 import { trackService } from '@/services/trackService'
+import { artistService } from '@/services/artistService'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { Spinner } from '@/components/ui/Spinner'
 import { LyricsView } from '@/components/player/LyricsView'
+import { TrackRow } from '@/components/cards/TrackRow'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { AlbumCard } from '@/components/cards/AlbumCard'
 import { CommentSection } from '@/components/comments/CommentSection'
+import { SectionHeader } from '@/components/common/SectionHeader'
+import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
@@ -35,6 +41,10 @@ export function TrackDetailPage() {
   const [lyricsLoading, setLyricsLoading] = useState(true)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  // Same-artist recommendations shown under the lyrics. Kept relevant (never random):
+  // the artist's own popular tracks and releases. Sections hide themselves when empty.
+  const [artistTracks, setArtistTracks] = useState<Track[]>([])
+  const [artistAlbums, setArtistAlbums] = useState<Album[]>([])
 
   useDocumentTitle(track ? `${track.title} · ${track.artist.name}` : null)
 
@@ -72,6 +82,28 @@ export function TrackDetailPage() {
         setLyricsLoading(false)
       })
   }, [id])
+
+  // Once the track is known, pull the artist's popular tracks (minus this one) and
+  // releases for the recommendation rows. Independent of the main load — failures
+  // just leave the rows empty rather than breaking the page.
+  const artistId = track?.artist.id
+  useEffect(() => {
+    if (!artistId) return
+    let active = true
+    artistService
+      .getTopTracks(artistId, 6)
+      .then((tracks) => {
+        if (active) setArtistTracks(tracks.filter((tr) => tr.id !== id).slice(0, 5))
+      })
+      .catch(() => active && setArtistTracks([]))
+    artistService
+      .getAlbums(artistId)
+      .then((albums) => active && setArtistAlbums(albums))
+      .catch(() => active && setArtistAlbums([]))
+    return () => {
+      active = false
+    }
+  }, [artistId, id])
 
   const handlePlay = () => {
     if (track) playWithGate(track, [track])
@@ -134,15 +166,9 @@ export function TrackDetailPage() {
 
   return (
     <div>
-      {/* ── Hero ─────────────────────────────────────────────────── */}
-      <div
-        className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
-        style={{
-          background: heroColor
-            ? `linear-gradient(to bottom, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.2)} 60%, transparent 100%)`
-            : undefined,
-        }}
-      >
+      {/* ── Hero + actions: fuller colour block behind the cover, fading below ── */}
+      <div style={{ background: heroGradient(heroColor) }}>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
         {/* Cover */}
         <img
           src={track.album.coverUrl}
@@ -241,24 +267,17 @@ export function TrackDetailPage() {
         {/* More options menu */}
         <TrackRowMenu track={track} alwaysVisible />
       </div>
+      </div>
 
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4 pb-12">
-        {/* Left: Lyrics + Comments */}
+      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4">
+        {/* Left: Lyrics (folded behind "Show more" when long) */}
         <div>
-          <section className="mb-10">
+          <section>
             <h2 className="text-2xl font-bold text-primary mb-4">{t('detail.lyrics')}</h2>
             {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
-            <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} />
+            <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} collapsible />
           </section>
-
-          <CommentSection
-            trackId={track.id}
-            trackTitle={track.title}
-            durationMs={track.durationMs}
-            waveform={track.waveform}
-            onSeek={handleSeek}
-          />
         </div>
 
         {/* Right: Artist card */}
@@ -284,6 +303,44 @@ export function TrackDetailPage() {
             </div>
           </Link>
         </aside>
+      </div>
+
+      {/* ── More from this artist (relevant, never random) ───────── */}
+      {artistTracks.length > 0 && (
+        <section className="px-4 sm:px-6 py-4">
+          <SectionHeader
+            title={t('detail.popularTracksBy', { artist: track.artist.name })}
+            href={`/artist/${track.artist.id}`}
+          />
+          {artistTracks.map((tr, i) => (
+            <TrackRow key={tr.id} track={tr} index={i} queue={artistTracks} showAlbum showPlayCount />
+          ))}
+        </section>
+      )}
+
+      {artistAlbums.length > 0 && (
+        <section className="px-4 sm:px-6 py-4">
+          <SectionHeader
+            title={t('detail.popularReleasesBy', { artist: track.artist.name })}
+            href={`/artist/${track.artist.id}`}
+          />
+          <HorizontalScroller>
+            {artistAlbums.map((album) => (
+              <AlbumCard key={album.id} album={album} />
+            ))}
+          </HorizontalScroller>
+        </section>
+      )}
+
+      {/* ── Comments ─────────────────────────────────────────────── */}
+      <div className="px-4 sm:px-6 py-4 pb-12">
+        <CommentSection
+          trackId={track.id}
+          trackTitle={track.title}
+          durationMs={track.durationMs}
+          waveform={track.waveform}
+          onSeek={handleSeek}
+        />
       </div>
     </div>
   )

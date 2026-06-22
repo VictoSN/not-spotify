@@ -58,6 +58,18 @@ export function withAlpha(color: string, alpha: number): string {
   return `color-mix(in srgb, ${color} ${Math.round(alpha * 100)}%, transparent)`
 }
 
+/**
+ * Spotify-style hero background for detail pages: a fuller, near-solid block of
+ * the cover colour behind the artwork + title (the top ~half), then a fade to the
+ * page background below it. Wrap the hero AND action bar in a div using this so the
+ * colour reads solid over the cover and the gradient only starts beneath it.
+ * Returns undefined when no colour is known so callers can omit the inline style.
+ */
+export function heroGradient(color: string | null | undefined): string | undefined {
+  if (!color) return undefined
+  return `linear-gradient(to bottom, ${color} 0%, ${color} 46%, ${withAlpha(color, 0.5)} 72%, ${withAlpha(color, 0.12)} 90%, transparent 100%)`
+}
+
 export async function getDominantColor(url: string): Promise<string | null> {
   const cached = cache.get(url)
   if (cached) return cached

@@ -6,6 +6,7 @@ import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { albumService } from '@/services/albumService'
 import { trackService } from '@/services/trackService'
+import { artistService } from '@/services/artistService'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
@@ -14,17 +15,21 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useTranslation } from '@/i18n/useTranslation'
 import { TrackRow } from '@/components/cards/TrackRow'
+import { AlbumCard } from '@/components/cards/AlbumCard'
+import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatMs } from '@/utils/formatTime'
-import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 
 export function AlbumDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const [album, setAlbum] = useState<Album | null>(null)
   const [tracks, setTracks] = useState<Track[]>([])
+  // Other releases by the same artist (this album filtered out). Hidden when empty.
+  const [moreAlbums, setMoreAlbums] = useState<Album[]>([])
   useDocumentTitle(album ? `${album.title} · ${album.artist.name}` : null)
   const isMobile = useIsMobile()
   const [loading, setLoading] = useState(true)
@@ -45,6 +50,20 @@ export function AlbumDetailPage() {
   }, [id])
 
   const heroColor = useDominantColor(album?.coverUrl)
+
+  // Load the artist's other releases for the "More by" rail once the album is known.
+  const artistId = album?.artist.id
+  useEffect(() => {
+    if (!artistId) return
+    let active = true
+    artistService
+      .getAlbums(artistId)
+      .then((albums) => active && setMoreAlbums(albums.filter((a) => a.id !== id)))
+      .catch(() => active && setMoreAlbums([]))
+    return () => {
+      active = false
+    }
+  }, [artistId, id])
 
   if (loading)
     return (
@@ -77,14 +96,9 @@ export function AlbumDetailPage() {
 
   return (
     <div>
-      <div
-        className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
-        style={{
-          background: heroColor
-            ? `linear-gradient(to bottom, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.2)} 60%, transparent 100%)`
-            : undefined,
-        }}
-      >
+      {/* Hero + actions: fuller colour block behind the cover, fading below */}
+      <div style={{ background: heroGradient(heroColor) }}>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
         <img
           src={album.coverUrl}
           alt={album.title}
@@ -168,6 +182,7 @@ export function AlbumDetailPage() {
           </Link>
         )}
       </div>
+      </div>
 
       <div className="px-4">
         <div
@@ -190,6 +205,50 @@ export function AlbumDetailPage() {
           <TrackRow key={track.id} track={track} index={i} queue={tracks} showPlayCount />
         ))}
       </div>
+
+      {/* ── Genres ───────────────────────────────────────────────── */}
+      {album.genres.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-4 sm:px-6 pt-6">
+          {album.genres.map((genre) => (
+            <Link
+              key={genre}
+              to={`/genres/${genre}`}
+              className="rounded-full bg-elevated px-3 py-1.5 text-xs font-semibold capitalize text-secondary transition-colors hover:bg-elevated/70 hover:text-primary"
+            >
+              {genre.replace(/-/g, ' ')}
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* ── Release info (date · label · copyright) ───────────────── */}
+      <div className="px-4 sm:px-6 pt-6 text-xs text-secondary leading-5">
+        <p className="text-sm text-primary">
+          {new Date(album.releaseDate).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
+        {album.label && <p className="mt-1">{album.label}</p>}
+        {album.copyright && <p className="text-muted">{album.copyright}</p>}
+      </div>
+
+      {/* ── More by this artist (relevant, never random) ─────────── */}
+      {moreAlbums.length > 0 && (
+        <section className="px-4 sm:px-6 py-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-primary">{t('album.moreBy', { artist: album.artist.name })}</h2>
+            <Link
+              to={`/artist/${album.artist.id}`}
+              className="text-xs font-semibold uppercase tracking-wider text-secondary transition-colors hover:text-primary"
+            >
+              {t('album.seeDiscography')}
+            </Link>
+          </div>
+          <HorizontalScroller>
+            {moreAlbums.map((a) => (
+              <AlbumCard key={a.id} album={a} />
+            ))}
+          </HorizontalScroller>
+        </section>
+      )}
     </div>
   )
 }

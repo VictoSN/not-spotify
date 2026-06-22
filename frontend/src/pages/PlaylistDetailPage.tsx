@@ -32,7 +32,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -388,15 +388,9 @@ export function PlaylistDetailPage() {
 
   return (
     <div>
-      {/* Header */}
-      <div
-        className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4 bg-gradient-to-b from-accent-dim/40 to-transparent"
-        style={{
-          background: heroColor
-            ? `linear-gradient(to bottom, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.2)} 60%, transparent 100%)`
-            : undefined,
-        }}
-      >
+      {/* Header + actions: fuller colour block behind the cover, fading below */}
+      <div style={{ background: heroGradient(heroColor) }}>
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
         <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated self-center sm:self-auto">
           <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
         </div>
@@ -594,6 +588,7 @@ export function PlaylistDetailPage() {
           <ShareIcon className="w-5 h-5" />
           {shareCopied ? 'Link copied' : 'Share'}
         </button>
+      </div>
       </div>
 
       {playlist.isOwner && editOpen && (

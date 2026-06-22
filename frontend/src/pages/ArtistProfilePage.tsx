@@ -22,6 +22,7 @@ import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
 import { useTranslation } from '@/i18n/useTranslation'
+import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 
 export function ArtistProfilePage() {
   const { t } = useTranslation()
@@ -38,6 +39,10 @@ export function ArtistProfilePage() {
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  // Page tint follows the artwork driving the hero: the banner if the artist has
+  // one, otherwise the profile picture.
+  const heroColorSource = artist?.headerImageUrl ?? artist?.imageUrl ?? null
+  const derivedHeroHue = useDominantColor(heroColorSource, { resetOnChange: true })
 
   useEffect(() => {
     if (!id) return
@@ -63,6 +68,7 @@ export function ArtistProfilePage() {
   if (!artist) return <div className="p-8 text-secondary">{t('detail.artistNotFound')}</div>
 
   const isFollowing = followedArtistIds.has(artist.id)
+  const heroHue = derivedHeroHue ?? 'hsl(210 7% 24%)'
   const toggleFollow = () => {
     if (!isAuthenticated) {
       openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
@@ -79,9 +85,15 @@ export function ArtistProfilePage() {
         {artist.headerImageUrl ? (
           <img src={artist.headerImageUrl} alt={artist.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full bg-gradient-to-b from-accent-dim to-page" />
+          <div
+            className="w-full h-full"
+            style={{ background: `linear-gradient(to bottom, ${heroHue} 0%, ${withAlpha(heroHue, 0.5)} 55%, var(--c-page) 100%)` }}
+          />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-page via-page/40 to-transparent" />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-page via-page/40 to-transparent"
+          style={{ background: `linear-gradient(to top, var(--c-page) 0%, ${withAlpha(heroHue, 0.35)} 45%, transparent 100%)` }}
+        />
         <div className="absolute bottom-4 left-4 right-4 flex items-end gap-3 sm:gap-4 sm:bottom-6 sm:left-6 sm:right-6">
           {artist.imageUrl && (
             <img
@@ -101,6 +113,11 @@ export function ArtistProfilePage() {
         </div>
       </div>
 
+      <div
+        style={{
+          background: `linear-gradient(180deg, ${withAlpha(heroHue, 0.32)} 0, ${withAlpha(heroHue, 0.12)} 8rem, transparent 20rem)`,
+        }}
+      >
       {/* Actions */}
       <div className="flex items-center gap-4 px-6 py-4">
         {topTracks.length > 0 && (
@@ -230,6 +247,7 @@ export function ArtistProfilePage() {
           </div>
         </section>
       )}
+      </div>
     </div>
   )
 }

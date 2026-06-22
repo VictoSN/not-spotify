@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Vibrant } from 'node-vibrant/browser'
 
 // Extract the dominant colour from a cover image (for Spotify-style gradient hues).
-// Results are cached by URL; failures (e.g. CORS) resolve to null and are ignored.
-const cache = new Map<string, string | null>()
+// Cache successful reads only, keyed by URL; a transient image/CORS failure must
+// not leave the gradients colourless for the rest of the session. In-flight reads
+// are de-duped so the same cover isn't decoded twice.
+const cache = new Map<string, string>()
+const pending = new Map<string, Promise<string | null>>()
 
 function hexToRgb(hex: string) {
   const value = hex.replace('#', '')
@@ -57,24 +60,61 @@ export function withAlpha(color: string, alpha: number): string {
 
 export async function getDominantColor(url: string): Promise<string | null> {
   const cached = cache.get(url)
-  if (cached !== undefined) return cached
-  try {
-    const palette = await new Vibrant(url).getPalette()
-    const hex =
-      palette.Vibrant?.hex ?? palette.LightVibrant?.hex ?? palette.DarkVibrant?.hex ?? palette.Muted?.hex ?? null
-    const color = normalizeHue(hex)
-    cache.set(url, color)
-    return color
-  } catch {
-    cache.set(url, null)
-    return null
-  }
+  if (cached) return cached
+
+  const existing = pending.get(url)
+  if (existing) return existing
+
+  const request = (async () => {
+    let objectUrl: string | null = null
+    try {
+      // Load via an explicit CORS fetch → blob URL instead of handing the remote
+      // URL straight to node-vibrant. The cover is also rendered by a plain <img>,
+      // which sends no Origin header, so S3 caches that copy WITHOUT an
+      // Access-Control-Allow-Origin header. Chrome then serves that cached non-CORS
+      // copy to node-vibrant's crossOrigin request and rejects the canvas read
+      // ("No 'Access-Control-Allow-Origin' header is present") even though the bucket
+      // allows our origin — Firefox partitions its cache and isn't affected. fetch()
+      // always sends Origin, and a blob: URL is same-origin so the canvas is never
+      // tainted. `cache: 'reload'` is essential: Chrome otherwise reuses the plain
+      // <img>'s cached no-ACAO copy even for this CORS request (Vary: Origin is not
+      // honoured here), so a plain `fetch` would fail the same way the <img> did.
+      // The resolved colour is memoised below, so this network read runs once per URL.
+      const res = await fetch(url, { mode: 'cors', cache: 'reload' })
+      if (!res.ok) return null
+      objectUrl = URL.createObjectURL(await res.blob())
+      const palette = await new Vibrant(objectUrl).getPalette()
+      const hex =
+        palette.Vibrant?.hex ?? palette.LightVibrant?.hex ?? palette.DarkVibrant?.hex ?? palette.Muted?.hex ?? null
+      const color = normalizeHue(hex)
+      if (color) cache.set(url, color)
+      return color
+    } catch {
+      return null
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl)
+      pending.delete(url)
+    }
+  })()
+
+  pending.set(url, request)
+  return request
 }
 
-export function useDominantColor(url: string | null | undefined): string | null {
+export function useDominantColor(
+  url: string | null | undefined,
+  options?: { resetOnChange?: boolean },
+): string | null {
   const [color, setColor] = useState<string | null>(() => (url ? (cache.get(url) ?? null) : null))
+  const resetOnChange = options?.resetOnChange ?? false
 
   useEffect(() => {
+    // The artist page opts into resetting because its source switches between the
+    // banner and the profile picture — without this the previous artist's tint
+    // would linger until the new colour resolves.
+    if (resetOnChange) {
+      setColor(url ? (cache.get(url) ?? null) : null)
+    }
     if (!url) return
     let active = true
     getDominantColor(url).then((c) => {
@@ -83,7 +123,7 @@ export function useDominantColor(url: string | null | undefined): string | null 
     return () => {
       active = false
     }
-  }, [url])
+  }, [resetOnChange, url])
 
   return color
 }

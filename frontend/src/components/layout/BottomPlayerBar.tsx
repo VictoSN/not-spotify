@@ -1,5 +1,7 @@
-﻿import { QueueListIcon, MicrophoneIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+﻿import { useState } from 'react'
+import { EllipsisHorizontalIcon, QueueListIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+import { MicVocal } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
@@ -31,6 +33,7 @@ export function BottomPlayerBar() {
   const isMobile = useIsMobile()
   const location = useLocation()
   const queueOpen = location.pathname === '/queue'
+  const [moreOpen, setMoreOpen] = useState(false)
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
@@ -91,11 +94,8 @@ export function BottomPlayerBar() {
         <ProgressBar />
       </div>
 
-      {/* Right: Speed + Sleep + Karaoke + Volume + PiP + Now Playing panel toggle */}
+      {/* Right: primary actions stay visible; secondary tools live in More. */}
       <div className="flex items-center gap-3 justify-self-end">
-        <PlaybackSpeedButton />
-        <SleepTimerButton />
-        <EqualizerButton />
         {currentTrack && (
           <button
             onClick={toggleKaraoke}
@@ -104,39 +104,104 @@ export function BottomPlayerBar() {
             aria-pressed={isKaraokeOpen}
             title={t('player.lyrics')}
           >
-            <MicrophoneIcon className="w-5 h-5" />
+            <MicVocal className="h-5 w-5" strokeWidth={1.8} />
           </button>
         )}
-        {/* Listen-along / Jam — host toggle */}
-        <button
-          onClick={() => (jamRole === 'host' ? stopJam() : startHosting())}
-          className={`hidden sm:block transition-all hover:scale-110 active:scale-90 ${jamRole === 'host' ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-          aria-label={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
-          aria-pressed={jamRole === 'host'}
-          title={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
-        >
-          <UserGroupIcon className="w-5 h-5" />
-        </button>
+        {currentTrack && (
+          <Link
+            to="/queue"
+            className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+            aria-label={t('player.queue')}
+            aria-current={queueOpen ? 'page' : undefined}
+            title={t('player.queue')}
+          >
+            <QueueListIcon className="h-5 w-5" />
+          </Link>
+        )}
         <VolumeControl />
         {currentTrack && (
           <button
             onClick={enterPip}
-            className="hidden sm:block transition-all hover:scale-110 active:scale-90 text-secondary hover:text-primary"
+            className="hidden text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 sm:block"
             aria-label={t('player.pip')}
             title={t('player.pip')}
           >
-            <PipIcon className="w-5 h-5" />
+            <PipIcon className="h-5 w-5" />
           </button>
         )}
-        <Link
-          to="/queue"
-          className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
-          aria-label={t('player.queue')}
-          aria-current={queueOpen ? 'page' : undefined}
-          title={t('player.queue')}
-        >
-          <QueueListIcon className="w-5 h-5" />
-        </Link>
+        {currentTrack && (
+          <div className="relative">
+            <button
+              onClick={() => setMoreOpen((open) => !open)}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all hover:scale-105 active:scale-95 ${
+                moreOpen
+                  ? 'border-primary bg-primary text-page'
+                  : 'border-secondary/30 text-secondary hover:border-primary hover:text-primary'
+              }`}
+              aria-label="More player controls"
+              aria-expanded={moreOpen}
+              title="More"
+            >
+              <EllipsisHorizontalIcon className="h-5 w-5" />
+            </button>
+            {moreOpen && (
+              <>
+                <button
+                  className="fixed inset-0 z-40 cursor-default"
+                  onClick={() => setMoreOpen(false)}
+                  aria-label="Close more player controls"
+                />
+                <div className="absolute bottom-full right-0 z-50 mb-3 w-72 rounded-lg border border-secondary/10 bg-elevated p-2 shadow-2xl">
+                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-primary">Playback speed</p>
+                      <p className="text-xs text-secondary">Change how fast the track plays</p>
+                    </div>
+                    <PlaybackSpeedButton />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-primary">{t('player.sleep')}</p>
+                      <p className="text-xs text-secondary">Stop playback automatically</p>
+                    </div>
+                    <SleepTimerButton />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-primary">{t('player.equalizer')}</p>
+                      <p className="text-xs text-secondary">Adjust the sound profile</p>
+                    </div>
+                    <EqualizerButton />
+                  </div>
+                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-primary">
+                        {jamRole === 'host' ? t('player.jam.end') : 'Jam'}
+                      </p>
+                      <p className="text-xs text-secondary">
+                        {jamRole === 'host' ? 'Stop the current listening session' : 'Listen together with friends'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (jamRole === 'host') stopJam()
+                        else startHosting()
+                        setMoreOpen(false)
+                      }}
+                      className={`transition-all hover:scale-110 active:scale-90 ${
+                        jamRole === 'host' ? 'text-accent' : 'text-secondary hover:text-primary'
+                      }`}
+                      aria-label={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
+                      title={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
+                    >
+                      <UserGroupIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

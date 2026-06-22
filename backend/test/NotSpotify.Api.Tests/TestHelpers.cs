@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -69,15 +70,25 @@ internal static class TestHelpers
         return new NotificationService(db, hub, NullLogger<NotificationService>.Instance);
     }
 
-    /// <summary>Attaches a ClaimsPrincipal carrying the given user id to a controller.</summary>
-    public static T AsUser<T>(this T controller, Guid userId) where T : ControllerBase
+    /// <summary>Attaches a ClaimsPrincipal carrying the given user id (and optional roles) to a controller.</summary>
+    public static T AsUser<T>(this T controller, Guid userId, params string[] roles) where T : ControllerBase
     {
-        var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) }, "Test");
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+        var identity = new ClaimsIdentity(claims, "Test", ClaimTypes.Name, ClaimTypes.Role);
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) },
         };
         return controller;
+    }
+
+    /// <summary>A mockable UserManager over a stub user store (no real persistence).</summary>
+    public static Mock<UserManager<ApplicationUser>> MockUserManager()
+    {
+        var store = new Mock<IUserStore<ApplicationUser>>();
+        return new Mock<UserManager<ApplicationUser>>(
+            store.Object, null!, null!, null!, null!, null!, null!, null!, null!);
     }
 
     /// <summary>Adds a bare user (id + name) to the context.</summary>

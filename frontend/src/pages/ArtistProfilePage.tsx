@@ -17,6 +17,7 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
@@ -84,47 +85,49 @@ export function ArtistProfilePage() {
     <div>
       {/* Hero */}
       <div
-        className="relative h-72 w-full overflow-hidden sm:h-auto sm:aspect-[3/1]"
+        className={
+          artist.headerImageUrl
+            ? 'relative h-72 w-full overflow-hidden sm:h-auto sm:aspect-[3/1]'
+            : 'relative h-72 w-full overflow-hidden sm:h-auto sm:aspect-[4/1]'
+        }
         style={!artist.headerImageUrl ? {
-          background: `linear-gradient(135deg, ${heroHue} 0%, ${withAlpha(heroHue, 0.68)} 45%, var(--c-page) 120%)`,
+          background: `linear-gradient(120deg, ${heroHue} 0%, ${withAlpha(heroHue, 0.78)} 52%, ${withAlpha(heroHue, 0.46)} 100%)`,
         } : undefined}
       >
         {artist.headerImageUrl ? (
           <img src={artist.headerImageUrl} alt={artist.name} className="w-full h-full object-cover" />
-        ) : artist.imageUrl ? (
-          <>
-            <img
-              src={artist.imageUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full scale-110 object-cover opacity-30 blur-2xl"
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: `linear-gradient(90deg, ${withAlpha(heroHue, 0.76)} 0%, transparent 75%)` }}
-            />
-          </>
-        ) : (
-          <div className="h-full w-full bg-gradient-to-br from-accent-dim via-elevated to-page" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/5" />
-        <div className="absolute bottom-5 left-5 right-5 flex items-end gap-5 sm:bottom-7 sm:left-7 sm:right-7 lg:gap-7">
-          {!artist.headerImageUrl && artist.imageUrl && (
-            <img
+        ) : null}
+        {artist.headerImageUrl && <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/5" />}
+        <div
+          className={
+            artist.headerImageUrl
+              ? 'absolute bottom-5 left-5 right-5 flex items-end sm:bottom-7 sm:left-7 sm:right-7'
+              : 'absolute inset-0 flex items-center gap-5 px-5 sm:gap-7 sm:px-7 lg:gap-10'
+          }
+        >
+          {!artist.headerImageUrl && (
+            <Avatar
               src={artist.imageUrl}
               alt={artist.name}
-              className="h-28 w-28 flex-shrink-0 rounded-full border-4 border-black/20 object-cover shadow-2xl sm:h-40 sm:w-40 lg:h-52 lg:w-52"
+              size="xl"
+              round
+              className="h-32 w-32 text-4xl shadow-2xl ring-1 ring-white/10 sm:h-44 sm:w-44 sm:text-5xl lg:h-52 lg:w-52 lg:text-6xl"
             />
           )}
           <div className="min-w-0 flex-1">
+            <h1 className={`truncate font-black leading-none text-white drop-shadow-xl ${
+              artist.headerImageUrl
+                ? 'text-5xl sm:text-7xl lg:text-8xl'
+                : 'text-4xl sm:text-6xl lg:text-7xl'
+            }`}>
+              {artist.name}
+            </h1>
             {artist.verified && (
-              <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-white drop-shadow-md">
+              <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white drop-shadow-md">
                 <CheckBadgeIcon className="h-6 w-6 text-[#4cb3ff]" />
                 <span>Verified artist</span>
               </div>
             )}
-            <h1 className="truncate text-5xl font-black leading-none text-white drop-shadow-xl sm:text-7xl lg:text-8xl">
-              {artist.name}
-            </h1>
             <p className="mt-4 text-sm font-semibold text-white drop-shadow-md">
               {t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
             </p>

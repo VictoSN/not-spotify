@@ -13,8 +13,10 @@ import { api } from '@/services/api'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import type { Artist as ArtistProfile } from '@/types/artist'
+import type { Genre } from '@/types/genre'
 import { downloadAlbumZip, type ReviewHistoryEntry } from '@/services/adminService'
 import { trackService } from '@/services/trackService'
+import { genreService } from '@/services/genreService'
 import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -137,6 +139,8 @@ export function ArtistDashboardPage() {
   const [trackLyrics, setTrackLyrics] = useState('')
   const [trackAudioFile, setTrackAudioFile] = useState<File | null>(null)
   const [trackDuration, setTrackDuration] = useState(0)
+  const [genres, setGenres] = useState<Genre[]>([])
+  const [trackGenreIds, setTrackGenreIds] = useState<Set<string>>(new Set())
   const [trackSubmitting, setTrackSubmitting] = useState(false)
   const [trackFormError, setTrackFormError] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
@@ -146,6 +150,11 @@ export function ArtistDashboardPage() {
   useEffect(() => {
     if (!isArtist) navigate('/', { replace: true })
   }, [isArtist, navigate])
+
+  // Genre taxonomy for the track-upload picker (static; loaded once).
+  useEffect(() => {
+    genreService.getAll().then(setGenres).catch(() => setGenres([]))
+  }, [])
 
   const reload = async () => {
     setLoading(true)
@@ -247,13 +256,14 @@ export function ArtistDashboardPage() {
     e.preventDefault()
     if (!trackAudioFile) { setTrackFormError('Please select an audio file.'); return }
     if (trackDuration < 1) { setTrackFormError('Could not read audio duration. Try again.'); return }
+    if (trackGenreIds.size === 0) { setTrackFormError('Please select at least one genre.'); return }
 
     setTrackSubmitting(true)
     setTrackFormError(null)
     try {
       const trackRes = await api.post<Track>('/me/artist-tracks', {
         title: trackTitle, albumId, durationMs: trackDuration, trackNumber, discNumber: 1, explicit: trackExplicit,
-        lyrics: trackLyrics.trim() || null,
+        lyrics: trackLyrics.trim() || null, genreIds: [...trackGenreIds],
       })
       const fd = new FormData()
       fd.append('file', trackAudioFile)
@@ -261,7 +271,7 @@ export function ArtistDashboardPage() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       setAddingTrackToAlbum(null)
-      setTrackTitle(''); setTrackNumber(1); setTrackExplicit(false); setTrackLyrics(''); setTrackAudioFile(null); setTrackDuration(0)
+      setTrackTitle(''); setTrackNumber(1); setTrackExplicit(false); setTrackLyrics(''); setTrackAudioFile(null); setTrackDuration(0); setTrackGenreIds(new Set())
       await reload()
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -578,7 +588,7 @@ export function ArtistDashboardPage() {
   const openTrackForm = (albumId: string, trackCount: number) => {
     setAddingTrackToAlbum(albumId)
     setTrackNumber(trackCount + 1)
-    setTrackTitle(''); setTrackExplicit(false); setTrackAudioFile(null); setTrackDuration(0); setTrackFormError(null)
+    setTrackTitle(''); setTrackExplicit(false); setTrackAudioFile(null); setTrackDuration(0); setTrackFormError(null); setTrackGenreIds(new Set())
     setExpandedAlbum(albumId)
   }
 
@@ -1606,6 +1616,38 @@ export function ArtistDashboardPage() {
                           />
                           <span className="text-sm text-primary">Explicit</span>
                         </label>
+                        <div>
+                          <label className="block text-xs font-semibold text-primary mb-1">
+                            Genres <span className="font-normal text-muted">(pick at least one)</span>
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {genres.map((g) => {
+                              const selected = trackGenreIds.has(g.id)
+                              return (
+                                <button
+                                  key={g.id}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() =>
+                                    setTrackGenreIds((prev) => {
+                                      const next = new Set(prev)
+                                      if (next.has(g.id)) next.delete(g.id)
+                                      else next.add(g.id)
+                                      return next
+                                    })
+                                  }
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all active:scale-95 ${
+                                    selected
+                                      ? 'bg-accent text-white'
+                                      : 'bg-elevated text-secondary hover:text-primary'
+                                  }`}
+                                >
+                                  {g.name}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
                         <div>
                           <label className="block text-xs font-semibold text-primary mb-1">
                             Lyrics <span className="font-normal text-muted">(optional)</span>

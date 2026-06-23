@@ -743,4 +743,13 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(scope.ServiceProvider);
 }
 
+// One-time bulk catalogue import (`dotnet run -- import-music [--path <dir>] [--dry-run]`).
+// Runs after migrations/seed so the schema + genres exist, then exits without starting
+// the web host. Idempotent: re-running skips tracks that already have audio.
+if (args.Contains("import-music"))
+{
+    await MusicImporter.RunAsync(app.Services, args);
+    return;
+}
+
 app.Run();

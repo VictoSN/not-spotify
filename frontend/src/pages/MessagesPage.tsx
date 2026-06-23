@@ -7,8 +7,11 @@ import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { ChatMessage } from '@/types/chat'
-import { parseTrackShare } from '@/utils/chatShare'
+import { parseShare } from '@/utils/chatShare'
 import { SharedTrackBubble } from '@/components/chat/SharedTrackBubble'
+import { SharedAlbumBubble } from '@/components/chat/SharedAlbumBubble'
+import { SharedPlaylistBubble } from '@/components/chat/SharedPlaylistBubble'
+import { SharedJamBubble } from '@/components/chat/SharedJamBubble'
 import { cn } from '@/utils/cn'
 
 function formatTime(iso: string) {
@@ -159,7 +162,14 @@ export function MessagesPage() {
                   <p className="truncate text-xs text-secondary">
                     {c.lastMessage
                       ? `${c.lastMessage.senderId === me.id ? 'You: ' : ''}${
-                          parseTrackShare(c.lastMessage.body) ? '🎵 Shared a song' : c.lastMessage.body
+                          (() => {
+                            const s = parseShare(c.lastMessage.body)
+                            if (!s) return c.lastMessage.body
+                            if (s.kind === 'track') return '🎵 Shared a song'
+                            if (s.kind === 'album') return '💿 Shared an album'
+                            if (s.kind === 'jam') return '👥 Invited you to a Jam'
+                            return '📃 Shared a playlist'
+                          })()
                         }`
                       : 'Say hi!'}
                   </p>
@@ -250,7 +260,7 @@ export function MessagesPage() {
                   {thread.map((m, i) => {
                     const mine = m.senderId === me.id
                     const showDay = i === 0 || formatDay(thread[i - 1].sentAt) !== formatDay(m.sentAt)
-                    const share = parseTrackShare(m.body)
+                    const share = parseShare(m.body)
                     return (
                       <div key={m.id}>
                         {showDay && (
@@ -262,12 +272,36 @@ export function MessagesPage() {
                         )}
                         <div className={cn('mb-1.5 flex', mine ? 'justify-end' : 'justify-start')}>
                           {share ? (
-                            <SharedTrackBubble
-                              trackId={share.trackId}
-                              mine={mine}
-                              time={formatTime(m.sentAt)}
-                              ticks={mine ? <ReadTicks message={m} /> : null}
-                            />
+                            share.kind === 'track' ? (
+                              <SharedTrackBubble
+                                trackId={share.id}
+                                mine={mine}
+                                time={formatTime(m.sentAt)}
+                                ticks={mine ? <ReadTicks message={m} /> : null}
+                              />
+                            ) : share.kind === 'album' ? (
+                              <SharedAlbumBubble
+                                albumId={share.id}
+                                mine={mine}
+                                time={formatTime(m.sentAt)}
+                                ticks={mine ? <ReadTicks message={m} /> : null}
+                              />
+                            ) : share.kind === 'playlist' ? (
+                              <SharedPlaylistBubble
+                                playlistId={share.id}
+                                mine={mine}
+                                time={formatTime(m.sentAt)}
+                                ticks={mine ? <ReadTicks message={m} /> : null}
+                              />
+                            ) : (
+                              <SharedJamBubble
+                                hostId={share.id}
+                                hostName={share.name ?? 'your friend'}
+                                mine={mine}
+                                time={formatTime(m.sentAt)}
+                                ticks={mine ? <ReadTicks message={m} /> : null}
+                              />
+                            )
                           ) : (
                             <div
                               className={cn(

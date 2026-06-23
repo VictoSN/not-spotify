@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PlayIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
-import { HeartIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ArrowDownTrayIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { albumService } from '@/services/albumService'
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { formatMs } from '@/utils/formatTime'
 import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
+import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 
 export function AlbumDetailPage() {
   const { t } = useTranslation()
@@ -39,6 +40,7 @@ export function AlbumDetailPage() {
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isPremium = user?.plan === 'premium'
   const [downloading, setDownloading] = useState(false)
+  const [shareToChatOpen, setShareToChatOpen] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -160,6 +162,16 @@ export function AlbumDetailPage() {
           {isSaved ? <HeartSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
           {isSaved ? t('common.saved') : t('detail.saveToLibrary')}
         </button>
+        {isAuthenticated && (
+          <button
+            onClick={() => setShareToChatOpen(true)}
+            title="Send to a friend in chat"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-primary hover:text-primary transition-colors"
+          >
+            <PaperAirplaneIcon className="w-5 h-5" />
+            Send to friend
+          </button>
+        )}
         {isPremium ? (
           <button
             onClick={handleDownload}
@@ -231,6 +243,10 @@ export function AlbumDetailPage() {
       </div>
 
       {/* ── More by this artist (relevant, never random) ─────────── */}
+      {shareToChatOpen && (
+        <ShareToChatModal payload={{ kind: 'album', album }} onClose={() => setShareToChatOpen(false)} />
+      )}
+
       {moreAlbums.length > 0 && (
         <section className="px-4 sm:px-6 py-8">
           <div className="mb-4 flex items-center justify-between">

@@ -80,4 +80,43 @@ public class FriendsControllerTests
         Assert.Contains(a.ToString(), ids);
         Assert.Contains(b.ToString(), ids);
     }
+
+    [Fact]
+    public async Task SendJamInvite_ToFriend_CreatesNotification()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = Guid.NewGuid();
+        var friend = Guid.NewGuid();
+        db.AddUser(me, "alex");
+        db.AddUser(friend, "sam");
+        db.AddFriendship(me, friend);
+        await db.SaveChangesAsync();
+
+        var controller = new FriendsController(db, TestHelpers.NewMapper(), TestHelpers.NewNotifications(db)).AsUser(me);
+        var result = await controller.SendJamInvite(new SendJamInviteDto(friend));
+
+        Assert.IsType<NoContentResult>(result);
+        var notification = Assert.Single(db.Notifications);
+        Assert.Equal(friend, notification.UserId);
+        Assert.Equal("jam_invite", notification.Type);
+        Assert.Equal($"/user/{me}?joinJam=1", notification.LinkUrl);
+    }
+
+    [Fact]
+    public async Task SendJamInvite_ToNonFriend_ReturnsForbidden()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = Guid.NewGuid();
+        var stranger = Guid.NewGuid();
+        db.AddUser(me, "alex");
+        db.AddUser(stranger, "stranger");
+        await db.SaveChangesAsync();
+
+        var controller = new FriendsController(db, TestHelpers.NewMapper(), TestHelpers.NewNotifications(db)).AsUser(me);
+        var result = await controller.SendJamInvite(new SendJamInviteDto(stranger));
+
+        var forbidden = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(403, forbidden.StatusCode);
+        Assert.Empty(db.Notifications);
+    }
 }

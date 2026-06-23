@@ -215,6 +215,38 @@ public class FriendsController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>POST /friends/jam-invites — invite an accepted friend to the caller's Jam.</summary>
+    [HttpPost("jam-invites")]
+    public async Task<IActionResult> SendJamInvite([FromBody] SendJamInviteDto dto, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (dto.UserId == me)
+            return BadRequest(new { message = "You cannot invite yourself to a Jam." });
+
+        var isFriend = await _db.Friendships.AnyAsync(f =>
+            f.Status == FriendshipStatus.Accepted &&
+            ((f.RequesterId == me && f.AddresseeId == dto.UserId) ||
+             (f.RequesterId == dto.UserId && f.AddresseeId == me)),
+            ct);
+
+        if (!isFriend)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "You can only invite friends to a Jam." });
+
+        var inviter = await _db.Users.FindAsync(new object[] { me }, ct);
+        if (inviter is null) return NotFound();
+
+        await _notifications.NotifyAsync(
+            dto.UserId,
+            "jam_invite",
+            $"{inviter.Name} invited you to a Jam",
+            body: "Tap to listen together.",
+            linkUrl: $"/user/{me}?joinJam=1",
+            imageUrl: _mapper.ToRef(inviter).AvatarUrl,
+            ct: ct);
+
+        return NoContent();
+    }
+
     // ── Blend ──────────────────────────────────────────────────────────────
 
     /// <summary>

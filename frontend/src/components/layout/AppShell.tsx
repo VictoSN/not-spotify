@@ -5,7 +5,7 @@ import { TopBar } from './TopBar'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
-import { FriendActivityPanel } from '@/components/friends/FriendActivityPanel'
+import { SocialPanel } from '@/components/friends/SocialPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
 import { PromoPlayer } from '@/components/player/PromoPlayer'
@@ -33,7 +33,7 @@ export function AppShell() {
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
-  const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
+  const socialPanelOpen = useUiStore((s) => s.socialPanelOpen)
   const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const karaokeVisible = isKaraokeOpen && !!currentTrack
@@ -102,9 +102,9 @@ export function AppShell() {
           </main>
         )}
 
-        {/* Right rail: Friend Activity takes the slot while open, Now Playing otherwise */}
-        {!isMobile && isAuthenticated && (
-          friendActivityOpen ? <FriendActivityPanel /> : isNowPlayingOpen && <NowPlayingPanel />
+        {/* Right rail on desktop, responsive overlay on smaller screens. */}
+        {isAuthenticated && (
+          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && <NowPlayingPanel />
         )}
       </div>
 

@@ -173,3 +173,62 @@ export function FriendActivityPanel() {
     </aside>
   )
 }
+
+export function FriendActivityContent() {
+  const getFriendsWithActivity = useFriendStore((s) => s.getFriendsWithActivity)
+  const fetchActivity = useFriendStore((s) => s.fetchActivity)
+  const fetchFriends = useFriendStore((s) => s.fetchFriends)
+  const friendCount = useFriendStore((s) => s.friends.length)
+  const lastActivityFetch = useFriendStore((s) => s.lastActivityFetch)
+
+  useEffect(() => {
+    void fetchFriends()
+    void fetchActivity()
+  }, [fetchActivity, fetchFriends])
+
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000)
+    return () => clearInterval(id)
+  }, [])
+
+  const withTrack = getFriendsWithActivity()
+    .filter((f) => f.nowPlaying !== null)
+    .sort((a, b) => {
+      if (a.isListeningNow !== b.isListeningNow) return a.isListeningNow ? -1 : 1
+      return (b.playedAt ?? '').localeCompare(a.playedAt ?? '')
+    })
+
+  return (
+    <div className="h-full overflow-y-auto pb-4">
+      {withTrack.length > 0 ? (
+        <ul>
+          {withTrack.map((f) => (
+            <ActivityItem key={f.userId} friend={f} />
+          ))}
+        </ul>
+      ) : (
+        <div className="flex flex-col items-center gap-3 px-6 pt-10 text-center">
+          <UsersIcon className="h-10 w-10 text-secondary" />
+          {friendCount === 0 ? (
+            <>
+              <p className="text-sm font-bold text-primary">Find friends to follow</p>
+              <p className="text-xs text-secondary">
+                Add friends from the Friends tab to see what they're listening to.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-primary">It's quiet right now</p>
+              <p className="text-xs text-secondary">
+                {lastActivityFetch === 0
+                  ? 'Loading friend activity…'
+                  : "None of your friends have played anything recently. Check back later."}
+              </p>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

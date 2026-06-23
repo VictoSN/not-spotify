@@ -1,21 +1,70 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { XMarkIcon, MagnifyingGlassIcon, CheckIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, MagnifyingGlassIcon, CheckIcon, PaperAirplaneIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
+import type { Album } from '@/types/album'
+import type { Playlist } from '@/types/playlist'
 import { useFriendStore } from '@/stores/friendStore'
 import { useChatStore } from '@/stores/chatStore'
 import { Avatar } from '@/components/ui/Avatar'
-import { encodeTrackShare } from '@/utils/chatShare'
+import { encodeAlbumShare, encodePlaylistShare, encodeTrackShare } from '@/utils/chatShare'
 import { notify } from '@/utils/toast'
 import { cn } from '@/utils/cn'
 
+type SharePayload =
+  | { kind: 'track'; track: Track }
+  | { kind: 'album'; album: Album }
+  | { kind: 'playlist'; playlist: Playlist }
+
 interface Props {
-  track: Track
+  /** Pass either a payload (preferred) or a raw track for back-compat with TrackRowMenu. */
+  payload?: SharePayload
+  track?: Track
   onClose: () => void
 }
 
-/** Pick a friend (or several) to send a track to as a rich chat message. */
-export function ShareToChatModal({ track, onClose }: Props) {
+interface Preview {
+  kindLabel: string
+  title: string
+  subtitle: string
+  coverUrl: string | null
+  body: string
+}
+
+function toPreview(payload: SharePayload): Preview {
+  switch (payload.kind) {
+    case 'track':
+      return {
+        kindLabel: 'song',
+        title: payload.track.title,
+        subtitle: payload.track.artist.name,
+        coverUrl: payload.track.album.coverUrl,
+        body: encodeTrackShare(payload.track.id),
+      }
+    case 'album':
+      return {
+        kindLabel: payload.album.type === 'album' ? 'album' : payload.album.type,
+        title: payload.album.title,
+        subtitle: payload.album.artist.name,
+        coverUrl: payload.album.coverUrl,
+        body: encodeAlbumShare(payload.album.id),
+      }
+    case 'playlist':
+      return {
+        kindLabel: 'playlist',
+        title: payload.playlist.name,
+        subtitle: `${payload.playlist.owner.name} · ${payload.playlist.tracks.length} songs`,
+        coverUrl: payload.playlist.coverUrl ?? payload.playlist.tracks[0]?.track.album.coverUrl ?? null,
+        body: encodePlaylistShare(payload.playlist.id),
+      }
+  }
+}
+
+/** Pick a friend (or several) to send a track/album/playlist to as a rich chat message. */
+export function ShareToChatModal({ payload, track, onClose }: Props) {
+  const effective: SharePayload = payload ?? { kind: 'track', track: track! }
+  const preview = toPreview(effective)
+
   const friends = useFriendStore((s) => s.friends)
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
   const sendMessage = useChatStore((s) => s.sendMessage)
@@ -40,9 +89,9 @@ export function ShareToChatModal({ track, onClose }: Props) {
 
   const share = (userId: string, name: string) => {
     if (sentTo.has(userId)) return
-    void sendMessage(userId, encodeTrackShare(track.id))
+    void sendMessage(userId, preview.body)
     setSentTo((prev) => new Set(prev).add(userId))
-    notify.success(`Sent “${track.title}” to ${name}`)
+    notify.success(`Sent “${preview.title}” to ${name}`)
   }
 
   return createPortal(
@@ -51,7 +100,7 @@ export function ShareToChatModal({ track, onClose }: Props) {
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label="Share to chat"
+      aria-label={`Share ${preview.kindLabel} to chat`}
     >
       <div
         className="animate-auth-card-in flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-surface shadow-2xl"
@@ -59,7 +108,7 @@ export function ShareToChatModal({ track, onClose }: Props) {
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-elevated/50 px-4 py-3">
-          <h2 className="text-base font-bold text-primary">Share to a friend</h2>
+          <h2 className="text-base font-bold text-primary">Send to a friend</h2>
           <button
             onClick={onClose}
             className="rounded-full p-1 text-secondary transition-colors hover:bg-elevated hover:text-primary"
@@ -69,12 +118,19 @@ export function ShareToChatModal({ track, onClose }: Props) {
           </button>
         </div>
 
-        {/* Track being shared */}
+        {/* What's being shared */}
         <div className="flex items-center gap-3 px-4 py-3">
-          <img src={track.album.coverUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-elevated">
+            {preview.coverUrl ? (
+              <img src={preview.coverUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <MusicalNoteIcon className="h-5 w-5 text-secondary" />
+            )}
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-primary">{track.title}</p>
-            <p className="truncate text-xs text-secondary">{track.artist.name}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-secondary">{preview.kindLabel}</p>
+            <p className="truncate text-sm font-semibold text-primary">{preview.title}</p>
+            <p className="truncate text-xs text-secondary">{preview.subtitle}</p>
           </div>
         </div>
 

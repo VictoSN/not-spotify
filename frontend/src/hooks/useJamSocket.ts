@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useJamStore } from '@/stores/jamStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import type { Track } from '@/types/track'
+import { notify } from '@/utils/toast'
 
 interface JamSyncPayload {
   track: Track | null
@@ -34,6 +35,7 @@ export function useJamSocket() {
     }
 
     let disposed = false
+    let joinedAt = 0
     const conn = new signalR.HubConnectionBuilder()
       .withUrl(`${import.meta.env.VITE_API_URL ?? ''}/hubs/session`, {
         accessTokenFactory: () => useAuthStore.getState().accessToken ?? '',
@@ -44,7 +46,14 @@ export function useJamSocket() {
     connRef.current = conn
 
     conn.on('JamParticipants', (n: number) => useJamStore.getState().setParticipants(n))
-    conn.on('JamEnded', () => useJamStore.getState().stopJam())
+    conn.on('JamEnded', () => {
+      const wasGuest = useJamStore.getState().role === 'guest'
+      const justJoined = joinedAt > 0 && Date.now() - joinedAt < 4000
+      useJamStore.getState().stopJam()
+      if (wasGuest) {
+        notify.error(justJoined ? "Couldn't join — host isn't in a Jam right now." : 'The host ended the Jam.')
+      }
+    })
 
     // Re-register with the hub after a dropped connection reconnects, otherwise
     // the in-memory session is lost server-side while the client still thinks
@@ -102,10 +111,20 @@ export function useJamSocket() {
           interval = window.setInterval(broadcast, 2000)
           broadcast()
         } else if (role === 'guest' && hostId) {
+          joinedAt = Date.now()
           await conn.invoke('JoinSession', hostId).catch(() => {})
         }
       })
-      .catch((err) => console.warn('[Jam] connection failed:', err))
+      .catch((err) => {
+        console.warn('[Jam] connection failed:', err)
+        const reason = (err as Error | undefined)?.message ?? 'unknown error'
+        const r = useJamStore.getState().role
+        if (r === 'host') {
+          notify.error(`Jam couldn't connect: ${reason}`)
+        } else if (r === 'guest') {
+          notify.error(`Couldn't connect to the Jam: ${reason}`)
+        }
+      })
 
     return () => {
       disposed = true

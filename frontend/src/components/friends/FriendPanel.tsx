@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  ChatBubbleLeftRightIcon,
   MagnifyingGlassIcon,
   CheckIcon,
   XMarkIcon,
@@ -14,7 +15,8 @@ import { useDebounce } from '@/hooks/useDebounce'
 import type { UserSearchResult, FriendWithActivity, FriendSuggestion } from '@/types/friend'
 
 interface FriendPanelProps {
-  onClose: () => void
+  onClose?: () => void
+  embedded?: boolean
 }
 
 // ─── Friend search section ───────────────────────────────────────────────────
@@ -170,39 +172,48 @@ function PendingRequests() {
 
 function FriendListItem({ friend, onClose }: { friend: FriendWithActivity; onClose: () => void }) {
   return (
-    <Link
-      to={`/user/${friend.userId}`}
-      onClick={onClose}
-      className="flex items-center gap-3 px-3 py-2 hover:bg-surface rounded-md transition-colors"
-    >
-      <div className="relative shrink-0">
-        <Avatar src={friend.avatarUrl} alt={friend.name} size="sm" round />
-        {/* Online dot */}
-        <span
-          className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-elevated ${
-            friend.isOnline ? 'bg-green-400' : 'bg-secondary/50'
-          }`}
-        />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-primary truncate">{friend.name}</p>
-        {friend.nowPlaying && friend.isListeningNow ? (
-          <p className="text-xs text-accent truncate">
-            ▶ {friend.nowPlaying.title}
-            {' · '}
-            {friend.nowPlaying.artist.name}
-          </p>
-        ) : friend.isOnline ? (
-          <p className="text-xs text-green-400">Online</p>
-        ) : friend.mutualFriendsCount > 0 ? (
-          <p className="text-xs text-secondary truncate">
-            {friend.mutualFriendsCount} mutual friend{friend.mutualFriendsCount !== 1 ? 's' : ''}
-          </p>
-        ) : (
-          <p className="text-xs text-secondary">Offline</p>
-        )}
-      </div>
-    </Link>
+    <div className="group flex items-center gap-2 rounded-md px-3 py-2 transition-colors hover:bg-elevated/60">
+      <Link
+        to={`/user/${friend.userId}`}
+        onClick={onClose}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
+        <div className="relative shrink-0">
+          <Avatar src={friend.avatarUrl} alt={friend.name} size="sm" round />
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${
+              friend.isOnline ? 'bg-green-400' : 'bg-secondary/50'
+            }`}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-primary">{friend.name}</p>
+          {friend.nowPlaying ? (
+            <p className={friend.isListeningNow ? 'truncate text-xs text-accent' : 'truncate text-xs text-secondary'}>
+              {friend.isListeningNow ? '▶ ' : ''}
+              {friend.nowPlaying.title} · {friend.nowPlaying.artist.name}
+            </p>
+          ) : friend.isOnline ? (
+            <p className="text-xs text-green-400">Online</p>
+          ) : friend.mutualFriendsCount > 0 ? (
+            <p className="truncate text-xs text-secondary">
+              {friend.mutualFriendsCount} mutual friend{friend.mutualFriendsCount !== 1 ? 's' : ''}
+            </p>
+          ) : (
+            <p className="text-xs text-secondary">Offline</p>
+          )}
+        </div>
+      </Link>
+      <Link
+        to={`/messages?u=${friend.userId}`}
+        onClick={onClose}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-70 transition-all hover:bg-surface hover:text-primary group-hover:opacity-100"
+        aria-label={`Message ${friend.name}`}
+        title={`Message ${friend.name}`}
+      >
+        <ChatBubbleLeftRightIcon className="h-4 w-4" />
+      </Link>
+    </div>
   )
 }
 
@@ -211,13 +222,18 @@ function FriendListItem({ friend, onClose }: { friend: FriendWithActivity; onClo
 function FriendsList({ onClose }: { onClose: () => void }) {
   const getFriendsWithActivity = useFriendStore((s) => s.getFriendsWithActivity)
   const isLoading = useFriendStore((s) => s.isLoading)
-  const friendsWithActivity = getFriendsWithActivity()
+  const friendsWithActivity = getFriendsWithActivity().sort((a, b) => {
+    if (a.isListeningNow !== b.isListeningNow) return a.isListeningNow ? -1 : 1
+    if (a.isOnline !== b.isOnline) return a.isOnline ? -1 : 1
+    if (!!a.nowPlaying !== !!b.nowPlaying) return a.nowPlaying ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
 
   return (
     <div>
       <div className="my-1 border-t border-secondary/10" />
       <p className="px-3 py-2 text-xs font-semibold text-secondary uppercase tracking-wider">
-        Friends
+        Friends &amp; activity
       </p>
       {isLoading && <p className="px-3 py-2 text-xs text-secondary">Loading…</p>}
       {!isLoading && friendsWithActivity.length === 0 && (
@@ -294,7 +310,7 @@ function FriendSuggestions() {
 
 // ─── Panel root ───────────────────────────────────────────────────────────────
 
-export function FriendPanel({ onClose }: FriendPanelProps) {
+export function FriendPanel({ onClose = () => {}, embedded = false }: FriendPanelProps) {
   const fetchActivity = useFriendStore((s) => s.fetchActivity)
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
   const fetchRequests = useFriendStore((s) => s.fetchRequests)
@@ -307,7 +323,10 @@ export function FriendPanel({ onClose }: FriendPanelProps) {
   }, [])
 
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 max-h-[520px] overflow-y-auto rounded-md bg-elevated shadow-2xl border border-secondary/10 py-2 z-50">
+    <div className={embedded
+      ? 'h-full overflow-y-auto py-2'
+      : 'absolute right-0 top-full z-50 mt-2 max-h-[520px] w-80 overflow-y-auto rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl'
+    }>
       <FriendSearch />
       <PendingRequests />
       <FriendsList onClose={onClose} />

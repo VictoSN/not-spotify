@@ -3,6 +3,7 @@ import type { ChatMessage, Conversation } from '@/types/chat'
 import { chatService } from '@/services/chatService'
 import { notify } from '@/utils/toast'
 import { useAuthStore } from './authStore'
+import { useNotificationStore } from './notificationStore'
 
 /**
  * Direct-message state.
@@ -155,6 +156,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch {
       /* ignore — will resync on next fetch */
     }
+    // Dual-clear: if this friend sent a jam invite that's still in the bell,
+    // mark it read too so opening the chat doesn't leave a stale bell badge.
+    const linkedInvites = useNotificationStore
+      .getState()
+      .items.filter((n) => !n.isRead && n.type === 'jam_invite' && n.linkUrl?.startsWith(`/user/${userId}`))
+    for (const n of linkedInvites) void useNotificationStore.getState().markRead(n.id)
   },
 
   // ── Real-time handlers ─────────────────────────────────────────────────────

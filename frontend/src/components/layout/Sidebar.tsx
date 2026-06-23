@@ -707,6 +707,10 @@ export function Sidebar() {
                 compact={compactLibrary}
                 nowPlaying={isNowPlaying(item)}
                 onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                }}
               >
                 <RowOverlay
                   variant="grid"
@@ -750,7 +754,16 @@ export function Sidebar() {
               </NavLink>
             )}
             {ungroupedItems.map((item) => (
-              <LibraryListRow key={item.key} item={item} compact={compactLibrary} nowPlaying={isNowPlaying(item)}>
+              <LibraryListRow
+                key={item.key}
+                item={item}
+                compact={compactLibrary}
+                nowPlaying={isNowPlaying(item)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                }}
+              >
                 <RowOverlay
                   variant="list"
                   itemKey={item.key}
@@ -955,14 +968,16 @@ function LibraryListRow({
   compact,
   nowPlaying,
   children,
+  onContextMenu,
 }: {
   item: LibItem
   compact: boolean
   nowPlaying: boolean
   children?: React.ReactNode
+  onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
-    <div className="group/row relative">
+    <div className="group/row relative" onContextMenu={onContextMenu}>
       <NavLink
         to={item.to}
         className={({ isActive }) =>
@@ -1003,15 +1018,17 @@ function LibraryGridCard({
   nowPlaying,
   onNavigate,
   children,
+  onContextMenu,
 }: {
   item: LibItem
   compact: boolean
   nowPlaying: boolean
   onNavigate: () => void
   children?: React.ReactNode
+  onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
-    <div className="group/row relative">
+    <div className="group/row relative" onContextMenu={onContextMenu}>
       <NavLink
         to={item.to}
         onClick={onNavigate}
@@ -1191,7 +1208,16 @@ function FolderGroup({
             <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
           ) : (
             contents.map((item) => (
-              <LibraryListRow key={item.key} item={item} compact={compact} nowPlaying={isNowPlaying(item)}>
+              <LibraryListRow
+                key={item.key}
+                item={item}
+                compact={compact}
+                nowPlaying={isNowPlaying(item)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                }}
+              >
                 <RowOverlay
                   variant="list"
                   itemKey={item.key}

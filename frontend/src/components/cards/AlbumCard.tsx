@@ -48,6 +48,7 @@ export function AlbumCard({ album, tracks }: AlbumCardProps) {
       to={`/album/${album.id}`}
       onMouseEnter={() => getDominantColor(album.coverUrl).then((c) => c && setHoverColor(c))}
       onMouseLeave={() => setHoverColor(null)}
+      onContextMenu={(e) => e.preventDefault()}
       className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">

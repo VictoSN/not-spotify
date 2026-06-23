@@ -40,9 +40,11 @@ interface TrackRowMenuProps {
   currentPlaylistId?: string
   /** Always show the trigger button regardless of parent hover state. */
   alwaysVisible?: boolean
+  /** Forwarded to the underlying kebab button so parents can open the menu programmatically (e.g. on right-click). */
+  triggerRef?: React.Ref<HTMLButtonElement>
 }
 
-export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackRowMenuProps) {
+export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible, triggerRef }: TrackRowMenuProps) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -234,6 +236,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
       {({ close }) => (
         <>
           <MenuButton
+            ref={triggerRef}
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.

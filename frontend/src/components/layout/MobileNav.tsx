@@ -1,18 +1,17 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
-  HomeIcon,
   MagnifyingGlassIcon,
   QueueListIcon,
   RectangleStackIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 import {
-  HomeIcon as HomeSolid,
   MagnifyingGlassIcon as SearchSolid,
   RectangleStackIcon as LibSolid,
   UserCircleIcon as UserSolid,
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
+import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
 import { cn } from '@/utils/cn'
 import { useTranslation } from '@/i18n/useTranslation'
 
@@ -26,7 +25,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', labelKey: 'topbar.home', Icon: HomeIcon, IconActive: HomeSolid, exact: true },
+  { to: '/', labelKey: 'topbar.home', Icon: SpotifyHomeIcon, IconActive: SpotifyHomeSolidIcon, exact: true },
   { to: '/search', labelKey: 'topbar.search', Icon: MagnifyingGlassIcon, IconActive: SearchSolid },
   { to: '/library', labelKey: 'topbar.library', Icon: RectangleStackIcon, IconActive: LibSolid },
   { to: '/queue', labelKey: 'topbar.queue', Icon: QueueListIcon, IconActive: QueueListIcon },

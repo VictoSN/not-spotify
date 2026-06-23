@@ -18,6 +18,7 @@ import { ArtistCard } from '@/components/cards/ArtistCard'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
+import { ArtistBadgesDialog } from '@/components/common/ArtistBadgesDialog'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
@@ -36,6 +37,7 @@ export function ArtistProfilePage() {
   const [tourDates, setTourDates] = useState<TourDate[]>([])
   const [loading, setLoading] = useState(true)
   const [shareCopied, setShareCopied] = useState(false)
+  const [badgesOpen, setBadgesOpen] = useState(false)
   const playWithGate = usePlaybackGate()
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -83,6 +85,8 @@ export function ArtistProfilePage() {
 
   return (
     <div>
+      <ArtistBadgesDialog open={badgesOpen} onClose={() => setBadgesOpen(false)} />
+
       {/* Hero */}
       <div
         className={
@@ -115,19 +119,24 @@ export function ArtistProfilePage() {
             />
           )}
           <div className="min-w-0 flex-1">
-            <h1 className={`truncate font-black leading-none text-white drop-shadow-xl ${
+            <h1 className={`flex min-w-0 items-center gap-2 font-black leading-none text-white drop-shadow-xl sm:gap-3 ${
               artist.headerImageUrl
                 ? 'text-5xl sm:text-7xl lg:text-8xl'
                 : 'text-4xl sm:text-6xl lg:text-7xl'
             }`}>
-              {artist.name}
+              <span className="min-w-0 truncate">{artist.name}</span>
+              {artist.verified && (
+                <button
+                  type="button"
+                  onClick={() => setBadgesOpen(true)}
+                  className="flex shrink-0 items-center justify-center rounded-full text-accent transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-95"
+                  aria-label={t('artist.badges.open')}
+                  title={t('artist.verified')}
+                >
+                  <CheckBadgeIcon className="h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10" />
+                </button>
+              )}
             </h1>
-            {artist.verified && (
-              <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white drop-shadow-md">
-                <CheckBadgeIcon className="h-6 w-6 text-[#4cb3ff]" />
-                <span>Verified artist</span>
-              </div>
-            )}
             <p className="mt-4 text-sm font-semibold text-white drop-shadow-md">
               {t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
             </p>

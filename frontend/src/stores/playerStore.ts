@@ -114,6 +114,7 @@ interface PlayerState {
   sleepTimerEndsAt: number | null
   isNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
+  isNowPlayingExpanded: boolean
   isKaraokeOpen: boolean
   /** A free-tier audio ad currently playing (blocks transport until it ends). */
   currentAd: Ad | null
@@ -139,6 +140,7 @@ interface PlayerState {
   setSleepTimer: (minutes: number | null) => void
   toggleNowPlaying: () => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
+  setNowPlayingExpanded: (expanded: boolean) => void
   toggleKaraoke: () => void
   setKaraokeOpen: (open: boolean) => void
   tick: (currentTime: number, duration: number) => void
@@ -160,6 +162,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   sleepTimerEndsAt: null,
   isNowPlayingOpen: true,
   isNowPlayingCollapsed: false,
+  isNowPlayingExpanded: false,
   isKaraokeOpen: false,
   currentAd: null,
 
@@ -328,8 +331,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setSleepTimer: (minutes) =>
     set({ sleepTimerEndsAt: minutes == null ? null : Date.now() + minutes * 60_000 }),
 
-  toggleNowPlaying: () => set((s) => ({ isNowPlayingOpen: !s.isNowPlayingOpen, isNowPlayingCollapsed: false })),
-  setNowPlayingCollapsed: (collapsed) => set({ isNowPlayingCollapsed: collapsed }),
+  toggleNowPlaying: () => set((s) => ({
+    isNowPlayingOpen: !s.isNowPlayingOpen,
+    isNowPlayingCollapsed: false,
+    isNowPlayingExpanded: false,
+  })),
+  setNowPlayingCollapsed: (collapsed) => set({
+    isNowPlayingCollapsed: collapsed,
+    isNowPlayingExpanded: collapsed ? false : get().isNowPlayingExpanded,
+  }),
+  setNowPlayingExpanded: (expanded) => set({ isNowPlayingExpanded: expanded, isNowPlayingCollapsed: false }),
   toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
   setKaraokeOpen: (open) => set({ isKaraokeOpen: open }),
 
@@ -358,6 +369,7 @@ useAuthStore.subscribe((state) => {
       queueIndex: -1,
       history: [],
       isKaraokeOpen: false,
+      isNowPlayingExpanded: false,
       currentAd: null,
     })
   }

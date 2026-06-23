@@ -19,6 +19,7 @@ import {
   ArrowDownTrayIcon,
   ArrowDownCircleIcon,
   CheckCircleIcon,
+  IdentificationIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
@@ -42,6 +43,9 @@ interface TrackRowMenuProps {
   alwaysVisible?: boolean
   /** Forwarded to the underlying kebab button so parents can open the menu programmatically (e.g. on right-click). */
   triggerRef?: React.Ref<HTMLButtonElement>
+  triggerClassName?: string
+  triggerIconClassName?: string
+  onViewCredits?: () => void
   /** Hide the premium "Download" item — used where a dedicated download button already exists
    *  in the surrounding toolbar (e.g. the track detail page) so it doesn't appear twice. */
   hideDownload?: boolean
@@ -52,6 +56,9 @@ export function TrackRowMenu({
   currentPlaylistId,
   alwaysVisible,
   triggerRef,
+  triggerClassName,
+  triggerIconClassName,
+  onViewCredits,
   hideDownload,
 }: TrackRowMenuProps) {
   const navigate = useNavigate()
@@ -255,9 +262,9 @@ export function TrackRowMenu({
               setRemovePlaylistQuery('')
             }}
             aria-label="More options"
-            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
+            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
           >
-            <EllipsisHorizontalIcon className="w-4 h-4 text-secondary hover:text-primary" />
+            <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
           </MenuButton>
           <MenuItems
             anchor="bottom end"
@@ -267,7 +274,7 @@ export function TrackRowMenu({
             // Headless UI's `anchor` adds for edge-scrolling — without it the
             // anchored panel clips the "Add to playlist" flyout, which sits
             // outside the panel box (positioned `right-full`, to its left).
-            className="z-50 w-60 overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-sm focus:outline-none"
+            className="z-50 w-60 overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-sm font-bold focus:outline-none"
           >
             {/*
               "Add to playlist" — intentionally NOT a MenuItem. Headless UI's
@@ -577,6 +584,23 @@ export function TrackRowMenu({
                 Go to album
               </button>
             </MenuItem>
+
+            {onViewCredits && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    onViewCredits()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                >
+                  <IdentificationIcon className="w-4 h-4" />
+                  View credits
+                </button>
+              </MenuItem>
+            )}
 
             <div className="my-1 h-px bg-secondary/20" />
 

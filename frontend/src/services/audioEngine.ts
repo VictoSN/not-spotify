@@ -142,6 +142,10 @@ export function effectiveQuality(): string {
 }
 
 const clampVol = (v: number) => Math.max(0, Math.min(1, v))
+const volumeToGain = (volume: number) => {
+  const clamped = clampVol(volume)
+  return clamped === 0 ? 0 : Math.pow(clamped, 1.75)
+}
 
 class AudioEngine {
   private decks: [HTMLAudioElement, HTMLAudioElement]
@@ -492,7 +496,7 @@ class AudioEngine {
       newDeck.play().catch(() => usePlayerStore.getState().pause())
       this.runCrossfade(oldDeck, newDeck, this.crossfadeSec, () => {
         const { isMuted, volume } = usePlayerStore.getState()
-        return isMuted ? 0 : volume
+        return isMuted ? 0 : volumeToGain(volume)
       })
     } else {
       oldDeck.pause()
@@ -525,7 +529,7 @@ class AudioEngine {
 
     this.unsubscribe = usePlayerStore.subscribe((state) => {
       const { currentTrack, isPlaying, volume, isMuted, currentTime, duration, playbackRate } = state
-      const target = isMuted ? 0 : volume
+      const target = isMuted ? 0 : volumeToGain(volume)
 
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {

@@ -13,9 +13,10 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 interface AlbumCardProps {
   album: Album
   tracks?: Track[]
+  flush?: boolean
 }
 
-export function AlbumCard({ album, tracks }: AlbumCardProps) {
+export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -50,7 +51,7 @@ export function AlbumCard({ album, tracks }: AlbumCardProps) {
       onMouseEnter={() => getDominantColor(album.coverUrl).then((c) => c && setHoverColor(c))}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => e.preventDefault()}
-      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+      className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-0 hover:bg-transparent' : 'p-3 hover:bg-surface'}`}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />

@@ -5,6 +5,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 
 interface MixTileProps {
   mix: DailyMix
+  flush?: boolean
 }
 
 /**
@@ -12,7 +13,7 @@ interface MixTileProps {
  * genre-colored title band. Clicking play loads the whole mix into the queue.
  * Daily mixes are ephemeral (no dedicated page), so the tile isn't a link.
  */
-export function MixTile({ mix }: MixTileProps) {
+export function MixTile({ mix, flush = false }: MixTileProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const playWithGate = usePlaybackGate()
 
@@ -40,7 +41,7 @@ export function MixTile({ mix }: MixTileProps) {
 
   return (
     <div
-      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+      className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-0 hover:bg-transparent' : 'p-3 hover:bg-surface'}`}
       onContextMenu={(e) => e.preventDefault()}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">

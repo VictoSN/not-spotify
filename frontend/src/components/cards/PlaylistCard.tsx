@@ -13,9 +13,10 @@ import { PlaylistCover } from './PlaylistCover'
 
 interface PlaylistCardProps {
   playlist: Playlist
+  flush?: boolean
 }
 
-export function PlaylistCard({ playlist }: PlaylistCardProps) {
+export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -58,7 +59,7 @@ export function PlaylistCard({ playlist }: PlaylistCardProps) {
       }}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => e.preventDefault()}
-      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+      className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-0 hover:bg-transparent' : 'p-3 hover:bg-surface'}`}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />

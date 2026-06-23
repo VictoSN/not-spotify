@@ -1,8 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, Bars3Icon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowTopRightOnSquareIcon,
+  HeartIcon,
+  ChevronLeftIcon,
+  ChevronDoubleRightIcon,
+  Bars3Icon,
+  ArrowsPointingOutIcon,
+} from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
-import type { Artist } from '@/types/artist'
+import type { Artist, TourDate } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import type { MusicVideo } from '@/types/musicVideo'
@@ -25,6 +32,7 @@ const NP_KEY = 'ns-nowplaying-width'
 const NP_DEFAULT = 320
 const NP_MIN = 280
 const NP_MAX = 460
+const NP_WIDE_THRESHOLD = NP_MAX - 8
 
 function getInitialNpWidth(): number {
   if (typeof window === 'undefined') return NP_DEFAULT
@@ -45,6 +53,57 @@ function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEve
   )
 }
 
+function DiagonalExpandIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function DiagonalCollapseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
+      <path
+        d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
+        stroke="currentColor"
+        strokeWidth="1.45"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function SpotifyPanelCollapseIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
+      <path
+        d="M5.75 4.75h12.5v14.5H5.75z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.75 7.55v8.9"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+      <path
+        d="m11.05 8.65 4.35 3.35-4.35 3.35z"
+        fill="currentColor"
+      />
+    </svg>
+  )
+}
+
 function PanelSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
     <section className="px-4 pb-4">
@@ -58,6 +117,8 @@ function PanelSection({ title, subtitle, children }: { title: string; subtitle?:
 type ArtistData = { artistId: string; artist: Artist | null; related: Track[] }
 type AlbumData = { albumId: string; album: Album | null }
 type VideoData = { trackId: string; video: MusicVideo | null }
+type ArtistVideosData = { artistId: string; videos: MusicVideo[] }
+type TourData = { artistId: string; dates: TourDate[] }
 
 export function NowPlayingPanel() {
   const { t } = useTranslation()
@@ -67,6 +128,8 @@ export function NowPlayingPanel() {
   const reorderQueue = usePlayerStore((s) => s.reorderQueue)
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
   const setNowPlayingCollapsed = usePlayerStore((s) => s.setNowPlayingCollapsed)
+  const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
+  const setNowPlayingExpanded = usePlayerStore((s) => s.setNowPlayingExpanded)
   const isPremium = useAuthStore((s) => s.user?.capabilities?.unlimitedPlayback !== false)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -75,8 +138,13 @@ export function NowPlayingPanel() {
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
   const [videoData, setVideoData] = useState<VideoData | null>(null)
+  const [artistVideosData, setArtistVideosData] = useState<ArtistVideosData | null>(null)
+  const [tourData, setTourData] = useState<TourData | null>(null)
   const [videoHover, setVideoHover] = useState(false)
+  const [expandedScroll, setExpandedScroll] = useState(0)
+  const panelRef = useRef<HTMLElement | null>(null)
   const videoElRef = useRef<HTMLVideoElement | null>(null)
+  const creditsRef = useRef<HTMLDivElement | null>(null)
 
   // Resizable width — drag the left edge.
   const [width, setWidth] = useState(getInitialNpWidth)
@@ -86,6 +154,7 @@ export function NowPlayingPanel() {
     window.localStorage.setItem(NP_KEY, String(width))
   }, [width])
   const onDragStart = (e: React.MouseEvent) => {
+    if (isNowPlayingExpanded) return
     e.preventDefault()
     dragRef.current = { startX: e.clientX, startW: width }
     setDragging(true)
@@ -109,6 +178,16 @@ export function NowPlayingPanel() {
       window.removeEventListener('mouseup', onUp)
     }
   }, [dragging])
+  const isWide = isNowPlayingExpanded || width >= NP_WIDE_THRESHOLD
+  const toggleWide = () => {
+    if (isNowPlayingExpanded) {
+      setNowPlayingExpanded(false)
+      setWidth(NP_DEFAULT)
+    } else {
+      setNowPlayingExpanded(true)
+    }
+  }
+  const scrollToCredits = () => creditsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   const artistId = currentTrack?.artist.id
   const albumId = currentTrack?.album.id
@@ -124,6 +203,42 @@ export function NowPlayingPanel() {
       .catch(() => {
         if (!cancelled) setArtistData({ artistId, artist: null, related: [] })
       })
+    return () => {
+      cancelled = true
+    }
+  }, [artistId])
+
+  useEffect(() => {
+    if (!artistId) {
+      setArtistVideosData(null)
+      setTourData(null)
+      return
+    }
+    let cancelled = false
+
+    videoService
+      .list()
+      .then((videos) => {
+        if (!cancelled) {
+          setArtistVideosData({
+            artistId,
+            videos: videos.filter((item) => item.artist.id === artistId),
+          })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setArtistVideosData({ artistId, videos: [] })
+      })
+
+    artistService
+      .getTourDates(artistId)
+      .then((dates) => {
+        if (!cancelled) setTourData({ artistId, dates })
+      })
+      .catch(() => {
+        if (!cancelled) setTourData({ artistId, dates: [] })
+      })
+
     return () => {
       cancelled = true
     }
@@ -166,8 +281,18 @@ export function NowPlayingPanel() {
   const loadingArtist = !!artistId && !artistReady
   const album = albumData && albumData.albumId === albumId ? albumData.album : null
   const video = videoData && videoData.trackId === trackId ? videoData.video : null
+  const artistVideos = artistVideosData && artistVideosData.artistId === artistId ? artistVideosData.videos : []
+  const tourDates = tourData && tourData.artistId === artistId ? tourData.dates : []
   const heroColor = useDominantColor(currentTrack?.album.coverUrl)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
+
+  useEffect(() => {
+    if (!currentTrack && isNowPlayingExpanded) setNowPlayingExpanded(false)
+  }, [currentTrack, isNowPlayingExpanded, setNowPlayingExpanded])
+
+  useEffect(() => {
+    if (!isNowPlayingExpanded) setExpandedScroll(0)
+  }, [isNowPlayingExpanded])
 
   // Mirror audio play/pause onto the silent MV preview at the top of the panel.
   useEffect(() => {
@@ -177,9 +302,13 @@ export function NowPlayingPanel() {
     else el.pause()
   }, [isPlaying, video])
   const panelClass = cn(
-    'relative hidden shrink-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex',
-    !dragging && 'transition-[width,opacity,transform] duration-300 ease-out',
+    'relative hidden flex-col overflow-hidden rounded-lg bg-surface lg:flex',
+    isNowPlayingExpanded ? 'min-w-0' : 'shrink-0',
+    !dragging && 'transition-[width,flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
   )
+  const panelStyle: React.CSSProperties = isNowPlayingExpanded
+    ? { flexBasis: 0, flexGrow: 1, width: 'auto' }
+    : { flexBasis: width, flexGrow: 0, width }
 
   // Collapsed → thin sliver with an expand control (does not fully close).
   if (isNowPlayingCollapsed) {
@@ -206,17 +335,27 @@ export function NowPlayingPanel() {
 
   if (!currentTrack) {
     return (
-      <aside style={{ width }} className={panelClass}>
+      <aside ref={panelRef} style={panelStyle} className={panelClass}>
         <div className="flex items-center justify-between p-4">
           <h2 className="text-base font-bold text-primary">{t('np.title')}</h2>
-          <button
-            onClick={() => setNowPlayingCollapsed(true)}
-            className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label={t('np.collapse')}
-            title={t('np.collapse')}
-          >
-            <ChevronDoubleRightIcon className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleWide}
+              className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+              aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+              title={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+            >
+              {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+            </button>
+            <button
+              onClick={() => setNowPlayingCollapsed(true)}
+              className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+              aria-label={t('np.collapse')}
+              title={t('np.collapse')}
+            >
+              <SpotifyPanelCollapseIcon />
+            </button>
+          </div>
         </div>
         <p className="px-4 text-sm text-secondary">
           {t('np.empty')}
@@ -233,19 +372,299 @@ export function NowPlayingPanel() {
   const upNext = queueIndex >= 0 ? queue.slice(queueIndex + 1) : []
 
   const isFollowing = artist ? followedArtistIds.has(artist.id) : false
+  const artistAvatarUrl = artist?.imageUrl ?? currentTrack.artist.imageUrl
   const toggleFollow = () => {
     if (!artist) return
     if (isFollowing) unfollowArtist(artist.id)
     else followArtist(artist)
   }
 
+  if (isNowPlayingExpanded) {
+    const heroProgress = Math.min(expandedScroll / 420, 1)
+    const heroOpacity = Math.max(0, 1 - heroProgress * 1.35)
+    const expandedVideos = artistVideos.filter((item) => item.id !== video?.id).slice(0, 8)
+    const fallbackMediaTracks = expandedVideos.length === 0 ? relatedTracks.slice(0, 8) : []
+
+    return (
+      <aside ref={panelRef} style={panelStyle} className={panelClass}>
+        <div
+          onScroll={(event) => setExpandedScroll(event.currentTarget.scrollTop)}
+          className="relative flex-1 overflow-y-auto overflow-x-hidden bg-[#121212] [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]"
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-[78vh]"
+            style={{
+              background: heroColor
+                ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.9)} 0%, ${withAlpha(heroColor, 0.48)} 44%, rgba(18,18,18,0.96) 100%)`
+                : 'linear-gradient(180deg, #24364a 0%, #182432 48%, #121212 100%)',
+            }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-0 hidden aspect-square h-[60vh] -translate-x-1/2 bg-cover bg-center opacity-20 blur-[1px] lg:block"
+            style={{ backgroundImage: `url(${currentTrack.album.coverUrl})` }}
+          />
+
+          <div
+            className="sticky top-0 z-30 flex items-center justify-between gap-5 px-5 py-4 transition-colors duration-200"
+            style={{ backgroundColor: `rgba(18,18,18,${Math.min(0.82, heroProgress * 0.95)})` }}
+          >
+            <Link
+              to={`/album/${currentTrack.album.id}`}
+              className="min-w-0 truncate text-base font-bold text-primary hover:underline"
+            >
+              {currentTrack.album.title}
+            </Link>
+
+            <div className="flex shrink-0 items-center gap-3 text-secondary">
+              <Link
+                to={`/artist/${currentTrack.artist.id}`}
+                className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:text-primary active:scale-95"
+                aria-label={currentTrack.artist.name}
+              >
+                {artistAvatarUrl ? (
+                  <img src={artistAvatarUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[10px] font-bold text-primary">
+                    {currentTrack.artist.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{currentTrack.artist.name}</span>
+              </Link>
+              <span className="h-5 w-px bg-secondary/25" aria-hidden="true" />
+              <TrackRowMenu
+                track={currentTrack}
+                alwaysVisible
+                onViewCredits={scrollToCredits}
+                triggerClassName="flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95"
+                triggerIconClassName="h-6 w-6 stroke-[2.8] text-secondary hover:text-primary"
+              />
+              <button
+                onClick={toggleWide}
+                className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95"
+                aria-label={t('np.shrinkPanel')}
+                title={t('np.shrinkPanel')}
+              >
+                <DiagonalCollapseIcon />
+              </button>
+            </div>
+          </div>
+
+          <section className="relative z-10 flex min-h-[calc(100vh-13rem)] items-center justify-center px-8 pb-20 pt-6">
+            <div
+              className="w-[min(35rem,57vh,46vw)] max-w-full transition-[opacity,transform] duration-150 ease-out"
+              style={{
+                opacity: heroOpacity,
+                transform: `translateY(${-heroProgress * 110}px) scale(${1 - heroProgress * 0.08})`,
+              }}
+            >
+              <img
+                src={currentTrack.album.coverUrl}
+                alt={currentTrack.album.title}
+                className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+              />
+            </div>
+          </section>
+
+          <div className="relative z-20 -mt-12 pb-20">
+            <div className="mx-auto max-w-[72rem] px-6 xl:px-0">
+              {(expandedVideos.length > 0 || fallbackMediaTracks.length > 0) && (
+                <section>
+                  <h3 className="mb-4 text-2xl font-black text-primary">
+                    {expandedVideos.length > 0 ? t('np.relatedVideos') : t('np.recommended')}
+                  </h3>
+                  <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-3 scrollbar-hide">
+                    {expandedVideos.map((item) => (
+                      <Link key={item.id} to={`/videos/${item.id}`} className="group w-64 shrink-0">
+                        <div className="aspect-video overflow-hidden rounded bg-elevated">
+                          <img
+                            src={item.thumbnailUrl ?? currentTrack.album.coverUrl}
+                            alt={item.title}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <p className="mt-3 truncate text-sm font-bold text-primary group-hover:underline">{item.title}</p>
+                        <p className="mt-1 truncate text-sm text-secondary">{item.artist.name}</p>
+                      </Link>
+                    ))}
+                    {fallbackMediaTracks.map((track) => (
+                      <Link key={track.id} to={`/track/${track.id}`} className="group w-64 shrink-0">
+                        <div className="aspect-video overflow-hidden rounded bg-elevated">
+                          <img
+                            src={track.album.coverUrl}
+                            alt={track.title}
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <p className="mt-3 truncate text-sm font-bold text-primary group-hover:underline">{track.title}</p>
+                        <p className="mt-1 truncate text-sm text-secondary">{track.artist.name}</p>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <div className="mt-8 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,1fr)]">
+                <div className="space-y-4">
+                  {loadingArtist ? (
+                    <div className="flex min-h-80 items-center justify-center rounded-xl bg-elevated">
+                      <Spinner size="md" />
+                    </div>
+                  ) : artist && (
+                    <section className="relative min-h-[26rem] overflow-hidden rounded-xl bg-elevated">
+                      {(artist.headerImageUrl || artist.imageUrl) && (
+                        <img
+                          src={artist.headerImageUrl ?? artist.imageUrl ?? ''}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover opacity-75 grayscale"
+                        />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/10" />
+                      <div className="relative z-10 flex min-h-[26rem] flex-col justify-between p-6">
+                        <h3 className="text-2xl font-black text-white">{t('np.aboutArtist')}</h3>
+                        <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <Link to={`/artist/${artist.id}`} className="flex min-w-0 items-center gap-1.5 text-lg font-black text-white hover:underline">
+                                <span className="truncate">{artist.name}</span>
+                                {artist.verified && <CheckBadgeIcon className="h-4 w-4 shrink-0 text-accent" />}
+                              </Link>
+                              <p className="mt-2 text-sm font-bold text-white">
+                                {t('np.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={toggleFollow}
+                              className="shrink-0 rounded-full border border-white/80 px-4 py-2 text-xs font-black text-white transition-colors hover:border-white hover:bg-white/10"
+                            >
+                              {isFollowing ? t('np.following') : t('np.follow')}
+                            </button>
+                          </div>
+                          {artist.bio && (
+                            <p className="mt-5 line-clamp-3 max-w-2xl text-sm font-semibold leading-relaxed text-white">
+                              {artist.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </section>
+                  )}
+
+                  {upNext.length > 0 && (
+                    <section className="rounded-xl bg-elevated p-6">
+                      <div className="mb-5 flex items-center justify-between gap-4">
+                        <h3 className="text-2xl font-black text-primary">{t('np.nextInQueue')}</h3>
+                        <Link to="/queue" className="text-xs font-bold text-secondary transition-colors hover:text-primary">
+                          {t('np.openQueue')}
+                        </Link>
+                      </div>
+                      {upNext.slice(0, 3).map((track) => (
+                        <Link key={track.id} to={`/track/${track.id}`} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-white/5">
+                          <img src={track.album.coverUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-primary">{track.title}</p>
+                            <p className="mt-0.5 truncate text-sm text-secondary">{track.artist.name}</p>
+                          </div>
+                        </Link>
+                      ))}
+                    </section>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <section ref={creditsRef} className="scroll-mt-20 rounded-xl bg-elevated p-6">
+                    <div className="mb-6 flex items-center justify-between gap-4">
+                      <h3 className="text-2xl font-black text-primary">{t('np.credits')}</h3>
+                      <button className="text-xs font-bold text-secondary transition-colors hover:text-primary">
+                        {t('common.showAll')}
+                      </button>
+                    </div>
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="min-w-0">
+                          <Link to={`/artist/${currentTrack.artist.id}`} className="block truncate text-base font-bold text-primary hover:underline">
+                            {currentTrack.artist.name}
+                          </Link>
+                          <p className="mt-1 text-sm font-semibold text-secondary">{t('np.mainArtist')}</p>
+                        </div>
+                        {artist && (
+                          <button
+                            onClick={toggleFollow}
+                            className="shrink-0 rounded-full border border-secondary/60 px-4 py-2 text-xs font-black text-primary transition-colors hover:border-primary"
+                          >
+                            {isFollowing ? t('artist.following') : t('artist.follow')}
+                          </button>
+                        )}
+                      </div>
+                      {album?.label && (
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-bold text-primary">{album.label}</p>
+                            <p className="mt-1 text-sm font-semibold text-secondary">{t('np.label')}</p>
+                          </div>
+                          <ArrowTopRightOnSquareIcon className="mt-1 h-5 w-5 shrink-0 text-secondary" />
+                        </div>
+                      )}
+                      {album?.copyright && <p className="text-xs font-semibold leading-relaxed text-muted">{album.copyright}</p>}
+                    </div>
+                  </section>
+
+                  {tourDates.length > 0 && artist && (
+                    <section className="rounded-xl bg-elevated p-6">
+                      <div className="mb-5 flex items-center justify-between gap-4">
+                        <h3 className="text-2xl font-black text-primary">{t('detail.onTour')}</h3>
+                        <Link to={`/artist/${artist.id}/events`} className="text-xs font-bold text-secondary transition-colors hover:text-primary">
+                          {t('common.showAll')}
+                        </Link>
+                      </div>
+                      <div className="space-y-3">
+                        {tourDates.slice(0, 2).map((dateItem) => {
+                          const date = new Date(dateItem.eventDate)
+                          return (
+                            <Link
+                              key={dateItem.id}
+                              to={`/artist/${artist.id}/events/${dateItem.id}`}
+                              className="flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-white/5"
+                            >
+                              <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded bg-black text-center leading-none">
+                                <span className="text-[10px] font-black uppercase text-secondary">
+                                  {date.toLocaleDateString(undefined, { month: 'short' })}
+                                </span>
+                                <span className="mt-1 text-2xl font-black text-primary">{date.getDate()}</span>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-base font-bold text-primary">{dateItem.city}</p>
+                                <p className="mt-1 truncate text-sm font-semibold text-secondary">{artist.name}</p>
+                                <p className="mt-1 truncate text-sm font-semibold text-secondary">
+                                  {date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} · {dateItem.venue}
+                                </p>
+                              </div>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    )
+  }
+
   return (
-    <aside style={{ width }} className={panelClass}>
+    <aside ref={panelRef} style={panelStyle} className={panelClass}>
       <div className="relative flex-1 overflow-y-auto">
         {/* Dynamic colour hue from the cover */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-80 transition-opacity duration-700"
+          className={cn(
+            'pointer-events-none absolute transition-opacity duration-700',
+            isNowPlayingExpanded ? 'inset-0 opacity-80' : 'inset-x-0 top-0 h-80',
+          )}
           style={{
             background: heroColor
               ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.15)} 50%, transparent 100%)`
@@ -253,21 +672,73 @@ export function NowPlayingPanel() {
           }}
         />
         {/* Header */}
-        <div className="sticky top-0 z-20 flex items-center justify-between p-4 bg-surface/80 backdrop-blur">
-          <Link
-            to={`/album/${currentTrack.album.id}`}
-            className="text-base font-bold text-primary truncate hover:underline"
-          >
-            {currentTrack.album.title}
-          </Link>
-          <button
-            onClick={() => setNowPlayingCollapsed(true)}
-            className="ml-2 shrink-0 rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label={t('np.collapse')}
-            title={t('np.collapse')}
-          >
-            <ChevronDoubleRightIcon className="w-5 h-5" />
-          </button>
+        <div className={cn(
+          'group/np-header sticky top-0 z-20 flex items-center justify-between gap-2 p-4',
+          isNowPlayingExpanded ? 'bg-transparent' : 'bg-surface/80 backdrop-blur',
+        )}>
+          <div className="relative flex min-w-0 flex-1 items-center">
+            {!isNowPlayingExpanded && (
+              <button
+                onClick={() => setNowPlayingCollapsed(true)}
+                className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/np-header:translate-x-0 group-hover/np-header:opacity-100 group-focus-within/np-header:translate-x-0 group-focus-within/np-header:opacity-100 active:scale-95"
+                aria-label={t('np.collapse')}
+                title={t('np.collapse')}
+              >
+                <SpotifyPanelCollapseIcon />
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('np.collapse')}</span>
+              </button>
+            )}
+            <Link
+              to={`/album/${currentTrack.album.id}`}
+              className={cn(
+                'min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 hover:underline',
+                !isNowPlayingExpanded && 'group-hover/np-header:pl-7 group-focus-within/np-header:pl-7',
+              )}
+            >
+              {currentTrack.album.title}
+            </Link>
+          </div>
+          <div className={cn(
+            'flex shrink-0 items-center gap-2 transition-opacity duration-200',
+            isNowPlayingExpanded ? 'opacity-100' : 'opacity-0 group-hover/np-header:opacity-100 group-focus-within/np-header:opacity-100',
+          )}>
+            {isNowPlayingExpanded && (
+              <Link
+                to={`/artist/${currentTrack.artist.id}`}
+                className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
+                aria-label={currentTrack.artist.name}
+              >
+                {artistAvatarUrl ? (
+                  <img
+                    src={artistAvatarUrl}
+                    alt=""
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[10px] font-bold text-primary">
+                    {currentTrack.artist.name.charAt(0).toUpperCase()}
+                  </span>
+                )}
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{currentTrack.artist.name}</span>
+              </Link>
+            )}
+            {isNowPlayingExpanded && <span className="h-5 w-px bg-secondary/25" aria-hidden="true" />}
+            <TrackRowMenu
+              track={currentTrack}
+              alwaysVisible
+              onViewCredits={scrollToCredits}
+              triggerClassName="flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+              triggerIconClassName="h-5 w-5 stroke-[2.4] text-secondary hover:text-primary"
+            />
+            <button
+              onClick={toggleWide}
+              className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+              aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+              title={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+            >
+              {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+            </button>
+          </div>
         </div>
 
         {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
@@ -310,15 +781,25 @@ export function NowPlayingPanel() {
         )}
 
         {/* Cover (skipped when an MV is shown above) + title. */}
-        <div className="px-4 pb-4">
+        <div className={cn(
+          'px-4 pb-4',
+          isNowPlayingExpanded && 'flex min-h-[calc(100vh-13rem)] flex-col items-center justify-center px-8 pb-12 pt-16',
+        )}>
           {!video && (
             <img
               src={currentTrack.album.coverUrl}
               alt={currentTrack.album.title}
-              className="w-full aspect-square rounded-lg object-cover shadow-lg"
+              className={cn(
+                'aspect-square rounded-lg object-cover shadow-lg',
+                isNowPlayingExpanded ? 'w-[min(36rem,58vh,62vw)] max-w-full' : 'w-full',
+              )}
             />
           )}
-          <div className={cn('flex items-start justify-between gap-2', video ? 'mt-3' : 'mt-4')}>
+          <div className={cn(
+            'flex items-start justify-between gap-2',
+            video ? 'mt-3' : 'mt-4',
+            isNowPlayingExpanded && 'w-[min(36rem,58vh,62vw)] max-w-full',
+          )}>
             <div className="min-w-0">
               <Link
                 to={`/album/${currentTrack.album.id}`}
@@ -341,7 +822,6 @@ export function NowPlayingPanel() {
                   <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
                 )}
               </button>
-              <TrackRowMenu track={currentTrack} alwaysVisible />
             </div>
           </div>
         </div>
@@ -402,36 +882,38 @@ export function NowPlayingPanel() {
         )}
 
         {/* Credits */}
-        <PanelSection title={t('np.credits')}>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <div className="min-w-0">
-                <Link
-                  to={`/artist/${currentTrack.artist.id}`}
-                  className="block text-sm font-medium text-primary truncate hover:underline"
-                >
-                  {currentTrack.artist.name}
-                </Link>
-                <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
+        <div ref={creditsRef} className="scroll-mt-16">
+          <PanelSection title={t('np.credits')}>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <Link
+                    to={`/artist/${currentTrack.artist.id}`}
+                    className="block text-sm font-medium text-primary truncate hover:underline"
+                  >
+                    {currentTrack.artist.name}
+                  </Link>
+                  <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
+                </div>
+                {artist && (
+                  <button
+                    onClick={toggleFollow}
+                    className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
+                  >
+                    {isFollowing ? t('artist.following') : t('artist.follow')}
+                  </button>
+                )}
               </div>
-              {artist && (
-                <button
-                  onClick={toggleFollow}
-                  className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
-                >
-                  {isFollowing ? t('artist.following') : t('artist.follow')}
-                </button>
+              {album?.label && (
+                <div>
+                  <p className="text-sm font-medium text-primary truncate">{album.label}</p>
+                  <p className="text-xs text-secondary">{t('np.label')}</p>
+                </div>
               )}
+              {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
             </div>
-            {album?.label && (
-              <div>
-                <p className="text-sm font-medium text-primary truncate">{album.label}</p>
-                <p className="text-xs text-secondary">{t('np.label')}</p>
-              </div>
-            )}
-            {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
-          </div>
-        </PanelSection>
+          </PanelSection>
+        </div>
 
         {/* Next in queue */}
         <PanelSection title={t('np.nextInQueue')}>
@@ -481,7 +963,7 @@ export function NowPlayingPanel() {
           )}
         </PanelSection>
       </div>
-      <NowPlayingDragHandle onMouseDown={onDragStart} />
+      {!isNowPlayingExpanded && <NowPlayingDragHandle onMouseDown={onDragStart} />}
     </aside>
   )
 }

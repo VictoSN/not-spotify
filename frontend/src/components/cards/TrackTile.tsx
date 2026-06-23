@@ -9,10 +9,11 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 interface TrackTileProps {
   track: Track
   queue?: Track[]
+  flush?: boolean
 }
 
 /** Spotify-style square tile: cover with a rising hover play button + title/artist. */
-export function TrackTile({ track, queue }: TrackTileProps) {
+export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
@@ -36,7 +37,7 @@ export function TrackTile({ track, queue }: TrackTileProps) {
       onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => c && setHoverColor(c))}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => e.preventDefault()}
-      className="group flex-shrink-0 w-44 sm:w-48 p-3 rounded-lg hover:bg-surface transition-colors"
+      className={`group flex-shrink-0 w-44 sm:w-48 rounded-lg transition-colors ${flush ? 'p-0 hover:bg-transparent' : 'p-3 hover:bg-surface'}`}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <img src={track.album.coverUrl} alt={track.title} className="w-full h-full object-cover" />

@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import {
   MagnifyingGlassIcon,
-  HomeIcon,
   SunIcon,
   MoonIcon,
   ArrowRightOnRectangleIcon,
@@ -20,7 +19,7 @@ import {
   MicrophoneIcon,
 } from '@heroicons/react/24/outline'
 import {
-  HomeIcon as HomeSolid,
+  CheckBadgeIcon,
   UserGroupIcon as UserGroupSolid,
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -34,6 +33,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -308,7 +308,12 @@ export function TopBar() {
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-primary">{artist.name}</span>
+                <span className="flex min-w-0 items-center gap-1 text-sm font-bold text-primary">
+                  <span className="truncate">{artist.name}</span>
+                  {artist.verified && (
+                    <CheckBadgeIcon className="h-4 w-4 shrink-0 text-accent" aria-label={t('artist.verified')} />
+                  )}
+                </span>
                 <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.artist')}</span>
               </span>
             </button>
@@ -387,11 +392,16 @@ export function TopBar() {
         <div className="hidden md:flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
           <button
             onClick={() => navigate('/')}
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
+            className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
             aria-label={t('topbar.home')}
             aria-current={isHome ? 'page' : undefined}
           >
-            {isHome ? <HomeSolid className="h-6 w-6 text-primary" /> : <HomeIcon className="h-6 w-6 text-secondary" />}
+            {isHome ? (
+              <SpotifyHomeSolidIcon className="h-6 w-6 text-primary" />
+            ) : (
+              <SpotifyHomeIcon className="h-6 w-6 text-secondary" />
+            )}
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.home')}</span>
           </button>
 
           <div ref={searchContainerRef} className="relative w-full">
@@ -411,22 +421,22 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
+                className="spotify-tooltip-anchor absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
                 aria-label={t('topbar.clearSearch')}
-                title={t('topbar.clearSearch')}
               >
                 <XMarkIcon className="h-4 w-4" />
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.clearSearchField')}</span>
               </button>
             )}
             <div className="pointer-events-none absolute right-14 top-1/2 h-6 w-px -translate-y-1/2 bg-secondary/25" />
             <button
               type="button"
               onClick={handleBrowseClick}
-              className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+              className="spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
               aria-label={t('topbar.browseAll')}
-              title={t('topbar.browseAll')}
             >
               <BrowseTrayIcon />
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
             </button>
             {searchPanel}
           </div>
@@ -454,7 +464,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-4 md:px-4 relative">
+    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
@@ -464,11 +474,16 @@ export function TopBar() {
       <div className="absolute left-1/2 top-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 lg:flex">
         <button
           onClick={() => navigate('/')}
-          className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center transition-all"
+          className="spotify-tooltip-anchor relative flex h-12 min-h-12 w-12 min-w-12 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
           aria-label={t('topbar.home')}
           aria-current={isHome ? 'page' : undefined}
         >
-          {isHome ? <HomeSolid className="w-6 h-6 text-primary" /> : <HomeIcon className="w-6 h-6 text-secondary" />}
+          {isHome ? (
+            <SpotifyHomeSolidIcon className="h-6 w-6 text-primary" />
+          ) : (
+            <SpotifyHomeIcon className="h-6 w-6 text-secondary" />
+          )}
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.home')}</span>
         </button>
 
         <div ref={searchContainerRef} className="relative w-full max-w-md">
@@ -488,22 +503,22 @@ export function TopBar() {
             <button
               type="button"
               onClick={handleClearSearch}
-              className="absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
+              className="spotify-tooltip-anchor absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
               aria-label={t('topbar.clearSearch')}
-              title={t('topbar.clearSearch')}
             >
               <XMarkIcon className="h-4 w-4" />
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.clearSearchField')}</span>
             </button>
           )}
           <div className="pointer-events-none absolute right-14 top-1/2 h-6 w-px -translate-y-1/2 bg-secondary/25" />
           <button
             type="button"
             onClick={handleBrowseClick}
-            className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+            className="spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
             aria-label={t('topbar.browseAll')}
-            title={t('topbar.browseAll')}
           >
             <BrowseTrayIcon />
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
           </button>
           {searchPanel}
         </div>
@@ -547,7 +562,7 @@ export function TopBar() {
         aria-label={socialBadge > 0 ? `Social (${socialBadge} updates)` : 'Social'}
         aria-pressed={socialPanelOpen}
         className={cn(
-          'spotify-tooltip-anchor relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+          'spotify-tooltip-anchor relative flex h-10 w-8 shrink-0 items-center justify-center rounded-full transition-all hover:scale-105 hover:text-primary active:scale-95',
           socialPanelOpen ? 'text-accent' : 'text-secondary'
         )}
       >
@@ -574,11 +589,10 @@ export function TopBar() {
             setShowMenu((v) => !v)
             setSocialPanelOpen(false)
           }}
-          className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-2 md:pr-3 py-1 transition-colors"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
           aria-label={t('topbar.userMenu')}
         >
           <Avatar src={user?.avatarUrl} alt={user?.name ?? t('topbar.user')} size="sm" round />
-          <span className="hidden sm:block text-sm font-semibold text-primary">{user?.name}</span>
         </button>
 
         {showMenu && (

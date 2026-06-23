@@ -71,6 +71,10 @@ interface LibItem {
   to: string
 }
 
+interface SidebarProps {
+  takeoverHidden?: boolean
+}
+
 function getInitialWidth(): number {
   if (typeof window === 'undefined') return DEFAULT_W
   const stored = Number(window.localStorage.getItem(STORAGE_KEY))
@@ -87,7 +91,7 @@ function getInitialCompactLibrary(): boolean {
   }
 }
 
-export function Sidebar() {
+export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const navigate = useNavigate()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
@@ -307,14 +311,15 @@ export function Sidebar() {
   }
 
   const frameStyle: React.CSSProperties = {
-    flexBasis: collapsed ? RAIL : width,
-    flexGrow: libraryExpanded ? 1 : 0,
+    flexBasis: takeoverHidden ? 0 : collapsed ? RAIL : width,
+    flexGrow: takeoverHidden ? 0 : libraryExpanded ? 1 : 0,
     flexShrink: 0,
   }
   const frameClass = cn(
     'group/sidebar relative min-w-0 rounded-lg bg-sidebar flex flex-col overflow-hidden select-none',
     // Animate width (rail/drag) but expand instantly — a growing grid reflows columns and looks glitchy.
-    !dragging && 'transition-[flex-basis] duration-300 ease-out',
+    !dragging && 'transition-[flex-basis,opacity,transform] duration-300 ease-out',
+    takeoverHidden ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100',
   )
 
   // ── Rail (collapsed) ────────────────────────────────────────────

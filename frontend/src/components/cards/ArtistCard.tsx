@@ -10,9 +10,10 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 
 interface ArtistCardProps {
   artist: Artist
+  flush?: boolean
 }
 
-export function ArtistCard({ artist }: ArtistCardProps) {
+export function ArtistCard({ artist, flush = false }: ArtistCardProps) {
   const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -39,9 +40,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
     <Link
       to={`/artist/${artist.id}`}
       onContextMenu={(e) => e.preventDefault()}
-      className="group flex-shrink-0 w-40 sm:w-44 text-center p-3 rounded-lg hover:bg-surface transition-colors"
+      className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-0 text-left hover:bg-transparent' : 'p-3 text-center hover:bg-surface'}`}
     >
-      <div className="relative mx-auto mb-3 aspect-square">
+      <div className={`relative mb-3 aspect-square ${flush ? '' : 'mx-auto'}`}>
         <div className="h-full w-full overflow-hidden rounded-full bg-elevated shadow-lg">
           {artist.imageUrl ? (
             <img

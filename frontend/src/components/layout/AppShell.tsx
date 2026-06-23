@@ -22,6 +22,7 @@ import { useJamSocket } from '@/hooks/useJamSocket'
 import { JamBar } from '@/components/jam/JamBar'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
+import { cn } from '@/utils/cn'
 
 export function AppShell() {
   const isMobile = useIsMobile()
@@ -29,6 +30,7 @@ export function AppShell() {
   const location = useLocation()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
+  const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
@@ -37,6 +39,7 @@ export function AppShell() {
   const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const karaokeVisible = isKaraokeOpen && !!currentTrack
+  const nowPlayingExpandedVisible = isNowPlayingExpanded && !socialPanelOpen && !isMobile && isNowPlayingOpen
   const prevAuth = useRef(isAuthenticated)
 
   // Real-time presence via WebSocket — instant online/offline updates.
@@ -84,12 +87,24 @@ export function AppShell() {
       <TopBar />
 
       {/* Middle row: floating cards on the base gutter */}
-      <div className="flex flex-1 gap-2 px-2 pb-2 min-h-0 overflow-hidden">
-        {!isMobile && <Sidebar />}
+      <div
+        className={cn(
+          'flex flex-1 px-2 pb-2 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
+          nowPlayingExpandedVisible ? 'gap-0' : 'gap-2',
+        )}
+      >
+        {!isMobile && <Sidebar takeoverHidden={nowPlayingExpandedVisible} />}
 
-        {/* The expanded library fills the middle (main hidden) but leaves the right panel in place */}
+        {/* Expanded library or expanded now-playing takes over the middle row. */}
         {!libraryExpanded && (
-          <main className="flex-1 min-w-0 rounded-lg bg-page overflow-hidden flex flex-col">
+          <main
+            className={cn(
+              'min-w-0 rounded-lg bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
+              nowPlayingExpandedVisible
+                ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
+                : 'flex-1 basis-0 translate-x-0 opacity-100',
+            )}
+          >
             {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
             <div className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}>
               <Outlet />

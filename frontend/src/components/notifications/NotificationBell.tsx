@@ -50,7 +50,7 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
         className={cn(
-          'spotify-tooltip-anchor relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
+          'spotify-tooltip-anchor relative flex h-10 w-8 items-center justify-center rounded-full transition-all hover:scale-105 hover:text-primary active:scale-95',
           open ? 'text-primary' : 'text-secondary',
         )}
       >

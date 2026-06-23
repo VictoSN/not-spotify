@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import type { Track } from '@/types/track'
 import { trackService } from '@/services/trackService'
 import { formatSeconds } from '@/utils/formatTime'
@@ -134,9 +135,10 @@ export function EmbedTrackPage() {
           href={`${window.location.origin}`}
           target="_top"
           rel="noopener"
-          className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 hover:text-neutral-300"
+          aria-label="Open app"
+          className="text-neutral-500 hover:text-neutral-300"
         >
-          ▶ not-spotify
+          <SpotifyMark className="h-4 w-4" />
         </a>
       </div>
 

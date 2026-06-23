@@ -1,10 +1,10 @@
 import { Outlet, Link } from 'react-router-dom'
 import {
-  MusicalNoteIcon,
   ArrowLeftIcon,
   SunIcon,
   MoonIcon,
 } from '@heroicons/react/24/outline'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -25,9 +25,8 @@ export function SettingsShell() {
   return (
     <div className="flex min-h-screen flex-col bg-page text-primary">
       <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-6 border-b border-elevated/40 bg-base/95 px-4 backdrop-blur sm:px-6">
-        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="not-spotify home">
-          <MusicalNoteIcon className="h-7 w-7 text-accent" />
-          <span className="hidden text-lg font-bold text-primary sm:block">not-spotify</span>
+        <Link to="/" className="flex shrink-0 items-center" aria-label="Home">
+          <SpotifyMark className="h-7 w-7" />
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm font-bold text-secondary md:flex">

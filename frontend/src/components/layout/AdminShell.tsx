@@ -16,6 +16,7 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/Avatar'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
 
@@ -216,13 +217,10 @@ function AdminSidebar({ onLogout }: { onLogout: () => void }) {
 function AdminBrand() {
   return (
     <Link to="/admin/dashboard" className="flex min-w-0 items-center gap-2" aria-label="Admin dashboard">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent">
-        <MusicalNoteIcon className="h-5 w-5" />
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent/15">
+        <SpotifyMark className="h-5 w-5" />
       </span>
-      <span className="min-w-0">
-        <span className="block truncate text-base font-black text-primary">not-spotify</span>
-        <span className="block text-xs font-bold uppercase tracking-[0.16em] text-accent">Admin</span>
-      </span>
+      <span className="block text-xs font-bold uppercase tracking-[0.16em] text-accent">Admin</span>
     </Link>
   )
 }

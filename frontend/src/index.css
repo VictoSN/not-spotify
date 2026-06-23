@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./assets/fonts/gotham.css";
+@import "./assets/fonts/circular.css";
 
 :root {
   --track-actions-width: 114px;
@@ -34,7 +36,19 @@
   --color-muted: var(--c-muted);
 
   /* Fonts */
-  --font-sans: "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Circular Std", "Gotham", "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/*
+ * Type scale nudged up ~1px so UI text matches Spotify's size at 100% zoom.
+ * Only font-size utilities grow (text-xs/sm/base/lg) — spacing & layout widths
+ * are untouched, so the UI proportions stay the same, just less tiny.
+ */
+@theme {
+  --text-xs: 0.8125rem;   /* 12px → 13px */
+  --text-sm: 0.9375rem;   /* 14px → 15px */
+  --text-base: 1.0625rem; /* 16px → 17px */
+  --text-lg: 1.1875rem;   /* 18px → 19px */
 }
 
 /* ── Dark theme (default) — Spotify green ─────────────────────── */
@@ -378,6 +392,22 @@ body,
   animation: mini-player-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* Lyrics (karaoke) swapping into the main card — fade + gentle rise */
+@keyframes karaoke-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-karaoke-swap-in {
+  animation: karaoke-swap-in 0.34s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .premium-page {
   background:
     radial-gradient(circle at 50% 3rem, rgba(30, 215, 96, 0.1), transparent 36rem),
@@ -561,6 +591,7 @@ html[data-theme="light"] .premium-hero {
   .animate-auth-art-in,
   .animate-auth-art-out,
   .animate-mini-player-in,
+  .animate-karaoke-swap-in,
   .library-search-field,
   .search-skeleton-shimmer,
   .premium-reveal,

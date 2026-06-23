@@ -4,9 +4,9 @@ import {
   ChatBubbleLeftRightIcon,
   PlusIcon,
   UserGroupIcon,
-  ChevronDoubleRightIcon,
 } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/Avatar'
+import { CollapseIcon } from '@/components/common/CollapseIcon'
 import { FriendPanel } from './FriendPanel'
 import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
@@ -31,10 +31,10 @@ function SocialDragHandle({ onMouseDown }: { onMouseDown: (event: React.MouseEve
   return (
     <div
       onMouseDown={onMouseDown}
-      className="group absolute left-0 top-0 z-20 hidden h-full w-2 cursor-col-resize justify-center lg:flex"
+      className="group absolute left-0 top-0 z-20 hidden h-full w-2 cursor-grab active:cursor-grabbing justify-center lg:flex"
       aria-hidden="true"
     >
-      <div className="h-full w-px bg-transparent transition-colors group-hover:bg-accent/50" />
+      <div className="h-full w-px bg-transparent transition-colors group-hover:bg-secondary/60" />
     </div>
   )
 }
@@ -232,7 +232,7 @@ export function SocialPanel() {
           aria-label="Close social panel"
           title="Close social panel"
         >
-          <ChevronDoubleRightIcon className="h-5 w-5" />
+          <CollapseIcon className="h-5 w-5" />
         </button>
       </div>
 

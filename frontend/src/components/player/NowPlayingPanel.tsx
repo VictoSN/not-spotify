@@ -9,6 +9,7 @@ import {
   ArrowsPointingOutIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
+import { CollapseIcon } from '@/components/common/CollapseIcon'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -45,10 +46,10 @@ function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEve
   return (
     <div
       onMouseDown={onMouseDown}
-      className="group absolute top-0 left-0 h-full w-2 cursor-col-resize z-20 flex justify-center"
+      className="group absolute top-0 left-0 h-full w-2 cursor-grab active:cursor-grabbing z-20 flex justify-center"
       aria-hidden="true"
     >
-      <div className="w-px h-full bg-transparent group-hover:bg-accent/50 transition-colors" />
+      <div className="w-px h-full bg-transparent group-hover:bg-secondary/60 transition-colors" />
     </div>
   )
 }
@@ -76,29 +77,6 @@ function DiagonalCollapseIcon() {
         strokeWidth="1.45"
         strokeLinecap="round"
         strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function SpotifyPanelCollapseIcon({ className = 'h-5 w-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="none">
-      <path
-        d="M5.75 4.75h12.5v14.5H5.75z"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.75 7.55v8.9"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-      />
-      <path
-        d="m11.05 8.65 4.35 3.35-4.35 3.35z"
-        fill="currentColor"
       />
     </svg>
   )
@@ -353,7 +331,7 @@ export function NowPlayingPanel() {
               aria-label={t('np.collapse')}
               title={t('np.collapse')}
             >
-              <SpotifyPanelCollapseIcon />
+              <CollapseIcon />
             </button>
           </div>
         </div>
@@ -684,7 +662,7 @@ export function NowPlayingPanel() {
                 aria-label={t('np.collapse')}
                 title={t('np.collapse')}
               >
-                <SpotifyPanelCollapseIcon />
+                <CollapseIcon />
                 <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('np.collapse')}</span>
               </button>
             )}

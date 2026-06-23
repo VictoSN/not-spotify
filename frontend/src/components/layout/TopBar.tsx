@@ -5,18 +5,10 @@ import {
   MagnifyingGlassIcon,
   SunIcon,
   MoonIcon,
-  ArrowRightOnRectangleIcon,
-  Cog6ToothIcon,
   MusicalNoteIcon,
-  UserIcon,
-  UserCircleIcon,
-  ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
-  ClockIcon,
   UserGroupIcon,
   XMarkIcon,
-  ChartBarIcon,
-  MicrophoneIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline'
 import {
   CheckBadgeIcon,
@@ -205,9 +197,11 @@ export function TopBar() {
     navigate(path)
   }
 
+  // Spotify-style account menu: text-only rows, with a trailing external-link
+  // arrow on the items that conceptually leave the app (Account/Premium/Install).
   const userMenuItemClass =
-    'flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-white/10'
-  const userMenuIconClass = 'h-4 w-4 text-secondary'
+    'flex w-full items-center justify-between gap-4 px-3 py-2.5 text-left text-sm font-normal text-primary transition-colors hover:bg-white/10'
+  const userMenuArrowClass = 'h-4 w-4 shrink-0 text-secondary'
   const suggestionsLoading =
     showSearchPanel &&
     trimmedSearchValue.length > 0 &&
@@ -383,7 +377,7 @@ export function TopBar() {
 
   if (!isAuthenticated) {
     return (
-      <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 border-b border-elevated/30 bg-base/90 px-4 backdrop-blur-xl md:h-16">
+      <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-16">
         <Link to="/" className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
@@ -405,7 +399,7 @@ export function TopBar() {
           </button>
 
           <div ref={searchContainerRef} className="relative w-full">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-6 w-6 -translate-y-1/2 text-secondary" />
             <input
               ref={searchInputRef}
               type="text"
@@ -415,7 +409,7 @@ export function TopBar() {
               onChange={handleSearch}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => setShowSearchPanel(true)}
-              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-20 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
+              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-9 pr-20 text-sm font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
             {searchValue && (
               <button
@@ -464,7 +458,7 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
+    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
@@ -487,7 +481,7 @@ export function TopBar() {
         </button>
 
         <div ref={searchContainerRef} className="relative w-full max-w-md">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 text-secondary" />
           <input
             ref={searchInputRef}
             type="text"
@@ -497,7 +491,7 @@ export function TopBar() {
             onChange={handleSearch}
             onKeyDown={handleSearchKeyDown}
             onFocus={() => setShowSearchPanel(true)}
-            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-10 pr-20 text-sm font-semibold text-primary transition-colors placeholder:font-semibold placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-9 pr-20 text-sm font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
           {searchValue && (
             <button
@@ -592,59 +586,41 @@ export function TopBar() {
           className="flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
           aria-label={t('topbar.userMenu')}
         >
-          <Avatar src={user?.avatarUrl} alt={user?.name ?? t('topbar.user')} size="sm" round />
+          <Avatar src={user?.avatarUrl} alt={user?.name ?? t('topbar.user')} size="sm" round className="!h-full !w-full text-sm" />
         </button>
 
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-1 shadow-xl">
+            <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-1 shadow-xl">
               <Link
                 to="/account"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <UserIcon className={userMenuIconClass} />
                 {t('topbar.account')}
+                <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
               <Link
                 to="/profile"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <UserCircleIcon className={userMenuIconClass} />
                 {t('topbar.profile')}
               </Link>
-              <Link
-                to="/settings"
-                onClick={() => setShowMenu(false)}
-                className={userMenuItemClass}
-              >
-                <Cog6ToothIcon className={userMenuIconClass} />
-                {t('topbar.settings')}
-              </Link>
-              {/* Theme toggle in mobile menu */}
-              <button
-                onClick={() => { toggleTheme(); setShowMenu(false) }}
-                className={cn(userMenuItemClass, 'md:hidden')}
-              >
-                {theme === 'dark' ? <SunIcon className={userMenuIconClass} /> : <MoonIcon className={userMenuIconClass} />}
-                {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
-              </button>
               <Link
                 to="/premium"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <ArrowDownTrayIcon className={userMenuIconClass} />
                 {t('topbar.premium')}
+                <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
               <Link
                 to="/history"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <ClockIcon className={userMenuIconClass} />
                 {t('topbar.listeningHistory')}
               </Link>
               <Link
@@ -652,7 +628,6 @@ export function TopBar() {
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <ChartBarIcon className={userMenuIconClass} />
                 {t('topbar.listeningStats')}
               </Link>
               <Link
@@ -660,7 +635,6 @@ export function TopBar() {
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <ArrowUpTrayIcon className={userMenuIconClass} />
                 {t('topbar.yourUploads')}
               </Link>
               <Link
@@ -668,10 +642,23 @@ export function TopBar() {
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                <MicrophoneIcon className={userMenuIconClass} />
                 {t('topbar.identifySong')}
               </Link>
               <InstallAppMenuItem className={userMenuItemClass} onSelect={() => setShowMenu(false)} />
+              <Link
+                to="/settings"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.settings')}
+              </Link>
+              {/* Theme toggle in mobile menu */}
+              <button
+                onClick={() => { toggleTheme(); setShowMenu(false) }}
+                className={cn(userMenuItemClass, 'md:hidden')}
+              >
+                {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
+              </button>
 
               <div className="my-1 border-t border-secondary/10" />
 
@@ -681,7 +668,6 @@ export function TopBar() {
                   onClick={() => setShowMenu(false)}
                   className={userMenuItemClass}
                 >
-                  <MusicalNoteIcon className={userMenuIconClass} />
                   {t('topbar.artistDashboard')}
                 </Link>
               )}
@@ -694,7 +680,6 @@ export function TopBar() {
                 }}
                 className={userMenuItemClass}
               >
-                <ArrowRightOnRectangleIcon className={userMenuIconClass} />
                 {t('topbar.logOut')}
               </button>
             </div>

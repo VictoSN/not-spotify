@@ -22,7 +22,7 @@ export function KaraokeView() {
 
   return (
     <div
-      className="relative h-full overflow-hidden"
+      className="animate-karaoke-swap-in relative h-full overflow-hidden"
       style={{
         background: heroColor
           ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.95)} 0%, ${withAlpha(heroColor, 0.55)} 100%)`

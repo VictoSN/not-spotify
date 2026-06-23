@@ -1,0 +1,52 @@
+/*
+ * Circular Std — Spotify's actual brand typeface (Lineto, licensed).
+ * Weights supplied: Book 400, Medium 500, Bold 700, Black 900 (normal style).
+ * 600 (semibold) is mapped to Medium so font-semibold doesn't snap up to Bold
+ * and collapse the hierarchy — same fix used for Gotham. Italics fall back to
+ * the nearest face (no italic files provided). Drop in italic .ttf if needed.
+ */
+
+/* 400 — Book (regular) */
+@font-face {
+  font-family: "Circular Std";
+  src: url("./circular/CircularStd-Book.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 500 — Medium */
+@font-face {
+  font-family: "Circular Std";
+  src: url("./circular/CircularStd-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 600 — Semibold (mapped to Medium; Circular ships no semibold here) */
+@font-face {
+  font-family: "Circular Std";
+  src: url("./circular/CircularStd-Medium.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 700 — Bold */
+@font-face {
+  font-family: "Circular Std";
+  src: url("./circular/CircularStd-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* 900 — Black */
+@font-face {
+  font-family: "Circular Std";
+  src: url("./circular/CircularStd-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}

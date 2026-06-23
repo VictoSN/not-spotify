@@ -341,8 +341,16 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     isNowPlayingExpanded: collapsed ? false : get().isNowPlayingExpanded,
   }),
   setNowPlayingExpanded: (expanded) => set({ isNowPlayingExpanded: expanded, isNowPlayingCollapsed: false }),
-  toggleKaraoke: () => set((s) => ({ isKaraokeOpen: !s.isKaraokeOpen })),
-  setKaraokeOpen: (open) => set({ isKaraokeOpen: open }),
+  toggleKaraoke: () => set((s) => {
+    const isKaraokeOpen = !s.isKaraokeOpen
+    // Lyrics render in the main card; if Now Playing is expanded it covers that
+    // card, so minimize it on open and let the lyrics swap into the middle.
+    return { isKaraokeOpen, isNowPlayingExpanded: isKaraokeOpen ? false : s.isNowPlayingExpanded }
+  }),
+  setKaraokeOpen: (open) => set((s) => ({
+    isKaraokeOpen: open,
+    isNowPlayingExpanded: open ? false : s.isNowPlayingExpanded,
+  })),
 
   tick: (currentTime, duration) => {
     const { sleepTimerEndsAt } = get()

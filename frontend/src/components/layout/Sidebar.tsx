@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { CollapseIcon } from '@/components/common/CollapseIcon'
 import {
-  ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -350,10 +350,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
-              <ChevronDoubleLeftIcon className="w-5 h-5" />
+              <CollapseIcon className="w-5 h-5 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
-            <span className="truncate pl-0 text-sm font-bold leading-5 text-primary transition-all duration-200 group-hover/library-header:pl-7">
+            <span className="truncate pl-0 text-sm font-bold leading-5 tracking-[-0.07em] text-primary transition-all duration-200 group-hover/library-header:pl-7">
               {t('sidebar.title')}
             </span>
           </div>
@@ -463,13 +463,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
-              <ChevronDoubleLeftIcon className="w-5 h-5" />
+              <CollapseIcon className="w-5 h-5 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
           )}
           <span
             className={cn(
-              'truncate pl-0 text-sm font-bold leading-5 text-primary transition-all duration-200',
+              'truncate pl-0 text-sm font-bold leading-5 tracking-[-0.07em] text-primary transition-all duration-200',
               !libraryExpanded && 'group-hover/library-header:pl-7',
             )}
           >
@@ -537,10 +537,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         {filter !== 'all' && (
           <button
             onClick={() => setFilter('all')}
-            className="w-7 h-7 rounded-full bg-elevated hover:bg-elevated/70 text-primary flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all"
+            className="w-6 h-6 rounded-full bg-elevated hover:bg-elevated/70 text-primary flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all"
             aria-label={t('sidebar.clearFilter')}
           >
-            <XMarkIcon className="w-4 h-4" />
+            <XMarkIcon className="w-3.5 h-3.5" />
           </button>
         )}
         {chips
@@ -550,10 +550,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               key={c.key}
               onClick={() => setFilter(filter === c.key ? 'all' : c.key)}
               className={cn(
-                'px-3 py-1.5 rounded-full text-sm font-medium transition-all active:scale-95',
+                'px-2.5 py-1 rounded-full text-xs font-medium transition-all active:scale-95',
                 filter === c.key
                   ? 'bg-primary text-page'
-                  : 'bg-elevated text-secondary hover:text-primary hover:bg-elevated/70',
+                  : 'bg-elevated text-primary hover:bg-elevated/70',
               )}
             >
               {c.label}
@@ -1263,10 +1263,10 @@ function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => voi
   return (
     <div
       onMouseDown={onMouseDown}
-      className="group absolute top-0 right-0 h-full w-2 cursor-col-resize z-20 flex justify-center"
+      className="group absolute top-0 right-0 h-full w-2 cursor-grab active:cursor-grabbing z-20 flex justify-center"
       aria-hidden="true"
     >
-      <div className="w-px h-full bg-transparent group-hover:bg-accent/50 transition-colors" />
+      <div className="w-px h-full bg-transparent group-hover:bg-secondary/60 transition-colors" />
     </div>
   )
 }

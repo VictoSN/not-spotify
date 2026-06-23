@@ -1,0 +1,141 @@
+/*
+ * Gotham — Spotify's classic brand typeface (per user-supplied font set).
+ * One family, weights 100–900, normal + italic. font-display: swap so text
+ * paints in the fallback immediately and swaps when Gotham loads.
+ *
+ * Note: the .otf weights (Thin/XLight/Black/Ultra) came as small files that may
+ * be trial/limited character sets — they're wired here for completeness.
+ */
+
+/* 100 — Thin */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-ThinItalic.otf") format("opentype");
+  font-weight: 100;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 200 — Extra Light */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-XLight.otf") format("opentype");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-XLightItalic.otf") format("opentype");
+  font-weight: 200;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 300 — Light */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamLight.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamLightItalic.ttf") format("truetype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 400 — Book (Gotham's regular weight) */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamBook.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamBookItalic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 500 — Medium */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamMedium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamMediumItalic.ttf") format("truetype");
+  font-weight: 500;
+  font-style: italic;
+  font-display: swap;
+}
+
+/*
+ * 600 — Semibold. Gotham ships no semibold, and the UI uses font-semibold (600)
+ * heavily (card titles, nav). Without this, 600 snaps up to Bold 700 and the
+ * semibold/bold hierarchy collapses. Map it to Medium so it reads lighter than
+ * the 700 headings.
+ */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamMedium.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamMediumItalic.ttf") format("truetype");
+  font-weight: 600;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 700 — Bold */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamBold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/GothamBoldItalic.ttf") format("truetype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* 900 — Black (Ultra used for the heavy italic) */
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Gotham";
+  src: url("./gotham/Gotham-UltraItalic.otf") format("opentype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}

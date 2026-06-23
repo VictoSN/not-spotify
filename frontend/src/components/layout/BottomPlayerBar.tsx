@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react'
 import { EllipsisHorizontalIcon, QueueListIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
-import { GiMicrophone } from 'react-icons/gi'
+import { MicVocal } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
@@ -104,7 +104,7 @@ export function BottomPlayerBar() {
             aria-pressed={isKaraokeOpen}
             title={t('player.lyrics')}
           >
-            <GiMicrophone className="h-5 w-5" />
+            <MicVocal className="h-5 w-5" strokeWidth={1.8} />
           </button>
         )}
         {currentTrack && (

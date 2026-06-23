@@ -26,6 +26,10 @@ export const friendService = {
     await api.delete(`/friends/${userId}`)
   },
 
+  async inviteToJam(userId: string): Promise<void> {
+    await api.post('/friends/jam-invites', { userId })
+  },
+
   async getBlend(userId: string, limit = 30): Promise<Track[]> {
     const res = await api.get<Track[]>(`/friends/${userId}/blend`, { params: { limit } })
     return res.data

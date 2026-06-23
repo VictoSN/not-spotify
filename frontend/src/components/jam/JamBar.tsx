@@ -1,7 +1,7 @@
-import { UserGroupIcon, XMarkIcon, LinkIcon } from '@heroicons/react/24/outline'
+import { UserGroupIcon, XMarkIcon, UserPlusIcon } from '@heroicons/react/24/outline'
 import { useJamStore } from '@/stores/jamStore'
-import { shareLink } from '@/utils/share'
 import { useState } from 'react'
+import { JamInviteModal } from './JamInviteModal'
 
 /**
  * Slim banner shown while a listen-along ("Jam") is active — hosting or
@@ -13,7 +13,7 @@ export function JamBar() {
   const hostName = useJamStore((s) => s.hostName)
   const participants = useJamStore((s) => s.participants)
   const stopJam = useJamStore((s) => s.stopJam)
-  const [copied, setCopied] = useState(false)
+  const [inviteOpen, setInviteOpen] = useState(false)
 
   if (role === 'off') return null
 
@@ -25,14 +25,11 @@ export function JamBar() {
           <span className="font-semibold text-primary">Jamming</span>
           <span className="text-secondary">· {participants} listening</span>
           <button
-            onClick={async () => {
-              const r = await shareLink(`/user/${hostId}`, { title: 'Join my Jam on not-spotify' })
-              if (r === 'copied') { setCopied(true); setTimeout(() => setCopied(false), 1500) }
-            }}
+            onClick={() => setInviteOpen(true)}
             className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline"
           >
-            <LinkIcon className="h-3.5 w-3.5" />
-            {copied ? 'Invite copied' : 'Copy invite'}
+            <UserPlusIcon className="h-3.5 w-3.5" />
+            Invite friends
           </button>
         </>
       ) : (
@@ -49,6 +46,9 @@ export function JamBar() {
         <XMarkIcon className="h-3.5 w-3.5" />
         {role === 'host' ? 'End' : 'Leave'}
       </button>
+      {role === 'host' && hostId && hostName && inviteOpen && (
+        <JamInviteModal hostId={hostId} hostName={hostName} onClose={() => setInviteOpen(false)} />
+      )}
     </div>
   )
 }

@@ -82,6 +82,7 @@ public record FollowUserDto(
 
 public record SendFriendRequestDto(Guid UserId);
 public record RespondToRequestDto(string Action); // "accept" | "decline"
+public record SendJamInviteDto(Guid UserId);
 
 /// <summary>An in-app notification (bell menu).</summary>
 public record NotificationDto(

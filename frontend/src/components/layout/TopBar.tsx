@@ -13,17 +13,14 @@ import {
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
   ClockIcon,
-  UsersIcon,
-  ChatBubbleLeftRightIcon,
+  UserGroupIcon,
   XMarkIcon,
-  RssIcon,
   ChartBarIcon,
   MicrophoneIcon,
 } from '@heroicons/react/24/outline'
 import {
-  ChatBubbleLeftRightIcon as ChatBubbleLeftRightSolid,
   HomeIcon as HomeSolid,
-  UsersIcon as UsersSolid,
+  UserGroupIcon as UserGroupSolid,
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
 import { useThemeStore } from '@/stores/themeStore'
@@ -33,7 +30,6 @@ import { useChatStore } from '@/stores/chatStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
-import { FriendPanel } from '@/components/friends/FriendPanel'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
@@ -59,17 +55,17 @@ export function TopBar() {
   const { theme, toggleTheme } = useThemeStore()
 
   const isHome = location.pathname === '/'
-  const isMessagesActive = location.pathname.startsWith('/messages')
   const currentQuery = searchParams.get('q') ?? ''
   const isArtist = user?.roles?.includes('Artist') ?? false
 
   const [showMenu, setShowMenu] = useState(false)
-  const [showFriends, setShowFriends] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
   const pendingCount = useFriendStore((s) => s.requests.length)
-  const friendActivityOpen = useUiStore((s) => s.friendActivityOpen)
-  const toggleFriendActivity = useUiStore((s) => s.toggleFriendActivity)
+  const socialPanelOpen = useUiStore((s) => s.socialPanelOpen)
+  const toggleSocialPanel = useUiStore((s) => s.toggleSocialPanel)
+  const setSocialPanelOpen = useUiStore((s) => s.setSocialPanelOpen)
   const chatUnread = useChatStore((s) => s.conversations.reduce((sum, c) => sum + c.unreadCount, 0))
+  const socialBadge = chatUnread + pendingCount
   const fetchConversations = useChatStore((s) => s.fetchConversations)
 
   // Load conversation summaries once after login so the unread badge is
@@ -545,18 +541,22 @@ export function TopBar() {
 
       {/* Messages — red badge shows unread count */}
       <button
-        onClick={() => navigate(isMessagesActive ? '/' : '/messages')}
-        aria-label={chatUnread > 0 ? t('topbar.messagesUnread', { n: chatUnread }) : t('topbar.messages')}
+        onClick={() => {
+          toggleSocialPanel()
+          setShowMenu(false)
+        }}
+        aria-label={socialBadge > 0 ? `Social (${socialBadge} updates)` : 'Social'}
+        aria-pressed={socialPanelOpen}
         className={cn(
           'spotify-tooltip-anchor relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
-          isMessagesActive ? 'text-primary' : 'text-secondary'
+          socialPanelOpen ? 'text-accent' : 'text-secondary'
         )}
       >
-        {isMessagesActive ? <ChatBubbleLeftRightSolid className="h-5 w-5" /> : <ChatBubbleLeftRightIcon className="h-5 w-5" />}
-        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.messages')}</span>
-        {chatUnread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white">
-            {chatUnread > 9 ? '9+' : chatUnread}
+        {socialPanelOpen ? <UserGroupSolid className="h-5 w-5" /> : <UserGroupIcon className="h-5 w-5" />}
+        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Social</span>
+        {socialBadge > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-white">
+            {socialBadge > 9 ? '9+' : socialBadge}
           </span>
         )}
       </button>
@@ -565,58 +565,15 @@ export function TopBar() {
       <NotificationBell />
 
       {/* Friend activity feed toggle — desktop only */}
-      <button
-        onClick={() => {
-          toggleFriendActivity()
-          setShowFriends(false)
-          setShowMenu(false)
-        }}
-        aria-label={t('topbar.friendActivity')}
-        aria-pressed={friendActivityOpen}
-        className={cn(
-          'spotify-tooltip-anchor relative hidden h-10 w-10 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary md:flex',
-          friendActivityOpen ? 'text-accent' : 'text-secondary'
-        )}
-      >
-        <RssIcon className="h-5 w-5" />
-        <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.friendActivity')}</span>
-      </button>
 
       {/* Friends panel toggle — desktop only */}
-      <div className="relative hidden md:block">
-        <button
-          onClick={() => {
-            setShowFriends((v) => !v)
-            setShowMenu(false)
-          }}
-          aria-label={t('topbar.friends')}
-          className={cn(
-            'spotify-tooltip-anchor relative flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary',
-            showFriends ? 'text-primary' : 'text-secondary'
-          )}
-        >
-          {showFriends ? <UsersSolid className="h-5 w-5" /> : <UsersIcon className="h-5 w-5" />}
-          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.friends')}</span>
-          {pendingCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center leading-none">
-              {pendingCount > 9 ? '9+' : pendingCount}
-            </span>
-          )}
-        </button>
-        {showFriends && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowFriends(false)} />
-            <FriendPanel onClose={() => setShowFriends(false)} />
-          </>
-        )}
-      </div>
 
       {/* Right: user menu */}
       <div className="relative">
         <button
           onClick={() => {
             setShowMenu((v) => !v)
-            setShowFriends(false)
+            setSocialPanelOpen(false)
           }}
           className="flex items-center gap-2 bg-elevated hover:bg-elevated/80 rounded-full pl-1 pr-2 md:pr-3 py-1 transition-colors"
           aria-label={t('topbar.userMenu')}

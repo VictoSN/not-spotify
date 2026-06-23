@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BellIcon, UserPlusIcon, CheckCircleIcon, XCircleIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { BellIcon, UserPlusIcon, CheckCircleIcon, XCircleIcon, MusicalNoteIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { BellIcon as BellSolid } from '@heroicons/react/24/solid'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { useChatStore } from '@/stores/chatStore'
 import { formatRelativeTime } from '@/utils/formatRelativeTime'
 import type { AppNotification } from '@/types/notification'
 import { cn } from '@/utils/cn'
+
+const JAM_USER_LINK = /^\/user\/([0-9a-f-]{36})/i
 
 function NotificationIcon({ type }: { type: string }) {
   const cls = 'h-4 w-4'
@@ -15,6 +18,7 @@ function NotificationIcon({ type }: { type: string }) {
     case 'approval': return <CheckCircleIcon className={cls} />
     case 'rejection': return <XCircleIcon className={cls} />
     case 'new_release': return <MusicalNoteIcon className={cls} />
+    case 'jam_invite': return <UserGroupIcon className={cls} />
     default: return <MusicalNoteIcon className={cls} />
   }
 }
@@ -30,6 +34,12 @@ export function NotificationBell() {
 
   const handleClick = (n: AppNotification) => {
     void markRead(n.id)
+    // Dual-clear: tapping a jam invite also clears the matching chat unread,
+    // since the host's chat card carries the same invite.
+    if (n.type === 'jam_invite' && n.linkUrl) {
+      const hostId = JAM_USER_LINK.exec(n.linkUrl)?.[1]
+      if (hostId) void useChatStore.getState().markRead(hostId)
+    }
     setOpen(false)
     if (n.linkUrl) navigate(n.linkUrl)
   }

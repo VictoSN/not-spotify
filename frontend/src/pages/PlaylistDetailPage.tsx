@@ -19,6 +19,7 @@ import {
   ArrowUpTrayIcon,
   ShareIcon,
   SparklesIcon,
+  PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playlist'
@@ -42,6 +43,7 @@ import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
+import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
@@ -109,6 +111,7 @@ export function PlaylistDetailPage() {
   const [downloading, setDownloading] = useState(false)
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
   const [shareCopied, setShareCopied] = useState(false)
+  const [shareToChatOpen, setShareToChatOpen] = useState(false)
   const playWithGate = usePlaybackGate()
   const isMobile = useIsMobile()
   const { isAuthenticated, user } = useAuthStore()
@@ -576,6 +579,18 @@ export function PlaylistDetailPage() {
           </button>
         )}
 
+        {/* Send to a friend — opens chat-share modal */}
+        {isAuthenticated && (
+          <button
+            onClick={() => setShareToChatOpen(true)}
+            title="Send this playlist to a friend"
+            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+          >
+            <PaperAirplaneIcon className="w-5 h-5" />
+            Send to friend
+          </button>
+        )}
+
         {/* Share — free for everyone */}
         <button
           onClick={async () => {
@@ -778,6 +793,11 @@ export function PlaylistDetailPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Send-to-friend modal */}
+      {shareToChatOpen && (
+        <ShareToChatModal payload={{ kind: 'playlist', playlist }} onClose={() => setShareToChatOpen(false)} />
       )}
 
       {/* Invite collaborator modal */}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, Navigate } from 'react-router-dom'
+import { useParams, Navigate, useSearchParams } from 'react-router-dom'
 import { UserPlusIcon, UserMinusIcon, SparklesIcon, UserGroupIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
@@ -21,6 +21,7 @@ import type { Track } from '@/types/track'
 
 export function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
+  const [searchParams, setSearchParams] = useSearchParams()
   const currentUser = useAuthStore((s) => s.user)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -73,6 +74,13 @@ export function UserProfilePage() {
   }, [userId, isOwnProfile])
 
   const isFriend = friends.some((f) => f.userId === userId)
+
+  useEffect(() => {
+    if (!profile || !userId || !isFriend || jamRole !== 'off' || searchParams.get('joinJam') !== '1') return
+    joinAs(userId, profile.name)
+    setSearchParams({}, { replace: true })
+    notify.success(`Joining ${profile.name}'s Jam`)
+  }, [isFriend, jamRole, joinAs, profile, searchParams, setSearchParams, userId])
 
   const handleFriendAction = async () => {
     if (!isAuthenticated) {

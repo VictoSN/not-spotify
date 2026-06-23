@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '@/stores/authStore'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -49,6 +50,7 @@ api.interceptors.response.use(
       )
       const newToken = res.data.accessToken
       ;(window as { __authToken?: string }).__authToken = newToken
+      useAuthStore.setState({ accessToken: newToken })
       queue.forEach((cb) => cb(newToken))
       queue = []
       original.headers.Authorization = `Bearer ${newToken}`

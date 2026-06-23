@@ -36,7 +36,7 @@ export function TrackTile({ track, queue }: TrackTileProps) {
       onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => c && setHoverColor(c))}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => e.preventDefault()}
-      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+      className="group flex-shrink-0 w-44 sm:w-48 p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <img src={track.album.coverUrl} alt={track.title} className="w-full h-full object-cover" />

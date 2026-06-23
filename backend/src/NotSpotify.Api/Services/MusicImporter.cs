@@ -54,6 +54,10 @@ public static class MusicImporter
             "Yokohama alt-rock four-piece formed in 2001 by Yojiro Noda and friends. Beloved for emotionally literate lyrics and shape-shifting arrangements, they reached a global audience scoring Makoto Shinkai's anime trilogy — Your Name (2016), Weathering With You (2019), and Suzume (2022) — and have since sold out international arena tours.",
             7_200_000, 3_500_000, "radwimps_jp", "RADWIMPS_jp",
             SpotifyId: "1EowJ1WwkMzkCkRomFhui7"),
+        ["BTS"] = new("KR", new[] { "k-pop", "pop", "hip-hop" },
+            "Seoul seven-piece (RM, Jin, SUGA, j-hope, Jimin, V, Jung Kook) formed under Big Hit in 2013. They grew from a hip-hop group into one of the best-selling and most globally influential acts of their generation, with record-breaking chart runs and stadium world tours.",
+            40_000_000, 75_000_000, "bts.bighitofficial", "BTS_twt",
+            SpotifyId: "3Nrfpe0tUJi4K4DXYWgMUX"),
     };
 
     // Fallbacks for any artist not in the table above.

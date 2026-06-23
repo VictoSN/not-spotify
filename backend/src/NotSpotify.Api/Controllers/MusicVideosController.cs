@@ -46,4 +46,15 @@ public class MusicVideosController : ControllerBase
 
         return Ok(await _mapper.ToDtoAsync(video, ct));
     }
+
+    /// <summary>The MV accompanying a given audio track, or 404 if none exists.</summary>
+    [HttpGet("by-track/{trackId:guid}")]
+    public async Task<ActionResult<MusicVideoDto>> GetByTrack(Guid trackId, CancellationToken ct = default)
+    {
+        var video = await _db.MusicVideos
+            .Include(v => v.Artist)
+            .FirstOrDefaultAsync(v => v.TrackId == trackId, ct);
+        if (video is null) return NotFound();
+        return Ok(await _mapper.ToDtoAsync(video, ct));
+    }
 }

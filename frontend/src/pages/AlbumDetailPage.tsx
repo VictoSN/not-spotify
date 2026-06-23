@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { PlayIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
 import { HeartIcon, ArrowDownTrayIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -8,6 +8,7 @@ import { albumService } from '@/services/albumService'
 import { trackService } from '@/services/trackService'
 import { artistService } from '@/services/artistService'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
@@ -35,6 +36,10 @@ export function AlbumDetailPage() {
   const isMobile = useIsMobile()
   const [loading, setLoading] = useState(true)
   const playWithGate = usePlaybackGate()
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const pausePlayback = usePlayerStore((s) => s.pause)
+  const resumePlayback = usePlayerStore((s) => s.resume)
   const { savedAlbumIds, saveAlbum, unsaveAlbum } = useLibraryStore()
   const { isAuthenticated, user } = useAuthStore()
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -147,8 +152,24 @@ export function AlbumDetailPage() {
       </div>
 
       <div className="flex items-center gap-3 px-4 sm:px-6 py-4 flex-wrap">
-        <Button onClick={() => tracks.length && playWithGate(tracks[0], tracks)} size="lg" className="gap-2">
-          <PlayIcon className="w-5 h-5" /> {t('common.play')}
+        <Button
+          onClick={() => {
+            if (!tracks.length) return
+            if (currentTrack && tracks.some((t) => t.id === currentTrack.id)) {
+              if (isPlaying) pausePlayback()
+              else resumePlayback()
+            } else {
+              playWithGate(tracks[0], tracks)
+            }
+          }}
+          size="lg"
+          className="gap-2"
+        >
+          {isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id) ? (
+            <><PauseIcon className="w-5 h-5" /> {t('player.pause')}</>
+          ) : (
+            <><PlayIcon className="w-5 h-5" /> {t('common.play')}</>
+          )}
         </Button>
         <button
           onClick={toggleSave}

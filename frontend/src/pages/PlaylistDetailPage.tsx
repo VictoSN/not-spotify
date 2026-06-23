@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
-import { PlayIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon, ClockIcon } from '@heroicons/react/24/solid'
 import {
   HeartIcon as HeartOutlineIcon,
   TrashIcon,
@@ -126,6 +126,10 @@ export function PlaylistDetailPage() {
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const pausePlayback = usePlayerStore((s) => s.pause)
+  const resumePlayback = usePlayerStore((s) => s.resume)
   // Tint the header from the playlist cover; playlists without one fall back
   // to the first track's album art (matches what the placeholder tile shows).
   const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.track.album.coverUrl)
@@ -229,8 +233,19 @@ export function PlaylistDetailPage() {
   const sortedPlaylistTracks = sortPlaylistTracks(playlist.tracks, trackSort)
   const tracks = sortedPlaylistTracks.map((pt) => pt.track)
 
+  // True when the track now playing belongs to this playlist, so the big button
+  // can act as a play/pause toggle instead of always restarting from the top.
+  const isPlayingThisPlaylist =
+    isPlaying && !!currentTrack && tracks.some((t) => t.id === currentTrack.id)
+
   const handlePlayAll = () => {
-    if (tracks.length > 0) playWithGate(tracks[0], tracks)
+    if (tracks.length === 0) return
+    if (currentTrack && tracks.some((t) => t.id === currentTrack.id)) {
+      if (isPlaying) pausePlayback()
+      else resumePlayback()
+    } else {
+      playWithGate(tracks[0], tracks)
+    }
   }
 
   const handleDownload = async () => {
@@ -426,9 +441,23 @@ export function PlaylistDetailPage() {
 
       {/* Actions */}
       <div className="flex flex-wrap items-center gap-3 px-4 sm:px-6 py-4">
-        <Button onClick={handlePlayAll} size="lg" className="gap-2">
-          <PlayIcon className="w-5 h-5" />
-          Play
+        <Button
+          onClick={handlePlayAll}
+          size="lg"
+          className="gap-2"
+          aria-label={isPlayingThisPlaylist ? 'Pause' : 'Play'}
+        >
+          {isPlayingThisPlaylist ? (
+            <>
+              <PauseIcon className="w-5 h-5" />
+              Pause
+            </>
+          ) : (
+            <>
+              <PlayIcon className="w-5 h-5" />
+              Play
+            </>
+          )}
         </Button>
 
         {/* Shuffle — visible to all viewers, playback pref only */}

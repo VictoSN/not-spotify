@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SpeakerWaveIcon } from '@heroicons/react/24/solid'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -6,36 +6,38 @@ import { adService } from '@/services/adService'
 import { useTranslation } from '@/i18n/useTranslation'
 
 /**
- * Plays a free-tier audio ad through its own element so the two-deck engine is
- * untouched. Mounted just above the player bar; renders nothing unless an ad is
- * active. The ad is non-skippable — transport stays locked in the store until
- * playback ends (or the audio errors / autoplay is blocked, which we treat as
- * "ad over" so the listener is never stuck).
+ * Free-tier ad break. For now this is a silent placeholder: when an ad is active
+ * we hold playback for a fixed 5 seconds (no audio is played), show the banner +
+ * countdown, then release the held track via endAd(). The transport stays locked
+ * in the store until the countdown finishes so the break is non-skippable.
  */
+const AD_SECONDS = 5
+
 export function PromoPlayer() {
   const { t } = useTranslation()
   const ad = usePlayerStore((s) => s.currentAd)
   const endAd = usePlayerStore((s) => s.endAd)
-  const volume = usePlayerStore((s) => s.volume)
-  const isMuted = usePlayerStore((s) => s.isMuted)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const impressionSent = useRef(false)
   const [remaining, setRemaining] = useState<number | null>(null)
 
   useEffect(() => {
-    impressionSent.current = false
-    setRemaining(null)
-    const el = audioRef.current
-    if (!ad || !el) return
-    el.volume = isMuted ? 0 : volume
-    el.currentTime = 0
-    el.play().catch(() => endAd()) // autoplay blocked → don't strand the listener
+    if (!ad) {
+      setRemaining(null)
+      return
+    }
+    setRemaining(AD_SECONDS)
+    adService.recordImpression(ad.id).catch(() => { })
+    const startedAt = Date.now()
+    const interval = window.setInterval(() => {
+      const elapsed = (Date.now() - startedAt) / 1000
+      setRemaining(Math.max(0, Math.ceil(AD_SECONDS - elapsed)))
+      if (elapsed >= AD_SECONDS) {
+        window.clearInterval(interval)
+        endAd()
+      }
+    }, 250)
+    return () => window.clearInterval(interval)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ad])
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume
-  }, [volume, isMuted])
 
   if (!ad) return null
 
@@ -60,23 +62,6 @@ export function PromoPlayer() {
           {t('ad.goAdFree')}
         </Link>
       </div>
-      <audio
-        ref={audioRef}
-        src={ad.audioUrl}
-        onPlay={() => {
-          if (!impressionSent.current) {
-            impressionSent.current = true
-            adService.recordImpression(ad.id).catch(() => { })
-          }
-        }}
-        onTimeUpdate={(e) => {
-          const el = e.currentTarget
-          const total = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : ad.durationMs / 1000
-          setRemaining(Math.max(0, Math.ceil(total - el.currentTime)))
-        }}
-        onEnded={endAd}
-        onError={endAd}
-      />
     </div>
   )
 }

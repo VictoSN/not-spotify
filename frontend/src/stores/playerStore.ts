@@ -144,8 +144,6 @@ interface PlayerState {
   tick: (currentTime: number, duration: number) => void
 }
 
-const shuffle = <T>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5)
-
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: null,
   isPlaying: false,
@@ -176,30 +174,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     // A deliberate track pick cancels any in-progress ad gate.
     pendingAfterAd = null
     if (get().currentAd) set({ currentAd: null })
-    let newQueue = queue ?? [track]
-    let targetTrack = track
-    const free = isFreeUser()
-
-    if (free && newQueue.length > 1) {
-      // Free users always get a shuffled queue; the specific track they tapped
-      // is ignored in favour of a random starting position.
-      newQueue = shuffle(newQueue)
-      targetTrack = newQueue[0]
-    }
-
-    const index = newQueue.findIndex((t) => t.id === targetTrack.id)
+    // Always start the track the user actually picked. Shuffle only governs what
+    // plays *next* (see skipNext) — it never overrides an explicit selection.
+    const newQueue = queue ?? [track]
+    const index = newQueue.findIndex((t) => t.id === track.id)
     const { currentTrack, history } = get()
     const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
     set({
-      currentTrack: targetTrack,
+      currentTrack: track,
       queue: newQueue,
       queueIndex: index,
       history: newHistory,
       isPlaying: true,
       currentTime: 0,
-      shuffleEnabled: free ? true : get().shuffleEnabled,
     })
-    recordPlay(targetTrack.id)
+    recordPlay(track.id)
   },
 
   pause: () => set({ isPlaying: false }),
@@ -279,21 +268,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   toggleMute: () => set((s) => ({ isMuted: !s.isMuted })),
 
-  toggleShuffle: () =>
-    set((s) => {
-      // Free users are locked to shuffle — turning it off is a no-op.
-      if (isFreeUser()) return { shuffleEnabled: true }
-      if (!s.shuffleEnabled) {
-        const shuffled = shuffle(s.queue)
-        return { shuffleEnabled: true, queue: shuffled, queueIndex: shuffled.findIndex((t) => t.id === s.currentTrack?.id) }
-      }
-      return { shuffleEnabled: false }
-    }),
+  // Shuffle is purely a "what plays next" flag — toggling it never reorders or
+  // restarts the current queue. skipNext picks a random track while it's on.
+  toggleShuffle: () => set((s) => ({ shuffleEnabled: !s.shuffleEnabled })),
 
   cycleRepeat: () =>
     set((s) => {
-      // Free users cannot use repeat.
-      if (isFreeUser()) return {}
       const order: RepeatMode[] = ['off', 'all', 'one']
       const next = order[(order.indexOf(s.repeatMode) + 1) % order.length]
       return { repeatMode: next }

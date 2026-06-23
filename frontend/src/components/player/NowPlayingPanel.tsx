@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, Bars3Icon } from '@heroicons/react/24/outline'
+import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, Bars3Icon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
+import type { MusicVideo } from '@/types/musicVideo'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
+import { videoService } from '@/services/videoService'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
@@ -55,6 +57,7 @@ function PanelSection({ title, subtitle, children }: { title: string; subtitle?:
 
 type ArtistData = { artistId: string; artist: Artist | null; related: Track[] }
 type AlbumData = { albumId: string; album: Album | null }
+type VideoData = { trackId: string; video: MusicVideo | null }
 
 export function NowPlayingPanel() {
   const { t } = useTranslation()
@@ -71,6 +74,9 @@ export function NowPlayingPanel() {
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
+  const [videoData, setVideoData] = useState<VideoData | null>(null)
+  const [videoHover, setVideoHover] = useState(false)
+  const videoElRef = useRef<HTMLVideoElement | null>(null)
 
   // Resizable width — drag the left edge.
   const [width, setWidth] = useState(getInitialNpWidth)
@@ -123,6 +129,23 @@ export function NowPlayingPanel() {
     }
   }, [artistId])
 
+  // Fetch any music video associated with the playing track.
+  const trackId = currentTrack?.id
+  useEffect(() => {
+    if (!trackId) {
+      setVideoData(null)
+      return
+    }
+    let cancelled = false
+    videoService
+      .getByTrackId(trackId)
+      .then((video) => !cancelled && setVideoData({ trackId, video }))
+      .catch(() => !cancelled && setVideoData({ trackId, video: null }))
+    return () => {
+      cancelled = true
+    }
+  }, [trackId])
+
   // Fetch the album for credits (label / copyright).
   useEffect(() => {
     if (!albumId) return
@@ -142,7 +165,17 @@ export function NowPlayingPanel() {
   const related = artistData && artistData.artistId === artistId ? artistData.related : []
   const loadingArtist = !!artistId && !artistReady
   const album = albumData && albumData.albumId === albumId ? albumData.album : null
+  const video = videoData && videoData.trackId === trackId ? videoData.video : null
   const heroColor = useDominantColor(currentTrack?.album.coverUrl)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+
+  // Mirror audio play/pause onto the silent MV preview at the top of the panel.
+  useEffect(() => {
+    const el = videoElRef.current
+    if (!el || !video) return
+    if (isPlaying) el.play().catch(() => { /* autoplay can be blocked; the user can hover/click to start */ })
+    else el.pause()
+  }, [isPlaying, video])
   const panelClass = cn(
     'relative hidden shrink-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex',
     !dragging && 'transition-[width,opacity,transform] duration-300 ease-out',
@@ -237,14 +270,55 @@ export function NowPlayingPanel() {
           </button>
         </div>
 
-        {/* Cover + title */}
+        {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
+        {video && (
+          <div
+            onMouseEnter={() => setVideoHover(true)}
+            onMouseLeave={() => setVideoHover(false)}
+            className="group relative w-full aspect-square overflow-hidden"
+          >
+            <video
+              ref={videoElRef}
+              src={video.videoUrl}
+              poster={video.thumbnailUrl ?? currentTrack.album.coverUrl}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className={cn(
+                'h-full w-full object-cover transition-[filter] duration-300',
+                videoHover ? 'brightness-110' : 'brightness-50',
+              )}
+            />
+            <Link
+              to={`/videos/${video.id}`}
+              title="Open music video"
+              aria-label="Open music video"
+              className="absolute top-2 right-10 rounded-full bg-black/55 p-1.5 text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-black/75"
+            >
+              <ArrowsPointingOutIcon className="h-4 w-4" />
+            </Link>
+            <button
+              onClick={() => usePlayerStore.getState().skipNext()}
+              title="Next"
+              aria-label="Next"
+              className="absolute top-2 right-2 rounded-full bg-black/55 p-1.5 text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100 hover:bg-black/75"
+            >
+              <ChevronDoubleRightIcon className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Cover (skipped when an MV is shown above) + title. */}
         <div className="px-4 pb-4">
-          <img
-            src={currentTrack.album.coverUrl}
-            alt={currentTrack.album.title}
-            className="w-full aspect-square rounded-lg object-cover shadow-lg"
-          />
-          <div className="flex items-start justify-between gap-2 mt-4">
+          {!video && (
+            <img
+              src={currentTrack.album.coverUrl}
+              alt={currentTrack.album.title}
+              className="w-full aspect-square rounded-lg object-cover shadow-lg"
+            />
+          )}
+          <div className={cn('flex items-start justify-between gap-2', video ? 'mt-3' : 'mt-4')}>
             <div className="min-w-0">
               <Link
                 to={`/album/${currentTrack.album.id}`}

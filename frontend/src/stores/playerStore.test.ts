@@ -86,14 +86,15 @@ describe('playerStore — transport & queue', () => {
     expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
   })
 
-  it('play() forces shuffle on for free users and ignores the tapped track position', () => {
+  it('play() starts the exact track the user tapped, even for free users', () => {
     setFree()
     const q = [track('a'), track('b'), track('c')]
     usePlayerStore.getState().play(q[1], q)
     const s = usePlayerStore.getState()
-    expect(s.shuffleEnabled).toBe(true)
-    expect(s.queue.map((t) => t.id).sort()).toEqual(['a', 'b', 'c'])
-    expect(s.currentTrack?.id).toBe(s.queue[0].id) // starts from the front of the shuffled queue
+    // Shuffle no longer overrides an explicit pick — the tapped track plays.
+    expect(s.currentTrack?.id).toBe('b')
+    expect(s.queueIndex).toBe(1)
+    expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
   })
 
   it('addToQueue appends; playNext inserts right after the current track', () => {
@@ -221,31 +222,30 @@ describe('playerStore — transport & queue', () => {
 })
 
 describe('playerStore — free vs premium gating', () => {
-  it('toggleShuffle is a no-op for free users (always on)', () => {
+  it('toggleShuffle flips the flag for free users too (no longer locked on)', () => {
     setFree()
-    usePlayerStore.setState({ shuffleEnabled: true })
+    usePlayerStore.setState({ shuffleEnabled: false })
     usePlayerStore.getState().toggleShuffle()
     expect(usePlayerStore.getState().shuffleEnabled).toBe(true)
+    usePlayerStore.getState().toggleShuffle()
+    expect(usePlayerStore.getState().shuffleEnabled).toBe(false)
   })
 
-  it('toggleShuffle cycles for premium and shuffles the queue when enabling', () => {
+  it('toggleShuffle flips the flag without reordering or moving off the current track', () => {
     setPremium()
     usePlayerStore.setState({ queue: [track('a'), track('b'), track('c')], currentTrack: track('a'), queueIndex: 0 })
     usePlayerStore.getState().toggleShuffle()
     const s = usePlayerStore.getState()
     expect(s.shuffleEnabled).toBe(true)
-    expect(s.queue.map((t) => t.id).sort()).toEqual(['a', 'b', 'c'])
-    expect(s.queue[s.queueIndex].id).toBe('a') // index still points at the current track
+    // Shuffle only governs what plays next — the queue and current track are untouched.
+    expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
+    expect(s.queue[s.queueIndex].id).toBe('a')
     usePlayerStore.getState().toggleShuffle()
     expect(usePlayerStore.getState().shuffleEnabled).toBe(false)
   })
 
-  it('cycleRepeat is locked off for free users but cycles off→all→one→off for premium', () => {
+  it('cycleRepeat cycles off→all→one→off for free and premium alike', () => {
     setFree()
-    usePlayerStore.getState().cycleRepeat()
-    expect(usePlayerStore.getState().repeatMode).toBe('off')
-
-    setPremium()
     usePlayerStore.getState().cycleRepeat()
     expect(usePlayerStore.getState().repeatMode).toBe('all')
     usePlayerStore.getState().cycleRepeat()

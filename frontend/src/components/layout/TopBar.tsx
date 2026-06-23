@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import {
   MagnifyingGlassIcon,
   HomeIcon,
@@ -378,9 +379,8 @@ export function TopBar() {
   if (!isAuthenticated) {
     return (
       <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 border-b border-elevated/30 bg-base/90 px-4 backdrop-blur-xl md:h-16">
-        <Link to="/" className="flex items-center gap-2 justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
-          <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
-          <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
+        <Link to="/" className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
+          <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
 
         {/* Search bar — hidden on mobile (accessed via Search tab in bottom nav) */}
@@ -456,9 +456,8 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-2 border-b border-elevated/30 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-4 md:px-4 relative">
       {/* Far left: logo */}
-      <Link to="/" className="flex items-center gap-2 shrink-0" aria-label={t('topbar.brandHome')}>
-        <MusicalNoteIcon className="w-7 h-7 md:w-8 md:h-8 text-accent" />
-        <span className="hidden md:block font-bold text-lg text-primary">not-spotify</span>
+      <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
+        <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
       </Link>
 
       {/* Center: home + search + theme toggle — desktop only */}

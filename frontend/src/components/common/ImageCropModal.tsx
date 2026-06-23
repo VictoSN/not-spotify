@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { ArrowsPointingOutIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/Button'
@@ -22,6 +22,11 @@ interface Point {
   y: number
 }
 
+interface ImageSource {
+  file: File
+  url: string
+}
+
 export function ImageCropModal({
   file,
   aspectRatio,
@@ -32,16 +37,79 @@ export function ImageCropModal({
 }: ImageCropModalProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ pointerId: number; start: Point; origin: Point } | null>(null)
-  const sourceUrl = useMemo(() => file ? URL.createObjectURL(file) : null, [file])
+  const [source, setSource] = useState<ImageSource | null>(null)
+  const sourceUrl = source?.file === file ? source.url : null
   const [imageSize, setImageSize] = useState<Size | null>(null)
   const [viewportSize, setViewportSize] = useState<Size | null>(null)
   const [zoom, setZoom] = useState(1)
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
   const [isCropping, setIsCropping] = useState(false)
 
+  // Reset zoom/pan before the new source paints. imageSize is measured
+  // separately below; relying only on the visible <img> load event can miss
+  // cached blobs and leave the cropper black with a dead "Use image" button.
+  useLayoutEffect(() => {
+    if (!sourceUrl) return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setImageSize(null)
+      setZoom(1)
+      setOffset({ x: 0, y: 0 })
+    })
+    return () => { cancelled = true }
+  }, [sourceUrl])
+
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) setSource(null)
+    })
+    if (!file) {
+      return () => { cancelled = true }
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (!cancelled && typeof reader.result === 'string') {
+        setSource({ file, url: reader.result })
+      }
+    }
+    reader.onerror = () => {
+      if (!cancelled) setSource(null)
+    }
+    reader.readAsDataURL(file)
+
+    return () => {
+      cancelled = true
+      if (reader.readyState === FileReader.LOADING) reader.abort()
+    }
+  }, [file])
+
+  // Measure the source image's intrinsic size off-DOM via decode(), so it resolves
+  // reliably whether or not the browser serves the blob from cache.
   useEffect(() => {
     if (!sourceUrl) return
-    return () => URL.revokeObjectURL(sourceUrl)
+    let cancelled = false
+    const probe = new Image()
+    const apply = () => {
+      if (!cancelled && probe.naturalWidth > 0 && probe.naturalHeight > 0) {
+        setImageSize({ width: probe.naturalWidth, height: probe.naturalHeight })
+      }
+    }
+    probe.src = sourceUrl
+    probe.decode().then(apply).catch(() => {
+      if (probe.complete) apply()
+      else probe.onload = apply
+    })
+    return () => { cancelled = true }
+  }, [sourceUrl])
+
+  // Track the crop viewport size: measure synchronously on open so the first paint
+  // already has a layout, then keep it live with a ResizeObserver.
+  useLayoutEffect(() => {
+    const el = viewportRef.current
+    if (el) setViewportSize({ width: el.clientWidth, height: el.clientHeight })
   }, [sourceUrl])
 
   useEffect(() => {
@@ -52,14 +120,6 @@ export function ImageCropModal({
     })
     observer.observe(viewport)
     return () => observer.disconnect()
-  }, [sourceUrl])
-
-  useEffect(() => {
-    queueMicrotask(() => {
-      setImageSize(null)
-      setZoom(1)
-      setOffset({ x: 0, y: 0 })
-    })
   }, [sourceUrl])
 
   const getLayout = (zoomValue = zoom) => {

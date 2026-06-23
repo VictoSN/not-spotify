@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { CameraIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ImageCropModal } from '@/components/common/ImageCropModal'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { meService } from '@/services/meService'
@@ -36,8 +37,36 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState(user?.email ?? '')
   const [country, setCountry] = useState(user?.country ?? 'US')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarCropSource, setAvatarCropSource] = useState<File | null>(null)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) setAvatarPreviewUrl(null)
+    })
+    if (!avatarFile) {
+      return () => { cancelled = true }
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (!cancelled && typeof reader.result === 'string') {
+        setAvatarPreviewUrl(reader.result)
+      }
+    }
+    reader.onerror = () => {
+      if (!cancelled) setAvatarPreviewUrl(null)
+    }
+    reader.readAsDataURL(avatarFile)
+
+    return () => {
+      cancelled = true
+      if (reader.readyState === FileReader.LOADING) reader.abort()
+    }
+  }, [avatarFile])
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,14 +101,26 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const handleAvatarSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+    e.target.value = ''
+    if (file) setAvatarCropSource(file)
+  }
+
+  const handleAvatarCropped = (file: File) => {
+    setAvatarFile(file)
+    setAvatarCropSource(null)
+  }
+
   const inputClass =
     'h-11 rounded-md border border-secondary/20 bg-elevated px-3 text-sm text-primary outline-none transition-colors focus:border-accent'
 
   return (
+    <>
     <form onSubmit={save} className="grid gap-4">
       <div className="flex items-center gap-4">
         <label className="group relative cursor-pointer">
-          <Avatar src={avatarFile ? URL.createObjectURL(avatarFile) : user?.avatarUrl} alt={name} size="xl" round />
+          <Avatar src={avatarPreviewUrl ?? user?.avatarUrl} alt={name} size="xl" round />
           <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <CameraIcon className="h-6 w-6 text-white" />
           </span>
@@ -87,7 +128,7 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             className="hidden"
-            onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+            onChange={handleAvatarSelected}
           />
         </label>
         {(user?.avatarUrl || avatarFile) && (
@@ -139,5 +180,15 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
         </Button>
       </div>
     </form>
+
+    <ImageCropModal
+      file={avatarCropSource}
+      aspectRatio={1}
+      outputWidth={800}
+      title="Crop profile picture"
+      onCancel={() => setAvatarCropSource(null)}
+      onCrop={handleAvatarCropped}
+    />
+    </>
   )
 }

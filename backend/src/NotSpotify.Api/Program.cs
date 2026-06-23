@@ -752,4 +752,36 @@ if (args.Contains("import-music"))
     return;
 }
 
+// One-off bulk playlist deletion (`dotnet run -- delete-playlists [--owner <name|email>] [--dry-run]`).
+// Mirrors the per-user delete (just removes the Playlist rows; PlaylistTracks/mood-tags/
+// reposts/saved rows fall away via the DB's ON DELETE CASCADE). No --owner = ALL playlists.
+if (args.Contains("delete-playlists"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var ownerIdx = Array.IndexOf(args, "--owner");
+    var owner = ownerIdx >= 0 && ownerIdx + 1 < args.Length ? args[ownerIdx + 1] : null;
+
+    var query = db.Playlists.Include(p => p.Owner).AsQueryable();
+    if (owner is not null)
+        query = query.Where(p => p.Owner.Name == owner || p.Owner.Email == owner);
+
+    var playlists = await query.ToListAsync();
+    Console.WriteLine($"[Playlists] {playlists.Count} playlist(s) match{(owner is null ? " (ALL owners)" : $" (owner = {owner})")}:");
+    foreach (var p in playlists)
+        Console.WriteLine($"   - {p.Name}  (owner: {p.Owner?.Name ?? "?"})");
+
+    if (args.Contains("--dry-run"))
+    {
+        Console.WriteLine("[Playlists] DRY RUN — nothing deleted.");
+        return;
+    }
+
+    db.Playlists.RemoveRange(playlists);
+    var removed = await db.SaveChangesAsync();
+    Console.WriteLine($"[Playlists] Deleted {playlists.Count} playlist(s) ({removed} rows incl. cascaded children).");
+    return;
+}
+
 app.Run();

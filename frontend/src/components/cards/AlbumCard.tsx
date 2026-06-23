@@ -9,6 +9,7 @@ import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 
 interface AlbumCardProps {
   album: Album
@@ -81,9 +82,9 @@ export function AlbumCard({ album, tracks }: AlbumCardProps) {
               navigate(`/artist/${album.artist.id}`)
             }
           }}
-          className="cursor-pointer hover:text-primary hover:underline"
+          className="inline-flex max-w-[calc(100%-2.25rem)] cursor-pointer hover:text-primary hover:underline"
         >
-          {album.artist.name}
+          <VerifiedArtistName name={album.artist.name} verified={album.artist.verified} iconClassName="h-3.5 w-3.5" />
         </span>
       </p>
     </Link>

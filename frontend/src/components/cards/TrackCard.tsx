@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { formatMs } from '@/utils/formatTime'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { TrackRowMenu } from './TrackRowMenu'
 
 interface TrackCardProps {
@@ -70,9 +71,9 @@ export function TrackCard({ track, queue }: TrackCardProps) {
             {track.title}
           </Link>
         </p>
-        <p className="text-xs text-secondary truncate">
-          <Link to={`/artist/${track.artist.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
-            {track.artist.name}
+        <p className="text-xs text-secondary">
+          <Link to={`/artist/${track.artist.id}`} onClick={(e) => e.stopPropagation()} className="inline-flex max-w-full hover:underline">
+            <VerifiedArtistName name={track.artist.name} verified={track.artist.verified} iconClassName="h-3.5 w-3.5" />
           </Link>
         </p>
       </div>

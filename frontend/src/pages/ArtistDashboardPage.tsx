@@ -23,6 +23,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
 import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
 import { ImageCropModal } from '@/components/common/ImageCropModal'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 
@@ -764,14 +765,9 @@ export function ArtistDashboardPage() {
           ) : (
             /* ── Display mode ── */
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-primary">{artistProfile?.name ?? user?.name}</h2>
-                {artistProfile?.verified && (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                    <CheckCircleIcon className="w-3.5 h-3.5" /> Verified
-                  </span>
-                )}
-              </div>
+              <h2 className="text-xl font-bold text-primary">
+                <VerifiedArtistName name={artistProfile?.name ?? user?.name ?? 'Artist'} verified={artistProfile?.verified} />
+              </h2>
               {artistProfile?.bio ? (
                 <p className="text-sm text-secondary leading-relaxed max-w-xl">{artistProfile.bio}</p>
               ) : (

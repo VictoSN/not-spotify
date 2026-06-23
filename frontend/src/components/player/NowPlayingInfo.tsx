@@ -4,6 +4,7 @@ import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useTranslation } from '@/i18n/useTranslation'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { StarRating } from './StarRating'
 
 export function NowPlayingInfo() {
@@ -38,7 +39,7 @@ export function NowPlayingInfo() {
           to={`/artist/${currentTrack.artist.id}`}
           className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight"
         >
-          {currentTrack.artist.name}
+          <VerifiedArtistName name={currentTrack.artist.name} verified={currentTrack.artist.verified} iconClassName="h-3.5 w-3.5" />
         </Link>
         <div className="mt-1 hidden md:block">
           <StarRating track={currentTrack} />

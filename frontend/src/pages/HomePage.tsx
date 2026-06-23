@@ -25,6 +25,7 @@ import { useDominantColor, getDominantColor } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
@@ -428,7 +429,9 @@ export function HomePage() {
                     </div>
                   </div>
                   <div className="truncate px-1 font-semibold text-primary">{v.title}</div>
-                  <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
+                  <div className="px-1 text-sm text-secondary">
+                    <VerifiedArtistName name={v.artist.name} verified={v.artist.verified} iconClassName="h-3.5 w-3.5" />
+                  </div>
                 </Link>
               ))}
             </HorizontalScroller>

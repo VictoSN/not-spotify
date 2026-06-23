@@ -7,6 +7,7 @@ import { formatNumber } from '@/utils/formatNumber'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 
 interface ArtistCardProps {
   artist: Artist
@@ -62,7 +63,9 @@ export function ArtistCard({ artist }: ArtistCardProps) {
           <PlayIcon className="ml-0.5 h-5 w-5 text-black" />
         </button>
       </div>
-      <p className="text-sm font-semibold text-primary truncate">{artist.name}</p>
+      <p className="text-sm font-semibold text-primary">
+        <VerifiedArtistName name={artist.name} verified={artist.verified} className="justify-center" />
+      </p>
       <p className="text-xs text-secondary mt-0.5">{formatNumber(artist.monthlyListeners)} listeners</p>
     </Link>
   )

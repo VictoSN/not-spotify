@@ -5,6 +5,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
 import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 
 interface TrackTileProps {
   track: Track
@@ -69,9 +70,9 @@ export function TrackTile({ track, queue }: TrackTileProps) {
               navigate(`/artist/${track.artist.id}`)
             }
           }}
-          className="cursor-pointer hover:text-primary hover:underline"
+          className="inline-flex max-w-full cursor-pointer hover:text-primary hover:underline"
         >
-          {track.artist.name}
+          <VerifiedArtistName name={track.artist.name} verified={track.artist.verified} iconClassName="h-3.5 w-3.5" />
         </span>
       </p>
     </Link>

@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
+using StackExchange.Redis;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
@@ -223,7 +224,26 @@ builder.Services.AddCors(opt =>
         .AllowCredentials());
 });
 
-builder.Services.AddSignalR();
+// SignalR realtime. With no Redis configured it runs in-memory (correct for a
+// single backend process). Set ConnectionStrings:Redis to add a backplane so
+// multiple instances (e.g. two machines sharing one RDS) deliver pushes to each
+// other — without it, a message sent on one instance never reaches a client
+// connected to another, so cross-machine chat appears to need a manual refresh.
+var redisConnection = builder.Configuration.GetConnectionString("Redis");
+var signalRBuilder = builder.Services.AddSignalR();
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    signalRBuilder.AddStackExchangeRedis(redisConnection);
+    builder.Services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConnection));
+    builder.Services.AddSingleton<IPresenceCounter, RedisPresenceCounter>();
+    Console.WriteLine("[SignalR] Redis backplane enabled — realtime works across instances.");
+}
+else
+{
+    builder.Services.AddSingleton<IPresenceCounter, InMemoryPresenceCounter>();
+    Console.WriteLine("[SignalR] In-memory (single instance). Set ConnectionStrings:Redis for cross-instance realtime.");
+}
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -805,6 +825,9 @@ if (args.Contains("update-artist"))
     if (GetArg("--instagram") is { } ig) artist.Instagram = ig;
     if (GetArg("--twitter") is { } tw) artist.Twitter = tw;
     if (bool.TryParse(GetArg("--verified"), out var verified)) artist.Verified = verified;
+    // Image overrides take a direct URL (MediaMapper serves ImageUrl when no storage key is set).
+    if (GetArg("--image") is { } image) { artist.ImageUrl = image; artist.ImageKey = null; }
+    if (GetArg("--header") is { } header) { artist.HeaderImageUrl = header; artist.HeaderImageKey = null; }
 
     await db.SaveChangesAsync();
     Console.WriteLine($"[update-artist] '{artist.Name}' → listeners={artist.MonthlyListeners:N0}, followers={artist.FollowerCount:N0}, country={artist.Country}, verified={artist.Verified}");

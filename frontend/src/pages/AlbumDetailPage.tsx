@@ -18,6 +18,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -139,7 +140,7 @@ export function AlbumDetailPage() {
               <img src={album.artist.imageUrl} alt={album.artist.name} className="w-6 h-6 rounded-full object-cover" />
             )}
             <Link to={`/artist/${album.artist.id}`} className="font-semibold text-primary hover:underline">
-              {album.artist.name}
+              <VerifiedArtistName name={album.artist.name} verified={album.artist.verified} />
             </Link>
             <span className="text-secondary">·</span>
             <span className="text-secondary">{album.releaseDate.slice(0, 4)}</span>

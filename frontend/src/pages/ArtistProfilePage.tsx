@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
-import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { ShareIcon } from '@heroicons/react/24/outline'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Track } from '@/types/track'
@@ -20,6 +19,7 @@ import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -120,14 +120,12 @@ export function ArtistProfilePage() {
                 ? 'text-5xl sm:text-7xl lg:text-8xl'
                 : 'text-4xl sm:text-6xl lg:text-7xl'
             }`}>
-              {artist.name}
+              <VerifiedArtistName
+                name={artist.name}
+                verified={artist.verified}
+                iconClassName={artist.headerImageUrl ? 'h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12' : 'h-7 w-7 sm:h-9 sm:w-9 lg:h-10 lg:w-10'}
+              />
             </h1>
-            {artist.verified && (
-              <div className="mt-4 flex items-center gap-2 text-sm font-semibold text-white drop-shadow-md">
-                <CheckBadgeIcon className="h-6 w-6 text-[#4cb3ff]" />
-                <span>Verified artist</span>
-              </div>
-            )}
             <p className="mt-4 text-sm font-semibold text-white drop-shadow-md">
               {t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
             </p>

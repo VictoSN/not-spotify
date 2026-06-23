@@ -11,6 +11,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { TrackRowMenu } from './TrackRowMenu'
 import { useRatingStore } from '@/stores/ratingStore'
 
@@ -117,9 +118,9 @@ export function TrackRow({
             <Link
               to={`/artist/${track.artist.id}`}
               onClick={(e) => e.stopPropagation()}
-              className="hover:text-primary hover:underline"
+              className="inline-flex max-w-full hover:text-primary hover:underline"
             >
-              {track.artist.name}
+              <VerifiedArtistName name={track.artist.name} verified={track.artist.verified} iconClassName="h-3.5 w-3.5" />
             </Link>
           </p>
         </div>

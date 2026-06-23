@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Models;
+using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Hubs;
 
@@ -18,13 +18,16 @@ namespace NotSpotify.Api.Hubs;
 [Authorize]
 public class PresenceHub : Hub
 {
-    // In-memory connection count per user (works for single-server / dev).
-    // If you scale to multiple server instances, replace with Redis or similar.
-    private static readonly ConcurrentDictionary<Guid, int> _connectionCounts = new();
-
     private readonly AppDbContext _db;
+    // Per-user live-connection count. In-memory for a single instance; Redis-backed
+    // (shared across instances) when a Redis backplane is configured. See IPresenceCounter.
+    private readonly IPresenceCounter _presence;
 
-    public PresenceHub(AppDbContext db) => _db = db;
+    public PresenceHub(AppDbContext db, IPresenceCounter presence)
+    {
+        _db = db;
+        _presence = presence;
+    }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -55,7 +58,7 @@ public class PresenceHub : Hub
         // Join own group so friends can push messages to this user by ID.
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
 
-        var newCount = _connectionCounts.AddOrUpdate(userId.Value, 1, (_, c) => c + 1);
+        var newCount = await _presence.IncrementAsync(userId.Value);
 
         // First connection — user just came online.
         if (newCount == 1)
@@ -88,13 +91,11 @@ public class PresenceHub : Hub
             return;
         }
 
-        var newCount = _connectionCounts.AddOrUpdate(userId.Value, 0, (_, c) => Math.Max(0, c - 1));
+        var newCount = await _presence.DecrementAsync(userId.Value);
 
         // Last connection closed — user is now offline.
         if (newCount == 0)
         {
-            _connectionCounts.TryRemove(userId.Value, out _);
-
             var user = await _db.Users.FindAsync(userId.Value);
             if (user is not null)
             {

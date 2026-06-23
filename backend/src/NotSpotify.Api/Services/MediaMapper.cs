@@ -17,7 +17,7 @@ public class MediaMapper
         => key is not null ? await _storage.GetAudioUrlAsync(key, ct) : legacyUrl;
 
     public ArtistRefDto ToRef(Artist a)
-        => new(a.Id, a.Name, ResolveImage(a.ImageKey, a.ImageUrl));
+        => new(a.Id, a.Name, ResolveImage(a.ImageKey, a.ImageUrl), a.Verified);
 
     public AlbumRefDto ToRef(Album a)
         => new(a.Id, a.Title, ResolveImage(a.CoverKey, a.CoverUrl) ?? string.Empty, a.ReleaseDate, a.Type);

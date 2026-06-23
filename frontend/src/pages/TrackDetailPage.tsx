@@ -26,6 +26,7 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { CommentSection } from '@/components/comments/CommentSection'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
@@ -199,7 +200,7 @@ export function TrackDetailPage() {
               to={`/artist/${track.artist.id}`}
               className="font-semibold text-primary hover:underline"
             >
-              {track.artist.name}
+              <VerifiedArtistName name={track.artist.name} verified={track.artist.verified} />
             </Link>
             <span className="text-secondary">·</span>
             <Link
@@ -298,7 +299,7 @@ export function TrackDetailPage() {
                 {t('detail.artistLabel')}
               </p>
               <p className="font-bold text-primary group-hover:underline truncate">
-                {track.artist.name}
+                <VerifiedArtistName name={track.artist.name} verified={track.artist.verified} />
               </p>
             </div>
           </Link>

@@ -4,6 +4,7 @@ import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { MicVocal } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
@@ -58,7 +59,9 @@ export function BottomPlayerBar() {
           />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-primary truncate leading-tight">{currentTrack.title}</p>
-            <p className="text-xs text-secondary truncate leading-tight">{currentTrack.artist.name}</p>
+            <p className="text-xs text-secondary leading-tight">
+              <VerifiedArtistName name={currentTrack.artist.name} verified={currentTrack.artist.verified} iconClassName="h-3.5 w-3.5" />
+            </p>
           </div>
           {/* Play/pause only â€” stop propagation so the row tap doesn't also toggle play */}
           <button

@@ -2,6 +2,7 @@ export interface ArtistRef {
   id: string
   name: string
   imageUrl: string | null
+  verified?: boolean
 }
 
 export interface Artist {

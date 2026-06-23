@@ -9,6 +9,7 @@ import { ProgressBar } from './ProgressBar'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { TrackCard } from '@/components/cards/TrackCard'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { NowPlayingLyrics } from './NowPlayingLyrics'
 
 export function MobileNowPlayingSheet() {
@@ -87,7 +88,7 @@ export function MobileNowPlayingSheet() {
               onClick={toggleNowPlaying}
               className="block text-base text-secondary truncate hover:text-primary hover:underline mt-0.5"
             >
-              {currentTrack.artist.name}
+              <VerifiedArtistName name={currentTrack.artist.name} verified={currentTrack.artist.verified} />
             </Link>
           </div>
           <button

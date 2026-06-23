@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HeartIcon, ChevronLeftIcon, ChevronDoubleRightIcon, Bars3Icon, ArrowsPointingOutIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
+import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -14,6 +14,7 @@ import { albumService } from '@/services/albumService'
 import { videoService } from '@/services/videoService'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
@@ -330,7 +331,7 @@ export function NowPlayingPanel() {
                 to={`/artist/${currentTrack.artist.id}`}
                 className="block text-sm text-secondary truncate hover:text-primary hover:underline"
               >
-                {currentTrack.artist.name}
+                <VerifiedArtistName name={currentTrack.artist.name} verified={currentTrack.artist.verified} iconClassName="h-3.5 w-3.5" />
               </Link>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -379,9 +380,8 @@ export function NowPlayingPanel() {
                 <div className="p-4">
                   <div className="flex items-center gap-1.5">
                     <Link to={`/artist/${artist.id}`} className="font-bold text-primary hover:underline">
-                      {artist.name}
+                      <VerifiedArtistName name={artist.name} verified={artist.verified} />
                     </Link>
-                    {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
                   </div>
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-xs text-secondary">{t('np.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
@@ -410,7 +410,7 @@ export function NowPlayingPanel() {
                   to={`/artist/${currentTrack.artist.id}`}
                   className="block text-sm font-medium text-primary truncate hover:underline"
                 >
-                  {currentTrack.artist.name}
+                  <VerifiedArtistName name={currentTrack.artist.name} verified={currentTrack.artist.verified} iconClassName="h-3.5 w-3.5" />
                 </Link>
                 <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
               </div>

@@ -18,7 +18,7 @@ public record LrclibResponse(
 
 public record SavedTrackDto(TrackDto Track, DateTime SavedAt);
 
-public record ArtistRefDto(Guid Id, string Name, string? ImageUrl);
+public record ArtistRefDto(Guid Id, string Name, string? ImageUrl, bool Verified);
 
 public record AlbumRefDto(Guid Id, string Title, string CoverUrl, DateOnly ReleaseDate, string Type);
 

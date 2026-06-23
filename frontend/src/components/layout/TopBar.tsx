@@ -32,6 +32,7 @@ import { meService, type RecentSearch } from '@/services/meService'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { Avatar } from '@/components/ui/Avatar'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -308,7 +309,9 @@ export function TopBar() {
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-primary">{artist.name}</span>
+                <span className="block text-sm font-bold text-primary">
+                  <VerifiedArtistName name={artist.name} verified={artist.verified} />
+                </span>
                 <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.artist')}</span>
               </span>
             </button>

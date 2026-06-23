@@ -65,6 +65,8 @@ Ensure you have the following installed:
 
    > **Why a pooler URL, not the direct connection?** Supabase's direct connection (`db.<ref>.supabase.co`) is IPv6-only on the free tier — most home/uni networks can't reach it. The Session Pooler is IPv4-proxied and behaves the same way for our purposes.
 
+   > **Optional — `ConnectionStrings:Redis` (multi-instance real-time).** Leave it unset for a single backend (SignalR runs in-memory and chat/presence are real-time). Set it **only when more than one backend instance is live at once** — e.g. two machines each running `dotnet run` against the same RDS — so the instances share a SignalR **backplane** (Redis pub/sub). Without it, a message sent on instance A never reaches a client connected to instance B, so cross-machine chat looks like it needs a refresh. `dotnet user-secrets set "ConnectionStrings:Redis" "your-redis-host:6379"` (AWS ElastiCache, Redis Cloud, etc.). The startup log prints which mode is active.
+
    Verify the secrets were saved:
    ```bash
    dotnet user-secrets list

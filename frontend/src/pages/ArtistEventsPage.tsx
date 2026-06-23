@@ -9,6 +9,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { shareLink } from '@/utils/share'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 
 function regionName(country: string) {
   try {
@@ -102,7 +103,9 @@ export function ArtistEventsPage() {
           {!artist.headerImageUrl && <Avatar src={artist.imageUrl} alt={artist.name} size="xl" round className="h-28 w-28 text-3xl shadow-2xl" />}
           <div>
             <p className="mb-4 text-sm font-bold text-white">All events</p>
-            <h1 className="text-5xl font-black text-white drop-shadow-xl sm:text-7xl">{artist.name}</h1>
+            <h1 className="text-5xl font-black text-white drop-shadow-xl sm:text-7xl">
+              <VerifiedArtistName name={artist.name} verified={artist.verified} iconClassName="h-8 w-8 sm:h-10 sm:w-10" />
+            </h1>
           </div>
         </div>
       </header>

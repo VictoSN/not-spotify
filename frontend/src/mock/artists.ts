@@ -72,4 +72,5 @@ export const mockArtistRefs: ArtistRef[] = mockArtists.map((a) => ({
   id: a.id,
   name: a.name,
   imageUrl: a.imageUrl,
+  verified: a.verified,
 }))

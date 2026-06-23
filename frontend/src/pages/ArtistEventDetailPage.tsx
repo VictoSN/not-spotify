@@ -16,6 +16,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { shareLink } from '@/utils/share'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 
 const savedEventKey = 'not-spotify:saved-events'
 
@@ -132,7 +133,9 @@ export function ArtistEventDetailPage() {
             <div className="mb-5 inline-flex rounded-lg bg-black/55 px-4 py-3 text-xl font-black text-white backdrop-blur-sm">
               {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </div>
-            <h1 className="truncate text-5xl font-black text-white drop-shadow-xl sm:text-7xl">{artist.name}</h1>
+            <h1 className="truncate text-5xl font-black text-white drop-shadow-xl sm:text-7xl">
+              <VerifiedArtistName name={artist.name} verified={artist.verified} iconClassName="h-8 w-8 sm:h-10 sm:w-10" />
+            </h1>
             {artist.genres.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {artist.genres.slice(0, 5).map((genre) => (

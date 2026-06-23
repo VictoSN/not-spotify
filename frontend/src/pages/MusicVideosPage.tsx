@@ -4,6 +4,7 @@ import { PlayIcon, FilmIcon } from '@heroicons/react/24/solid'
 import type { MusicVideo } from '@/types/musicVideo'
 import { videoService } from '@/services/videoService'
 import { Spinner } from '@/components/ui/Spinner'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { formatMs } from '@/utils/formatTime'
 
@@ -49,7 +50,9 @@ export function MusicVideosPage() {
                 )}
               </div>
               <div className="truncate px-1 font-semibold text-primary">{v.title}</div>
-              <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
+              <div className="px-1 text-sm text-secondary">
+                <VerifiedArtistName name={v.artist.name} verified={v.artist.verified} iconClassName="h-3.5 w-3.5" />
+              </div>
             </Link>
           ))}
         </div>

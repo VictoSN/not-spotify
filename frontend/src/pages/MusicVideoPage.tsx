@@ -5,6 +5,7 @@ import type { MusicVideo } from '@/types/musicVideo'
 import { videoService } from '@/services/videoService'
 import { usePlayerStore } from '@/stores/playerStore'
 import { Spinner } from '@/components/ui/Spinner'
+import { VerifiedArtistName } from '@/components/common/VerifiedArtistName'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 
 export function MusicVideoPage() {
@@ -52,7 +53,7 @@ export function MusicVideoPage() {
         <h1 className="text-2xl font-black text-primary">{video.title}</h1>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-secondary">
           <Link to={`/artist/${video.artist.id}`} className="font-semibold text-primary hover:underline">
-            {video.artist.name}
+            <VerifiedArtistName name={video.artist.name} verified={video.artist.verified} />
           </Link>
           <span>·</span>
           <span>{video.viewCount.toLocaleString()} views</span>

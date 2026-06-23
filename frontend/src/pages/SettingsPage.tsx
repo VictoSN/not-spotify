@@ -4,6 +4,8 @@ import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from '@heroicons/react
 import { useThemeStore } from '@/stores/themeStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLocaleStore } from '@/stores/localeStore'
+import { useAuthStore } from '@/stores/authStore'
+import { QUALITY_KBPS, FREE_MAX_QUALITY } from '@/services/audioEngine'
 import { useTranslation } from '@/i18n/useTranslation'
 import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
@@ -153,6 +155,11 @@ export function SettingsPage() {
   // Streaming quality is live: read by the two-deck audioEngine, which rolls off
   // the highs at lower tiers (and caps adaptive/HLS levels where present).
   const [streamingQuality, setStreamingQuality] = usePref('ns-pref-quality', 'auto')
+  // Free accounts are capped at ~128 kbps; only Premium can pick higher tiers.
+  const isPremium = useAuthStore((s) => s.user?.plan) === 'premium'
+  const effectiveQuality = isPremium ? streamingQuality : FREE_MAX_QUALITY
+  const qualityLabel = (key: string, base: string) =>
+    key === 'auto' ? `${base} · Adaptive` : `${base} · ~${QUALITY_KBPS[key] ?? 320} kbps`
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-6">
@@ -213,18 +220,33 @@ export function SettingsPage() {
       <Section title={t('settings.audio')}>
         <Row
           label={t('settings.audio.streaming')}
-          sub={t('settings.audio.streamingSub')}
+          badge={
+            !isPremium && (
+              <Link
+                to="/premium"
+                className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent transition-colors hover:bg-accent/25"
+              >
+                Premium
+              </Link>
+            )
+          }
+          sub={
+            isPremium
+              ? t('settings.audio.streamingSub')
+              : 'Free plays at ~128 kbps. Upgrade to Premium for High and Very High (320 kbps).'
+          }
           control={
             <Select
               label={t('settings.audio.streaming')}
-              value={streamingQuality}
+              value={effectiveQuality}
               onChange={setStreamingQuality}
+              disabled={!isPremium}
               options={[
-                { value: 'auto', label: t('quality.auto') },
-                { value: 'low', label: t('quality.low') },
-                { value: 'normal', label: t('quality.normal') },
-                { value: 'high', label: t('quality.high') },
-                { value: 'veryhigh', label: t('quality.veryhigh') },
+                { value: 'auto', label: qualityLabel('auto', t('quality.auto')) },
+                { value: 'low', label: qualityLabel('low', t('quality.low')) },
+                { value: 'normal', label: qualityLabel('normal', t('quality.normal')) },
+                { value: 'high', label: qualityLabel('high', t('quality.high')) },
+                { value: 'veryhigh', label: qualityLabel('veryhigh', t('quality.veryhigh')) },
               ]}
             />
           }

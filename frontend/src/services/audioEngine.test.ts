@@ -3,6 +3,8 @@ import {
   readCrossfadeSeconds,
   readNormalizeEnabled,
   readQuality,
+  effectiveQuality,
+  clampQualityToPlan,
   qualityCutoffHz,
   isHlsSource,
   qualityToHlsLevelCap,
@@ -59,6 +61,31 @@ describe('readQuality', () => {
     expect(readQuality()).toBe('low')
     localStorage.setItem('ns-pref-quality', '123') // non-string
     expect(readQuality()).toBe('auto')
+  })
+})
+
+describe('clampQualityToPlan / effectiveQuality', () => {
+  it('passes everything through for premium', () => {
+    for (const q of ['low', 'normal', 'high', 'veryhigh', 'auto']) {
+      expect(clampQualityToPlan(q, 'premium')).toBe(q)
+    }
+  })
+
+  it('caps free accounts at ~128 kbps (normal), pinning higher tiers and auto', () => {
+    expect(clampQualityToPlan('low', 'free')).toBe('low')
+    expect(clampQualityToPlan('normal', 'free')).toBe('normal')
+    expect(clampQualityToPlan('high', 'free')).toBe('normal')
+    expect(clampQualityToPlan('veryhigh', 'free')).toBe('normal')
+    expect(clampQualityToPlan('auto', 'free')).toBe('normal')
+    expect(clampQualityToPlan('high', null)).toBe('normal') // unknown plan → treat as free
+  })
+
+  it('effectiveQuality clamps the stored preference by the mirrored plan', () => {
+    localStorage.setItem('ns-pref-quality', JSON.stringify('veryhigh'))
+    localStorage.setItem('ns-plan', 'free')
+    expect(effectiveQuality()).toBe('normal')
+    localStorage.setItem('ns-plan', 'premium')
+    expect(effectiveQuality()).toBe('veryhigh')
   })
 })
 

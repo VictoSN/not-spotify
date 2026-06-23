@@ -4,8 +4,34 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { Button } from '@/components/ui/Button'
 import { billingService, type BillingPlan, type BillingSubscription } from '@/services/billingService'
+import { planService, type PlanOverview } from '@/services/planService'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+
+const TIER_LABEL: Record<string, string> = {
+  individual: 'Premium',
+  duo: 'Premium Duo',
+  family: 'Premium Family',
+  student: 'Premium Student',
+}
+
+/** Human label for the plan the user is currently on, e.g. "Premium Family". */
+function planTypeLabel(
+  isPremium: boolean,
+  overview: PlanOverview | null,
+  subscription: BillingSubscription | null,
+  fallbackInterval: 'monthly' | 'yearly' | null,
+): string {
+  if (!isPremium) return 'Free plan'
+  const tier = overview?.tier ?? 'individual'
+  if (overview?.isMember) return 'Premium (shared plan member)'
+  const base = TIER_LABEL[tier] ?? 'Premium'
+  if (tier === 'individual') {
+    const interval = subscription?.interval ?? fallbackInterval
+    return interval ? `${base} ${interval === 'yearly' ? 'Yearly' : 'Monthly'}` : base
+  }
+  return base
+}
 
 const COMPARISON: { label: string; free: boolean | 'partial'; freeNote?: string }[] = [
   { label: 'Ad-free music listening', free: false },
@@ -148,6 +174,7 @@ export function PremiumPage() {
   const { user, isAuthenticated } = useAuthStore()
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
+  const [planOverview, setPlanOverview] = useState<PlanOverview | null>(null)
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [plansFocused, setPlansFocused] = useState(false)
@@ -159,6 +186,7 @@ export function PremiumPage() {
   useEffect(() => {
     if (!isAuthenticated) return
     billingService.getSubscription().then(setSubscription).catch(() => setSubscription(null))
+    planService.getOverview().then(setPlanOverview).catch(() => setPlanOverview(null))
   }, [isAuthenticated])
 
   const checkout = async (plan: BillingPlan['plan']) => {
@@ -382,25 +410,56 @@ export function PremiumPage() {
           </div>
         </section>
 
-        {/* Current subscription */}
-        {isPremium && (
+        {/* Current plan — always shown so the user can see what they're on */}
+        {isAuthenticated && (
           <div className="mx-auto mt-10 max-w-5xl rounded-lg bg-surface p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-primary">Your subscription</h2>
+                <span className="text-xs font-bold uppercase tracking-wider text-secondary">Your plan</span>
+                <div className="mt-1 flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-primary">
+                    {planTypeLabel(isPremium, planOverview, subscription, user?.subscriptionInterval ?? null)}
+                  </h2>
+                  {isPremium && (
+                    <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-accent">
+                      Active
+                    </span>
+                  )}
+                </div>
                 <p className="mt-1 text-sm capitalize text-secondary">
-                  {subscription?.status ?? user?.subscriptionStatus ?? 'Premium'}{' '}
-                  {subscription?.interval ?? user?.subscriptionInterval ?? ''}
+                  {isPremium
+                    ? [
+                        subscription?.status ?? user?.subscriptionStatus,
+                        planOverview && planOverview.isOwner && planOverview.maxMembers > 1
+                          ? `${planOverview.seatsUsed}/${planOverview.seatsTotal} seats used`
+                          : planOverview?.isMember && planOverview.planOwner
+                            ? `shared by ${planOverview.planOwner.name}`
+                            : null,
+                        subscription?.cancelAtPeriodEnd ? 'cancels at period end' : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : 'Ad-supported, shuffle-only, ~128 kbps audio.'}
                 </p>
               </div>
-              <button
-                onClick={manageBilling}
-                disabled={busyPlan === 'portal'}
-                className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:opacity-50"
-              >
-                <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
-              </button>
+              {isPremium ? (
+                <button
+                  onClick={manageBilling}
+                  disabled={busyPlan === 'portal'}
+                  className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:opacity-50"
+                >
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                  {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={scrollToPlans}
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+                >
+                  Upgrade
+                </button>
+              )}
             </div>
           </div>
         )}

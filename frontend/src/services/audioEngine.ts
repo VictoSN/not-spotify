@@ -71,6 +71,44 @@ export function qualityCutoffHz(quality: string): number {
   return QUALITY_CUTOFF_HZ[quality] ?? 22050
 }
 
+/**
+ * Approximate bitrate each tier maps to, shown in the Settings labels. The source
+ * files are single ~320 kbps AAC, so lower tiers are delivered perceptually via the
+ * low-pass above rather than a real smaller transcode.
+ */
+export const QUALITY_KBPS: Record<string, number> = {
+  low: 64,
+  normal: 128,
+  high: 256,
+  veryhigh: 320,
+}
+
+/** Ordering used to enforce the free-tier ceiling. "auto" ranks highest (full ABR). */
+const QUALITY_RANK: Record<string, number> = { low: 0, normal: 1, high: 2, veryhigh: 3, auto: 4 }
+
+/** Free accounts are capped at this tier (~128 kbps); Premium unlocks High/Very High/Auto. */
+export const FREE_MAX_QUALITY = 'normal'
+
+/**
+ * Clamp a requested quality tier to what the user's plan allows. Free accounts can't
+ * exceed {@link FREE_MAX_QUALITY}; "auto" is pinned down too since it could otherwise
+ * pick a high rendition. Premium passes through unchanged.
+ */
+export function clampQualityToPlan(quality: string, plan: string | null | undefined): string {
+  if (plan === 'premium') return quality
+  const rank = QUALITY_RANK[quality] ?? QUALITY_RANK.auto
+  return rank > QUALITY_RANK[FREE_MAX_QUALITY] ? FREE_MAX_QUALITY : quality
+}
+
+/** Current plan, mirrored into localStorage by the auth store (see authStore). */
+function readPlan(): string {
+  try {
+    return window.localStorage.getItem('ns-plan') ?? 'free'
+  } catch {
+    return 'free'
+  }
+}
+
 /** True when a source URL is an HLS manifest (.m3u8, optionally with query/hash). */
 export function isHlsSource(src: string): boolean {
   return /\.m3u8(\?|#|$)/i.test(src)
@@ -98,6 +136,11 @@ export function readQuality(): string {
   }
 }
 
+/** Plan-clamped streaming quality the engine should actually apply. */
+export function effectiveQuality(): string {
+  return clampQualityToPlan(readQuality(), readPlan())
+}
+
 const clampVol = (v: number) => Math.max(0, Math.min(1, v))
 
 class AudioEngine {
@@ -120,7 +163,7 @@ class AudioEngine {
   private equalizerGains = getEqualizerSettings().gains
   private crossfadeSec = readCrossfadeSeconds()
   private normalizeEnabled = readNormalizeEnabled()
-  private quality = readQuality()
+  private quality = effectiveQuality()
   private fadeRaf: number | null = null
   /** Deck currently ramping out during a crossfade (so we can stop it on cancel). */
   private fadingOut: HTMLAudioElement | null = null
@@ -142,7 +185,7 @@ class AudioEngine {
     this.onPrefChange = () => {
       this.crossfadeSec = readCrossfadeSeconds()
       this.normalizeEnabled = readNormalizeEnabled()
-      this.quality = readQuality()
+      this.quality = effectiveQuality()
       this.applyNormalize()
       this.applyQuality()
       this.applyHlsQuality()

@@ -88,3 +88,19 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 }))
+
+// Mirror the current plan into localStorage so the (non-React) audio engine can
+// enforce the free-tier streaming-quality cap without importing React state.
+// Dispatching ns-pref-change makes the engine re-read the (now plan-clamped) quality
+// the moment a user logs in, upgrades, or downgrades.
+useAuthStore.subscribe((state) => {
+  try {
+    const plan = state.user?.plan ?? 'free'
+    if (window.localStorage.getItem('ns-plan') !== plan) {
+      window.localStorage.setItem('ns-plan', plan)
+      window.dispatchEvent(new CustomEvent('ns-pref-change', { detail: { key: 'ns-plan', value: plan } }))
+    }
+  } catch {
+    /* ignore */
+  }
+})

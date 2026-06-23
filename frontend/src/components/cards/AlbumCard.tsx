@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -17,6 +17,7 @@ interface AlbumCardProps {
 
 export function AlbumCard({ album, tracks }: AlbumCardProps) {
   const playWithGate = usePlaybackGate()
+  const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
@@ -64,7 +65,26 @@ export function AlbumCard({ album, tracks }: AlbumCardProps) {
       </div>
       <p className="text-sm font-semibold text-primary truncate">{album.title}</p>
       <p className="text-xs text-secondary mt-0.5 truncate">
-        {album.releaseDate.slice(0, 4)} · {album.artist.name}
+        {album.releaseDate.slice(0, 4)} ·{' '}
+        <span
+          role="link"
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            navigate(`/artist/${album.artist.id}`)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              navigate(`/artist/${album.artist.id}`)
+            }
+          }}
+          className="cursor-pointer hover:text-primary hover:underline"
+        >
+          {album.artist.name}
+        </span>
       </p>
     </Link>
   )

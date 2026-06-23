@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
   ArrowTopRightOnSquareIcon,
@@ -205,8 +206,8 @@ export function AccountSettingsPage() {
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-wider text-secondary">Your plan</p>
             <div className="mt-1 flex items-center gap-2">
-              <SparklesIcon className="h-6 w-6 text-accent" />
-              <h2 className="text-2xl font-black text-primary">not-spotify {isPremium ? 'Premium' : 'Free'}</h2>
+              <SpotifyMark className="h-6 w-6" />
+              <h2 className="text-2xl font-black text-primary">{isPremium ? 'Premium' : 'Free'}</h2>
             </div>
             <p className="mt-2 text-sm text-secondary">
               {isPremium ? (

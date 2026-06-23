@@ -42,9 +42,18 @@ interface TrackRowMenuProps {
   alwaysVisible?: boolean
   /** Forwarded to the underlying kebab button so parents can open the menu programmatically (e.g. on right-click). */
   triggerRef?: React.Ref<HTMLButtonElement>
+  /** Hide the premium "Download" item — used where a dedicated download button already exists
+   *  in the surrounding toolbar (e.g. the track detail page) so it doesn't appear twice. */
+  hideDownload?: boolean
 }
 
-export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible, triggerRef }: TrackRowMenuProps) {
+export function TrackRowMenu({
+  track,
+  currentPlaylistId,
+  alwaysVisible,
+  triggerRef,
+  hideDownload,
+}: TrackRowMenuProps) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -572,6 +581,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible, triggerR
             <div className="my-1 h-px bg-secondary/20" />
 
             {isPremium ? (
+              hideDownload ? null : (
               <MenuItem>
                 <button
                   type="button"
@@ -597,6 +607,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible, triggerR
                   {downloading ? 'Downloading…' : 'Download'}
                 </button>
               </MenuItem>
+              )
             ) : (
               <MenuItem>
                 <button

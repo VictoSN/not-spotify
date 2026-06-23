@@ -264,8 +264,8 @@ export function TrackDetailPage() {
           <CodeBracketIcon className="w-6 h-6" />
         </button>
 
-        {/* More options menu */}
-        <TrackRowMenu track={track} alwaysVisible />
+        {/* More options menu — hide its Download item; the toolbar above already has one. */}
+        <TrackRowMenu track={track} alwaysVisible hideDownload />
       </div>
       </div>
 

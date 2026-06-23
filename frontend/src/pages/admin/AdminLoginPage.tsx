@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  MusicalNoteIcon,
   ArrowLeftIcon,
   EyeIcon,
   EyeSlashIcon,
   ShieldCheckIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
@@ -61,8 +61,7 @@ export function AdminLoginPage() {
         {/* Brand — mirrors the AdminShell header */}
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="mb-4 flex items-center gap-2 text-accent">
-            <MusicalNoteIcon className="h-8 w-8" />
-            <span className="text-xl font-bold">not-spotify</span>
+            <SpotifyMark className="h-8 w-8" />
             <span className="text-base font-normal text-secondary">Admin</span>
           </div>
           <h1 className="text-2xl font-bold text-primary">Sign in to the console</h1>

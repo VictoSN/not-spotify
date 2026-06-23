@@ -39,7 +39,10 @@ export function MixTile({ mix }: MixTileProps) {
   const accent = mix.color ?? '#1db954'
 
   return (
-    <div className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors">
+    <div
+      className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         {covers.length >= 4 ? (
           <div className="grid h-full w-full grid-cols-2 grid-rows-2">

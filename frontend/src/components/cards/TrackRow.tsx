@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
@@ -44,6 +44,7 @@ export function TrackRow({
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
   const { ratingCount, averageRating } = getAggregate(track.id)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if ((track.ratingCount ?? 0) > 0) {
@@ -75,6 +76,10 @@ export function TrackRow({
       className="group grid items-center gap-4 px-4 py-2 rounded-md hover:bg-elevated/60 cursor-pointer"
       style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : showAlbum ? '16px 6fr 4fr 3fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
       onClick={handlePlay}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        menuTriggerRef.current?.click()
+      }}
     >
       {/* Index / play indicator */}
       <div className="flex items-center justify-center w-4">
@@ -186,7 +191,7 @@ export function TrackRow({
 
         {/* Menu slot (Col 4 on desktop / Col 3 on mobile) */}
         <div className="flex justify-center">
-          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} />
+          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} triggerRef={menuTriggerRef} />
         </div>
       </div>
     </div>

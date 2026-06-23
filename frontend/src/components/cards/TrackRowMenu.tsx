@@ -40,9 +40,20 @@ interface TrackRowMenuProps {
   currentPlaylistId?: string
   /** Always show the trigger button regardless of parent hover state. */
   alwaysVisible?: boolean
+  /** Forwarded to the underlying kebab button so parents can open the menu programmatically (e.g. on right-click). */
+  triggerRef?: React.Ref<HTMLButtonElement>
+  /** Hide the premium "Download" item — used where a dedicated download button already exists
+   *  in the surrounding toolbar (e.g. the track detail page) so it doesn't appear twice. */
+  hideDownload?: boolean
 }
 
-export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackRowMenuProps) {
+export function TrackRowMenu({
+  track,
+  currentPlaylistId,
+  alwaysVisible,
+  triggerRef,
+  hideDownload,
+}: TrackRowMenuProps) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -234,6 +245,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
       {({ close }) => (
         <>
           <MenuButton
+            ref={triggerRef}
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.
@@ -569,6 +581,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
             <div className="my-1 h-px bg-secondary/20" />
 
             {isPremium ? (
+              hideDownload ? null : (
               <MenuItem>
                 <button
                   type="button"
@@ -594,6 +607,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                   {downloading ? 'Downloading…' : 'Download'}
                 </button>
               </MenuItem>
+              )
             ) : (
               <MenuItem>
                 <button

@@ -38,6 +38,7 @@ export function ArtistCard({ artist }: ArtistCardProps) {
   return (
     <Link
       to={`/artist/${artist.id}`}
+      onContextMenu={(e) => e.preventDefault()}
       className="group flex-shrink-0 w-40 sm:w-44 text-center p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative mx-auto mb-3 aspect-square">

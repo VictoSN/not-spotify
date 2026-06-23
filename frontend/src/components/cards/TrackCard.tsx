@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
@@ -23,6 +24,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
   const handlePlay = () => {
     if (isCurrent) {
@@ -47,6 +49,10 @@ export function TrackCard({ track, queue }: TrackCardProps) {
     <div
       className="flex items-center gap-3 p-2 rounded-md hover:bg-elevated/60 group cursor-pointer"
       onClick={handlePlay}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        menuTriggerRef.current?.click()
+      }}
     >
       <div className="relative w-10 h-10 flex-shrink-0 rounded overflow-hidden">
         <img src={track.album.coverUrl} alt={track.album.title} className="w-full h-full object-cover" />
@@ -82,7 +88,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
           <HeartIcon className="w-4 h-4 text-secondary hover:text-primary flex-shrink-0 transition-colors" />
         )}
       </button>
-      <TrackRowMenu track={track} />
+      <TrackRowMenu track={track} triggerRef={menuTriggerRef} />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -15,6 +15,7 @@ interface TrackTileProps {
 export function TrackTile({ track, queue }: TrackTileProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const playWithGate = usePlaybackGate()
+  const navigate = useNavigate()
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const isCurrent = currentTrack?.id === track.id
 
@@ -34,6 +35,7 @@ export function TrackTile({ track, queue }: TrackTileProps) {
       to={`/album/${track.album.id}`}
       onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => c && setHoverColor(c))}
       onMouseLeave={() => setHoverColor(null)}
+      onContextMenu={(e) => e.preventDefault()}
       className="group flex-shrink-0 w-40 sm:w-44 p-3 rounded-lg hover:bg-surface transition-colors"
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
@@ -51,7 +53,27 @@ export function TrackTile({ track, queue }: TrackTileProps) {
         </button>
       </div>
       <p className={`text-sm font-semibold truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
-      <p className="text-xs text-secondary mt-0.5 truncate">{track.artist.name}</p>
+      <p className="text-xs text-secondary mt-0.5 truncate">
+        <span
+          role="link"
+          tabIndex={0}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            navigate(`/artist/${track.artist.id}`)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              navigate(`/artist/${track.artist.id}`)
+            }
+          }}
+          className="cursor-pointer hover:text-primary hover:underline"
+        >
+          {track.artist.name}
+        </span>
+      </p>
     </Link>
   )
 }

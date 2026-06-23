@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { meService } from '@/services/meService'
 import { useAuthStore } from '@/stores/authStore'
+import { COUNTRIES } from '@/utils/countries'
 
 export function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null
@@ -115,14 +116,21 @@ function EditProfileForm({ onClose }: { onClose: () => void }) {
 
       <label className="grid gap-1.5">
         <span className="text-xs font-semibold text-secondary">Country</span>
-        <input
-          value={country}
-          onChange={(e) => setCountry(e.target.value.toUpperCase().slice(0, 2))}
-          className={`${inputClass} w-28`}
-          minLength={2}
-          maxLength={2}
+        <select
+          value={COUNTRIES.some((c) => c.code === country) ? country : ''}
+          onChange={(e) => setCountry(e.target.value)}
+          className={inputClass}
           required
-        />
+        >
+          <option value="" disabled>
+            Select a country
+          </option>
+          {COUNTRIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.name}
+            </option>
+          ))}
+        </select>
       </label>
 
       <div className="mt-2 flex items-center justify-end gap-3">

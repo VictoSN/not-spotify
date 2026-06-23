@@ -40,9 +40,12 @@ interface TrackRowMenuProps {
   currentPlaylistId?: string
   /** Always show the trigger button regardless of parent hover state. */
   alwaysVisible?: boolean
+  /** Hide the premium "Download" item — used where a dedicated download button already exists
+   *  in the surrounding toolbar (e.g. the track detail page) so it doesn't appear twice. */
+  hideDownload?: boolean
 }
 
-export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackRowMenuProps) {
+export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible, hideDownload }: TrackRowMenuProps) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -569,6 +572,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
             <div className="my-1 h-px bg-secondary/20" />
 
             {isPremium ? (
+              hideDownload ? null : (
               <MenuItem>
                 <button
                   type="button"
@@ -594,6 +598,7 @@ export function TrackRowMenu({ track, currentPlaylistId, alwaysVisible }: TrackR
                   {downloading ? 'Downloading…' : 'Download'}
                 </button>
               </MenuItem>
+              )
             ) : (
               <MenuItem>
                 <button

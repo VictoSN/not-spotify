@@ -45,6 +45,9 @@ public static class MusicImporter
         ["Nirvana"] = new("US", new[] { "rock", "grunge", "alternative" },
             "Aberdeen, Washington trio led by Kurt Cobain whose raw sound brought grunge into the mainstream and reshaped 90s rock.",
             42_000_000, 16_000_000, "nirvana", null),
+        ["Ado"] = new("JP", new[] { "j-pop", "pop", "rock" },
+            "Tokyo-born vocalist who broke out on Niconico as an utaite and reached the mainstream at 17 with 'Usseewa'. Known for her explosive range and a public persona that keeps her face hidden, she sang 'New Genesis' for One Piece Film: Red and is one of Japan's most-streamed artists worldwide.",
+            6_700_000, 5_700_000, "ado1024imokenp", "ado1024imokenp"),
     };
 
     // Fallbacks for any artist not in the table above.
@@ -61,6 +64,8 @@ public static class MusicImporter
         ["metal"] = ("Metal", "#424242"),
         ["country"] = ("Country", "#8BC34A"),
         ["hip-hop"] = ("Hip-Hop", "#FF5722"),
+        ["pop"] = ("Pop", "#EC407A"),
+        ["j-pop"] = ("J-Pop", "#F06292"),
     };
 
     public static async Task RunAsync(IServiceProvider services, string[] args)
@@ -177,7 +182,7 @@ public static class MusicImporter
                     Id = Guid.NewGuid(),
                     ArtistId = artist.Id,
                     Title = albumTitle,
-                    Type = albumTitle.Contains("Greatest Hits", StringComparison.OrdinalIgnoreCase) ? "compilation" : "album",
+                    Type = ResolveAlbumType(albumTitle, audioFiles.Count),
                     ReleaseDate = release,
                     Country = info.Country,
                     Popularity = 80,
@@ -307,6 +312,14 @@ public static class MusicImporter
             "", RegexOptions.IgnoreCase);
         var album = Regex.Replace(rest, @"\s+", " ").Trim();
         return (artist, album, year);
+    }
+
+    private static string ResolveAlbumType(string title, int trackCount)
+    {
+        if (title.Contains("Greatest Hits", StringComparison.OrdinalIgnoreCase)) return "compilation";
+        if (trackCount <= 1) return "single";
+        if (trackCount <= 6) return "ep";
+        return "album";
     }
 
     private static (int trackNo, string title, bool isExplicit) ParseTrackFile(string path)

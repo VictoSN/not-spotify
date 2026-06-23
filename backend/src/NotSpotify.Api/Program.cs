@@ -784,4 +784,31 @@ if (args.Contains("delete-playlists"))
     return;
 }
 
+// Update one artist's listener/follower counts (and optional bio / socials) by name.
+// Usage: dotnet run -- update-artist --name "Vaundy" --listeners 6100000 --followers 2500000
+//        optional: --bio "..." --country JP --instagram handle --twitter handle --verified true
+if (args.Contains("update-artist"))
+{
+    string? GetArg(string n) { var i = Array.IndexOf(args, n); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+    var name = GetArg("--name");
+    if (string.IsNullOrWhiteSpace(name)) { Console.WriteLine("[update-artist] --name is required"); return; }
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<NotSpotify.Api.Data.AppDbContext>();
+    var artist = await db.Artists.FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower());
+    if (artist is null) { Console.WriteLine($"[update-artist] No artist named '{name}'"); return; }
+
+    if (long.TryParse(GetArg("--listeners"), out var ml)) artist.MonthlyListeners = ml;
+    if (long.TryParse(GetArg("--followers"), out var fc)) artist.FollowerCount = fc;
+    if (GetArg("--bio") is { } bio) artist.Bio = bio;
+    if (GetArg("--country") is { } country) artist.Country = country;
+    if (GetArg("--instagram") is { } ig) artist.Instagram = ig;
+    if (GetArg("--twitter") is { } tw) artist.Twitter = tw;
+    if (bool.TryParse(GetArg("--verified"), out var verified)) artist.Verified = verified;
+
+    await db.SaveChangesAsync();
+    Console.WriteLine($"[update-artist] '{artist.Name}' → listeners={artist.MonthlyListeners:N0}, followers={artist.FollowerCount:N0}, country={artist.Country}, verified={artist.Verified}");
+    return;
+}
+
 app.Run();

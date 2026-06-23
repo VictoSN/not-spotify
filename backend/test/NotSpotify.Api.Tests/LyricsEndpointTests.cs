@@ -69,6 +69,51 @@ public class LyricsEndpointTests
     }
 
     [Fact]
+    public async Task GetLyrics_InstrumentalTrack_ClearsCachedLyricsAndSkipsNetwork()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum("RADWIMPS");
+        var track = db.AddTrack("Theme of Mitsuha", artist, album);
+        var instrumental = db.AddGenre("Instrumental", "instrumental");
+        db.Tag(track, instrumental);
+        track.Lyrics = "wrong provider lyrics";
+        track.SyncedLyrics = "[00:01.00]wrong provider lyrics";
+        await db.SaveChangesAsync();
+
+        var controller = Controller(db, TestHelpers.NewOfflineLyrics());
+        var ok = Assert.IsType<OkObjectResult>((await controller.GetLyrics(track.Id)).Result);
+        var dto = Assert.IsType<LyricsDto>(ok.Value);
+
+        Assert.Null(dto.Lyrics);
+        Assert.Null(dto.SyncedLyrics);
+        Assert.Equal("instrumental", dto.Source);
+
+        var reloaded = await db.Tracks.AsNoTracking().FirstAsync(t => t.Id == track.Id);
+        Assert.Null(reloaded.Lyrics);
+        Assert.Equal("__none__", reloaded.SyncedLyrics);
+    }
+
+    [Fact]
+    public async Task Get_InstrumentalTrack_DoesNotExposeSeededLyricsInDto()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum("RADWIMPS");
+        var track = db.AddTrack("Date", artist, album);
+        var instrumental = db.AddGenre("Instrumental", "instrumental");
+        db.Tag(track, instrumental);
+        track.Lyrics = "seeded but wrong";
+        track.SyncedLyrics = "[00:01.00]seeded but wrong";
+        await db.SaveChangesAsync();
+
+        var controller = Controller(db, TestHelpers.NewOfflineLyrics());
+        var ok = Assert.IsType<OkObjectResult>((await controller.Get(track.Id)).Result);
+        var dto = Assert.IsType<TrackDto>(ok.Value);
+
+        Assert.Null(dto.Lyrics);
+        Assert.Contains("instrumental", dto.Genres);
+    }
+
+    [Fact]
     public async Task GetLyrics_StoredPlainNeverLookedUp_ProbesSyncedAndCachesIt()
     {
         await using var db = TestHelpers.NewDb();

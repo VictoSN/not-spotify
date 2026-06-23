@@ -592,9 +592,22 @@ public class TracksController : ControllerBase
     {
         var track = await _db.Tracks
             .Include(t => t.Artist)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
             .FirstOrDefaultAsync(t => t.Id == id && t.Status == "approved", ct);
 
         if (track is null) return NotFound();
+
+        if (IsInstrumental(track))
+        {
+            if (!string.IsNullOrWhiteSpace(track.Lyrics) || !string.IsNullOrWhiteSpace(track.SyncedLyrics))
+            {
+                track.Lyrics = null;
+                track.SyncedLyrics = "__none__";
+                await _db.SaveChangesAsync(ct);
+            }
+
+            return Ok(new LyricsDto(null, null, "instrumental"));
+        }
 
         if (!string.IsNullOrWhiteSpace(track.Lyrics))
         {
@@ -649,6 +662,9 @@ public class TracksController : ControllerBase
 
         return Ok(new LyricsDto(null, null, "not_found"));
     }
+
+    private static bool IsInstrumental(Models.Track track)
+        => track.TrackGenres.Any(tg => string.Equals(tg.Genre.Slug, "instrumental", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Returns comments for a track, newest first. Public (no auth needed to read).

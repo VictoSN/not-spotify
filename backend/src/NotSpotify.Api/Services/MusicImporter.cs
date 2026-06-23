@@ -26,7 +26,8 @@ public static class MusicImporter
     // (created on demand). Country is ISO-3166 alpha-2. Listener/follower counts are
     // ballpark figures so artist pages don't render as brand-new zero-listener acts.
     private record ArtistInfo(string Country, string[] GenreSlugs, string Bio,
-        long MonthlyListeners, long Followers, string? Instagram, string? Twitter);
+        long MonthlyListeners, long Followers, string? Instagram, string? Twitter,
+        string? SpotifyId = null);
 
     private static readonly Dictionary<string, ArtistInfo> KnownArtists = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,12 +48,43 @@ public static class MusicImporter
             42_000_000, 16_000_000, "nirvana", null),
         ["Ado"] = new("JP", new[] { "j-pop", "pop", "rock" },
             "Tokyo-born vocalist who broke out on Niconico as an utaite and reached the mainstream at 17 with 'Usseewa'. Known for her explosive range and a public persona that keeps her face hidden, she sang 'New Genesis' for One Piece Film: Red and is one of Japan's most-streamed artists worldwide.",
-            6_700_000, 5_700_000, "ado1024imokenp", "ado1024imokenp"),
+            6_700_000, 5_700_000, "ado1024imokenp", "ado1024imokenp",
+            SpotifyId: "6mEQK9m2krja6X1cfsAjfl"),
+        ["RADWIMPS"] = new("JP", new[] { "j-rock", "rock", "alternative", "pop" },
+            "Yokohama alt-rock four-piece formed in 2001 by Yojiro Noda and friends. Beloved for emotionally literate lyrics and shape-shifting arrangements, they reached a global audience scoring Makoto Shinkai's anime trilogy — Your Name (2016), Weathering With You (2019), and Suzume (2022) — and have since sold out international arena tours.",
+            7_200_000, 3_500_000, "radwimps_jp", "RADWIMPS_jp",
+            SpotifyId: "1EowJ1WwkMzkCkRomFhui7"),
     };
 
     // Fallbacks for any artist not in the table above.
     private static readonly ArtistInfo DefaultArtist =
         new("US", new[] { "rock" }, "", 1_000_000, 250_000, null, null);
+
+    private static readonly Dictionary<string, HashSet<string>> KnownInstrumentalTracks = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["RADWIMPS"] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Date",
+            "Date 2",
+            "Theme of Mitsuha",
+        },
+    };
+
+    // Audio formats the importer ingests. ffprobe + ffmpeg handle all of them, and S3 stores
+    // them with the right Content-Type so the browser <audio> element picks the right codec.
+    private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
+        { ".m4a", ".flac", ".mp3", ".ogg", ".opus", ".wav" };
+
+    private static string AudioMime(string ext) => ext switch
+    {
+        ".m4a" => "audio/mp4",
+        ".flac" => "audio/flac",
+        ".mp3" => "audio/mpeg",
+        ".ogg" => "audio/ogg",
+        ".opus" => "audio/ogg",
+        ".wav" => "audio/wav",
+        _ => "application/octet-stream",
+    };
 
     private static readonly Dictionary<string, (string Name, string Color)> GenreMeta = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -66,6 +98,8 @@ public static class MusicImporter
         ["hip-hop"] = ("Hip-Hop", "#FF5722"),
         ["pop"] = ("Pop", "#EC407A"),
         ["j-pop"] = ("J-Pop", "#F06292"),
+        ["j-rock"] = ("J-Rock", "#AD1457"),
+        ["instrumental"] = ("Instrumental", "#607D8B"),
     };
 
     public static async Task RunAsync(IServiceProvider services, string[] args)
@@ -116,10 +150,13 @@ public static class MusicImporter
             }
             var (artistName, albumTitle, year) = parsed.Value;
 
-            var audioFiles = Directory.GetFiles(dir, "*.m4a").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToList();
+            var audioFiles = Directory.GetFiles(dir)
+                .Where(f => AudioExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                .ToList();
             if (audioFiles.Count == 0)
             {
-                Console.WriteLine($"[skip] No .m4a files in: {folder}");
+                Console.WriteLine($"[skip] No audio files in: {folder}");
                 continue;
             }
 
@@ -160,17 +197,50 @@ public static class MusicImporter
             }
             var release = meta?.ReleaseDate ?? new DateOnly(year, 1, 1);
 
-            // Give the artist an image (first album cover we successfully fetch) if it has none.
-            if (coverBytes is not null && artist.ImageKey is null && string.IsNullOrEmpty(artist.ImageUrl))
+            // Profile + banner: prefer Spotify (scraped from the public artist page) when we
+            // have a SpotifyId; otherwise fall back to the first album cover for the profile
+            // and leave the banner blank (admin can upload one later).
+            SpotifyImages? spotifyImages = info.SpotifyId is { } sid ? await ScrapeSpotifyImagesAsync(http, sid) : null;
+
+            if (artist.ImageKey is null && string.IsNullOrEmpty(artist.ImageUrl))
             {
-                if (!dryRun)
+                byte[]? profileBytes = null;
+                string source = "";
+                if (spotifyImages is not null)
                 {
-                    var ik = $"images/artists/{Guid.NewGuid()}.jpg";
-                    await storage.UploadAsync(ik, new MemoryStream(coverBytes), "image/jpeg");
-                    artist.ImageKey = ik;
-                    artist.ImageUrl = null;
+                    profileBytes = await TryDownloadAsync(http, spotifyImages.ProfileUrl);
+                    if (profileBytes is not null) source = "Spotify";
                 }
-                Console.WriteLine("   + artist image set from album art");
+                if (profileBytes is null && coverBytes is not null) { profileBytes = coverBytes; source = "album art"; }
+
+                if (profileBytes is not null)
+                {
+                    if (!dryRun)
+                    {
+                        var ik = $"images/artists/{Guid.NewGuid()}.jpg";
+                        await storage.UploadAsync(ik, new MemoryStream(profileBytes), "image/jpeg");
+                        artist.ImageKey = ik;
+                        artist.ImageUrl = null;
+                    }
+                    Console.WriteLine($"   + artist profile image set ({source})");
+                }
+            }
+
+            // Banner / header — only Spotify provides a wide variant; skip when no match.
+            if (artist.HeaderImageKey is null && string.IsNullOrEmpty(artist.HeaderImageUrl) && spotifyImages is not null)
+            {
+                var headerBytes = await TryDownloadAsync(http, spotifyImages.HeaderUrl);
+                if (headerBytes is not null)
+                {
+                    if (!dryRun)
+                    {
+                        var hk = $"images/artists/{Guid.NewGuid()}-header.jpg";
+                        await storage.UploadAsync(hk, new MemoryStream(headerBytes), "image/jpeg");
+                        artist.HeaderImageKey = hk;
+                        artist.HeaderImageUrl = null;
+                    }
+                    Console.WriteLine("   + artist banner set (Spotify)");
+                }
             }
 
             // ---- Album (get-or-create by artist + title) ----
@@ -228,6 +298,12 @@ public static class MusicImporter
                 var lrcPath = Path.ChangeExtension(audioPath, ".lrc");
                 string? synced = File.Exists(lrcPath) ? await File.ReadAllTextAsync(lrcPath) : null;
                 string? plain = synced is not null ? StripTimestamps(synced) : null;
+                var instrumental = IsKnownInstrumental(artistName, title);
+                if (instrumental)
+                {
+                    synced = null;
+                    plain = null;
+                }
 
                 string? audioKey = null;
                 string? waveformJson = null;
@@ -236,9 +312,10 @@ public static class MusicImporter
                     var peaks = await waveforms.ExtractAsync(audioPath);
                     waveformJson = peaks is null ? null : JsonSerializer.Serialize(peaks);
 
-                    audioKey = $"audio/{Guid.NewGuid()}.m4a";
+                    var ext = Path.GetExtension(audioPath).ToLowerInvariant();
+                    audioKey = $"audio/{Guid.NewGuid()}{ext}";
                     await using var fs = File.OpenRead(audioPath);
-                    await storage.UploadAsync(audioKey, fs, "audio/mp4");
+                    await storage.UploadAsync(audioKey, fs, AudioMime(ext));
                 }
 
                 if (existing is not null)
@@ -247,8 +324,16 @@ public static class MusicImporter
                     existing.AudioKey = audioKey;
                     existing.DurationMs = durationMs;
                     existing.Waveform ??= waveformJson;
-                    existing.SyncedLyrics ??= synced;
-                    existing.Lyrics ??= plain;
+                    if (instrumental)
+                    {
+                        existing.SyncedLyrics = "__none__";
+                        existing.Lyrics = null;
+                    }
+                    else
+                    {
+                        existing.SyncedLyrics ??= synced;
+                        existing.Lyrics ??= plain;
+                    }
                     Console.WriteLine($"   ~ [{trackNo:00}] {title} (audio backfilled, {Fmt(durationMs)})");
                 }
                 else
@@ -271,7 +356,10 @@ public static class MusicImporter
                         SyncedLyrics = synced,
                         Lyrics = plain,
                     };
-                    foreach (var g in genres)
+                    var trackGenres = instrumental
+                        ? genres.Append(await GetOrCreateGenreAsync(db, genreCache, "instrumental", dryRun)).DistinctBy(g => g.Id)
+                        : genres;
+                    foreach (var g in trackGenres)
                         track.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = g.Id });
                     if (!dryRun) db.Tracks.Add(track);
                     newTracks++;
@@ -337,6 +425,9 @@ public static class MusicImporter
         return (trackNo, title, isExplicit);
     }
 
+    private static bool IsKnownInstrumental(string artistName, string title)
+        => KnownInstrumentalTracks.TryGetValue(artistName, out var titles) && titles.Contains(title);
+
     private static string StripTimestamps(string lrc)
     {
         var lines = lrc.Replace("\r\n", "\n").Split('\n')
@@ -366,6 +457,40 @@ public static class MusicImporter
         cache[slug] = g;
         Console.WriteLine($"   + genre created: {name}");
         return g;
+    }
+
+    // ---------- Spotify artist image scraper ----------
+
+    // Spotify embeds artist images in the public artist page as i.scdn.co URLs. The
+    // 16-char prefix encodes the size; only three are exposed publicly:
+    //   ab6761610000f178 = 160x160 (thumb)
+    //   ab67616100005174 = 320x320 (medium)
+    //   ab6761610000e5eb = 640x640 (largest available without OAuth)
+    // Higher-res variants exist but require the Spotify Web API. Use the 640px for
+    // both avatar and banner — Spotify itself stretches the same image for the page
+    // header, so this matches what's on spotify.com.
+    private record SpotifyImages(string ProfileUrl, string HeaderUrl);
+
+    private static async Task<SpotifyImages?> ScrapeSpotifyImagesAsync(HttpClient http, string spotifyId)
+    {
+        try
+        {
+            using var res = await http.GetAsync($"https://open.spotify.com/artist/{spotifyId}");
+            if (!res.IsSuccessStatusCode) return null;
+            var html = await res.Content.ReadAsStringAsync();
+            // Grab the first artist-image hash (ab67616100... prefix). The 24-char hash
+            // is everything after the 16-char size prefix.
+            var m = Regex.Match(html, @"i\.scdn\.co/image/ab67616100[0-9a-f]{6}(?<hash>[0-9a-f]{24})");
+            if (!m.Success) return null;
+            var hash = m.Groups["hash"].Value;
+            var largest = $"https://i.scdn.co/image/ab6761610000e5eb{hash}";
+            return new SpotifyImages(ProfileUrl: largest, HeaderUrl: largest);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"   ! Spotify image scrape failed for id={spotifyId}: {ex.Message}");
+            return null;
+        }
     }
 
     // ---------- iTunes lookup ----------

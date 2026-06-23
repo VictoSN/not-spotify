@@ -741,6 +741,7 @@ using (var scope = app.Services.CreateScope())
     ");
 
     await DbSeeder.SeedAsync(scope.ServiceProvider);
+    await RepairKnownInstrumentalLyricsAsync(db);
 }
 
 // One-time bulk catalogue import (`dotnet run -- import-music [--path <dir>] [--dry-run]`).
@@ -784,6 +785,76 @@ if (args.Contains("delete-playlists"))
     return;
 }
 
+// Re-scrape Spotify and overwrite an artist's profile + banner images in storage.
+// Useful when the scraper logic changes (e.g. switching to a larger size variant).
+// Usage: dotnet run -- refresh-spotify-images --name "RADWIMPS" --spotify-id 1EowJ1WwkMzkCkRomFhui7
+if (args.Contains("refresh-spotify-images"))
+{
+    string? GetArg(string n) { var i = Array.IndexOf(args, n); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+    var name = GetArg("--name");
+    var spotifyId = GetArg("--spotify-id");
+    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(spotifyId))
+    {
+        Console.WriteLine("[refresh-spotify-images] both --name and --spotify-id are required"); return;
+    }
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<NotSpotify.Api.Data.AppDbContext>();
+    var storage = scope.ServiceProvider.GetRequiredService<NotSpotify.Api.Services.IStorageService>();
+    var http = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient();
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("not-spotify-import/1.0");
+
+    var artist = await db.Artists.FirstOrDefaultAsync(a => a.Name.ToLower() == name.ToLower());
+    if (artist is null) { Console.WriteLine($"[refresh-spotify-images] '{name}' not found"); return; }
+
+    using var pageRes = await http.GetAsync($"https://open.spotify.com/artist/{spotifyId}");
+    if (!pageRes.IsSuccessStatusCode) { Console.WriteLine($"[refresh-spotify-images] Spotify page returned {(int)pageRes.StatusCode}"); return; }
+    var html = await pageRes.Content.ReadAsStringAsync();
+    var m = System.Text.RegularExpressions.Regex.Match(html, @"i\.scdn\.co/image/ab67616100[0-9a-f]{6}(?<hash>[0-9a-f]{24})");
+    if (!m.Success) { Console.WriteLine("[refresh-spotify-images] no image found in Spotify page"); return; }
+    var url = $"https://i.scdn.co/image/ab6761610000e5eb{m.Groups["hash"].Value}";
+
+    using var imgRes = await http.GetAsync(url);
+    if (!imgRes.IsSuccessStatusCode) { Console.WriteLine($"[refresh-spotify-images] image download returned {(int)imgRes.StatusCode}"); return; }
+    var bytes = await imgRes.Content.ReadAsByteArrayAsync();
+    Console.WriteLine($"[refresh-spotify-images] downloaded {bytes.Length:N0} bytes from {url}");
+
+    // Overwrite existing keys when present, else create new ones.
+    var profileKey = artist.ImageKey ?? $"images/artists/{Guid.NewGuid()}.jpg";
+    var headerKey  = artist.HeaderImageKey ?? $"images/artists/{Guid.NewGuid()}-header.jpg";
+    await storage.UploadAsync(profileKey, new MemoryStream(bytes), "image/jpeg");
+    await storage.UploadAsync(headerKey,  new MemoryStream(bytes), "image/jpeg");
+    artist.ImageKey = profileKey;
+    artist.HeaderImageKey = headerKey;
+    artist.ImageUrl = null;
+    artist.HeaderImageUrl = null;
+    await db.SaveChangesAsync();
+    Console.WriteLine($"[refresh-spotify-images] '{artist.Name}' profile + banner refreshed (profile={profileKey}, header={headerKey})");
+    return;
+}
+
+// Quick lookup: print one artist's row + their albums + track counts.
+// Usage: dotnet run -- show-artist --name "RADWIMPS"
+if (args.Contains("show-artist"))
+{
+    string? GetArg(string n) { var i = Array.IndexOf(args, n); return i >= 0 && i + 1 < args.Length ? args[i + 1] : null; }
+    var name = GetArg("--name");
+    if (string.IsNullOrWhiteSpace(name)) { Console.WriteLine("[show-artist] --name is required"); return; }
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<NotSpotify.Api.Data.AppDbContext>();
+    var a = await db.Artists.FirstOrDefaultAsync(x => x.Name.ToLower() == name.ToLower());
+    if (a is null) { Console.WriteLine($"[show-artist] '{name}' not found"); return; }
+    Console.WriteLine($"[show-artist] {a.Name}: country={a.Country}, listeners={a.MonthlyListeners:N0}, followers={a.FollowerCount:N0}, verified={a.Verified}, revoked={a.IsRevoked}");
+    Console.WriteLine($"             image={(a.ImageKey ?? a.ImageUrl ?? "(none)")}, header={(a.HeaderImageKey ?? a.HeaderImageUrl ?? "(none)")}");
+    var albums = await db.Albums.Where(al => al.ArtistId == a.Id).ToListAsync();
+    foreach (var al in albums)
+    {
+        var trackCount = await db.Tracks.CountAsync(t => t.AlbumId == al.Id);
+        Console.WriteLine($"             - album '{al.Title}' [{al.Type}, status={al.Status}, {trackCount} tracks, cover={(al.CoverKey ?? al.CoverUrl ?? "(none)")}]");
+    }
+    return;
+}
+
 // Update one artist's listener/follower counts (and optional bio / socials) by name.
 // Usage: dotnet run -- update-artist --name "Vaundy" --listeners 6100000 --followers 2500000
 //        optional: --bio "..." --country JP --instagram handle --twitter handle --verified true
@@ -812,3 +883,58 @@ if (args.Contains("update-artist"))
 }
 
 app.Run();
+
+static async Task RepairKnownInstrumentalLyricsAsync(AppDbContext db)
+{
+    var radwimpsInstrumentals = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "Date",
+        "Date 2",
+        "Theme of Mitsuha",
+    };
+
+    var tracks = await db.Tracks
+        .Include(t => t.Artist)
+        .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+        .Where(t => t.Artist.Name == "RADWIMPS")
+        .ToListAsync();
+
+    tracks = tracks.Where(t => radwimpsInstrumentals.Contains(t.Title)).ToList();
+    if (tracks.Count == 0) return;
+
+    var instrumental = await db.Genres.FirstOrDefaultAsync(g => g.Slug == "instrumental");
+    if (instrumental is null)
+    {
+        instrumental = new Genre
+        {
+            Id = Guid.NewGuid(),
+            Name = "Instrumental",
+            Slug = "instrumental",
+            Color = "#607D8B",
+        };
+        db.Genres.Add(instrumental);
+    }
+
+    var changed = false;
+    foreach (var track in tracks)
+    {
+        if (!track.TrackGenres.Any(tg => string.Equals(tg.Genre.Slug, "instrumental", StringComparison.OrdinalIgnoreCase)))
+        {
+            track.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = instrumental.Id });
+            changed = true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(track.Lyrics) || track.SyncedLyrics != "__none__")
+        {
+            track.Lyrics = null;
+            track.SyncedLyrics = "__none__";
+            changed = true;
+        }
+    }
+
+    if (changed)
+    {
+        await db.SaveChangesAsync();
+        Console.WriteLine($"[SeedRepair] Cleared lyrics for {tracks.Count} known RADWIMPS instrumental track(s).");
+    }
+}

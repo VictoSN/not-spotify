@@ -53,6 +53,11 @@ public class MediaMapper
     {
         var audioUrl = await ResolveAudioAsync(t.AudioKey, t.AudioUrl, ct);
         var avg = t.RatingCount > 0 ? Math.Round((double)t.RatingSum / t.RatingCount, 1) : 0.0;
+        var genres = t.TrackGenres.Select(g => g.Genre.Slug).ToList();
+        var lyrics = genres.Any(g => string.Equals(g, "instrumental", StringComparison.OrdinalIgnoreCase))
+            ? null
+            : t.Lyrics;
+
         return new TrackDto(
             t.Id,
             t.Title,
@@ -65,14 +70,14 @@ public class MediaMapper
             t.PlayCount,
             ToRef(t.Artist),
             ToRef(t.Album),
-            t.TrackGenres.Select(g => g.Genre.Slug),
+            genres,
             t.CreatedAt,
             t.RatingCount,
             avg,
             myRating,
             t.Status,
             t.ReviewNote,
-            Lyrics: t.Lyrics,
+            Lyrics: lyrics,
             Waveform: DeserializeWaveform(t.Waveform)
         );
     }

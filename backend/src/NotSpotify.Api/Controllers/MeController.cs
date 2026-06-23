@@ -764,6 +764,14 @@ public class MeController : ControllerBase
             .FirstOrDefaultAsync(a => a.Id == req.AlbumId && a.ArtistId == user.ArtistId, ct);
         if (album is null) return BadRequest(new { message = "Album not found or does not belong to your artist profile." });
 
+        // Genre is required so the track is discoverable (browse / mixes / recommendations).
+        var genreIds = (req.GenreIds ?? Array.Empty<Guid>()).Distinct().ToList();
+        var validGenreIds = genreIds.Count == 0
+            ? new List<Guid>()
+            : await _db.Genres.Where(g => genreIds.Contains(g.Id)).Select(g => g.Id).ToListAsync(ct);
+        if (validGenreIds.Count == 0)
+            return BadRequest(new { message = "Select at least one genre for the track." });
+
         var track = new Track
         {
             Id = Guid.NewGuid(),
@@ -780,6 +788,8 @@ public class MeController : ControllerBase
             AudioUrl = string.Empty,
             CreatedAt = DateTime.UtcNow,
         };
+        foreach (var gid in validGenreIds)
+            track.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = gid });
         _db.Tracks.Add(track);
         await _db.SaveChangesAsync(ct);
 
@@ -1237,6 +1247,20 @@ public class MeController : ControllerBase
         if (req.Lyrics is not null)
             track.Lyrics = string.IsNullOrWhiteSpace(req.Lyrics) ? null : req.Lyrics.Trim();
 
+        // Replace genres only when the client sends a set (omitting GenreIds leaves them untouched).
+        if (req.GenreIds is not null)
+        {
+            var genreIds = req.GenreIds.Distinct().ToList();
+            var validGenreIds = genreIds.Count == 0
+                ? new List<Guid>()
+                : await _db.Genres.Where(g => genreIds.Contains(g.Id)).Select(g => g.Id).ToListAsync(ct);
+            if (validGenreIds.Count == 0)
+                return BadRequest(new { message = "Select at least one genre for the track." });
+            _db.TrackGenres.RemoveRange(track.TrackGenres);
+            foreach (var gid in validGenreIds)
+                _db.TrackGenres.Add(new TrackGenre { TrackId = track.Id, GenreId = gid });
+        }
+
         await _db.SaveChangesAsync(ct);
 
         // If title changed and lyrics ended up empty, try to fetch fresh lyrics
@@ -1253,7 +1277,13 @@ public class MeController : ControllerBase
             }
         }
 
-        return Ok(await _mapper.ToDtoAsync(track, ct));
+        // Re-load so the response reflects the (possibly replaced) genres with their slugs.
+        var updated = await _db.Tracks
+            .Include(t => t.Artist)
+            .Include(t => t.Album)
+            .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .FirstAsync(t => t.Id == track.Id, ct);
+        return Ok(await _mapper.ToDtoAsync(updated, ct));
     }
 
     [HttpDelete("artist-tracks/{id:guid}")]

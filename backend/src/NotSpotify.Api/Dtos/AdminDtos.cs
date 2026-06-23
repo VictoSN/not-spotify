@@ -142,7 +142,9 @@ public record ArtistUpdateTrackRequest(
     int? TrackNumber,
     string? Title,
     bool? Explicit,
-    string? Lyrics
+    string? Lyrics,
+    // When non-null, replaces the track's genres (must contain at least one valid id).
+    IReadOnlyList<Guid>? GenreIds = null
 );
 
 // ── Artist — track submission ─────────────────────────────────────────────────
@@ -154,6 +156,8 @@ public record ArtistSubmitTrackRequest(
     int TrackNumber = 1,
     int DiscNumber = 1,
     bool Explicit = false,
-    string? Lyrics = null
+    string? Lyrics = null,
+    // At least one valid genre id is required so the track is discoverable.
+    IReadOnlyList<Guid>? GenreIds = null
 );
 

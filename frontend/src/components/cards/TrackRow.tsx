@@ -11,7 +11,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
-import { TrackRowMenu } from './TrackRowMenu'
+import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
 import { useRatingStore } from '@/stores/ratingStore'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
@@ -47,7 +47,7 @@ export function TrackRow({
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
   const { ratingCount, averageRating } = getAggregate(track.id)
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
 
   useEffect(() => {
@@ -211,7 +211,7 @@ export function TrackRow({
 
         {/* Menu slot (Col 4 on desktop / Col 3 on mobile) */}
         <div className="flex justify-center">
-          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} triggerRef={menuTriggerRef} />
+          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} ref={menuTriggerRef} />
         </div>
       </div>
     </div>

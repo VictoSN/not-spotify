@@ -771,22 +771,4 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
       )}
     </Menu>
   )
-}
-
-/** Resets the cursor-anchored inline styles on the MenuButton once the menu closes, so
- *  the (sometimes visible) kebab returns to its normal place in the layout. */
-function MenuAnchorReset({ open, btnRef }: { open: boolean; btnRef: React.RefObject<HTMLButtonElement | null> }) {
-  useEffect(() => {
-    if (open) return
-    const b = btnRef.current
-    if (!b || !b.dataset.cursorAnchored) return
-    b.style.position = ''
-    b.style.left = ''
-    b.style.top = ''
-    b.style.width = ''
-    b.style.height = ''
-    b.style.padding = ''
-    delete b.dataset.cursorAnchored
-  }, [open, btnRef])
-  return null
-}
+})

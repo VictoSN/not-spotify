@@ -9,7 +9,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
 import { openMenuAtPointer } from '@/utils/contextMenu'
-import { TrackRowMenu } from './TrackRowMenu'
+import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
 
 interface TrackTileProps {
   track: Track
@@ -26,7 +26,7 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
   const navigate = useNavigate()
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const isCurrent = currentTrack?.id === track.id
 
   const handlePlay = (e: React.MouseEvent) => {
@@ -114,7 +114,7 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
       >
         <TrackRowMenu
           track={track}
-          triggerRef={menuTriggerRef}
+          ref={menuTriggerRef}
           triggerClassName="rounded-full bg-black/60 p-1 backdrop-blur-sm shadow-md"
           triggerIconClassName="h-5 w-5 text-white"
         />

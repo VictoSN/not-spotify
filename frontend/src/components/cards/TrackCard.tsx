@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { formatMs } from '@/utils/formatTime'
-import { TrackRowMenu } from './TrackRowMenu'
+import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
 import { openMenuAtPointer } from '@/utils/contextMenu'
@@ -28,7 +28,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
 
   const handlePlay = () => {
     if (isCurrent) {
@@ -102,7 +102,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
           <HeartIcon className="w-4 h-4 text-secondary hover:text-primary flex-shrink-0 transition-colors" />
         )}
       </button>
-      <TrackRowMenu track={track} triggerRef={menuTriggerRef} />
+      <TrackRowMenu track={track} ref={menuTriggerRef} />
     </div>
   )
 }

@@ -28,7 +28,7 @@ export function InstallAppButton({ className }: { className?: string }) {
 }
 
 /** Variant with a trailing external-link arrow, for the user menu. `onSelect` closes the menu. */
-export function InstallAppMenuItem({ className, onSelect }: { className?: string; onSelect?: () => void }) {
+export function InstallAppMenuItem({ className, label, onSelect }: { className?: string; label?: string; onSelect?: () => void }) {
   const { isStandalone, promptInstall } = useInstallApp()
   const { t } = useTranslation()
 
@@ -42,7 +42,7 @@ export function InstallAppMenuItem({ className, onSelect }: { className?: string
 
   return (
     <button type="button" onClick={handleClick} className={className}>
-      {t('topbar.installApp')}
+      {label ?? t('topbar.installApp')}
       <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
     </button>
   )

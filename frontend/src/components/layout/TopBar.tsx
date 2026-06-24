@@ -50,10 +50,13 @@ export function TopBar() {
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
   const isArtist = user?.roles?.includes('Artist') ?? false
+  const isBrowse = location.pathname === '/search' && currentQuery.trim().length === 0
 
   const [showMenu, setShowMenu] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
-  const pendingCount = useFriendStore((s) => s.requests.length)
+  const friendRequests = useFriendStore((s) => s.requests)
+  const friends = useFriendStore((s) => s.friends)
+  const pendingCount = friendRequests.length
   const socialPanelOpen = useUiStore((s) => s.socialPanelOpen)
   const toggleSocialPanel = useUiStore((s) => s.toggleSocialPanel)
   const setSocialPanelOpen = useUiStore((s) => s.setSocialPanelOpen)
@@ -200,7 +203,7 @@ export function TopBar() {
   // Spotify-style account menu: text-only rows, with a trailing external-link
   // arrow on the items that conceptually leave the app (Account/Premium/Install).
   const userMenuItemClass =
-    'flex w-full items-center justify-between gap-4 px-3 py-2.5 text-left text-sm font-normal text-primary transition-colors hover:bg-white/10'
+    'flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-black text-primary transition-colors hover:bg-white/10'
   const userMenuArrowClass = 'h-4 w-4 shrink-0 text-secondary'
   const suggestionsLoading =
     showSearchPanel &&
@@ -208,6 +211,22 @@ export function TopBar() {
     debouncedSearchValue.length > 0 &&
     suggestionsDoneQuery !== debouncedSearchValue
   const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
+  const profileUpdates = [
+    ...friendRequests.map((request) => ({
+      id: `request-${request.id}`,
+      userId: request.fromUser.id,
+      name: request.fromUser.name,
+      avatarUrl: request.fromUser.avatarUrl,
+      time: formatRelativeShort(request.createdAt),
+    })),
+    ...friends.map((friend, index) => ({
+      id: `friend-${friend.userId}`,
+      userId: friend.userId,
+      name: friend.name,
+      avatarUrl: friend.avatarUrl,
+      time: index === 0 ? t('topbar.recently') : '',
+    })),
+  ].slice(0, 6)
 
   const searchPanel = shouldShowSearchPanel && (
     <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-[#282828] py-2 shadow-2xl [scrollbar-color:rgba(255,255,255,0.3)_transparent] [scrollbar-width:thin]">
@@ -399,7 +418,7 @@ export function TopBar() {
           </button>
 
           <div ref={searchContainerRef} className="relative w-full">
-            <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-6 w-6 -translate-y-1/2 text-secondary" />
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-secondary" />
             <input
               ref={searchInputRef}
               type="text"
@@ -409,7 +428,7 @@ export function TopBar() {
               onChange={handleSearch}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => setShowSearchPanel(true)}
-              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-9 pr-20 text-sm font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
+              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[15px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
             {searchValue && (
               <button
@@ -426,10 +445,14 @@ export function TopBar() {
             <button
               type="button"
               onClick={handleBrowseClick}
-              className="spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+              className={cn(
+                'spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-surface hover:text-primary',
+                isBrowse ? 'text-primary' : 'text-secondary',
+              )}
               aria-label={t('topbar.browseAll')}
+              aria-current={isBrowse ? 'page' : undefined}
             >
-              <BrowseTrayIcon />
+              <BrowseTrayIcon filled={isBrowse} />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
             </button>
             {searchPanel}
@@ -440,7 +463,7 @@ export function TopBar() {
           <div className="hidden items-center gap-5 2xl:flex">
             <Link to="/premium" className="transition-colors hover:text-primary">{t('topbar.premium')}</Link>
             <InstallAppButton className="transition-colors hover:text-primary" />
-            <button className="transition-colors hover:text-primary">{t('topbar.support')}</button>
+            <Link to="/support" className="transition-colors hover:text-primary">{t('topbar.support')}</Link>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
           <Link to="/signup" className="hidden md:block transition-colors hover:text-primary">
@@ -481,7 +504,7 @@ export function TopBar() {
         </button>
 
         <div ref={searchContainerRef} className="relative w-full max-w-md">
-          <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-6 h-6 text-secondary" />
+          <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-secondary" />
           <input
             ref={searchInputRef}
             type="text"
@@ -491,7 +514,7 @@ export function TopBar() {
             onChange={handleSearch}
             onKeyDown={handleSearchKeyDown}
             onFocus={() => setShowSearchPanel(true)}
-            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-9 pr-20 text-sm font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[15px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
           {searchValue && (
             <button
@@ -508,10 +531,14 @@ export function TopBar() {
           <button
             type="button"
             onClick={handleBrowseClick}
-            className="spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-surface hover:text-primary"
+            className={cn(
+              'spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-surface hover:text-primary',
+              isBrowse ? 'text-primary' : 'text-secondary',
+            )}
             aria-label={t('topbar.browseAll')}
+            aria-current={isBrowse ? 'page' : undefined}
           >
-            <BrowseTrayIcon />
+            <BrowseTrayIcon filled={isBrowse} />
             <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
           </button>
           {searchPanel}
@@ -541,9 +568,9 @@ export function TopBar() {
             {t('topbar.premium')}
           </Link>
           <InstallAppButton className="transition-colors hover:text-primary" />
-          <button type="button" className="transition-colors hover:text-primary">
+          <Link to="/support" className="transition-colors hover:text-primary">
             {t('topbar.support')}
-          </button>
+          </Link>
         </div>
       )}
 
@@ -592,13 +619,21 @@ export function TopBar() {
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-1 shadow-xl">
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-2 shadow-2xl">
               <Link
                 to="/account"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
                 {t('topbar.account')}
+                <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
+              </Link>
+              <Link
+                to="/premium"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.familyPlan')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
               <Link
@@ -609,42 +644,21 @@ export function TopBar() {
                 {t('topbar.profile')}
               </Link>
               <Link
-                to="/premium"
+                to="/recents"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
-                {t('topbar.premium')}
+                {t('topbar.recents')}
+              </Link>
+              <Link
+                to="/support"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.support')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
-              <Link
-                to="/history"
-                onClick={() => setShowMenu(false)}
-                className={userMenuItemClass}
-              >
-                {t('topbar.listeningHistory')}
-              </Link>
-              <Link
-                to="/stats"
-                onClick={() => setShowMenu(false)}
-                className={userMenuItemClass}
-              >
-                {t('topbar.listeningStats')}
-              </Link>
-              <Link
-                to="/uploads"
-                onClick={() => setShowMenu(false)}
-                className={userMenuItemClass}
-              >
-                {t('topbar.yourUploads')}
-              </Link>
-              <Link
-                to="/recognize"
-                onClick={() => setShowMenu(false)}
-                className={userMenuItemClass}
-              >
-                {t('topbar.identifySong')}
-              </Link>
-              <InstallAppMenuItem className={userMenuItemClass} onSelect={() => setShowMenu(false)} />
+              <InstallAppMenuItem className={userMenuItemClass} label={t('topbar.download')} onSelect={() => setShowMenu(false)} />
               <Link
                 to="/settings"
                 onClick={() => setShowMenu(false)}
@@ -682,6 +696,31 @@ export function TopBar() {
               >
                 {t('topbar.logOut')}
               </button>
+              <div className="my-1 border-t border-secondary/10" />
+              <div className="px-4 pb-2 pt-3">
+                <h3 className="text-base font-black text-primary">{t('topbar.yourUpdates')}</h3>
+              </div>
+              <div className="max-h-64 overflow-y-auto pb-1 [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]">
+                {profileUpdates.length > 0 ? (
+                  profileUpdates.map((update) => (
+                    <Link
+                      key={update.id}
+                      to={`/user/${update.userId}`}
+                      onClick={() => setShowMenu(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/10"
+                    >
+                      <Avatar src={update.avatarUrl} alt={update.name} size="md" round className="h-12 w-12 shrink-0 text-base" />
+                      <span className="min-w-0 flex-1 text-sm leading-5">
+                        <span className="font-black text-primary">{update.name}</span>
+                        <span className="font-bold text-primary"> {t('topbar.startedFollowingYou')}</span>
+                        {update.time && <span className="font-bold text-secondary"> · {update.time}</span>}
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <p className="px-4 py-5 text-sm font-semibold text-secondary">{t('topbar.noUpdates')}</p>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -689,6 +728,24 @@ export function TopBar() {
 
     </header>
   )
+}
+
+function formatRelativeShort(value: string) {
+  const time = new Date(value).getTime()
+  if (Number.isNaN(time)) return ''
+  const diff = Math.max(0, Date.now() - time)
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+  const week = 7 * day
+  const month = 30 * day
+  const year = 365 * day
+  if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))}m`
+  if (diff < day) return `${Math.floor(diff / hour)}h`
+  if (diff < week) return `${Math.floor(diff / day)}d`
+  if (diff < month) return `${Math.floor(diff / week)}w`
+  if (diff < year) return `${Math.floor(diff / month)}mo`
+  return `${Math.floor(diff / year)}y`
 }
 
 function SearchSuggestionsSkeleton() {
@@ -711,7 +768,20 @@ function SearchSuggestionsSkeleton() {
   )
 }
 
-function BrowseTrayIcon() {
+function BrowseTrayIcon({ filled = false }: { filled?: boolean }) {
+  if (filled) {
+    return (
+      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7" fill="currentColor">
+        <path d="M10.5 6.8A1.3 1.3 0 0 1 11.8 5.5h8.4a1.3 1.3 0 0 1 1.3 1.3V10h-2.45V8h-6.1v2H10.5z" />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M7.35 11.85h17.3a1.45 1.45 0 0 1 1.43 1.68l-1.58 9.95a2.45 2.45 0 0 1-2.42 2.07H9.92a2.45 2.45 0 0 1-2.42-2.07l-1.58-9.95a1.45 1.45 0 0 1 1.43-1.68Zm5.65 6.9a1.2 1.2 0 0 0 0 2.4h6a1.2 1.2 0 1 0 0-2.4z"
+        />
+      </svg>
+    )
+  }
+
   return (
     <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7" fill="none">
       <path

@@ -22,6 +22,7 @@ import { albumService } from '@/services/albumService'
 import { videoService } from '@/services/videoService'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
@@ -118,6 +119,7 @@ export function NowPlayingPanel() {
   const [videoData, setVideoData] = useState<VideoData | null>(null)
   const [artistVideosData, setArtistVideosData] = useState<ArtistVideosData | null>(null)
   const [tourData, setTourData] = useState<TourData | null>(null)
+  const [artistBioOpen, setArtistBioOpen] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
   const [expandedScroll, setExpandedScroll] = useState(0)
   const panelRef = useRef<HTMLElement | null>(null)
@@ -169,6 +171,10 @@ export function NowPlayingPanel() {
 
   const artistId = currentTrack?.artist.id
   const albumId = currentTrack?.album.id
+
+  useEffect(() => {
+    setArtistBioOpen(false)
+  }, [artistId])
 
   // Fetch artist details + related tracks whenever the playing track's artist changes.
   useEffect(() => {
@@ -351,6 +357,14 @@ export function NowPlayingPanel() {
 
   const isFollowing = artist ? followedArtistIds.has(artist.id) : false
   const artistAvatarUrl = artist?.imageUrl ?? currentTrack.artist.imageUrl
+  const openArtistBio = () => {
+    if (artist) setArtistBioOpen(true)
+  }
+  const handleArtistBioKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    openArtistBio()
+  }
   const toggleFollow = () => {
     if (!artist) return
     if (isFollowing) unfollowArtist(artist.id)
@@ -365,6 +379,9 @@ export function NowPlayingPanel() {
 
     return (
       <aside ref={panelRef} style={panelStyle} className={panelClass}>
+        {artist && (
+          <ArtistBioDialog artist={artist} open={artistBioOpen} onClose={() => setArtistBioOpen(false)} />
+        )}
         <div
           onScroll={(event) => setExpandedScroll(event.currentTarget.scrollTop)}
           className="relative flex-1 overflow-y-auto overflow-x-hidden bg-[#121212] [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]"
@@ -490,7 +507,14 @@ export function NowPlayingPanel() {
                       <Spinner size="md" />
                     </div>
                   ) : artist && (
-                    <section className="relative min-h-[26rem] overflow-hidden rounded-xl bg-elevated">
+                    <section
+                      role="button"
+                      tabIndex={0}
+                      onClick={openArtistBio}
+                      onKeyDown={handleArtistBioKeyDown}
+                      className="relative min-h-[26rem] cursor-pointer overflow-hidden rounded-xl bg-elevated outline-none transition-transform hover:scale-[1.004] focus-visible:ring-2 focus-visible:ring-accent/70"
+                      aria-label={t('artist.bio.open', { name: artist.name })}
+                    >
                       {(artist.headerImageUrl || artist.imageUrl) && (
                         <img
                           src={artist.headerImageUrl ?? artist.imageUrl ?? ''}
@@ -504,7 +528,11 @@ export function NowPlayingPanel() {
                         <div>
                           <div className="flex items-center justify-between gap-4">
                             <div className="min-w-0">
-                              <Link to={`/artist/${artist.id}`} className="flex min-w-0 items-center gap-1.5 text-lg font-black text-white hover:underline">
+                              <Link
+                                to={`/artist/${artist.id}`}
+                                onClick={(event) => event.stopPropagation()}
+                                className="flex min-w-0 items-center gap-1.5 text-lg font-black text-white hover:underline"
+                              >
                                 <span className="truncate">{artist.name}</span>
                                 {artist.verified && <CheckBadgeIcon className="h-4 w-4 shrink-0 text-accent" />}
                               </Link>
@@ -513,7 +541,10 @@ export function NowPlayingPanel() {
                               </p>
                             </div>
                             <button
-                              onClick={toggleFollow}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                toggleFollow()
+                              }}
                               className="shrink-0 rounded-full border border-white/80 px-4 py-2 text-xs font-black text-white transition-colors hover:border-white hover:bg-white/10"
                             >
                               {isFollowing ? t('np.following') : t('np.follow')}
@@ -635,6 +666,9 @@ export function NowPlayingPanel() {
 
   return (
     <aside ref={panelRef} style={panelStyle} className={panelClass}>
+      {artist && (
+        <ArtistBioDialog artist={artist} open={artistBioOpen} onClose={() => setArtistBioOpen(false)} />
+      )}
       <div className="relative flex-1 overflow-y-auto">
         {/* Dynamic colour hue from the cover */}
         <div
@@ -826,7 +860,14 @@ export function NowPlayingPanel() {
         ) : (
           artist && (
             <PanelSection title={t('np.aboutArtist')}>
-              <div className="relative rounded-lg overflow-hidden bg-elevated">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={openArtistBio}
+                onKeyDown={handleArtistBioKeyDown}
+                className="relative cursor-pointer overflow-hidden rounded-lg bg-elevated outline-none transition-colors hover:bg-elevated/80 focus-visible:ring-2 focus-visible:ring-accent/70"
+                aria-label={t('artist.bio.open', { name: artist.name })}
+              >
                 {(artist.headerImageUrl || artist.imageUrl) && (
                   <img
                     src={artist.headerImageUrl ?? artist.imageUrl ?? ''}
@@ -836,7 +877,11 @@ export function NowPlayingPanel() {
                 )}
                 <div className="p-4">
                   <div className="flex items-center gap-1.5">
-                    <Link to={`/artist/${artist.id}`} className="font-bold text-primary hover:underline">
+                    <Link
+                      to={`/artist/${artist.id}`}
+                      onClick={(event) => event.stopPropagation()}
+                      className="font-bold text-primary hover:underline"
+                    >
                       {artist.name}
                     </Link>
                     {artist.verified && <CheckBadgeIcon className="w-4 h-4 text-accent" />}
@@ -844,7 +889,10 @@ export function NowPlayingPanel() {
                   <div className="flex items-center justify-between mt-1">
                     <p className="text-xs text-secondary">{t('np.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}</p>
                     <button
-                      onClick={toggleFollow}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        toggleFollow()
+                      }}
                       className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors"
                     >
                       {isFollowing ? t('np.following') : t('np.follow')}
@@ -857,6 +905,51 @@ export function NowPlayingPanel() {
               </div>
             </PanelSection>
           )
+        )}
+
+        {/* On tour */}
+        {tourDates.length > 0 && artistId && (
+          <section className="px-4 pb-4">
+            <div className="rounded-lg bg-elevated p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="text-base font-black text-primary">{t('detail.onTour')}</h3>
+                <Link
+                  to={`/artist/${artistId}/events`}
+                  className="shrink-0 text-sm font-black text-secondary transition-colors hover:text-primary"
+                >
+                  {t('common.showAll')}
+                </Link>
+              </div>
+              <div className="space-y-4">
+                {tourDates.slice(0, 2).map((dateItem) => {
+                  const date = new Date(dateItem.eventDate)
+                  const artistName = artist?.name ?? currentTrack.artist.name
+                  return (
+                    <Link
+                      key={dateItem.id}
+                      to={`/artist/${artistId}/events/${dateItem.id}`}
+                      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-md transition-colors hover:bg-white/5"
+                    >
+                      <div className="flex h-14 w-14 flex-col items-center justify-center rounded bg-black/65 text-center leading-none">
+                        <span className="text-[10px] font-black text-primary">
+                          {date.toLocaleDateString(undefined, { month: 'short' })}
+                        </span>
+                        <span className="mt-1 text-2xl font-black text-primary">{date.getDate()}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-black text-primary">{dateItem.city}</p>
+                        <p className="mt-0.5 truncate text-sm font-bold text-secondary">{artistName}</p>
+                        <p className="mt-0.5 truncate text-sm font-bold text-secondary">
+                          {date.toLocaleDateString(undefined, { weekday: 'short' })}{' '}
+                          {date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} - {dateItem.venue}
+                        </p>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
         )}
 
         {/* Credits */}

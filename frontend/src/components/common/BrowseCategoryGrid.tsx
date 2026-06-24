@@ -1,6 +1,33 @@
 import { Link } from 'react-router-dom'
 import { useTranslation } from '@/i18n/useTranslation'
 import type { Genre } from '@/types/genre'
+import {
+  Activity,
+  BarChart3,
+  Bed,
+  BookOpen,
+  Calendar,
+  ChartNoAxesCombined,
+  Clapperboard,
+  Coffee,
+  Disc3,
+  Dumbbell,
+  FileText,
+  Flame,
+  GraduationCap,
+  Guitar,
+  Headphones,
+  Heart,
+  Laugh,
+  Mic2,
+  Music,
+  PartyPopper,
+  Podcast,
+  Radio,
+  Sparkles,
+  Star,
+  Zap,
+} from 'lucide-react'
 
 type BrowseCategorySeed = {
   name: string
@@ -15,6 +42,8 @@ type BrowseCategory = BrowseCategorySeed & {
   imageUrl: string
   to: string
 }
+
+type BrowseIcon = typeof Music
 
 export type BrowseFilter = 'all' | 'music' | 'podcasts'
 
@@ -58,6 +87,90 @@ const curatedBrowseCategories: BrowseCategorySeed[] = [
 ]
 
 const fallbackColor = '#477d95'
+
+const browseIconBySlug: Record<string, BrowseIcon> = {
+  music: Music,
+  podcasts: Podcast,
+  'live-events': Calendar,
+  fitness: Dumbbell,
+  'made-for-you': Sparkles,
+  'new-releases': Disc3,
+  mandopop: Mic2,
+  pop: Star,
+  'k-pop': Mic2,
+  'hip-hop': Radio,
+  charts: ChartNoAxesCombined,
+  'podcast-charts': BarChart3,
+  educational: GraduationCap,
+  documentary: FileText,
+  comedy: Laugh,
+  'j-tracks': Headphones,
+  indie: Guitar,
+  electronic: Zap,
+  mood: Activity,
+  discover: Sparkles,
+  sleep: Bed,
+  chill: Coffee,
+  love: Heart,
+  radar: Radio,
+  rnb: Music,
+  workout: Dumbbell,
+  soundtracks: Clapperboard,
+  party: PartyPopper,
+  rock: Guitar,
+  latin: Flame,
+  country: Guitar,
+  'at-home': Coffee,
+  decades: Disc3,
+  metal: Zap,
+  jazz: Music,
+  classical: Music,
+}
+
+function getBrowseIcon(category: BrowseCategory): BrowseIcon {
+  const key = category.name.toLowerCase()
+  if (browseIconBySlug[category.slug]) return browseIconBySlug[category.slug]
+  if (category.kind === 'podcasts' || key.includes('podcast')) return Podcast
+  if (key.includes('chart')) return BarChart3
+  if (key.includes('workout') || key.includes('fitness')) return Dumbbell
+  if (key.includes('sleep')) return Bed
+  if (key.includes('love')) return Heart
+  if (key.includes('rock') || key.includes('country')) return Guitar
+  if (key.includes('education')) return BookOpen
+  if (key.includes('party')) return PartyPopper
+  return Music
+}
+
+function BrowseGenreArt({ category }: { category: BrowseCategory }) {
+  const Icon = getBrowseIcon(category)
+  const label = category.name.replace(/\s*\/\s*/g, ' / ').toUpperCase()
+
+  return (
+    <div
+      className="absolute -right-8 top-4 z-0 h-36 w-32 rotate-[23deg] overflow-hidden rounded-[3px] bg-white/10 shadow-[0_14px_24px_rgba(0,0,0,0.36)] ring-1 ring-white/15 transition-transform duration-300 group-hover:rotate-[20deg] group-hover:scale-105"
+      aria-hidden="true"
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(138deg, rgba(255,255,255,0.20), rgba(0,0,0,0.46)), ${category.color}`,
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/25" />
+      <Icon className="absolute left-1/2 top-8 h-14 w-14 -translate-x-1/2 text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.35)]" strokeWidth={3.2} />
+      <div className="absolute bottom-7 left-6 right-5 space-y-1.5">
+        <div className="h-[5px] w-16 rounded-full bg-white/85" />
+        <div className="h-[5px] w-12 rounded-full bg-white/72" />
+        <div className="h-[5px] w-8 rounded-full bg-white/58" />
+      </div>
+      <div className="absolute bottom-3 left-5 right-4">
+        <p className="truncate text-[9px] font-black uppercase leading-none tracking-[0.02em] text-white drop-shadow">
+          {label}
+        </p>
+      </div>
+    </div>
+  )
+}
 
 function getCoverUrl(slug: string, imageUrl?: string | null) {
   return imageUrl ?? `https://picsum.photos/seed/not-spotify-browse-${encodeURIComponent(slug)}/260/260`
@@ -148,26 +261,18 @@ export function BrowseCategoryGrid({
   })
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {categories.map((category) => (
         <Link
           key={category.id}
           to={category.to}
-          className="group relative isolate h-[150px] overflow-hidden rounded-md p-4 shadow-sm outline-none transition-transform duration-200 hover:scale-[1.018] focus-visible:ring-2 focus-visible:ring-white/70"
+          className="group relative isolate h-[152px] overflow-hidden rounded-md p-4 shadow-sm outline-none transition-transform duration-200 hover:scale-[1.018] focus-visible:ring-2 focus-visible:ring-white/70"
           style={{ backgroundColor: category.color }}
         >
           <span className="relative z-10 block max-w-[70%] text-[25px] font-black leading-[1.05] text-white drop-shadow">
             {category.name}
           </span>
-          <div className="absolute -right-5 bottom-[-14px] z-0 h-32 w-32 rotate-[25deg] overflow-hidden rounded-[3px] bg-black/20 shadow-2xl transition-transform duration-300 group-hover:rotate-[21deg] group-hover:scale-105">
-            <img
-              src={category.imageUrl}
-              alt=""
-              aria-hidden="true"
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
+          <BrowseGenreArt category={category} />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20 opacity-80" />
         </Link>
       ))}

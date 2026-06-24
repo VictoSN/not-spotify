@@ -166,7 +166,7 @@ export function SearchPage() {
               </div>
             </section>
           )}
-          <section className="space-y-4">
+          <section className="mx-auto max-w-[1160px] space-y-4">
             <div className="sticky top-0 z-20 -mx-4 bg-page/95 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
               <BrowseFilterPills value={browseFilter} onChange={setBrowseFilter} />
             </div>

@@ -19,6 +19,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ArtistBadgesDialog } from '@/components/common/ArtistBadgesDialog'
+import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
@@ -38,6 +39,7 @@ export function ArtistProfilePage() {
   const [loading, setLoading] = useState(true)
   const [shareCopied, setShareCopied] = useState(false)
   const [badgesOpen, setBadgesOpen] = useState(false)
+  const [bioOpen, setBioOpen] = useState(false)
   const playWithGate = usePlaybackGate()
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -86,6 +88,7 @@ export function ArtistProfilePage() {
   return (
     <div>
       <ArtistBadgesDialog open={badgesOpen} onClose={() => setBadgesOpen(false)} />
+      <ArtistBioDialog artist={artist} open={bioOpen} onClose={() => setBioOpen(false)} />
 
       {/* Hero */}
       <div
@@ -253,7 +256,12 @@ export function ArtistProfilePage() {
         {artist.bio && (
           <section className="px-6 mb-8">
             <SectionHeader title={t('detail.about')} />
-            <div className="bg-surface rounded-xl p-6 relative overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setBioOpen(true)}
+              className="relative block w-full overflow-hidden rounded-xl bg-surface p-6 text-left transition-colors hover:bg-elevated/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-page"
+              aria-label={t('artist.bio.open', { name: artist.name })}
+            >
               {artist.headerImageUrl && (
                 <img
                   src={artist.headerImageUrl}
@@ -263,7 +271,7 @@ export function ArtistProfilePage() {
               )}
               <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
               <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
-            </div>
+            </button>
           </section>
         )}
       </div>

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import {
-  ChevronDoubleRightIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   PlusIcon,
@@ -130,6 +129,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   const collapsed = width <= RAIL
   const grid = libraryExpanded || viewMode === 'grid'
+  const compactCreateButton = !libraryExpanded && width < 292
 
   // Populate the library app-wide (today only LibraryPage triggers this).
   useEffect(() => {
@@ -332,7 +332,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           aria-label={t('sidebar.expand')}
           title={t('sidebar.expand')}
         >
-          <ChevronDoubleRightIcon className="w-6 h-6" />
+          <CollapseIcon className="h-6 w-6" />
         </button>
 
         <DragHandle onMouseDown={onDragStart} />
@@ -350,20 +350,23 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
-              <CollapseIcon className="w-5 h-5 -scale-x-100" />
+              <CollapseIcon className="h-5 w-5 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
-            <span className="truncate pl-0 text-sm font-bold leading-5 tracking-[-0.07em] text-primary transition-all duration-200 group-hover/library-header:pl-7">
+            <span className="truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200 group-hover/library-header:pl-7">
               {t('sidebar.title')}
             </span>
           </div>
           <button
             onClick={handleCreate}
-            className="spotify-tooltip-anchor relative flex shrink-0 items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
+            className={cn(
+              'spotify-tooltip-anchor relative flex h-8 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
+              compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
+            )}
             aria-label={t('sidebar.createAria')}
           >
-            <PlusIcon className="w-4 h-4" />
-            {t('sidebar.create')}
+            <PlusIcon className="h-[18px] w-[18px] stroke-[2]" />
+            {!compactCreateButton && <span>{t('sidebar.create')}</span>}
             <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
               {t('sidebar.createTooltip')}
             </span>
@@ -410,7 +413,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           aria-label={t('sidebar.expand')}
           title={t('sidebar.expand')}
         >
-          <ChevronDoubleRightIcon className="w-6 h-6" />
+          <CollapseIcon className="h-6 w-6" />
         </button>
 
         <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide">
@@ -463,13 +466,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
-              <CollapseIcon className="w-5 h-5 -scale-x-100" />
+              <CollapseIcon className="h-5 w-5 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
           )}
           <span
             className={cn(
-              'truncate pl-0 text-sm font-bold leading-5 tracking-[-0.07em] text-primary transition-all duration-200',
+              'truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200',
               !libraryExpanded && 'group-hover/library-header:pl-7',
             )}
           >
@@ -480,13 +483,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div className="relative">
             <button
               onClick={() => setCreateMenuOpen((v) => !v)}
-              className="spotify-tooltip-anchor relative flex items-center gap-1.5 rounded-full bg-elevated py-1.5 pl-2.5 pr-3.5 text-sm font-semibold text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
+              className={cn(
+                'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
+                compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
+              )}
               aria-label={t('sidebar.createAria')}
               aria-haspopup="menu"
               aria-expanded={createMenuOpen}
             >
-              <PlusIcon className="w-4 h-4" />
-              {t('sidebar.create')}
+              <PlusIcon className="h-[18px] w-[18px] stroke-[2]" />
+              {!compactCreateButton && <span>{t('sidebar.create')}</span>}
               {!createMenuOpen && (
                 <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
                   {t('sidebar.createTooltip')}

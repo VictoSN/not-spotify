@@ -12,6 +12,7 @@ interface AuthState {
 
   login: (email: string, password: string) => Promise<void>
   signup: (name: string, email: string, password: string) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   logout: () => Promise<void>
   refreshToken: () => Promise<void>
   clearError: () => void
@@ -53,6 +54,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ error: msg, isLoading: false })
       throw err
     }
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    // Backend revokes other sessions and returns a fresh session for this device;
+    // swap in the new access token so the current tab stays authenticated.
+    const { accessToken, user } = await authService.changePassword(currentPassword, newPassword)
+    ;(window as { __authToken?: string }).__authToken = accessToken
+    set({ user, accessToken, isAuthenticated: true })
   },
 
   logout: async () => {

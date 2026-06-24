@@ -203,6 +203,7 @@ builder.Services.AddScoped<LyricsService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<SmartPlaylistService>();
 builder.Services.AddScoped<AudioWaveformService>();
+builder.Services.AddHttpClient(); // IHttpClientFactory for AuthController's Google OAuth code flow
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
 builder.Services.Configure<TicketmasterOptions>(builder.Configuration.GetSection("Ticketmaster"));

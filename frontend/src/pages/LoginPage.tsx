@@ -1,13 +1,16 @@
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { MusicalNoteIcon, ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
+import { authService } from '@/services/authService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useEffect, useState } from 'react'
+
+const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_URL}/auth/external/google`
 
 interface FormValues {
   email: string
@@ -18,14 +21,32 @@ export function LoginPage() {
   const { t } = useTranslation()
   useDocumentTitle(t('auth.login'))
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const { login, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
+  const [googleEnabled, setGoogleEnabled] = useState(false)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
+
+  // Only light up the Google button if the backend has OAuth credentials configured.
+  useEffect(() => {
+    let active = true
+    authService.externalProviders()
+      .then((p) => { if (active) setGoogleEnabled(p.google) })
+      .catch(() => { /* leave disabled */ })
+    return () => { active = false }
+  }, [])
+
+  // Surface the outcome of a Google OAuth round-trip (the callback redirects here).
+  useEffect(() => {
+    const oauth = params.get('oauth')
+    if (oauth === 'error') setSocialNotice(t('auth.login.socialUnavailable', { provider: 'Google' }))
+    else if (oauth === 'unconfigured') setSocialNotice(t('auth.login.socialUnavailable', { provider: 'Google' }))
+  }, [params, t])
 
   const onSubmit = async (data: FormValues) => {
     clearError()
@@ -59,6 +80,7 @@ export function LoginPage() {
         </div>
 
         <SocialAuthButtons
+          googleHref={googleEnabled ? GOOGLE_AUTH_URL : null}
           onUnavailable={(provider) => {
             const name = `${provider[0].toUpperCase()}${provider.slice(1)}`
             setSocialNotice(t('auth.login.socialUnavailable', { provider: name }))
@@ -104,6 +126,12 @@ export function LoginPage() {
               </button>
             </div>
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
+            <Link
+              to="/forgot-password"
+              className="mt-2 inline-flex text-xs font-semibold text-secondary transition-colors hover:text-primary hover:underline"
+            >
+              Forgot your password?
+            </Link>
           </div>
 
           {error && (

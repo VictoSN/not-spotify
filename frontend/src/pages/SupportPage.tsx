@@ -4,15 +4,19 @@ import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
   Bot,
+  Check,
   ChevronDown,
   ChevronRight,
   CreditCard,
   Globe2,
   Grid3X3,
+  RotateCcw,
   Search,
   Shield,
   SlidersHorizontal,
   Smartphone,
+  ThumbsDown,
+  ThumbsUp,
   UserRound,
 } from 'lucide-react'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
@@ -46,6 +50,9 @@ interface ArticleBlock {
   paragraphs?: string[]
   bullets?: string[]
   ordered?: string[]
+  /** Interactive follow-along guide: each string is a step the reader can tick off.
+   *  Progress is saved per-article in localStorage (see GuideSteps). */
+  steps?: string[]
   cta?: { label: string; href: string }
 }
 
@@ -134,7 +141,6 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('logging-in-with-facebook', 'Logging in to Not Spotify with Facebook'),
           article('logging-in-with-apple', 'Logging in to Not Spotify with Apple'),
           article('logging-in-with-google', 'Logging in to Not Spotify with Google'),
-          article('logging-in-with-samsung', 'Logging in to Not Spotify with Samsung'),
           article('cant-play-abroad', "Can't play abroad"),
           article('disabled-accounts', 'Not Spotify disabled accounts'),
           article('log-out-of-not-spotify', 'How to log out of Not Spotify'),
@@ -257,6 +263,21 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('lyrics-queue-and-recommendations', 'Lyrics, queue, and recommendations'),
           article('shuffle-and-repeat', 'Shuffle and repeat'),
           article('go-to-song-radio', 'Go to song radio'),
+          article('data-saver', 'Data Saver and audio quality'),
+        ],
+      },
+      {
+        id: 'app-settings',
+        title: 'App settings',
+        articles: [
+          article('volume-normalization', 'Volume normalization'),
+          article('crossfade-and-gapless', 'Crossfade & transitions between tracks'),
+          article('autoplay-tracks', 'Autoplay'),
+          article('equalizer', 'Equalizer'),
+          article('playback-speed', 'Playback speed'),
+          article('sleep-timer', 'Sleep timer'),
+          article('app-appearance', 'Appearance (light & dark)'),
+          article('change-app-language', 'Change the app language'),
         ],
       },
     ],
@@ -287,11 +308,10 @@ const SUPPORT_GROUPS: HelpGroup[] = [
       },
       {
         id: 'devices',
-        title: 'Devices',
+        title: 'Web player & app',
         articles: [
-          article('speaker-and-device-issues', 'Speaker and device issues'),
-          article('connect-to-a-device', 'Connect to a device'),
-          article('web-player-help', 'Web player help'),
+          article('web-player-help', 'Web player & installing the app'),
+          article('sound-or-volume-issues', 'Sound or volume issues'),
         ],
       },
     ],
@@ -307,8 +327,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         title: 'Privacy settings',
         articles: [
           article('privacy-settings', 'Privacy settings'),
-          article('private-listening', 'Private listening'),
-          article('download-your-data', 'Download your data'),
+          article('private-listening', 'Listening privacy & visibility'),
         ],
       },
       {
@@ -326,7 +345,6 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         articles: [
           article('keep-your-account-secure', 'Keep your account secure'),
           article('suspicious-account-activity', 'Suspicious account activity'),
-          article('two-step-protection', 'Two-step protection'),
         ],
       },
     ],
@@ -423,11 +441,12 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          "Not Spotify login currently accepts email and password. Social login buttons can be present in the UI, but they only work after OAuth credentials are configured for the provider.",
+          'Not Spotify login accepts email and password, plus "Continue with Google" when Google sign-in is configured on the server. The Facebook and Apple buttons are placeholders and are not enabled yet.',
         ],
         bullets: [
           'Use the exact email address you signed up with.',
           'Passwords are checked by the backend identity system; signup requires at least 8 characters.',
+          'If you created your account with Google, use "Continue with Google" rather than a password.',
           'Refresh uses an httpOnly cookie named rt scoped to /auth, so blocked third-party cookies or cross-site cookie settings can break session refresh in some browsers.',
         ],
         cta: { label: 'Reset your password', href: supportTopicHref('reset-or-change-password') },
@@ -490,7 +509,7 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
         ],
       },
     ],
-    related: ['sound-or-volume-issues', 'speaker-and-device-issues', 'downloads-not-working', 'web-player-help'],
+    related: ['sound-or-volume-issues', 'data-saver', 'downloads-not-working', 'web-player-help'],
   },
   'update-payment-method': {
     blocks: [
@@ -593,6 +612,563 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
       },
     ],
     related: ['premium-not-working', 'app-not-playing-music', 'downloads-not-working'],
+  },
+  'reset-or-change-password': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify accounts use an email and password (at least 8 characters). There are two ways to update your password: reset it if you are locked out, or change it from Account while you are logged in. Both sign you out of every other device for security.',
+        ],
+      },
+      {
+        heading: 'Forgot your password? Reset it',
+        steps: [
+          'On the log in page, select "Forgot your password?".',
+          'Enter the email address for your account and select "Send reset link".',
+          'Open the reset link. (In local development the link is shown right on the page, because no email service is configured.)',
+          'Enter a new password (at least 8 characters) and confirm it.',
+          'Log in with your new password.',
+        ],
+      },
+      {
+        heading: 'Change your password while logged in',
+        steps: [
+          'Open Account.',
+          'Go to "Security and privacy" and select "Change password".',
+          'Enter your current password, then your new password twice.',
+          'Select "Update password" — other devices are signed out, and the tab you are using stays logged in.',
+        ],
+      },
+      {
+        heading: 'Good to know',
+        bullets: [
+          'Passwords must be at least 8 characters.',
+          'Resetting or changing your password revokes all of your other sessions.',
+          'Support will never ask for your password — do not share it.',
+          'In production, password reset needs an email service; until one is added, ask an admin for help.',
+        ],
+      },
+    ],
+    related: ['cant-log-in-to-not-spotify', 'not-spotify-login-methods', 'keep-your-account-secure', 'changing-how-you-log-in'],
+  },
+  'not-spotify-login-methods': {
+    blocks: [
+      {
+        paragraphs: [
+          'You can sign in to Not Spotify in two ways: with an email and password, or with Google.',
+        ],
+        bullets: [
+          'Email + password — set when you sign up; the password must be at least 8 characters and can be reset or changed.',
+          'Continue with Google — uses Google sign-in; the first time, an account is created automatically from your Google email.',
+          'Facebook and Apple buttons may appear but are not available yet.',
+        ],
+      },
+      {
+        heading: 'Which one should I use?',
+        paragraphs: [
+          'Use whichever you created the account with. If you signed up with email, keep using email and password (and you can reset it any time). If you used Google, choose "Continue with Google" each time — there is no separate password for Google accounts.',
+        ],
+      },
+    ],
+    related: ['logging-in-with-google', 'reset-or-change-password', 'cant-log-in-to-not-spotify', 'changing-how-you-log-in'],
+  },
+  'logging-in-with-google': {
+    blocks: [
+      {
+        paragraphs: [
+          'Google sign-in uses a standard secure redirect to Google and back. The first time you use it, Not Spotify creates an account from your Google email automatically; after that it simply logs you in.',
+        ],
+      },
+      {
+        heading: 'Sign in with Google',
+        steps: [
+          'On the log in or sign up page, select "Continue with Google".',
+          'Choose the Google account you want to use and approve access.',
+          'You are returned to Not Spotify and signed in automatically.',
+        ],
+      },
+      {
+        heading: 'Button greyed out or shows "not available"?',
+        bullets: [
+          'Google sign-in only appears when the server has Google credentials configured. If it is not set up yet, use email and password instead.',
+          'Make sure your browser is not blocking the redirect to Google.',
+          'If you originally signed up with email, you can keep using that — both reach the same account when the email matches.',
+        ],
+      },
+    ],
+    related: ['not-spotify-login-methods', 'cant-log-in-to-not-spotify', 'reset-or-change-password'],
+  },
+  'logging-in-with-facebook': {
+    blocks: [
+      {
+        paragraphs: [
+          'Logging in with Facebook is not available yet. The button may appear in the interface, but Facebook sign-in has not been enabled. Use email and password, or "Continue with Google" when it is available, instead.',
+        ],
+      },
+    ],
+    related: ['not-spotify-login-methods', 'logging-in-with-google', 'reset-or-change-password'],
+  },
+  'logging-in-with-apple': {
+    blocks: [
+      {
+        paragraphs: [
+          'Logging in with Apple is not available yet. The button may appear in the interface, but Apple sign-in has not been enabled. Use email and password, or "Continue with Google" when it is available, instead.',
+        ],
+      },
+    ],
+    related: ['not-spotify-login-methods', 'logging-in-with-google', 'reset-or-change-password'],
+  },
+  'not-spotify-gift-cards': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not sell prepaid, stored-value gift cards. What you can redeem is a promotion code — a discount or free-period coupon — on the Premium checkout page.',
+        ],
+      },
+      {
+        heading: 'Redeem a code',
+        steps: [
+          'Open the Premium page and choose a plan.',
+          'On the secure checkout page, find the "Add promotion code" field.',
+          'Enter your code and apply it — the total updates before you pay.',
+          'Complete payment. Premium activates once the payment is confirmed.',
+        ],
+      },
+      {
+        heading: 'Good to know',
+        bullets: [
+          'Promotion codes are created by the team in the payment dashboard; the app does not generate them.',
+          'A code only works if it is active and matches the plan or conditions it was made for.',
+          'If the Premium page shows a configuration message, checkout (and codes) are not set up yet.',
+        ],
+      },
+    ],
+    related: ['gift-card-not-working', 'how-to-cancel-premium-plans', 'accepted-payment-methods', 'failed-payment-help'],
+  },
+  'gift-card-not-working': {
+    blocks: [
+      {
+        paragraphs: [
+          'On Not Spotify, a "gift card" code is a promotion code entered on the checkout page (not in the app). If a code will not apply, work through the checks below.',
+        ],
+        bullets: [
+          'Type the code exactly — promotion codes can be case-sensitive.',
+          'The code may be expired, fully redeemed, or limited to a specific plan or billing interval.',
+          'Codes apply on the checkout page: open Premium, choose a plan, then look for "Add promotion code".',
+          'If there is no promotion-code field at checkout, payments are not fully configured yet.',
+        ],
+      },
+      supportMinimumBlock([
+        'The exact code (you can mask part of it).',
+        'The plan and interval you selected.',
+        'The exact message shown at checkout.',
+        'Account email.',
+      ]),
+    ],
+    related: ['not-spotify-gift-cards', 'failed-payment-help', 'accepted-payment-methods', 'contact-us'],
+  },
+  'data-saver': {
+    blocks: [
+      {
+        paragraphs: [
+          'Streaming quality controls how much data your audio uses. Not Spotify offers tiers from Low to Very High, plus Auto. Free accounts stream up to Normal (~128 kbps); High and Very High require Premium.',
+        ],
+      },
+      {
+        heading: 'Turn on Data Saver',
+        steps: [
+          'Open Settings.',
+          'Under Audio, turn on "Data Saver".',
+          'Playback immediately switches to Low quality to use less data — the quality picker is locked while Data Saver is on.',
+          'Turn it off any time to return to your chosen quality.',
+        ],
+      },
+      {
+        heading: 'Choosing a quality tier',
+        bullets: [
+          'Auto adapts to your connection; Low uses the least data and Very High the most.',
+          'Quality changes apply right away — no restart needed.',
+          'Lower tiers roll off the highest frequencies, so audio sounds slightly softer at the top end.',
+          'Free accounts are capped at Normal; upgrade to Premium for High and Very High.',
+        ],
+      },
+    ],
+    related: ['app-not-playing-music', 'sound-or-volume-issues', 'download-and-offline-listening'],
+  },
+
+  // ── Phase 1 honesty rewrites ──
+  'keep-your-account-secure': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify protects your account with a password and short-lived access tokens backed by a rotating refresh token. There is no separate two-factor (2FA) step yet, so the most important things you can do are keep your password private and sign out of devices you no longer use.',
+        ],
+        bullets: [
+          'Use a strong, unique password (at least 8 characters) and never share it — support will never ask for it.',
+          'Logging out revokes that device\'s refresh token, so the session can\'t be refreshed again.',
+          'Changing or resetting your password signs you out of every other device.',
+          'Your email address is also your login, so protect access to your email inbox too.',
+        ],
+      },
+      {
+        heading: 'Lock down your account',
+        steps: [
+          'Open Account → "Security and privacy".',
+          'Select "Change password" and set a new, unique password.',
+          'Use "Sign out everywhere" to drop every other active session.',
+          'Log out on any shared or public computer when you finish.',
+        ],
+      },
+    ],
+    related: ['reset-or-change-password', 'suspicious-account-activity', 'cant-log-in-to-not-spotify', 'log-out-of-not-spotify'],
+  },
+  'web-player-help': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify runs in your web browser — there is nothing to install to start listening. You can also install it as an app (PWA) for a windowed, app-like experience, or run the optional desktop build.',
+        ],
+        bullets: [
+          'Best experience is in a Chromium browser (Chrome or Edge), especially for the Picture-in-Picture mini-player and OS media keys.',
+          'Playback uses your browser and operating system\'s audio output — there is no separate "connect to a speaker" device list.',
+          'Audio streams over HTTPS, so a blocked mixed-content or storage request can stop playback (see "App not playing music").',
+        ],
+      },
+      {
+        heading: 'Install it as an app',
+        steps: [
+          'Open Not Spotify in Chrome or Edge.',
+          'Use the install icon in the address bar (or browser menu → "Install").',
+          'Launch it from your apps list — it opens in its own window and works offline for the app shell.',
+        ],
+      },
+    ],
+    related: ['app-not-playing-music', 'sound-or-volume-issues', 'download-and-offline-listening'],
+  },
+  'private-listening': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not have a temporary "private session" mode. Instead, your privacy is controlled by playlist visibility and your presence settings, and you can always log out to stop a shared device from acting as you.',
+        ],
+        bullets: [
+          'Playlists can be Public, Friends-only, or Private — Private playlists are visible only to you.',
+          'Changing a public playlist to Private or Friends-only removes saved copies from other users\' libraries.',
+          'Friend Activity and presence show what you\'re playing to friends; listening is tied to your authenticated account.',
+          'There is no anonymous/incognito listening toggle — log out if you don\'t want activity attributed to you.',
+        ],
+      },
+    ],
+    related: ['privacy-settings', 'create-and-edit-playlists', 'keep-your-account-secure'],
+  },
+
+  // ── Phase 3: App settings cluster ──
+  'volume-normalization': {
+    blocks: [
+      {
+        paragraphs: [
+          'Volume normalization evens out loudness so quiet and loud tracks play at a more consistent level. Not Spotify applies it in the audio engine as a gain stage, so the change is heard immediately — no restart needed.',
+        ],
+      },
+      {
+        heading: 'Turn it on or off',
+        steps: [
+          'Open Settings.',
+          'Find the Audio section.',
+          'Toggle "Volume normalization" on or off — it applies to the current track right away.',
+        ],
+      },
+    ],
+    related: ['data-saver', 'crossfade-and-gapless', 'sound-or-volume-issues'],
+  },
+  'crossfade-and-gapless': {
+    blocks: [
+      {
+        paragraphs: [
+          'Crossfade overlaps the end of one track with the start of the next so there is no silence between songs. You choose the length, from off up to 12 seconds. Gapless playback (for albums recorded to run continuously) is handled automatically by the two-deck audio engine.',
+        ],
+      },
+      {
+        heading: 'Set your crossfade length',
+        steps: [
+          'Open Settings.',
+          'Go to the Playback section.',
+          'Set "Crossfade" to Off, 3, 6, 9, or 12 seconds.',
+          'Play two tracks back to back to hear the overlap.',
+        ],
+      },
+    ],
+    related: ['autoplay-tracks', 'volume-normalization', 'data-saver'],
+  },
+  'autoplay-tracks': {
+    blocks: [
+      {
+        paragraphs: [
+          'Autoplay keeps the music going: when your queue or playlist ends, Not Spotify continues with similar tracks instead of stopping. It uses the same recommendation signals as song radio.',
+        ],
+      },
+      {
+        heading: 'Turn Autoplay on or off',
+        steps: [
+          'Open Settings.',
+          'Go to the Playback section.',
+          'Toggle "Autoplay" on to keep playing, or off to stop at the end of the queue.',
+        ],
+      },
+    ],
+    related: ['go-to-song-radio', 'crossfade-and-gapless', 'shuffle-and-repeat'],
+  },
+  'equalizer': {
+    blocks: [
+      {
+        paragraphs: [
+          'The equalizer shapes the tone of playback using presets (for example Bass Booster, Vocal, or Treble Boost). It runs in the audio engine, so switching a preset changes the sound of the current track immediately.',
+        ],
+      },
+      {
+        heading: 'Choose an equalizer preset',
+        steps: [
+          'Start playing a track so the player bar is visible.',
+          'Open the equalizer control from the player.',
+          'Pick a preset — the change applies straight away.',
+          'Choose the flat/Off preset to return to the original sound.',
+        ],
+      },
+    ],
+    related: ['volume-normalization', 'data-saver', 'sound-or-volume-issues'],
+  },
+  'playback-speed': {
+    blocks: [
+      {
+        paragraphs: [
+          'Playback speed lets you play audio faster or slower than normal — handy for podcasts and spoken-word episodes. The control cycles through the available rates and shows the current one (for example 1×, 1.25×, 1.5×).',
+        ],
+      },
+      {
+        heading: 'Change the speed',
+        steps: [
+          'Start playing a track or podcast episode.',
+          'Find the speed control in the player bar (it shows the current rate, like 1×).',
+          'Click it to cycle to the next speed; keep clicking to return to 1×.',
+        ],
+      },
+    ],
+    related: ['sleep-timer', 'lyrics-queue-and-recommendations', 'app-not-playing-music'],
+  },
+  'sleep-timer': {
+    blocks: [
+      {
+        paragraphs: [
+          'The sleep timer stops playback after a set number of minutes — useful for falling asleep to music. When the timer runs out, playback pauses automatically.',
+        ],
+      },
+      {
+        heading: 'Set a sleep timer',
+        steps: [
+          'Start playing something.',
+          'Open the sleep-timer (moon) control in the player.',
+          'Choose how many minutes until playback should stop.',
+          'To cancel early, open the same control and turn the timer off.',
+        ],
+      },
+    ],
+    related: ['playback-speed', 'autoplay-tracks', 'app-not-playing-music'],
+  },
+  'app-appearance': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify supports light and dark themes, and tints parts of the interface using colours pulled from the current cover art. Your theme choice is saved on this device.',
+        ],
+      },
+      {
+        heading: 'Switch theme',
+        steps: [
+          'Open Settings.',
+          'Go to the Appearance section.',
+          'Choose Dark or Light — the interface updates instantly.',
+        ],
+      },
+    ],
+    related: ['change-app-language', 'data-saver', 'web-player-help'],
+  },
+  'change-app-language': {
+    blocks: [
+      {
+        paragraphs: [
+          'You can switch the interface language between English, Spanish, and French. The choice applies across the app shell, Home, Search, Library, and Settings, and is saved on this device.',
+        ],
+      },
+      {
+        heading: 'Change the language',
+        steps: [
+          'Open Settings.',
+          'Go to the Language section.',
+          'Choose English, Español, or Français — the interface updates right away.',
+        ],
+      },
+      {
+        paragraphs: [
+          'Some detailed views are still being translated, so a few labels may remain in English while that work continues.',
+        ],
+      },
+    ],
+    related: ['app-appearance', 'edit-your-profile', 'language-and-country'],
+  },
+
+  // ── Phase 3: Playback & listening ──
+  'shuffle-and-repeat': {
+    blocks: [
+      {
+        paragraphs: [
+          'How shuffle and repeat behave depends on your plan. This is the clearest difference between Free and Premium listening.',
+        ],
+      },
+      {
+        heading: 'On Free',
+        bullets: [
+          'Shuffle is always on and cannot be turned off.',
+          'Repeat is not available.',
+          'Picking a specific track starts the playlist from a random position rather than that exact song.',
+        ],
+      },
+      {
+        heading: 'On Premium',
+        bullets: [
+          'Turn shuffle on or off freely.',
+          'Repeat the whole queue (repeat all) or a single track (repeat one).',
+          'Play any track directly, in any order, from any source.',
+        ],
+      },
+    ],
+    related: ['lyrics-queue-and-recommendations', 'autoplay-tracks', 'not-spotify-premium', 'go-to-song-radio'],
+  },
+  'lyrics-queue-and-recommendations': {
+    blocks: [
+      {
+        heading: 'Lyrics',
+        paragraphs: [
+          'Many tracks have time-synced "karaoke" lyrics: the current line highlights and the view auto-scrolls as the song plays, and you can click any line to jump to that moment. Lyrics are fetched from public lyric sources, so instrumental tracks (or songs with no match) simply show no lyrics.',
+        ],
+      },
+      {
+        heading: 'Queue & play next',
+        bullets: [
+          'Add a track to the queue, or use "Play next" to slot it right after the current song.',
+          'Open the queue to see what\'s coming up in "Up next".',
+          'Premium can drag to reorder the queue; on Free the order is managed for you.',
+        ],
+      },
+      {
+        heading: 'What plays after the queue',
+        paragraphs: [
+          'When the queue runs out, Autoplay (if on) keeps the music going with similar tracks. You can also start an endless station from any song with "Go to song radio".',
+        ],
+      },
+    ],
+    related: ['shuffle-and-repeat', 'go-to-song-radio', 'autoplay-tracks', 'playback-speed'],
+  },
+  'go-to-song-radio': {
+    blocks: [
+      {
+        paragraphs: [
+          'Song radio turns any track into an endless station of similar music. It ranks the catalogue by how often listeners played candidates in the same sessions as your seed track (co-listen similarity), how much the genres overlap, and a boost for the same artist — the seed song plays first. The same engine powers the "Fans also like" related-artists row.',
+        ],
+      },
+      {
+        heading: 'Start a song radio',
+        steps: [
+          'Open the "…" (more) menu on any track.',
+          'Choose "Go to song radio".',
+          'The station starts with that song and keeps playing related tracks.',
+        ],
+      },
+    ],
+    related: ['lyrics-queue-and-recommendations', 'autoplay-tracks', 'music-recommendations', 'shuffle-and-repeat'],
+  },
+
+  // ── Phase 3: Playlists, library & discovery ──
+  'liked-songs': {
+    blocks: [
+      {
+        paragraphs: [
+          'Liked Songs is your personal, automatic collection of every track you\'ve liked. It\'s available on both Free and Premium — liking, unliking, and viewing all work the same on either plan.',
+        ],
+      },
+      {
+        heading: 'Like or unlike a track',
+        steps: [
+          'Play a track, or open its "…" menu.',
+          'Select the heart to like it — it\'s added to Liked Songs instantly.',
+          'Select the heart again to unlike and remove it.',
+        ],
+      },
+      {
+        paragraphs: [
+          'You can also save whole albums to your library; saved albums and Liked Songs both appear in your Library.',
+        ],
+      },
+    ],
+    related: ['create-and-edit-playlists', 'collaborative-playlists', 'search-and-browse-music'],
+  },
+  'collaborative-playlists': {
+    blocks: [
+      {
+        paragraphs: [
+          'A collaborative playlist lets people you invite add and remove tracks alongside you. Only the owner controls who can collaborate; collaborators edit the track list together.',
+        ],
+      },
+      {
+        heading: 'Make a playlist collaborative',
+        steps: [
+          'Open a playlist you own.',
+          'Open its "…" menu and invite a collaborator.',
+          'They accept the invite and can then add or remove tracks.',
+          'Remove a collaborator any time from the same menu to stop their access.',
+        ],
+      },
+      {
+        heading: 'Visibility still applies',
+        paragraphs: [
+          'Collaboration is about who can edit; visibility (public, friends-only, or private) controls who can see the playlist. A private collaborative playlist is only visible to you and your collaborators.',
+        ],
+      },
+    ],
+    related: ['create-and-edit-playlists', 'liked-songs', 'privacy-settings'],
+  },
+  'music-recommendations': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Home page is built from several recommendation rows, each using different signals from your listening and the catalogue. They are not the same ranking as Search, so results can differ.',
+        ],
+        bullets: [
+          'For You — based on the genres of what you played in the last 30 days (falls back to Trending for new listeners).',
+          'Trending — what\'s popular right now, weighting the last 7 days heavily over all-time plays.',
+          'New Music — the most recently added catalogue tracks.',
+          'Daily Mixes — one mix per your top genres from the last 90 days.',
+          'Charts — the Top 50 by plays this week.',
+          'Popular in {country} — top tracks among listeners in your country over the last 30 days.',
+          'Recently played — your most recent distinct tracks.',
+        ],
+      },
+    ],
+    related: ['search-and-browse-music', 'browse-genres-and-moods', 'go-to-song-radio'],
+  },
+  'browse-genres-and-moods': {
+    blocks: [
+      {
+        paragraphs: [
+          'Beyond search, you can browse the catalogue by genre and by mood or activity. Each genre or mood opens its own page of tracks and playlists so you can dig into a style or a vibe.',
+        ],
+        bullets: [
+          'Genres group music by style; open one to see its tracks and related playlists.',
+          'Moods & activities (for example focus, workout, chill) collect fitting music for the moment.',
+          'These pages use catalogue metadata, so they fill out as more music is tagged.',
+        ],
+      },
+    ],
+    related: ['music-recommendations', 'search-and-browse-music', 'go-to-song-radio'],
   },
 }
 
@@ -1356,6 +1932,7 @@ function ArticlePage({
 
           <ArticleContent article={article} />
           <RelatedArticles article={article} />
+          <ArticleFeedback slug={article.slug} />
         </div>
 
         <ArticleSidebar article={article} />
@@ -1446,6 +2023,93 @@ function SearchModeTabs({
   )
 }
 
+/**
+ * Interactive follow-along guide. Each step is a tappable checkbox; progress is
+ * persisted in localStorage under a per-article-block key, so a reader who steps
+ * away keeps their place. Keyboard-accessible (role=checkbox on a <button>).
+ */
+function GuideSteps({ storageKey, steps }: { storageKey: string; steps: string[] }) {
+  const [done, setDone] = useState<boolean[]>(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey)
+      const parsed = raw ? (JSON.parse(raw) as unknown) : null
+      const arr = Array.isArray(parsed) ? (parsed as boolean[]) : []
+      return steps.map((_, i) => arr[i] === true)
+    } catch {
+      return steps.map(() => false)
+    }
+  })
+
+  const persist = (next: boolean[]) => {
+    setDone(next)
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(next))
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const toggle = (i: number) => {
+    const next = done.slice()
+    next[i] = !next[i]
+    persist(next)
+  }
+
+  const completed = done.filter(Boolean).length
+  const allDone = completed === steps.length && steps.length > 0
+  const pct = steps.length ? Math.round((completed / steps.length) * 100) : 0
+
+  return (
+    <div className="rounded-md border border-white/12 bg-[#1c1c1c] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-black text-white">
+          {allDone ? "✅ You're all set" : `${completed} of ${steps.length} steps done`}
+        </p>
+        {completed > 0 && (
+          <button
+            type="button"
+            onClick={() => persist(steps.map(() => false))}
+            className="inline-flex items-center gap-1 text-xs font-bold text-white/55 transition-colors hover:text-white"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
+          </button>
+        )}
+      </div>
+
+      <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="h-full rounded-full bg-[#1ed760] transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      </div>
+
+      <ul className="space-y-0.5">
+        {steps.map((step, i) => (
+          <li key={`${storageKey}-${i}`}>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={done[i]}
+              onClick={() => toggle(i)}
+              className="flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-white/[0.04]"
+            >
+              <span
+                className={cn(
+                  'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
+                  done[i] ? 'border-[#1ed760] bg-[#1ed760] text-black' : 'border-white/40 text-transparent',
+                )}
+              >
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              </span>
+              <span className={cn('text-[15px] font-semibold leading-6', done[i] ? 'text-white/50 line-through' : 'text-white')}>
+                {step}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 function ArticleContent({ article }: { article: ArticleDetail }) {
   return (
     <article className="mt-8 rounded-md bg-[#2a2a2a] px-7 py-8 text-white shadow-[0_22px_70px_rgba(0,0,0,0.22)] sm:px-8 sm:py-9">
@@ -1474,6 +2138,7 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
                 ))}
               </ol>
             )}
+            {block.steps && <GuideSteps storageKey={`ns-support-guide-${article.slug}-${index}`} steps={block.steps} />}
             {block.cta && (
               <Link
                 to={block.cta.href}
@@ -1487,6 +2152,57 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
         ))}
       </div>
     </article>
+  )
+}
+
+/** "Was this article helpful?" — v1 is localStorage-only (no backend yet); a future
+ *  version can POST to a feedback table (see docs/support-page-roadmap.md §2). */
+function ArticleFeedback({ slug }: { slug: string }) {
+  const storageKey = `ns-support-feedback-${slug}`
+  const [vote, setVote] = useState<'up' | 'down' | null>(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey)
+      return raw === 'up' || raw === 'down' ? raw : null
+    } catch {
+      return null
+    }
+  })
+
+  const record = (next: 'up' | 'down') => {
+    setVote(next)
+    try {
+      window.localStorage.setItem(storageKey, next)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <section className="mt-8 flex flex-col gap-4 rounded-md bg-[#2a2a2a] p-5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-base font-black text-white">
+        {vote ? 'Thanks for your feedback.' : 'Was this article helpful?'}
+      </p>
+      {!vote && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => record('up')}
+            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2 text-sm font-black text-white transition-colors hover:border-white hover:bg-white/[0.06]"
+          >
+            <ThumbsUp className="h-4 w-4" />
+            Yes
+          </button>
+          <button
+            type="button"
+            onClick={() => record('down')}
+            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2 text-sm font-black text-white transition-colors hover:border-white hover:bg-white/[0.06]"
+          >
+            <ThumbsDown className="h-4 w-4" />
+            No
+          </button>
+        </div>
+      )}
+    </section>
   )
 }
 

@@ -7,6 +7,8 @@ import { AdminRoute } from '@/components/common/AdminRoute'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { LoginPage } from '@/pages/LoginPage'
 import { SignupPage } from '@/pages/SignupPage'
+import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
 import { SupportPage } from '@/pages/SupportPage'
 import { HomePage } from '@/pages/HomePage'
 import { SearchPage } from '@/pages/SearchPage'
@@ -67,6 +69,8 @@ export const router = createBrowserRouter([
   { path: '/embed/track/:id', element: <EmbedTrackPage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/support', element: <SupportPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },
   // Friendly alias — the admin console's only advertised entrance.

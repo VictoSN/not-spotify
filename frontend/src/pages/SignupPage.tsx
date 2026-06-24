@@ -4,11 +4,14 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { MusicalNoteIcon, ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
+import { authService } from '@/services/authService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useEffect, useState } from 'react'
+
+const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_URL}/auth/external/google`
 
 interface FormValues {
   name: string
@@ -26,11 +29,21 @@ export function SignupPage() {
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const [googleEnabled, setGoogleEnabled] = useState(false)
   const { t } = useTranslation()
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
+
+  // Google sign-up uses the same find-or-create OAuth flow as login.
+  useEffect(() => {
+    let active = true
+    authService.externalProviders()
+      .then((p) => { if (active) setGoogleEnabled(p.google) })
+      .catch(() => { /* leave disabled */ })
+    return () => { active = false }
+  }, [])
 
   const onSubmit = async (data: FormValues) => {
     clearError()
@@ -56,6 +69,7 @@ export function SignupPage() {
         </div>
 
         <SocialAuthButtons
+          googleHref={googleEnabled ? GOOGLE_AUTH_URL : null}
           onUnavailable={(provider) => {
             const name = `${provider[0].toUpperCase()}${provider.slice(1)}`
             setSocialNotice(t('auth.signup.socialUnavailable', { provider: name }))

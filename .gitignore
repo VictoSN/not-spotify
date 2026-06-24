@@ -19,5 +19,13 @@ obj/
 dist/
 node_modules
 
+# Temp / scratch build + verification output (not source)
+.tmp-backend-build/
+.verify/
+
+# Local tooling caches (machine-specific, restored on demand)
+.npm-cache/
+.dotnet-home/
+
 # Local music library staged for one-off import (not source)
 Music/

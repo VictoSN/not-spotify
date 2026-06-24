@@ -41,22 +41,42 @@ function ProviderIcon({ provider }: { provider: Provider }) {
   return <AppleIcon />
 }
 
-export function SocialAuthButtons({ onUnavailable, className }: { onUnavailable: (provider: Provider) => void; className?: string }) {
+export function SocialAuthButtons({
+  onUnavailable,
+  className,
+  googleHref,
+}: {
+  onUnavailable: (provider: Provider) => void
+  className?: string
+  /** When set, the Google button performs a real OAuth redirect to this URL. */
+  googleHref?: string | null
+}) {
   return (
     <div className={cn('grid gap-2', className)}>
-      {providers.map((provider) => (
-        <button
-          key={provider.id}
-          type="button"
-          onClick={() => onUnavailable(provider.id)}
-          className="relative flex h-12 w-full items-center justify-center rounded-full border border-secondary/50 bg-transparent px-4 text-sm font-bold text-primary transition-all hover:border-primary hover:bg-elevated/60 active:scale-[0.99]"
-        >
-          <span className="absolute left-6">
-            <ProviderIcon provider={provider.id} />
-          </span>
-          {provider.label}
-        </button>
-      ))}
+      {providers.map((provider) => {
+        const enabled = provider.id === 'google' && Boolean(googleHref)
+        return (
+          <button
+            key={provider.id}
+            type="button"
+            onClick={() => {
+              if (enabled) {
+                // Full-page navigation: the backend redirects to Google and back,
+                // setting the rt cookie so the SPA hydrates as logged-in on return.
+                window.location.assign(googleHref!)
+              } else {
+                onUnavailable(provider.id)
+              }
+            }}
+            className="relative flex h-12 w-full items-center justify-center rounded-full border border-secondary/50 bg-transparent px-4 text-sm font-bold text-primary transition-all hover:border-primary hover:bg-elevated/60 active:scale-[0.99]"
+          >
+            <span className="absolute left-6">
+              <ProviderIcon provider={provider.id} />
+            </span>
+            {provider.label}
+          </button>
+        )
+      })}
     </div>
   )
 }

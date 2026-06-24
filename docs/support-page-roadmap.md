@@ -1,5 +1,7 @@
 # Support Page Roadmap
 
+> **Companion docs:** [`support-aws-roadmap.md`](support-aws-roadmap.md) covers the `support.<domain>` subdomain question, AWS topology (RDS/S3/SignalR), and the Spotify-style "basic search" dropdown. [`support-content-roadmap.md`](support-content-roadmap.md) covers the article *content* — auditing placeholders vs. real features, the interactive follow-along checklists, and "Download your data". This doc stays on the *system* around support (tickets, feedback capture, article CMS).
+
 This is a practical roadmap for turning `/support` from a polished static support surface into a useful Not Spotify help center. The ideas below are based on what the current backend actually supports: auth, profile/avatar uploads, Stripe billing, plan seats, S3-compatible storage, playlists, search, playback, uploads, and admin/artist workflows.
 
 ## Current State

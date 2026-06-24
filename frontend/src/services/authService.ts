@@ -28,4 +28,24 @@ export const authService = {
     const meRes = await api.get<User>('/auth/me')
     return { accessToken, user: meRes.data }
   },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<AuthTokens> {
+    // Backend rotates the session on success and returns a fresh { accessToken, user }.
+    const res = await api.post<AuthTokens>('/auth/change-password', { currentPassword, newPassword })
+    return res.data
+  },
+
+  async forgotPassword(email: string): Promise<{ message: string; resetUrl?: string | null }> {
+    const res = await api.post<{ message: string; resetUrl?: string | null }>('/auth/forgot-password', { email })
+    return res.data
+  },
+
+  async resetPassword(email: string, token: string, newPassword: string): Promise<void> {
+    await api.post('/auth/reset-password', { email, token, newPassword })
+  },
+
+  async externalProviders(): Promise<{ google: boolean }> {
+    const res = await api.get<{ google: boolean }>('/auth/external/providers')
+    return res.data
+  },
 }

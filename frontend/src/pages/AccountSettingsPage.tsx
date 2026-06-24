@@ -24,6 +24,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { billingService, type BillingSubscription } from '@/services/billingService'
 import { PlanMembersCard } from '@/components/settings/PlanMembersCard'
+import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
@@ -100,6 +101,7 @@ export function AccountSettingsPage() {
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showChangePw, setShowChangePw] = useState(false)
 
   // Artist application state
   const [artistApp, setArtistApp] = useState<ArtistApplication | null | undefined>(undefined)
@@ -384,12 +386,14 @@ export function AccountSettingsPage() {
       </Section>
 
       <Section title="Security and privacy">
-        <SettingRow icon={LockClosedIcon} label="Change password" disabled />
+        <SettingRow icon={LockClosedIcon} label="Change password" sub="Update your password" onClick={() => setShowChangePw(true)} />
         <SettingRow icon={BellIcon} label="Notification settings" disabled />
         <SettingRow icon={EyeIcon} label="Account privacy" disabled />
         <SettingRow icon={ArrowRightOnRectangleIcon} label="Sign out everywhere" sub="Log out of all devices" onClick={signOutEverywhere} />
         <SettingRow icon={TrashIcon} label="Close account" disabled />
       </Section>
+
+      <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
     </div>
   )
 }

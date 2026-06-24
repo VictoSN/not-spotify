@@ -136,8 +136,19 @@ export function readQuality(): string {
   }
 }
 
+/** Data Saver forces the lowest tier regardless of the chosen quality or plan. */
+export function readDataSaver(): boolean {
+  try {
+    const raw = window.localStorage.getItem('ns-pref-data-saver')
+    return raw != null ? JSON.parse(raw) === true : false
+  } catch {
+    return false
+  }
+}
+
 /** Plan-clamped streaming quality the engine should actually apply. */
 export function effectiveQuality(): string {
+  if (readDataSaver()) return 'low'
   return clampQualityToPlan(readQuality(), readPlan())
 }
 

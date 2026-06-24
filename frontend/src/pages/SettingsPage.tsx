@@ -146,6 +146,8 @@ export function SettingsPage() {
   // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
   const [autoplay, setAutoplay] = usePref('ns-pref-autoplay', true)
+  // Data Saver forces the audio engine to the lowest streaming tier (see effectiveQuality()).
+  const [dataSaver, setDataSaver] = usePref('ns-pref-data-saver', false)
   // Read live by the two-deck audioEngine's Web Audio graph.
   const [normalizeVolume, setNormalizeVolume] = usePref('ns-pref-normalize', false)
   // Crossfade length in seconds (0 = off); read live by the two-deck audioEngine.
@@ -157,7 +159,8 @@ export function SettingsPage() {
   const [streamingQuality, setStreamingQuality] = usePref('ns-pref-quality', 'auto')
   // Free accounts are capped at ~128 kbps; only Premium can pick higher tiers.
   const isPremium = useAuthStore((s) => s.user?.plan) === 'premium'
-  const effectiveQuality = isPremium ? streamingQuality : FREE_MAX_QUALITY
+  // Data Saver overrides the picker entirely, pinning playback to Low.
+  const effectiveQuality = dataSaver ? 'low' : isPremium ? streamingQuality : FREE_MAX_QUALITY
   const qualityLabel = (key: string, base: string) =>
     key === 'auto' ? `${base} · Adaptive` : `${base} · ~${QUALITY_KBPS[key] ?? 320} kbps`
 
@@ -240,7 +243,7 @@ export function SettingsPage() {
               label={t('settings.audio.streaming')}
               value={effectiveQuality}
               onChange={setStreamingQuality}
-              disabled={!isPremium}
+              disabled={!isPremium || dataSaver}
               options={[
                 { value: 'auto', label: qualityLabel('auto', t('quality.auto')) },
                 { value: 'low', label: qualityLabel('low', t('quality.low')) },
@@ -250,6 +253,11 @@ export function SettingsPage() {
               ]}
             />
           }
+        />
+        <Row
+          label="Data Saver"
+          sub={dataSaver ? 'On — streaming is pinned to Low quality to use less data.' : 'Sets audio quality to Low to use less data.'}
+          control={<Switch label="Data Saver" checked={dataSaver} onChange={setDataSaver} />}
         />
         <Row
           label={t('settings.audio.normalize')}

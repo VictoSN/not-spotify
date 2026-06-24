@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
@@ -41,8 +42,6 @@ interface TrackRowMenuProps {
   currentPlaylistId?: string
   /** Always show the trigger button regardless of parent hover state. */
   alwaysVisible?: boolean
-  /** Forwarded to the underlying kebab button so parents can open the menu programmatically (e.g. on right-click). */
-  triggerRef?: React.Ref<HTMLButtonElement>
   triggerClassName?: string
   triggerIconClassName?: string
   onViewCredits?: () => void
@@ -51,16 +50,20 @@ interface TrackRowMenuProps {
   hideDownload?: boolean
 }
 
-export function TrackRowMenu({
+/** Imperative handle so parents can open the menu at the pointer on right-click. */
+export interface TrackRowMenuHandle {
+  openAt: (x: number, y: number) => void
+}
+
+export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(function TrackRowMenu({
   track,
   currentPlaylistId,
   alwaysVisible,
-  triggerRef,
   triggerClassName,
   triggerIconClassName,
   onViewCredits,
   hideDownload,
-}: TrackRowMenuProps) {
+}, ref) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
   const [removeSubmenuOpen, setRemoveSubmenuOpen] = useState(false)
@@ -90,6 +93,21 @@ export function TrackRowMenu({
   const play = usePlayerStore((s) => s.play)
   const queue = usePlayerStore((s) => s.queue)
   const offline = useOfflineTrack(track)
+
+  // The real Headless UI trigger is an invisible button portaled to <body> (so it
+  // escapes any transformed ancestor that would otherwise break `position: fixed`).
+  // We park it under the pointer, then click it, so the menu spawns at the cursor.
+  const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
+  const hiddenBtnRef = useRef<HTMLButtonElement>(null)
+  const openAt = (x: number, y: number) => {
+    setCoords({ x, y })
+    requestAnimationFrame(() => hiddenBtnRef.current?.click())
+  }
+  const openFromButton = (e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    openAt(r.left, r.bottom + 4)
+  }
+  useImperativeHandle(ref, () => ({ openAt }), [])
 
   const isLiked = likedTrackIds.has(track.id)
   const isInQueue = queue.some((t) => t.id === track.id)
@@ -251,8 +269,10 @@ export function TrackRowMenu({
     <Menu>
       {({ close }) => (
         <>
-          <MenuButton
-            ref={triggerRef}
+          {/* Visible "…" affordance — a plain button that opens the menu just below it. */}
+          <button
+            type="button"
+            aria-label="More options"
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.
@@ -260,21 +280,34 @@ export function TrackRowMenu({
               setRemoveSubmenuOpen(false)
               setPlaylistQuery('')
               setRemovePlaylistQuery('')
+              openFromButton(e)
             }}
-            aria-label="More options"
-            className={`cursor-pointer data-[open]:opacity-100 transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
+            className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
           >
             <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
-          </MenuButton>
+          </button>
+          {/* Real Headless UI trigger: invisible, portaled to <body>, parked at the
+              pointer so the menu spawns exactly there (immune to transformed ancestors). */}
+          {createPortal(
+            <MenuButton
+              ref={hiddenBtnRef}
+              aria-hidden
+              tabIndex={-1}
+              className="fixed h-0 w-0 p-0 opacity-0 pointer-events-none"
+              style={{ left: coords.x, top: coords.y }}
+            />,
+            document.body,
+          )}
           <MenuItems
-            anchor="bottom end"
+            anchor="bottom start"
             modal={false}
+            transition
             onClick={stop}
             // `overflow-visible!` overrides the inline `overflow: auto` that
             // Headless UI's `anchor` adds for edge-scrolling — without it the
             // anchored panel clips the "Add to playlist" flyout, which sits
             // outside the panel box (positioned `right-full`, to its left).
-            className="z-50 w-60 overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-sm font-bold focus:outline-none"
+            className="z-50 w-56 origin-top overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
           >
             {/*
               "Add to playlist" — intentionally NOT a MenuItem. Headless UI's
@@ -308,7 +341,7 @@ export function TrackRowMenu({
                   }
                   openAddSubmenu()
                 }}
-                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
               >
                 <span className="flex items-center gap-2">
                   <PlusIcon className="w-4 h-4" />
@@ -358,7 +391,7 @@ export function TrackRowMenu({
                       setPlaylistQuery('')
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
                   >
                     <PlusIcon className="w-4 h-4" />
                     New playlist
@@ -377,7 +410,7 @@ export function TrackRowMenu({
                         setPlaylistQuery('')
                         close()
                       }}
-                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
                     >
                       {p.coverUrl ? (
                         <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
@@ -413,7 +446,7 @@ export function TrackRowMenu({
                     e.stopPropagation()
                     openRemoveSubmenu()
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
                 >
                   <span className="flex items-center gap-2">
                     <MinusCircleIcon className="w-4 h-4" />
@@ -467,7 +500,7 @@ export function TrackRowMenu({
                           setRemovePlaylistQuery('')
                           close()
                         }}
-                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface"
+                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
                       >
                         {p.coverUrl ? (
                           <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
@@ -494,7 +527,7 @@ export function TrackRowMenu({
                   handleToggleLike()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
                 {isLiked ? (
                   <HeartSolidIcon className="w-4 h-4 text-accent" />
@@ -515,7 +548,7 @@ export function TrackRowMenu({
                       handlePlayNext()
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                   >
                     <ForwardIcon className="w-4 h-4" />
                     Play next
@@ -529,7 +562,7 @@ export function TrackRowMenu({
                       handleAddToQueue()
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                   >
                     <QueueListIcon className="w-4 h-4" />
                     Add to queue
@@ -546,7 +579,7 @@ export function TrackRowMenu({
                   handleStartRadio()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
                 <RadioIcon className="w-4 h-4" />
                 Go to song radio
@@ -563,7 +596,7 @@ export function TrackRowMenu({
                   navigate(`/artist/${track.artist.id}`)
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
                 <UserIcon className="w-4 h-4" />
                 Go to artist
@@ -578,7 +611,7 @@ export function TrackRowMenu({
                   navigate(`/album/${track.album.id}`)
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
                 <MusicalNoteIcon className="w-4 h-4" />
                 Go to album
@@ -594,7 +627,7 @@ export function TrackRowMenu({
                     onViewCredits()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                 >
                   <IdentificationIcon className="w-4 h-4" />
                   View credits
@@ -623,7 +656,7 @@ export function TrackRowMenu({
                       setDownloading(false)
                     }
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                 >
                   {downloading
                     ? <ArrowPathIcon className="w-4 h-4 animate-spin" />
@@ -637,7 +670,7 @@ export function TrackRowMenu({
                 <button
                   type="button"
                   onClick={(e) => { stop(e); navigate('/premium'); close() }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-2 text-left text-secondary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-secondary hover:bg-surface data-[focus]:bg-surface"
                 >
                   <span className="flex items-center gap-2">
                     <ArrowDownTrayIcon className="w-4 h-4" />
@@ -659,7 +692,7 @@ export function TrackRowMenu({
                     // Keep the menu open so the user sees the state change /
                     // any error without re-opening.
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface disabled:cursor-default disabled:opacity-70"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface disabled:cursor-default disabled:opacity-70"
                 >
                   {offline.busy ? (
                     <ArrowPathIcon className="w-4 h-4 animate-spin text-accent" />
@@ -690,7 +723,7 @@ export function TrackRowMenu({
                     setShareToChatOpen(true)
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4" />
                   Share to chat
@@ -707,7 +740,7 @@ export function TrackRowMenu({
                     void handleRepost()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
                 >
                   <ArrowPathIcon className="w-4 h-4" />
                   Repost
@@ -723,7 +756,7 @@ export function TrackRowMenu({
                   void handleShare()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
                 <ShareIcon className="w-4 h-4" />
                 Share
@@ -738,4 +771,22 @@ export function TrackRowMenu({
       )}
     </Menu>
   )
+}
+
+/** Resets the cursor-anchored inline styles on the MenuButton once the menu closes, so
+ *  the (sometimes visible) kebab returns to its normal place in the layout. */
+function MenuAnchorReset({ open, btnRef }: { open: boolean; btnRef: React.RefObject<HTMLButtonElement | null> }) {
+  useEffect(() => {
+    if (open) return
+    const b = btnRef.current
+    if (!b || !b.dataset.cursorAnchored) return
+    b.style.position = ''
+    b.style.left = ''
+    b.style.top = ''
+    b.style.width = ''
+    b.style.height = ''
+    b.style.padding = ''
+    delete b.dataset.cursorAnchored
+  }, [open, btnRef])
+  return null
 }

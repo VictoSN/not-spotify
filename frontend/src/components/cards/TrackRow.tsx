@@ -13,6 +13,9 @@ import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { TrackRowMenu } from './TrackRowMenu'
 import { useRatingStore } from '@/stores/ratingStore'
+import { useDragStore } from '@/stores/dragStore'
+import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
+import { openMenuAtPointer } from '@/utils/contextMenu'
 
 interface TrackRowProps {
   track: Track
@@ -45,6 +48,7 @@ export function TrackRow({
   const isLiked = likedTrackIds.has(track.id)
   const { ratingCount, averageRating } = getAggregate(track.id)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
 
   useEffect(() => {
     if ((track.ratingCount ?? 0) > 0) {
@@ -73,12 +77,24 @@ export function TrackRow({
 
   return (
     <div
-      className="group grid items-center gap-4 px-4 py-2 rounded-md hover:bg-elevated/60 cursor-pointer"
+      className="group grid items-center gap-4 px-4 py-2 rounded-md hover:bg-elevated/60 cursor-pointer transition-opacity"
       style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : showAlbum ? '16px 6fr 4fr 3fr var(--track-actions-width)' : '16px 6fr 3fr var(--track-actions-width)' }}
       onClick={handlePlay}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        menuTriggerRef.current?.click()
+      onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'copy'
+        // Carry the id in our custom type so drop targets can recognise a track drag;
+        // text/plain is set too because some browsers won't start a drag without it.
+        e.dataTransfer.setData(TRACK_DND_MIME, track.id)
+        e.dataTransfer.setData('text/plain', `${track.title} · ${track.artist.name}`)
+        setTrackDragImage(e, track)
+        setDraggedTrack(track)
+        e.currentTarget.style.opacity = '0.4'
+      }}
+      onDragEnd={(e) => {
+        setDraggedTrack(null)
+        e.currentTarget.style.opacity = ''
       }}
     >
       {/* Index / play indicator */}
@@ -100,12 +116,14 @@ export function TrackRow({
         <img
           src={track.album.coverUrl}
           alt={track.album.title}
+          draggable={false}
           className="w-10 h-10 rounded flex-shrink-0 object-cover"
         />
         <div className="min-w-0">
           <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
             <Link
               to={`/track/${track.id}`}
+              draggable={false}
               onClick={(e) => e.stopPropagation()}
               className="hover:underline"
             >
@@ -116,6 +134,7 @@ export function TrackRow({
           <p className="text-xs text-secondary truncate">
             <Link
               to={`/artist/${track.artist.id}`}
+              draggable={false}
               onClick={(e) => e.stopPropagation()}
               className="hover:text-primary hover:underline"
             >
@@ -129,6 +148,7 @@ export function TrackRow({
       {showAlbum && (
         <Link
           to={`/album/${track.album.id}`}
+          draggable={false}
           onClick={(e) => e.stopPropagation()}
           className="text-sm text-secondary hover:text-primary hover:underline truncate hidden md:block"
         >

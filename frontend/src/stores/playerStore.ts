@@ -141,7 +141,10 @@ function fillStandaloneQueue(track: Track, newQueue: Track[]) {
       if (s.currentTrack?.id !== track.id) return
       if (s.queue.length > 1) return
       if (fresh.length === 0) return
-      usePlayerStore.setState({ queue: [...s.queue, ...fresh] })
+      usePlayerStore.setState({
+        queue: [...s.queue, ...fresh],
+        recommendedIds: new Set(fresh.map((t) => t.id)),
+      })
     } catch {
       /* recommendations are best-effort; leave the lone track queued */
     }
@@ -155,6 +158,10 @@ interface PlayerState {
   duration: number
   queue: Track[]
   queueIndex: number
+  /** Ids of queue tracks that were appended as autoplay/radio recommendations (not
+   *  part of the album/playlist the user started). Lets the Queue page mark where
+   *  "your queue" ends and the radio begins. */
+  recommendedIds: Set<string>
   history: Track[]
   volume: number
   isMuted: boolean
@@ -204,6 +211,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   queue: [],
   queueIndex: -1,
+  recommendedIds: new Set(),
   history: [],
   volume: 0.8,
   isMuted: false,
@@ -238,6 +246,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTrack: track,
       queue: newQueue,
       queueIndex: index,
+      recommendedIds: new Set(),
       history: newHistory,
       isPlaying: true,
       currentTime: 0,
@@ -283,7 +292,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
             if (get().currentTrack?.id !== currentTrack.id) return
             if (fresh.length === 0) { set({ isPlaying: false }); return }
             const base = get().queue
-            set({ queue: [...base, ...fresh] })
+            set({
+              queue: [...base, ...fresh],
+              recommendedIds: new Set([...get().recommendedIds, ...fresh.map((t) => t.id)]),
+            })
             advanceWithAdGate(fresh[0], base.length)
           } catch {
             set({ isPlaying: false })
@@ -340,7 +352,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!track) return
     // An explicit queue (playlist/album) cancels any pending standalone rec fill.
     standaloneFillToken++
-    set({ queue: tracks, queueIndex: startIndex, currentTrack: track, isPlaying: true, currentTime: 0 })
+    set({ queue: tracks, queueIndex: startIndex, currentTrack: track, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
     recordPlay(track.id)
   },
 
@@ -430,6 +442,7 @@ useAuthStore.subscribe((state) => {
       duration: 0,
       queue: [],
       queueIndex: -1,
+      recommendedIds: new Set(),
       history: [],
       isKaraokeOpen: false,
       isNowPlayingExpanded: false,

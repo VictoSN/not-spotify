@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
+import { NowPlayingBars } from '@/components/common/NowPlayingBars'
 import { useRatingStore } from '@/stores/ratingStore'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
@@ -99,8 +100,8 @@ export function TrackRow({
     >
       {/* Index / play indicator */}
       <div className="flex items-center justify-center w-4">
-        <span className={`group-hover:hidden text-sm ${isCurrent ? 'text-accent' : 'text-secondary'}`}>
-          {isCurrent && isPlaying ? '▶' : index + 1}
+        <span className={`group-hover:hidden flex items-center justify-center text-sm ${isCurrent ? 'text-accent' : 'text-secondary'}`}>
+          {isCurrent && isPlaying ? <NowPlayingBars className="h-3.5" /> : index + 1}
         </span>
         <button className="hidden group-hover:flex" aria-label={isPlaying && isCurrent ? 'Pause' : 'Play'}>
           {isCurrent && isPlaying ? (

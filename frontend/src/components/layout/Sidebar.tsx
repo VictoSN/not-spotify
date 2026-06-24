@@ -26,6 +26,11 @@ import { useUiStore } from '@/stores/uiStore'
 import { useRatingStore } from '@/stores/ratingStore'
 import { getPinnedSet, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import { useTranslation } from '@/i18n/useTranslation'
+import type { Track } from '@/types/track'
+import { useDragStore } from '@/stores/dragStore'
+import { useTrackDrop } from '@/hooks/useTrackDrop'
+import { DROP_GREEN } from '@/utils/trackDnd'
+import { notify } from '@/utils/toast'
 import {
   type LibraryFolder,
   getFolders,
@@ -68,6 +73,8 @@ interface LibItem {
   image: string | null
   round: boolean
   to: string
+  /** True for playlists the user owns — the only library rows a track can be dropped onto. */
+  acceptsTracks: boolean
 }
 
 interface SidebarProps {
@@ -93,6 +100,9 @@ function getInitialCompactLibrary(): boolean {
 export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const navigate = useNavigate()
   const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
+  const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
+  const likeTrack = useLibraryStore((s) => s.likeTrack)
+  const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
@@ -220,6 +230,32 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     navigate(`/playlist/${playlist.id}`)
   }
 
+  // ── Drop a dragged track onto a playlist / Liked Songs ──────────
+  const dropTrackOnPlaylist = async (playlistId: string, track: Track) => {
+    try {
+      await addTrackToPlaylist(playlistId, track)
+      notify.success('Added to playlist')
+    } catch (error) {
+      // 409 = already in the playlist (the backend rejects duplicates).
+      const status = (error as { response?: { status?: number } })?.response?.status
+      if (status === 409) notify.info('Already in this playlist')
+      else notify.error("Couldn't add to playlist")
+    }
+  }
+
+  const dropTrackOnLiked = (track: Track) => {
+    if (likedTrackIds.has(track.id)) {
+      notify.info('Already in your Liked Songs')
+      return
+    }
+    likeTrack(track)
+    notify.success('Added to Liked Songs')
+  }
+
+  // The whole "Your Library" header is also a drop target (→ Liked Songs), so a track
+  // can always be dropped "into the library" regardless of filters/scroll position.
+  const libraryHeaderDrop = useTrackDrop(isAuthenticated, dropTrackOnLiked)
+
   // ── Build the library list ──────────────────────────────────────
   const items = useMemo<LibItem[]>(() => {
     const playlists: LibItem[] = savedPlaylists.map((p) => ({
@@ -233,6 +269,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       image: p.coverUrl,
       round: false,
       to: `/playlist/${p.id}`,
+      acceptsTracks: !!p.isOwner,
     }))
     const albums: LibItem[] = savedAlbums.map((a) => ({
       key: `al-${a.id}`,
@@ -243,6 +280,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       image: a.coverUrl,
       round: false,
       to: `/album/${a.id}`,
+      acceptsTracks: false,
     }))
     const artists: LibItem[] = followedArtists.map((a) => ({
       key: `ar-${a.id}`,
@@ -253,6 +291,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       image: a.imageUrl,
       round: true,
       to: `/artist/${a.id}`,
+      acceptsTracks: false,
     }))
 
     let list =
@@ -458,7 +497,15 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   return (
     <aside style={frameStyle} className={frameClass}>
       {/* Header */}
-      <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2">
+      <div
+        {...libraryHeaderDrop.dropProps}
+        style={
+          libraryHeaderDrop.isOver
+            ? { boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
+            : undefined
+        }
+        className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2 rounded-md transition-[box-shadow,background-color] duration-150"
+      >
         <div className="relative flex min-w-0 items-center">
           {!libraryExpanded && (
             <button
@@ -690,50 +737,57 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             )}
           >
             {showLiked && (
-              <NavLink
-                to="/library?tab=liked"
-                onClick={() => libraryExpanded && setLibraryExpanded(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'rounded-md transition-colors',
-                    compactLibrary ? 'p-1.5' : 'p-2',
-                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                  )
-                }
-              >
-                <div className={cn(
-                  'aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center',
-                  compactLibrary ? 'mb-1.5' : 'mb-2',
-                )}>
-                  <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
-                </div>
-                <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
-                {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
-              </NavLink>
+              <TrackDropZone accepts onDropTrack={dropTrackOnLiked}>
+                <NavLink
+                  to="/library?tab=liked"
+                  onClick={() => libraryExpanded && setLibraryExpanded(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'block rounded-md transition-colors',
+                      compactLibrary ? 'p-1.5' : 'p-2',
+                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                    )
+                  }
+                >
+                  <div className={cn(
+                    'aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center',
+                    compactLibrary ? 'mb-1.5' : 'mb-2',
+                  )}>
+                    <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
+                  </div>
+                  <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
+                  {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
+                </NavLink>
+              </TrackDropZone>
             )}
             {ungroupedItems.map((item) => (
-              <LibraryGridCard
+              <TrackDropZone
                 key={item.key}
-                item={item}
-                compact={compactLibrary}
-                nowPlaying={isNowPlaying(item)}
-                onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                }}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
               >
-                <RowOverlay
-                  variant="grid"
-                  itemKey={item.key}
-                  pinned={pinned.has(item.key)}
-                  showPin
-                  folders={folders}
-                  menuOpen={rowMenuKey === item.key}
-                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                  onCloseMenu={() => setRowMenuKey(null)}
-                />
-              </LibraryGridCard>
+                <LibraryGridCard
+                  item={item}
+                  compact={compactLibrary}
+                  nowPlaying={isNowPlaying(item)}
+                  onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                  }}
+                >
+                  <RowOverlay
+                    variant="grid"
+                    itemKey={item.key}
+                    pinned={pinned.has(item.key)}
+                    showPin
+                    folders={folders}
+                    menuOpen={rowMenuKey === item.key}
+                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                    onCloseMenu={() => setRowMenuKey(null)}
+                  />
+                </LibraryGridCard>
+              </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
@@ -742,50 +796,57 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         ) : (
           <>
             {showLiked && (
-              <NavLink
-                to="/library?tab=liked"
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center rounded-md transition-colors',
-                    compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
-                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
-                  )
-                }
-              >
-                <div className={cn(
-                  'rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0',
-                  compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
-                )}>
-                  <HeartIcon className={cn('text-white', compactLibrary ? 'h-4 w-4' : 'h-5 w-5')} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
-                  {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
-                </div>
-              </NavLink>
+              <TrackDropZone accepts onDropTrack={dropTrackOnLiked}>
+                <NavLink
+                  to="/library?tab=liked"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center rounded-md transition-colors',
+                      compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+                      isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                    )
+                  }
+                >
+                  <div className={cn(
+                    'rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0',
+                    compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
+                  )}>
+                    <HeartIcon className={cn('text-white', compactLibrary ? 'h-4 w-4' : 'h-5 w-5')} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
+                    {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
+                  </div>
+                </NavLink>
+              </TrackDropZone>
             )}
             {ungroupedItems.map((item) => (
-              <LibraryListRow
+              <TrackDropZone
                 key={item.key}
-                item={item}
-                compact={compactLibrary}
-                nowPlaying={isNowPlaying(item)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                }}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
               >
-                <RowOverlay
-                  variant="list"
-                  itemKey={item.key}
-                  pinned={pinned.has(item.key)}
-                  showPin
-                  folders={folders}
-                  menuOpen={rowMenuKey === item.key}
-                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                  onCloseMenu={() => setRowMenuKey(null)}
-                />
-              </LibraryListRow>
+                <LibraryListRow
+                  item={item}
+                  compact={compactLibrary}
+                  nowPlaying={isNowPlaying(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                  }}
+                >
+                  <RowOverlay
+                    variant="list"
+                    itemKey={item.key}
+                    pinned={pinned.has(item.key)}
+                    showPin
+                    folders={folders}
+                    menuOpen={rowMenuKey === item.key}
+                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                    onCloseMenu={() => setRowMenuKey(null)}
+                  />
+                </LibraryListRow>
+              </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
@@ -796,6 +857,46 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
       <DragHandle onMouseDown={onDragStart} />
     </aside>
+  )
+}
+
+/**
+ * Wraps a library row as a drop target for dragged tracks. While any track is being
+ * dragged, valid targets show a faint green ring; the hovered target gets a bright
+ * green ring + tint and a subtle lift — Spotify's sidebar drop affordance.
+ */
+function TrackDropZone({
+  accepts,
+  onDropTrack,
+  className,
+  children,
+}: {
+  accepts: boolean
+  onDropTrack: (track: Track) => void
+  className?: string
+  children: React.ReactNode
+}) {
+  const dragging = useDragStore((s) => s.draggedTrack != null)
+  const { isOver, dropProps } = useTrackDrop(accepts, onDropTrack)
+  const armed = accepts && dragging
+  return (
+    <div
+      {...(accepts ? dropProps : {})}
+      style={
+        isOver
+          ? { boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
+          : armed
+            ? { boxShadow: `inset 0 0 0 1px ${DROP_GREEN}66` }
+            : undefined
+      }
+      className={cn(
+        'rounded-md transition-[box-shadow,background-color,transform] duration-150',
+        isOver && 'scale-[1.01]',
+        className,
+      )}
+    >
+      {children}
+    </div>
   )
 }
 

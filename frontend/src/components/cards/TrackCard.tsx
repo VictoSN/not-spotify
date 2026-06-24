@@ -10,6 +10,9 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { formatMs } from '@/utils/formatTime'
 import { TrackRowMenu } from './TrackRowMenu'
+import { useDragStore } from '@/stores/dragStore'
+import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
+import { openMenuAtPointer } from '@/utils/contextMenu'
 
 interface TrackCardProps {
   track: Track
@@ -22,6 +25,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
+  const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
   const isCurrent = currentTrack?.id === track.id
   const isLiked = likedTrackIds.has(track.id)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
@@ -47,15 +51,25 @@ export function TrackCard({ track, queue }: TrackCardProps) {
 
   return (
     <div
-      className="flex items-center gap-3 p-2 rounded-md hover:bg-elevated/60 group cursor-pointer"
+      className="flex items-center gap-3 p-2 rounded-md hover:bg-elevated/60 group cursor-pointer transition-opacity"
       onClick={handlePlay}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        menuTriggerRef.current?.click()
+      onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'copy'
+        e.dataTransfer.setData(TRACK_DND_MIME, track.id)
+        e.dataTransfer.setData('text/plain', `${track.title} · ${track.artist.name}`)
+        setTrackDragImage(e, track)
+        setDraggedTrack(track)
+        e.currentTarget.style.opacity = '0.4'
+      }}
+      onDragEnd={(e) => {
+        setDraggedTrack(null)
+        e.currentTarget.style.opacity = ''
       }}
     >
       <div className="relative w-10 h-10 flex-shrink-0 rounded overflow-hidden">
-        <img src={track.album.coverUrl} alt={track.album.title} className="w-full h-full object-cover" />
+        <img src={track.album.coverUrl} alt={track.album.title} draggable={false} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {isCurrent && isPlaying ? (
             <PauseIcon className="w-5 h-5 text-white" />
@@ -66,12 +80,12 @@ export function TrackCard({ track, queue }: TrackCardProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
-          <Link to={`/track/${track.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+          <Link to={`/track/${track.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">
             {track.title}
           </Link>
         </p>
         <p className="text-xs text-secondary truncate">
-          <Link to={`/artist/${track.artist.id}`} onClick={(e) => e.stopPropagation()} className="hover:underline">
+          <Link to={`/artist/${track.artist.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">
             {track.artist.name}
           </Link>
         </p>

@@ -5,7 +5,8 @@ import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackGate, usePlayContextGate } from '@/hooks/usePlaybackGate'
+import type { PlaybackContextInput } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -27,6 +28,9 @@ interface TrackRowProps {
   addedAt?: string
   /** When this row is rendered inside a playlist page, omit that playlist from "Add to playlist". */
   currentPlaylistId?: string
+  /** The album/playlist surface this row belongs to, so playing it sets the global
+   *  playback context (and the surface's play button flips to pause). */
+  context?: PlaybackContextInput
 }
 
 export function TrackRow({
@@ -37,11 +41,13 @@ export function TrackRow({
   showPlayCount = false,
   addedAt,
   currentPlaylistId,
+  context,
 }: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
   const { getAggregate, seedAggregate } = useRatingStore()
   const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isMobile = useIsMobile()
@@ -61,6 +67,9 @@ export function TrackRow({
     if (isCurrent) {
       if (isPlaying) pause()
       else resume()
+    } else if (context) {
+      // Playing from an album/playlist surface keeps the global context in sync.
+      startContext(context, queue, index)
     } else {
       playWithGate(track, queue)
     }

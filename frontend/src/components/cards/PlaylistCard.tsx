@@ -1,11 +1,13 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PlayIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { useHueStore } from '@/stores/hueStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { getDominantColor } from '@/hooks/useDominantColor'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -20,7 +22,9 @@ interface PlaylistCardProps {
 }
 
 export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
-  const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'playlist', id: playlist.id })
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
@@ -30,6 +34,11 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
 
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault()
+    e.stopPropagation()
+    if (isActiveContext) {
+      togglePlayPause()
+      return
+    }
     if (!isAuthenticated) {
       openAuthPrompt({ title: 'Start listening with a free account', imageUrl: playlist.coverUrl })
       return
@@ -38,7 +47,7 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
       ? playlist
       : await playlistService.getById(playlist.id)
     const tracks = resolved.tracks.map((pt) => pt.track)
-    if (tracks.length > 0) playWithGate(tracks[0], tracks)
+    if (tracks.length > 0) startContext({ type: 'playlist', id: playlist.id }, tracks)
   }
 
   const handleLike = (e: React.MouseEvent) => {
@@ -69,10 +78,18 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
         <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
         <button
           onClick={handlePlay}
-          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
-          aria-label={`Play ${playlist.name}`}
+          className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 ${
+            isActiveContext
+              ? 'opacity-100'
+              : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
+          }`}
+          aria-label={isPlayingContext ? `Pause ${playlist.name}` : `Play ${playlist.name}`}
         >
-          <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+          {isPlayingContext ? (
+            <PauseIcon className="w-5 h-5 text-white" />
+          ) : (
+            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+          )}
         </button>
         <button
           onClick={handleLike}

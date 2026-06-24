@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PlayIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { useHueStore } from '@/stores/hueStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { trackService } from '@/services/trackService'
 import { getDominantColor } from '@/hooks/useDominantColor'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDragStore } from '@/stores/dragStore'
@@ -20,7 +22,9 @@ interface AlbumCardProps {
 }
 
 export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
-  const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'album', id: album.id })
   const navigate = useNavigate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -32,19 +36,23 @@ export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (isActiveContext) {
+      togglePlayPause()
+      return
+    }
     if (!isAuthenticated) {
       openAuthPrompt({ title: 'Start listening with a free account', imageUrl: album.coverUrl })
       return
     }
     if (tracks && tracks.length > 0) {
-      playWithGate(tracks[0], tracks)
+      startContext({ type: 'album', id: album.id }, tracks)
       return
     }
     if (loading) return
     setLoading(true)
     try {
       const fetched = await trackService.getByAlbum(album.id)
-      if (fetched.length > 0) playWithGate(fetched[0], fetched)
+      if (fetched.length > 0) startContext({ type: 'album', id: album.id }, fetched)
     } finally {
       setLoading(false)
     }
@@ -82,11 +90,19 @@ export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
           <img src={album.coverUrl} alt={album.title} draggable={false} className="w-full h-full object-cover" />
           <button
             onClick={handlePlay}
-            className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 disabled:opacity-60"
-            aria-label={`Play ${album.title}`}
+            className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 disabled:opacity-60 ${
+              isActiveContext
+                ? 'opacity-100'
+                : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
+            }`}
+            aria-label={isPlayingContext ? `Pause ${album.title}` : `Play ${album.title}`}
             disabled={loading}
           >
-            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+            {isPlayingContext ? (
+              <PauseIcon className="w-5 h-5 text-white" />
+            ) : (
+              <PlayIcon className="w-5 h-5 text-white ml-0.5" />
+            )}
           </button>
         </div>
         <p className="text-sm font-semibold text-primary truncate">{album.title}</p>

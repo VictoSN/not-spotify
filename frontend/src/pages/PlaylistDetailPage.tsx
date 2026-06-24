@@ -28,7 +28,8 @@ import type { UserRef } from '@/types/user'
 import { playlistService } from '@/services/playlistService'
 import { collaboratorService } from '@/services/collaboratorService'
 import { trackService } from '@/services/trackService'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
@@ -112,7 +113,7 @@ export function PlaylistDetailPage() {
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
   const [shareCopied, setShareCopied] = useState(false)
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
-  const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
   const isMobile = useIsMobile()
   const { isAuthenticated, user } = useAuthStore()
   const isPremium = user?.plan === 'premium'
@@ -126,10 +127,10 @@ export function PlaylistDetailPage() {
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const isPlaying = usePlayerStore((s) => s.isPlaying)
-  const pausePlayback = usePlayerStore((s) => s.pause)
-  const resumePlayback = usePlayerStore((s) => s.resume)
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  // This playlist is "active" only when it's the explicit playback context (a
+  // track can live in many playlists, so we can't infer it from currentTrack).
+  const { isActiveContext, isPlayingContext } = usePlaybackContext(id ? { type: 'playlist', id } : null)
   // Tint the header from the playlist cover; playlists without one fall back
   // to the first track's album art (matches what the placeholder tile shows).
   const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.track.album.coverUrl)
@@ -233,19 +234,14 @@ export function PlaylistDetailPage() {
   const sortedPlaylistTracks = sortPlaylistTracks(playlist.tracks, trackSort)
   const tracks = sortedPlaylistTracks.map((pt) => pt.track)
 
-  // True when the track now playing belongs to this playlist, so the big button
-  // can act as a play/pause toggle instead of always restarting from the top.
-  const isPlayingThisPlaylist =
-    isPlaying && !!currentTrack && tracks.some((t) => t.id === currentTrack.id)
+  // The big button toggles play/pause while this playlist is the active context,
+  // otherwise it starts it from the top.
+  const isPlayingThisPlaylist = isPlayingContext
 
   const handlePlayAll = () => {
     if (tracks.length === 0) return
-    if (currentTrack && tracks.some((t) => t.id === currentTrack.id)) {
-      if (isPlaying) pausePlayback()
-      else resumePlayback()
-    } else {
-      playWithGate(tracks[0], tracks)
-    }
+    if (isActiveContext) togglePlayPause()
+    else startContext({ type: 'playlist', id: playlist.id }, tracks)
   }
 
   const handleDownload = async () => {
@@ -775,6 +771,7 @@ export function PlaylistDetailPage() {
             showAlbum
             addedAt={pt.addedAt}
             currentPlaylistId={playlist.smartRules ? undefined : playlist.id}
+            context={{ type: 'playlist', id: playlist.id }}
           />
         ))}
       </div>

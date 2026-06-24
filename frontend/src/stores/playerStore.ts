@@ -87,6 +87,13 @@ function advanceWithAdGate(next: Track, nextIndex: number) {
 
 export type RepeatMode = 'off' | 'one' | 'all'
 
+/** What kind of surface seeded the current queue (album page, playlist, etc.). */
+export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked'
+export interface PlayContext {
+  type: PlayContextType
+  id: string
+}
+
 /** Settings page persists this under ns-pref-autoplay (default true). */
 function autoplayEnabled(): boolean {
   try {
@@ -158,6 +165,11 @@ interface PlayerState {
   duration: number
   queue: Track[]
   queueIndex: number
+  /** The album/playlist/artist/liked surface that seeded the current queue, so
+   *  play buttons across the app can show pause for the active context. Null when
+   *  a standalone track is playing (a single track card / track page). */
+  currentContextType: PlayContextType | null
+  currentContextId: string | null
   /** Ids of queue tracks that were appended as autoplay/radio recommendations (not
    *  part of the album/playlist the user started). Lets the Queue page mark where
    *  "your queue" ends and the radio begins. */
@@ -178,6 +190,9 @@ interface PlayerState {
   currentAd: Ad | null
 
   play: (track: Track, queue?: Track[]) => void
+  /** Start a queue from a known context (album/playlist/artist/liked) so the
+   *  matching play buttons reflect the playing state. */
+  playContext: (context: PlayContext, tracks: Track[], startIndex?: number) => void
   endAd: () => void
   pause: () => void
   resume: () => void
@@ -211,6 +226,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   duration: 0,
   queue: [],
   queueIndex: -1,
+  currentContextType: null,
+  currentContextId: null,
   recommendedIds: new Set(),
   history: [],
   volume: 0.8,
@@ -246,6 +263,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTrack: track,
       queue: newQueue,
       queueIndex: index,
+      // A standalone pick (track card / track page) has no album/playlist context.
+      currentContextType: null,
+      currentContextId: null,
       recommendedIds: new Set(),
       history: newHistory,
       isPlaying: true,
@@ -254,6 +274,29 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     recordPlay(track.id)
     // Standalone song → fill Up Next with this artist's recommendations.
     fillStandaloneQueue(track, newQueue)
+  },
+
+  playContext: (context, tracks, startIndex = 0) => {
+    const track = tracks[startIndex]
+    if (!track) return
+    // A deliberate context play cancels any in-progress ad gate / standalone fill.
+    pendingAfterAd = null
+    standaloneFillToken++
+    if (get().currentAd) set({ currentAd: null })
+    const { currentTrack, history } = get()
+    const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
+    set({
+      currentTrack: track,
+      queue: tracks,
+      queueIndex: startIndex,
+      currentContextType: context.type,
+      currentContextId: context.id,
+      recommendedIds: new Set(),
+      history: newHistory,
+      isPlaying: true,
+      currentTime: 0,
+    })
+    recordPlay(track.id)
   },
 
   pause: () => set({ isPlaying: false }),
@@ -352,7 +395,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!track) return
     // An explicit queue (playlist/album) cancels any pending standalone rec fill.
     standaloneFillToken++
-    set({ queue: tracks, queueIndex: startIndex, currentTrack: track, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
+    set({ queue: tracks, queueIndex: startIndex, currentTrack: track, currentContextType: null, currentContextId: null, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
     recordPlay(track.id)
   },
 
@@ -442,6 +485,8 @@ useAuthStore.subscribe((state) => {
       duration: 0,
       queue: [],
       queueIndex: -1,
+      currentContextType: null,
+      currentContextId: null,
       recommendedIds: new Set(),
       history: [],
       isKaraokeOpen: false,

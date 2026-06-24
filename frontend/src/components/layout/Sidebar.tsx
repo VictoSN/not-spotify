@@ -17,7 +17,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { HeartIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -37,7 +37,8 @@ import { trackService } from '@/services/trackService'
 import { useDragStore } from '@/stores/dragStore'
 import { useTrackDrop } from '@/hooks/useTrackDrop'
 import { useLibraryDrop } from '@/hooks/useLibraryDrop'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext, type PlaybackContextInput } from '@/hooks/usePlaybackContext'
 import { DROP_GREEN } from '@/utils/trackDnd'
 import { notify } from '@/utils/toast'
 import {
@@ -132,7 +133,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const playWithGate = usePlaybackGate()
+  const currentContextType = usePlayerStore((s) => s.currentContextType)
+  const currentContextId = usePlayerStore((s) => s.currentContextId)
+  const startContext = usePlayContextGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const { t } = useTranslation()
@@ -375,16 +378,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       likedSongsQuery.includes(query.trim().toLowerCase()))
 
   const isNowPlaying = (item: LibItem) =>
-    !!currentTrack &&
-    ((item.kind === 'album' && currentTrack.album.id === item.id) ||
-      (item.kind === 'artist' && currentTrack.artist.id === item.id))
+    (item.kind === 'album' && currentTrack?.album.id === item.id) ||
+    (item.kind === 'artist' && currentTrack?.artist.id === item.id) ||
+    (item.kind === 'playlist' && currentContextType === 'playlist' && currentContextId === item.id)
 
   const playLikedSongs = () => {
     if (likedSongs.length === 0) {
       notify.info('No liked songs yet')
       return
     }
-    playWithGate(likedSongs[0], likedSongs)
+    startContext({ type: 'liked', id: 'liked' }, likedSongs)
   }
 
   const playLibraryItem = async (item: LibItem) => {
@@ -392,20 +395,20 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       if (item.kind === 'playlist') {
         const playlist = savedPlaylists.find((p) => p.id === item.id)
         const tracks = (playlist?.tracks ?? []).map((row) => row.track)
-        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        if (tracks.length > 0) startContext({ type: 'playlist', id: item.id }, tracks)
         else notify.info('No tracks in this playlist yet')
         return
       }
 
       if (item.kind === 'album') {
         const tracks = await trackService.getByAlbum(item.id)
-        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        if (tracks.length > 0) startContext({ type: 'album', id: item.id }, tracks)
         else notify.info('No tracks available for this release yet')
         return
       }
 
       const tracks = await artistService.getTopTracks(item.id, 20)
-      if (tracks.length > 0) playWithGate(tracks[0], tracks)
+      if (tracks.length > 0) startContext({ type: 'artist', id: item.id }, tracks)
       else notify.info('No tracks available for this artist yet')
     } catch {
       notify.error("Couldn't start playback")
@@ -867,7 +870,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     compactLibrary ? 'mb-1.5' : 'mb-2',
                   )}>
                     <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
-                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
                   <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
                   <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
@@ -927,7 +930,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 >
                   <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-600 to-indigo-300">
                     <HeartIcon className="h-5 w-5 text-white" />
-                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
@@ -1190,25 +1193,43 @@ function RowMenu({
   )
 }
 
+/**
+ * Cover overlay play/pause button. Derives its icon purely from the global
+ * player (no local state): pause when this surface is the active *playing*
+ * context, play otherwise. Clicking toggles play/pause when active, or starts
+ * the surface via `onStart` when it isn't. Stays visible while active.
+ */
 function LibraryPlayButton({
   label,
-  onPlay,
+  context,
+  onStart,
 }: {
   label: string
-  onPlay: () => void | Promise<void>
+  context: PlaybackContextInput
+  onStart: () => void | Promise<void>
 }) {
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const { isActiveContext, isPlayingContext } = usePlaybackContext(context)
   return (
     <button
       type="button"
-      aria-label={`Play ${label}`}
+      aria-label={isPlayingContext ? `Pause ${label}` : `Play ${label}`}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        void onPlay()
+        if (isActiveContext) togglePlayPause()
+        else void onStart()
       }}
-      className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+      className={cn(
+        'absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white transition-opacity duration-150 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
+        isActiveContext ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
+      )}
     >
-      <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+      {isPlayingContext ? (
+        <PauseIcon className="h-5 w-5" />
+      ) : (
+        <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+      )}
     </button>
   )
 }
@@ -1259,7 +1280,7 @@ function LibraryListRow({
           ) : (
             <span className={compact ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
-          <LibraryPlayButton label={item.name} onPlay={onPlay} />
+          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
         <div className="min-w-0 flex-1 pr-14">
           <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
@@ -1323,7 +1344,7 @@ function LibraryGridCard({
           ) : (
             <span className={compact ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
-          <LibraryPlayButton label={item.name} onPlay={onPlay} />
+          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
         <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}

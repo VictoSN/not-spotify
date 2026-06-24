@@ -9,7 +9,8 @@ import { trackService } from '@/services/trackService'
 import { artistService } from '@/services/artistService'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
@@ -35,11 +36,11 @@ export function AlbumDetailPage() {
   useDocumentTitle(album ? `${album.title} · ${album.artist.name}` : null)
   const isMobile = useIsMobile()
   const [loading, setLoading] = useState(true)
-  const playWithGate = usePlaybackGate()
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const isPlaying = usePlayerStore((s) => s.isPlaying)
-  const pausePlayback = usePlayerStore((s) => s.pause)
-  const resumePlayback = usePlayerStore((s) => s.resume)
+  const startContext = usePlayContextGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  // Album buttons derive their play/pause icon from the global player: this album
+  // is "active" whenever the current track belongs to it (see usePlaybackContext).
+  const { isActiveContext, isPlayingContext } = usePlaybackContext(id ? { type: 'album', id } : null)
   const { savedAlbumIds, saveAlbum, unsaveAlbum } = useLibraryStore()
   const { isAuthenticated, user } = useAuthStore()
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -155,17 +156,13 @@ export function AlbumDetailPage() {
         <Button
           onClick={() => {
             if (!tracks.length) return
-            if (currentTrack && tracks.some((t) => t.id === currentTrack.id)) {
-              if (isPlaying) pausePlayback()
-              else resumePlayback()
-            } else {
-              playWithGate(tracks[0], tracks)
-            }
+            if (isActiveContext) togglePlayPause()
+            else startContext({ type: 'album', id: album.id }, tracks)
           }}
           size="lg"
           className="gap-2"
         >
-          {isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id) ? (
+          {isPlayingContext ? (
             <><PauseIcon className="w-5 h-5" /> {t('player.pause')}</>
           ) : (
             <><PlayIcon className="w-5 h-5" /> {t('common.play')}</>
@@ -235,7 +232,7 @@ export function AlbumDetailPage() {
           </div>
         </div>
         {tracks.map((track, i) => (
-          <TrackRow key={track.id} track={track} index={i} queue={tracks} showPlayCount />
+          <TrackRow key={track.id} track={track} index={i} queue={tracks} showPlayCount context={{ type: 'album', id: album.id }} />
         ))}
       </div>
 

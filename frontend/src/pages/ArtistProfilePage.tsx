@@ -12,7 +12,6 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
-import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { Spinner } from '@/components/ui/Spinner'
@@ -23,6 +22,7 @@ import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { formatNumber } from '@/utils/formatNumber'
+import { formatMs } from '@/utils/formatTime'
 import { shareLink } from '@/utils/share'
 import { useTranslation } from '@/i18n/useTranslation'
 import { artworkSectionGradient, useDominantColor, withAlpha } from '@/hooks/useDominantColor'
@@ -76,6 +76,7 @@ export function ArtistProfilePage() {
 
   const isFollowing = followedArtistIds.has(artist.id)
   const heroHue = derivedHeroHue ?? 'hsl(210 7% 24%)'
+  const artistPick = albums[0] ?? null
   const toggleFollow = () => {
     if (!isAuthenticated) {
       openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
@@ -151,7 +152,7 @@ export function ArtistProfilePage() {
         background: artworkSectionGradient(heroHue),
       }}>
         {/* Actions */}
-        <div className="flex items-center gap-4 px-6 py-6">
+        <div className="mx-auto flex max-w-[1360px] items-center gap-4 px-5 py-6 md:px-8">
         {topTracks.length > 0 && (
           <Button onClick={() => playWithGate(topTracks[0], topTracks)} size="lg" className="gap-2">
             <PlayIcon className="w-5 h-5" /> {t('common.play')}
@@ -173,13 +174,49 @@ export function ArtistProfilePage() {
         </button>
         </div>
 
-        {/* Popular tracks */}
-        {topTracks.length > 0 && (
-          <section className="px-4 mb-8">
-            <SectionHeader title={t('detail.popular')} />
-            {topTracks.map((track, i) => (
-              <TrackRow key={track.id} track={track} index={i} queue={topTracks} showPlayCount />
-            ))}
+        {(topTracks.length > 0 || artistPick) && (
+          <section className="mx-auto mb-8 grid max-w-[1360px] gap-10 px-5 md:px-8 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start xl:gap-14">
+            {topTracks.length > 0 && (
+              <div className="min-w-0">
+                <SectionHeader title={t('detail.popular')} />
+                <div className="space-y-1">
+                  {topTracks.map((track, i) => (
+                    <ArtistPopularTrackRow
+                      key={track.id}
+                      track={track}
+                      index={i}
+                      onPlay={() => playWithGate(track, topTracks)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {artistPick && (
+              <aside className="hidden min-w-0 pt-1 lg:block">
+                <h2 className="mb-4 text-xl font-bold text-primary">Artist pick</h2>
+                <Link
+                  to={`/album/${artistPick.id}`}
+                  className="group flex max-w-[460px] items-center gap-4 rounded-md p-2 transition-colors hover:bg-white/5"
+                >
+                  <img
+                    src={artistPick.coverUrl}
+                    alt={artistPick.title}
+                    className="h-24 w-24 shrink-0 rounded object-cover shadow-lg"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="mb-2 inline-flex max-w-full items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-black">
+                      <Avatar src={artist.imageUrl} alt={artist.name} size="sm" round className="!h-5 !w-5 text-[10px]" />
+                      <span className="truncate">{artist.name} recommends</span>
+                    </span>
+                    <span className="block line-clamp-2 text-sm font-black text-primary group-hover:underline">
+                      {artistPick.title}
+                    </span>
+                    <span className="mt-1 block text-sm font-semibold capitalize text-secondary">{artistPick.type}</span>
+                  </span>
+                </Link>
+              </aside>
+            )}
           </section>
         )}
 
@@ -275,6 +312,63 @@ export function ArtistProfilePage() {
           </section>
         )}
       </div>
+    </div>
+  )
+}
+
+function ArtistPopularTrackRow({
+  track,
+  index,
+  onPlay,
+}: {
+  track: Track
+  index: number
+  onPlay: () => void
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onPlay}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onPlay()
+        }
+      }}
+      className="group grid min-h-14 cursor-pointer grid-cols-[28px_44px_minmax(0,1fr)_52px] items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.07] md:grid-cols-[28px_44px_minmax(0,1fr)_104px_52px]"
+    >
+      <div className="flex h-8 items-center justify-center text-sm font-semibold text-secondary">
+        <span className="group-hover:hidden">{index + 1}</span>
+        <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
+      </div>
+
+      <img src={track.album.coverUrl} alt="" className="h-10 w-10 rounded object-cover shadow-md" />
+
+      <div className="min-w-0">
+        <Link
+          to={`/track/${track.id}`}
+          onClick={(event) => event.stopPropagation()}
+          className="block truncate text-sm font-black text-primary hover:underline"
+        >
+          {track.title}
+        </Link>
+        <Link
+          to={`/artist/${track.artist.id}`}
+          onClick={(event) => event.stopPropagation()}
+          className="mt-0.5 block truncate text-sm font-semibold text-secondary transition-colors hover:text-primary hover:underline"
+        >
+          {track.artist.name}
+        </Link>
+      </div>
+
+      <span className="hidden justify-self-end text-sm font-semibold text-secondary md:block">
+        {formatNumber(track.playCount)}
+      </span>
+
+      <span className="justify-self-end text-sm font-semibold text-secondary">
+        {formatMs(track.durationMs)}
+      </span>
     </div>
   )
 }

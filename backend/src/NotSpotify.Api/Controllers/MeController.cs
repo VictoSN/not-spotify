@@ -61,6 +61,269 @@ public class MeController : ControllerBase
         return string.IsNullOrEmpty(c) ? null : c.ToUpperInvariant();
     }
 
+    private static object UserRefExport(ApplicationUser? user) => user is null
+        ? new { id = (Guid?)null, name = (string?)null }
+        : new { id = (Guid?)user.Id, name = (string?)user.Name };
+
+    private static object TrackExport(Track track) => new
+    {
+        track.Id,
+        track.Title,
+        track.DurationMs,
+        track.TrackNumber,
+        track.DiscNumber,
+        track.Explicit,
+        track.PlayCount,
+        track.RatingCount,
+        AverageRating = track.RatingCount == 0 ? 0 : Math.Round(track.RatingSum / (double)track.RatingCount, 2),
+        track.Status,
+        Artist = new { track.ArtistId, track.Artist.Name },
+        Album = new { track.AlbumId, track.Album.Title },
+        Genres = track.TrackGenres
+            .OrderBy(tg => tg.Genre.Name)
+            .Select(tg => new { tg.GenreId, tg.Genre.Name, tg.Genre.Slug }),
+    };
+
+    [HttpGet("export")]
+    public async Task<IActionResult> Export(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == me.Value, ct);
+        if (user is null) return NotFound();
+
+        var ownedPlaylists = await _db.Playlists
+            .AsNoTracking()
+            .Where(p => p.OwnerId == me.Value)
+            .OrderByDescending(p => p.UpdatedAt)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Artist)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Album)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var savedPlaylists = await _db.UserSavedPlaylists
+            .AsNoTracking()
+            .Where(s => s.UserId == me.Value)
+            .OrderByDescending(s => s.SavedAt)
+            .Include(s => s.Playlist).ThenInclude(p => p.Owner)
+            .ToListAsync(ct);
+
+        var savedTracks = await _db.UserSavedTracks
+            .AsNoTracking()
+            .Where(s => s.UserId == me.Value)
+            .OrderByDescending(s => s.SavedAt)
+            .Include(s => s.Track).ThenInclude(t => t.Artist)
+            .Include(s => s.Track).ThenInclude(t => t.Album)
+            .Include(s => s.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var savedAlbums = await _db.UserSavedAlbums
+            .AsNoTracking()
+            .Where(s => s.UserId == me.Value)
+            .OrderByDescending(s => s.SavedAt)
+            .Include(s => s.Album).ThenInclude(a => a.Artist)
+            .ToListAsync(ct);
+
+        var ratings = await _db.TrackRatings
+            .AsNoTracking()
+            .Where(r => r.UserId == me.Value)
+            .OrderByDescending(r => r.RatedAt)
+            .Include(r => r.Track).ThenInclude(t => t.Artist)
+            .Include(r => r.Track).ThenInclude(t => t.Album)
+            .Include(r => r.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var uploads = await _db.UserUploads
+            .AsNoTracking()
+            .Where(u => u.UserId == me.Value)
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync(ct);
+
+        var history = await _db.PlayHistories
+            .AsNoTracking()
+            .Where(h => h.UserId == me.Value)
+            .OrderByDescending(h => h.PlayedAt)
+            .Include(h => h.Track).ThenInclude(t => t.Artist)
+            .Include(h => h.Track).ThenInclude(t => t.Album)
+            .Include(h => h.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
+            .ToListAsync(ct);
+
+        var recentSearches = await _db.RecentSearches
+            .AsNoTracking()
+            .Where(s => s.UserId == me.Value)
+            .OrderByDescending(s => s.SearchedAt)
+            .ToListAsync(ct);
+
+        var notifications = await _db.Notifications
+            .AsNoTracking()
+            .Where(n => n.UserId == me.Value)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(ct);
+
+        var friendships = await _db.Friendships
+            .AsNoTracking()
+            .Where(f => f.RequesterId == me.Value || f.AddresseeId == me.Value)
+            .OrderByDescending(f => f.UpdatedAt)
+            .Include(f => f.Requester)
+            .Include(f => f.Addressee)
+            .ToListAsync(ct);
+
+        var follows = await _db.UserFollows
+            .AsNoTracking()
+            .Where(f => f.FollowerId == me.Value || f.FolloweeId == me.Value)
+            .OrderByDescending(f => f.CreatedAt)
+            .Include(f => f.Follower)
+            .Include(f => f.Followee)
+            .ToListAsync(ct);
+
+        var userEmail = user.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+        var planMemberships = await _db.PlanMemberships
+            .AsNoTracking()
+            .Where(m => m.OwnerId == me.Value || m.MemberId == me.Value || m.InvitedEmail == userEmail)
+            .OrderByDescending(m => m.CreatedAt)
+            .Include(m => m.Owner)
+            .Include(m => m.Member)
+            .ToListAsync(ct);
+
+        var windowStart = DateTime.UtcNow.Date.AddDays(-29);
+        var plays30 = history.Where(h => h.PlayedAt >= windowStart).ToList();
+
+        var export = new
+        {
+            GeneratedAt = DateTime.UtcNow,
+            Account = new
+            {
+                user.Id,
+                user.Name,
+                user.Email,
+                user.Country,
+                user.Plan,
+                user.PlanTier,
+                user.PlanOwnerId,
+                user.CreatedAt,
+                user.LastSeenAt,
+                user.StripeSubscriptionStatus,
+                user.StripeBillingInterval,
+                user.StripeCurrentPeriodEnd,
+                user.StripeCancelAtPeriodEnd,
+                Roles = await _users.GetRolesAsync(user),
+            },
+            ListeningStats = new
+            {
+                Days = 30,
+                TotalPlays = plays30.Count,
+                TotalMinutes = (int)Math.Round(plays30.Sum(p => p.Track.DurationMs) / 60000.0),
+                UniqueTracks = plays30.Select(p => p.TrackId).Distinct().Count(),
+                UniqueArtists = plays30.Select(p => p.Track.ArtistId).Distinct().Count(),
+            },
+            Library = new
+            {
+                OwnedPlaylists = ownedPlaylists.Select(p => new
+                {
+                    p.Id,
+                    p.Name,
+                    p.Description,
+                    p.Visibility,
+                    p.IsPublic,
+                    p.IsFeatured,
+                    p.SortOrder,
+                    p.Rules,
+                    p.FollowerCount,
+                    p.CreatedAt,
+                    p.UpdatedAt,
+                    Tracks = p.PlaylistTracks
+                        .OrderBy(pt => pt.Position)
+                        .Select(pt => new { pt.Position, pt.AddedAt, pt.AddedByUserId, Track = TrackExport(pt.Track) }),
+                }),
+                SavedPlaylists = savedPlaylists.Select(s => new
+                {
+                    s.SavedAt,
+                    Playlist = new
+                    {
+                        s.Playlist.Id,
+                        s.Playlist.Name,
+                        s.Playlist.Description,
+                        s.Playlist.Visibility,
+                        s.Playlist.IsPublic,
+                        Owner = UserRefExport(s.Playlist.Owner),
+                    },
+                }),
+                SavedTracks = savedTracks.Select(s => new { s.SavedAt, Track = TrackExport(s.Track) }),
+                SavedAlbums = savedAlbums.Select(s => new
+                {
+                    s.SavedAt,
+                    Album = new
+                    {
+                        s.Album.Id,
+                        s.Album.Title,
+                        s.Album.Type,
+                        s.Album.ReleaseDate,
+                        s.Album.TotalTracks,
+                        s.Album.DurationMs,
+                        s.Album.Country,
+                        Artist = new { s.Album.ArtistId, s.Album.Artist.Name },
+                    },
+                }),
+                Ratings = ratings.Select(r => new { r.TrackId, r.Rating, r.RatedAt, Track = TrackExport(r.Track) }),
+                Uploads = uploads.Select(u => new
+                {
+                    u.Id,
+                    u.Title,
+                    u.Artist,
+                    u.DurationMs,
+                    u.AudioKey,
+                    HasExternalAudioUrl = !string.IsNullOrWhiteSpace(u.AudioUrl),
+                    u.CreatedAt,
+                }),
+            },
+            ListeningHistory = history.Select(h => new { h.PlayedAt, Track = TrackExport(h.Track) }),
+            RecentSearches = recentSearches.Select(s => new { s.Id, s.Term, s.SearchedAt }),
+            Notifications = notifications.Select(n => new
+            {
+                n.Id,
+                n.Type,
+                n.Title,
+                n.Body,
+                n.LinkUrl,
+                n.ImageUrl,
+                n.IsRead,
+                n.CreatedAt,
+            }),
+            Social = new
+            {
+                Friendships = friendships.Select(f => new
+                {
+                    f.Id,
+                    Status = f.Status.ToString().ToLowerInvariant(),
+                    f.CreatedAt,
+                    f.UpdatedAt,
+                    Requester = UserRefExport(f.Requester),
+                    Addressee = UserRefExport(f.Addressee),
+                }),
+                Follows = follows.Select(f => new
+                {
+                    f.Id,
+                    f.CreatedAt,
+                    Follower = UserRefExport(f.Follower),
+                    Followee = UserRefExport(f.Followee),
+                }),
+            },
+            SharedPlans = planMemberships.Select(m => new
+            {
+                m.Id,
+                m.Status,
+                m.InvitedEmail,
+                m.CreatedAt,
+                m.AcceptedAt,
+                Owner = UserRefExport(m.Owner),
+                Member = UserRefExport(m.Member),
+            }),
+        };
+
+        return Ok(export);
+    }
+
     [HttpPatch("profile")]
     public async Task<ActionResult<UserDto>> UpdateProfile([FromBody] UpdateProfileRequest req, CancellationToken ct = default)
     {

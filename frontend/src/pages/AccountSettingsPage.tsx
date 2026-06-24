@@ -21,13 +21,16 @@ import {
   MusicalNoteIcon,
   CheckCircleIcon,
   ClockIcon,
+  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline'
 import { billingService, type BillingSubscription } from '@/services/billingService'
+import { meService } from '@/services/meService'
 import { PlanMembersCard } from '@/components/settings/PlanMembersCard'
 import { ChangePasswordModal } from '@/components/settings/ChangePasswordModal'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
+import { notify } from '@/utils/toast'
 
 interface ArtistApplication {
   id: string
@@ -100,6 +103,7 @@ export function AccountSettingsPage() {
   const confirm = useConfirm()
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [busy, setBusy] = useState(false)
+  const [downloadBusy, setDownloadBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showChangePw, setShowChangePw] = useState(false)
 
@@ -180,6 +184,30 @@ export function AccountSettingsPage() {
   const signOutEverywhere = async () => {
     await logout()
     navigate('/login')
+  }
+
+  const downloadData = async () => {
+    if (downloadBusy) return
+
+    setDownloadBusy(true)
+    try {
+      const data = await meService.exportData()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `not-spotify-data-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      notify.success('Your data export is downloading.')
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      notify.error(msg ?? 'Could not download your data. Please try again.')
+    } finally {
+      setDownloadBusy(false)
+    }
   }
 
   if (!user) return null
@@ -389,6 +417,12 @@ export function AccountSettingsPage() {
         <SettingRow icon={LockClosedIcon} label="Change password" sub="Update your password" onClick={() => setShowChangePw(true)} />
         <SettingRow icon={BellIcon} label="Notification settings" disabled />
         <SettingRow icon={EyeIcon} label="Account privacy" disabled />
+        <SettingRow
+          icon={ArrowDownTrayIcon}
+          label="Download your data"
+          sub={downloadBusy ? 'Preparing your JSON export...' : 'Profile, library, history, searches, social data and notifications'}
+          onClick={downloadData}
+        />
         <SettingRow icon={ArrowRightOnRectangleIcon} label="Sign out everywhere" sub="Log out of all devices" onClick={signOutEverywhere} />
         <SettingRow icon={TrashIcon} label="Close account" disabled />
       </Section>

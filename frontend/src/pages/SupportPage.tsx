@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FocusEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
+  FileText,
   Globe2,
   Grid3X3,
   RotateCcw,
@@ -18,6 +19,7 @@ import {
   ThumbsDown,
   ThumbsUp,
   UserRound,
+  X,
 } from 'lucide-react'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { InstallAppButton } from '@/components/common/InstallAppButton'
@@ -141,7 +143,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('logging-in-with-facebook', 'Logging in to Not Spotify with Facebook'),
           article('logging-in-with-apple', 'Logging in to Not Spotify with Apple'),
           article('logging-in-with-google', 'Logging in to Not Spotify with Google'),
-          article('cant-play-abroad', "Can't play abroad"),
+          article('cant-play-abroad', 'Country and playback'),
           article('disabled-accounts', 'Not Spotify disabled accounts'),
           article('log-out-of-not-spotify', 'How to log out of Not Spotify'),
         ],
@@ -285,7 +287,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
   {
     id: 'devices',
     title: 'Devices & troubleshooting',
-    description: 'Playback, downloads, audio, and connected devices.',
+    description: 'Playback, downloads, audio, and app troubleshooting.',
     Icon: Smartphone,
     sections: [
       {
@@ -328,6 +330,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         articles: [
           article('privacy-settings', 'Privacy settings'),
           article('private-listening', 'Listening privacy & visibility'),
+          article('download-your-data', 'Download your data'),
         ],
       },
       {
@@ -335,7 +338,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         title: 'Reporting',
         articles: [
           article('report-content-or-users', 'Report content or users'),
-          article('blocked-users', 'Blocked users'),
+          article('blocked-users', 'Managing unwanted interactions'),
           article('copyright-claims', 'Copyright claims'),
         ],
       },
@@ -466,11 +469,12 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
         paragraphs: [
           'Shared plans use plan seats in the backend. The owner holds the Stripe subscription, and accepted members receive Premium by being linked to the owner account.',
         ],
-        ordered: [
+        steps: [
           'Go to Account.',
           'Open the plan members section.',
           'Enter the member email address.',
           'Send the invite. If the user already has an account, they also receive an in-app notification.',
+          'Ask the member to sign in with that email and accept the invite from Account.',
         ],
       },
       {
@@ -491,21 +495,22 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
         paragraphs: [
           'Playback depends on an approved track record and a reachable audio URL from the configured storage service. Catalogue tracks are loaded from the API, while personal uploads are resolved only for the owner.',
         ],
-        bullets: [
+        steps: [
           'Check your internet connection.',
           'Make sure the app is not muted and the device volume is turned up.',
-          'Restart the app and try another song.',
-          'If only one track fails, its stored audio key or external audio URL may be missing or unreachable.',
-          'If every track fails after login, check whether your session expired and sign in again.',
+          'Try another track to see whether one source file is failing or all playback is failing.',
+          'Sign out and back in if every track fails after login.',
+          'For personal uploads, confirm the file type is mp3, m4a, aac, wav, ogg, oga, opus, flac, or webm and under 50 MB.',
+          'If S3-backed media fails, check bucket CORS and whether presigned URLs are expiring too quickly.',
         ],
       },
       {
-        heading: 'If playback stops or skips',
+        heading: 'What the result means',
         bullets: [
+          'If only one track fails, its stored audio key or external audio URL may be missing or unreachable.',
+          'If every track fails after login, check whether your session expired and sign in again.',
           'Turn off data saver or battery saver temporarily.',
           'Clear the app cache.',
-          'For local uploads, confirm the file type is mp3, m4a, aac, wav, ogg, oga, opus, flac, or webm and under 50 MB.',
-          'For S3-backed media, check bucket CORS and whether presigned URLs are expiring too quickly.',
         ],
       },
     ],
@@ -573,6 +578,13 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
       {
         heading: 'Smart playlist rules',
         paragraphs: ['Rules can filter by genre, minimum rating, minimum play count, recently added days, and limit. If a rule validation error appears, simplify the rule set and save again.'],
+        steps: [
+          'Create a playlist.',
+          'Choose smart playlist rules instead of manually adding tracks.',
+          'Add one or more filters such as genre, minimum rating, minimum play count, recent days, or result limit.',
+          'Save the playlist.',
+          'Open the playlist and confirm tracks resolved automatically from the approved catalogue.',
+        ],
       },
     ],
     related: ['collaborative-playlists', 'search-and-browse-music', 'liked-songs'],
@@ -1170,6 +1182,824 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     ],
     related: ['music-recommendations', 'search-and-browse-music', 'go-to-song-radio'],
   },
+  'accepted-payment-methods': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify payments are processed by Stripe Checkout. The exact cards, wallets, and local payment methods you see depend on the Stripe account country, currency, and the plan price configured by the team.',
+        ],
+        bullets: [
+          'Use a payment method that supports online recurring payments.',
+          'Do not send support full card numbers, CVC codes, bank passwords, or one-time passcodes.',
+          'If Checkout does not open, no payment method was charged in Not Spotify.',
+        ],
+      },
+    ],
+    related: ['failed-payment-help', 'update-payment-method', 'payment-options-by-country', 'not-spotify-gift-cards'],
+  },
+  'change-payment-details': {
+    blocks: [
+      {
+        paragraphs: [
+          'Changing payment details uses the same Stripe billing portal as "Update payment method". Not Spotify opens the portal for accounts that already have a Stripe customer ID.',
+        ],
+        steps: [
+          'Open Account.',
+          'In Subscription, choose "Manage billing".',
+          'Update the payment method in the Stripe portal.',
+          'Return to Not Spotify and refresh Account if the subscription status has not updated yet.',
+        ],
+      },
+    ],
+    related: ['update-payment-method', 'manage-your-subscription', 'failed-payment-help', 'payment-history'],
+  },
+  'payment-history': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify stores your current subscription state, but receipts and invoice history live in Stripe. Use the billing portal to view payment history when Stripe is configured for your account.',
+        ],
+        bullets: [
+          'Account shows the current plan, billing interval, Stripe status, renewal date, and cancellation flag.',
+          'Stripe shows the official receipt and payment method details.',
+          'If the portal is unavailable, the account may not have completed Checkout yet.',
+        ],
+      },
+    ],
+    related: ['manage-your-subscription', 'charged-too-much', 'charged-twice', 'update-payment-method'],
+  },
+  'manage-your-subscription': {
+    blocks: [
+      {
+        paragraphs: [
+          'Your subscription is managed from Account. The app can open Stripe Checkout, open the billing portal, cancel Premium locally, and refresh your auth token so Premium gates update immediately.',
+        ],
+        steps: [
+          'Open Account.',
+          'Check the plan card for your current plan and renewal date.',
+          'Use "Manage billing" to update payment details in Stripe, or "Cancel subscription" to downgrade to Free.',
+          'Refresh the page if a webhook update has not appeared yet.',
+        ],
+      },
+    ],
+    related: ['your-not-spotify-plan-details', 'how-to-cancel-premium-plans', 'update-payment-method', 'not-spotify-premium'],
+  },
+  'payment-options-by-country': {
+    blocks: [
+      {
+        paragraphs: [
+          'Payment availability by country is decided by Stripe and the configured price currency. Not Spotify passes the selected plan to Checkout; Stripe decides which payment methods can be shown.',
+        ],
+        bullets: [
+          'Your account country is a two-letter code used elsewhere in the app, but Checkout behavior is controlled by Stripe.',
+          'If a local method is missing, try a card that supports recurring online payments.',
+          'If every payment option is missing, the selected plan may not have a configured Stripe price ID.',
+        ],
+      },
+    ],
+    related: ['accepted-payment-methods', 'failed-payment-help', 'language-and-country', 'price-updates'],
+  },
+  'canceled-but-still-charged': {
+    blocks: [
+      {
+        paragraphs: [
+          'Canceling Premium in Not Spotify downgrades the account to Free immediately and releases any shared Duo or Family seats owned by that account. A later charge usually means Stripe did not receive the cancellation or another account still owns an active subscription.',
+        ],
+        bullets: [
+          'Check Account for the plan and Stripe status shown on this login.',
+          'Open the Stripe billing portal and compare the active subscription there.',
+          'Confirm you are signed into the same email that originally paid.',
+        ],
+      },
+    ],
+    related: ['how-to-cancel-premium-plans', 'charged-too-much', 'charged-twice', 'contact-us'],
+  },
+  'charged-but-dont-use-premium': {
+    blocks: [
+      {
+        paragraphs: [
+          'A charge is tied to the Stripe customer on the account that started Checkout. If this account is Free, the paid subscription may belong to another Not Spotify login or to a plan owner who invited you as a member.',
+        ],
+        bullets: [
+          'Check other email addresses you may have used for Checkout.',
+          'Ask the Duo or Family owner whether they still hold the paid plan.',
+          'Use the receipt email from Stripe to identify which account was charged.',
+        ],
+      },
+    ],
+    related: ['payment-history', 'manage-your-subscription', 'failed-payment-help', 'contact-us'],
+  },
+  'charged-twice': {
+    blocks: [
+      {
+        paragraphs: [
+          'Duplicate-looking charges can happen when a bank shows an authorization and a final charge, when two accounts subscribed separately, or when a failed renewal is retried.',
+        ],
+        bullets: [
+          'Compare receipt dates and subscription IDs in Stripe.',
+          'Check whether another Not Spotify email also has Premium.',
+          'If one line disappears after a few days, it was likely a temporary authorization.',
+        ],
+      },
+    ],
+    related: ['charged-too-much', 'payment-history', 'failed-payment-help', 'refund-policy'],
+  },
+  'charged-for-a-free-trial': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not create its own free-trial system. If a trial exists, it is configured directly in Stripe for a plan price or promotion code, and Checkout shows the amount before payment is completed.',
+        ],
+        bullets: [
+          'Review the total on the Stripe Checkout page before paying.',
+          'Promotion codes can reduce the price only when they are active for the selected plan.',
+          'If you were charged unexpectedly, compare the receipt with the plan and code used at Checkout.',
+        ],
+      },
+    ],
+    related: ['not-spotify-gift-cards', 'charged-too-much', 'refund-policy', 'failed-payment-help'],
+  },
+  'does-premium-include-tax': {
+    blocks: [
+      {
+        paragraphs: [
+          'Tax is handled by Stripe according to the payment configuration. Not Spotify plan cards show the configured plan price, while Stripe Checkout and receipts are the source of truth for final tax and currency details.',
+        ],
+        bullets: [
+          'Check the final total in Checkout before confirming payment.',
+          'Use the Stripe receipt for tax records.',
+          'If the app price and receipt differ, include both when asking support to investigate.',
+        ],
+      },
+    ],
+    related: ['price-updates', 'charged-too-much', 'payment-history', 'accepted-payment-methods'],
+  },
+  'refund-policy': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not have an automatic refund button. Subscription state can be canceled locally, but refunds must be handled by the project team through Stripe after checking the account and receipt.',
+        ],
+        bullets: [
+          'Cancel Premium first if you do not want future renewal attempts.',
+          'Keep the Stripe receipt date, amount, and customer email available.',
+          'Do not share full card details or bank login information.',
+        ],
+      },
+    ],
+    related: ['how-to-cancel-premium-plans', 'charged-too-much', 'charged-twice', 'contact-us'],
+  },
+  'price-updates': {
+    blocks: [
+      {
+        paragraphs: [
+          'Plan prices come from the billing catalogue and Stripe price IDs configured on the server. If a price changes, the Premium page reads the updated catalogue and Checkout uses the matching Stripe price.',
+        ],
+        bullets: [
+          'Monthly, yearly, Duo, Family, and Student are separate plan keys.',
+          'A missing price ID makes that plan unavailable instead of charging a guessed amount.',
+          'Existing subscriptions follow Stripe subscription behavior for renewals and receipts.',
+        ],
+      },
+    ],
+    related: ['not-spotify-premium', 'your-not-spotify-plan-details', 'does-premium-include-tax', 'payment-history'],
+  },
+  'not-spotify-premium': {
+    blocks: [
+      {
+        paragraphs: [
+          'Premium removes Free listening limits and unlocks plan-gated features such as direct track picking, repeat, queue reordering, higher audio quality, downloads, and no audio ads.',
+        ],
+      },
+      {
+        heading: 'Upgrade to Premium',
+        steps: [
+          'Open Premium.',
+          'Choose Individual, Yearly, Duo, Family, or Student.',
+          'Review the price and any promotion code in Stripe Checkout.',
+          'Complete payment and return to Not Spotify.',
+          'Refresh your session if Premium controls do not unlock immediately.',
+        ],
+      },
+    ],
+    related: ['your-not-spotify-plan-details', 'how-to-change-premium-plans', 'premium-not-working', 'accepted-payment-methods'],
+  },
+  'premium-family': {
+    blocks: [
+      {
+        paragraphs: [
+          'Premium Family is a shared plan tier with one owner and several member seats. The owner pays through Stripe; accepted members receive Premium through a PlanMembership row linked to the owner.',
+        ],
+        bullets: [
+          'The owner manages invites from Account.',
+          'Pending invites count toward the seat limit.',
+          'Removing a member releases the seat and returns that member to Free.',
+        ],
+      },
+    ],
+    related: ['invite-or-remove-family-plan-members', 'family-plan-manager', 'family-plan-address', 'payments-for-family-plan'],
+  },
+  'premium-duo': {
+    blocks: [
+      {
+        paragraphs: [
+          'Premium Duo works like Family with a smaller seat count: one plan owner and one invited member. The member gets Premium while the owner subscription is active.',
+        ],
+        bullets: [
+          'Duo invites are sent by email from Account.',
+          'The invited account must accept before the seat becomes active.',
+          'A member with their own Premium subscription cannot accept a shared seat until that subscription is canceled.',
+        ],
+      },
+    ],
+    related: ['join-duo-plan', 'duo-manager', 'duo-plan-address', 'payments-for-duo-plan'],
+  },
+  'premium-student': {
+    blocks: [
+      {
+        paragraphs: [
+          'Premium Student is a separate Stripe plan key. Not Spotify does not run an in-app student verification provider, so availability depends on whether the team configured a Student price for the demo environment.',
+        ],
+        bullets: [
+          'Choose Student on the Premium page when it is available.',
+          'If Checkout says the plan is not configured, ask an admin to set the Stripe Student price ID.',
+          'Student is an individual plan and does not include shared member seats.',
+        ],
+      },
+    ],
+    related: ['student-plan-verification', 'student-plan-not-working', 'renew-student-discount', 'not-spotify-premium'],
+  },
+  'your-not-spotify-plan-details': {
+    blocks: [
+      {
+        paragraphs: [
+          'Account shows your current plan, tier, billing interval, Stripe status, renewal date, and whether cancellation is scheduled. Shared-plan members also see who owns the plan that gives them Premium.',
+        ],
+        bullets: [
+          'Free accounts can open Premium to compare plans.',
+          'Premium owners can open the billing portal or cancel.',
+          'Duo and Family owners see member seats and pending invites.',
+        ],
+      },
+    ],
+    related: ['manage-your-subscription', 'not-spotify-premium', 'invite-or-remove-family-plan-members', 'payment-history'],
+  },
+  'how-to-cancel-premium-plans': {
+    blocks: [
+      {
+        paragraphs: [
+          'Canceling from Account downgrades the current user to Free and refreshes the auth token so Premium-only controls lock again. If you own Duo or Family, member seats are released too.',
+        ],
+        steps: [
+          'Open Account.',
+          'In Subscription, choose "Cancel subscription".',
+          'Confirm the cancellation dialog.',
+          'Wait for Account to refresh your plan to Free.',
+          'If Stripe still shows an active subscription, open the billing portal and compare the subscription there.',
+        ],
+      },
+    ],
+    related: ['manage-your-subscription', 'canceled-but-still-charged', 'refund-policy', 'premium-not-working'],
+  },
+  'how-to-change-premium-plans': {
+    blocks: [
+      {
+        paragraphs: [
+          'Plan changes are handled by starting Checkout for the new plan or managing the existing subscription in Stripe. The backend supports the plan keys monthly, yearly, duo, family, and student.',
+        ],
+        bullets: [
+          'Use Premium to start Checkout for a new plan when you are Free.',
+          'Use the Stripe billing portal when you already have a Stripe customer.',
+          'If changing from a shared seat to your own subscription, leave the shared plan first.',
+        ],
+      },
+    ],
+    related: ['not-spotify-premium', 'manage-your-subscription', 'premium-family', 'premium-duo'],
+  },
+  'premium-not-working': {
+    blocks: [
+      {
+        paragraphs: [
+          'Premium gates read your current user record and token. If payment succeeded but Premium controls still look locked, the webhook or token refresh may not have caught up yet.',
+        ],
+        bullets: [
+          'Refresh the page or sign out and in again.',
+          'Open Account and confirm it shows Premium.',
+          'If Account is still Free after Checkout, ask an admin to check Stripe webhook delivery and the subscription ID.',
+          'For shared seats, confirm the owner plan is still active and your invite status is active.',
+        ],
+      },
+    ],
+    related: ['your-not-spotify-plan-details', 'failed-payment-help', 'how-to-change-premium-plans', 'download-and-offline-listening'],
+  },
+  'cant-join-family-plan': {
+    blocks: [
+      {
+        paragraphs: [
+          'Family invites are matched to the invited email address. Joining can fail when the invite is expired or removed, the owner has no seats left, or your account already owns Premium.',
+        ],
+        bullets: [
+          'Sign in with the email that received the invite.',
+          'Ask the owner to check whether the invite is still pending.',
+          'Cancel your own Premium before accepting a shared seat.',
+        ],
+      },
+    ],
+    related: ['invite-or-remove-family-plan-members', 'premium-family', 'family-plan-manager', 'premium-not-working'],
+  },
+  'cant-join-duo-plan': {
+    blocks: [
+      {
+        paragraphs: [
+          'Duo has one owner and one member seat. If you cannot join, the invite may be for a different email, the seat may already be used, or your account may already own Premium.',
+        ],
+        bullets: [
+          'Use the invited email address.',
+          'Ask the owner to remove any old pending invite and send a new one.',
+          'If you are already Premium, cancel your own subscription before accepting.',
+        ],
+      },
+    ],
+    related: ['join-duo-plan', 'premium-duo', 'duo-manager', 'premium-not-working'],
+  },
+  'payments-for-family-plan': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Family owner pays the Stripe subscription. Members do not add payment methods for their shared seats; their Premium access comes from the owner account while the subscription is active.',
+        ],
+        bullets: [
+          'If the owner cancels, members return to Free.',
+          'If a member leaves or is removed, only that seat is released.',
+          'Receipts are available to the owner through Stripe.',
+        ],
+      },
+    ],
+    related: ['premium-family', 'family-plan-manager', 'invite-or-remove-family-plan-members', 'payment-history'],
+  },
+  'payments-for-duo-plan': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Duo owner pays the subscription and controls the one member invite. The invited member does not pay through their own account for that shared seat.',
+        ],
+        bullets: [
+          'Only the owner can update payment details in Stripe.',
+          'The member keeps Premium only while the owner plan is active.',
+          'If the member starts their own Premium later, they should leave Duo first.',
+        ],
+      },
+    ],
+    related: ['premium-duo', 'duo-manager', 'join-duo-plan', 'payment-history'],
+  },
+  'family-plan-manager': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Family plan manager is the account that started the Family subscription. That owner can invite members, remove members, update billing through Stripe, and cancel the plan.',
+        ],
+        bullets: [
+          'Manager status cannot be transferred in the app.',
+          'Members can leave a shared plan but cannot manage the owner subscription.',
+          'When the owner cancels, all shared seats are released.',
+        ],
+      },
+    ],
+    related: ['premium-family', 'invite-or-remove-family-plan-members', 'payments-for-family-plan', 'family-plan-address'],
+  },
+  'family-plan-address': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not currently collect or verify a household address for Family. The app enforces seat count and invite ownership, not address matching.',
+        ],
+        bullets: [
+          'Use Account to manage invited emails.',
+          'If address verification is added later, this article should be updated before the UI ships.',
+          'For now, joining issues are usually invite email, seat count, or existing Premium ownership problems.',
+        ],
+      },
+    ],
+    related: ['premium-family', 'cant-join-family-plan', 'invite-or-remove-family-plan-members', 'family-plan-manager'],
+  },
+  'join-duo-plan': {
+    blocks: [
+      {
+        paragraphs: [
+          'You can join Duo when the owner invites the same email address you use for Not Spotify and the Duo seat is available.',
+        ],
+        steps: [
+          'Sign in with the invited email.',
+          'Open Account.',
+          'Find the incoming Duo invite in the plan members area.',
+          'Accept the invite.',
+          'Refresh the page if Premium controls do not unlock immediately.',
+        ],
+      },
+    ],
+    related: ['premium-duo', 'cant-join-duo-plan', 'duo-manager', 'payments-for-duo-plan'],
+  },
+  'duo-manager': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Duo manager is the account that pays for Duo. They control the billing portal, cancellation, and the single member invite.',
+        ],
+        bullets: [
+          'The member can leave Duo from Account.',
+          'The manager can remove the member and invite someone else.',
+          'Manager ownership cannot be moved to the member in the app.',
+        ],
+      },
+    ],
+    related: ['premium-duo', 'join-duo-plan', 'payments-for-duo-plan', 'duo-plan-address'],
+  },
+  'duo-plan-address': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify Duo does not currently collect or verify an address. The app checks the invite email, seat limit, and subscription state.',
+        ],
+        bullets: [
+          'If you cannot join, make sure the invite is addressed to your account email.',
+          'Ask the manager to remove old pending invites before sending a new one.',
+          'Cancel your own Premium before accepting a shared Duo seat.',
+        ],
+      },
+    ],
+    related: ['premium-duo', 'cant-join-duo-plan', 'duo-manager', 'join-duo-plan'],
+  },
+  'student-plan-verification': {
+    blocks: [
+      {
+        paragraphs: [
+          'Student is a separate plan key in Not Spotify, but there is no in-app student verification provider. If the demo environment offers Student, it is because the team configured a Student Stripe price.',
+        ],
+        bullets: [
+          'Choose Student on Premium only when it appears as available.',
+          'If Checkout fails with missing configuration, the Student price ID is not set.',
+          'Do not send student documents through support unless a real verification flow is added later.',
+        ],
+      },
+    ],
+    related: ['premium-student', 'student-plan-not-working', 'renew-student-discount', 'failed-payment-help'],
+  },
+  'student-plan-not-working': {
+    blocks: [
+      {
+        paragraphs: [
+          'Student plan problems are usually billing configuration problems, because Not Spotify does not run a separate verification service. Checkout must have the Student price ID configured before it can work.',
+        ],
+        bullets: [
+          'Try the normal Premium plan to confirm Checkout works at all.',
+          'Check whether the Student plan card shows a configuration message.',
+          'Ask an admin to verify the Student Stripe price ID.',
+        ],
+      },
+    ],
+    related: ['premium-student', 'student-plan-verification', 'failed-payment-help', 'accepted-payment-methods'],
+  },
+  'renew-student-discount': {
+    blocks: [
+      {
+        paragraphs: [
+          'There is no automatic student-renewal workflow in Not Spotify. Student access follows the Stripe subscription attached to the Student plan price.',
+        ],
+        bullets: [
+          'Use Account to see whether the subscription is active.',
+          'If the Student plan is no longer available, choose another Premium plan.',
+          'If a real verification provider is added later, this article should be updated before renewal prompts ship.',
+        ],
+      },
+    ],
+    related: ['premium-student', 'student-plan-verification', 'how-to-change-premium-plans', 'price-updates'],
+  },
+  'changing-how-you-log-in': {
+    blocks: [
+      {
+        paragraphs: [
+          'You can keep using email and password, or Google when the server has Google credentials. Not Spotify does not currently link or unlink Facebook or Apple accounts.',
+        ],
+        bullets: [
+          'To change an email/password login, update your email or password from Account.',
+          'Google login creates or signs into the account with the matching Google email.',
+          'If you changed your email, use the new email the next time you sign in with password.',
+        ],
+      },
+    ],
+    related: ['not-spotify-login-methods', 'logging-in-with-google', 'reset-or-change-password', 'change-email-address'],
+  },
+  'cant-play-abroad': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not geo-lock playback. Your country setting helps personalize rows such as "Popular in your country", but it does not block songs when you travel.',
+        ],
+        bullets: [
+          'If music will not play while abroad, treat it as a network, storage, login, or browser playback issue.',
+          'Update your country in your profile if local recommendation rows look wrong.',
+          'There is no travel limit or country-mismatch lock in this app.',
+        ],
+      },
+    ],
+    related: ['language-and-country', 'app-not-playing-music', 'search-and-browse-music', 'music-recommendations'],
+  },
+  'disabled-accounts': {
+    blocks: [
+      {
+        paragraphs: [
+          'There is no public self-service disabled-account appeal flow. If an account cannot sign in and password reset does not help, an admin needs to check the user record and roles.',
+        ],
+        bullets: [
+          'Try resetting your password first.',
+          'Check that you are using the correct email or Google login.',
+          'Ask support to check whether the account exists and whether sign-in is blocked.',
+        ],
+      },
+    ],
+    related: ['cant-log-in-to-not-spotify', 'reset-or-change-password', 'keep-your-account-secure', 'contact-us'],
+  },
+  'log-out-of-not-spotify': {
+    blocks: [
+      {
+        paragraphs: [
+          'Logging out revokes the refresh token for this device. If it is your last active session, the app can also mark you offline for friends.',
+        ],
+        steps: [
+          'Open the user menu or Account.',
+          'Choose Log out or Sign out everywhere.',
+          'You are returned to the login page.',
+          'On a shared device, close the browser tab after signing out.',
+        ],
+      },
+    ],
+    related: ['keep-your-account-secure', 'remove-saved-login-details', 'suspicious-account-activity', 'cant-log-in-to-not-spotify'],
+  },
+  'change-email-address': {
+    blocks: [
+      {
+        paragraphs: [
+          'Your email is also your password-login username. Updating it changes both the contact email and the login email for this account.',
+        ],
+        steps: [
+          'Open your profile edit screen.',
+          'Enter a valid email address that is not already used by another account.',
+          'Save the profile.',
+          'Use the new email the next time you log in with password.',
+        ],
+      },
+    ],
+    related: ['edit-your-profile', 'changing-how-you-log-in', 'reset-or-change-password', 'language-and-country'],
+  },
+  'close-or-recover-account': {
+    blocks: [
+      {
+        paragraphs: [
+          'Self-service account deletion and playlist recovery are not built yet. The Account page shows those actions as disabled, so no article should promise a button that does not exist.',
+        ],
+        bullets: [
+          'To stop using the account, cancel Premium first if you pay for it.',
+          'Sign out everywhere on shared devices.',
+          'Ask an admin if you need a data cleanup during the project demo.',
+        ],
+      },
+    ],
+    related: ['download-your-data', 'how-to-cancel-premium-plans', 'log-out-of-not-spotify', 'keep-your-account-secure'],
+  },
+  'notification-settings': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify has a notifications center for events such as friend requests, accepted friends, approvals, releases, and Jam invites. Granular notification preferences are not built yet.',
+        ],
+        bullets: [
+          'Use the notification bell to read new notifications.',
+          'Mark individual notifications read, mark all read, or clear them.',
+          'There is no email, push, or per-category toggle in the app yet.',
+        ],
+      },
+    ],
+    related: ['privacy-settings', 'private-listening', 'keep-your-account-secure', 'report-content-or-users'],
+  },
+  'privacy-settings': {
+    blocks: [
+      {
+        paragraphs: [
+          'Privacy controls are currently centered on playlist visibility, profile visibility through social surfaces, and signing out of shared devices. There is no single privacy dashboard yet.',
+        ],
+        bullets: [
+          'Set playlists to Public, Friends-only, or Private.',
+          'Friend Activity can show friends what you are playing while you are active.',
+          'Download your data from Account to inspect what the app stores for your user.',
+        ],
+      },
+    ],
+    related: ['private-listening', 'download-your-data', 'create-and-edit-playlists', 'keep-your-account-secure'],
+  },
+  'language-and-country': {
+    blocks: [
+      {
+        paragraphs: [
+          'Language is saved on this device and changes the app interface. Country is saved on your profile as a two-letter code and helps personalize country-based discovery rows.',
+        ],
+        bullets: [
+          'Language options are English, Spanish, and French.',
+          'Country must be an ISO-style two-letter code such as US, SG, or MY.',
+          'Country does not block playback or act as a travel restriction.',
+        ],
+      },
+    ],
+    related: ['change-app-language', 'edit-your-profile', 'cant-play-abroad', 'music-recommendations'],
+  },
+  'suspicious-account-activity': {
+    blocks: [
+      {
+        paragraphs: [
+          'If you notice unfamiliar playback, profile changes, or billing changes, secure the account before troubleshooting anything else.',
+        ],
+        steps: [
+          'Change your password from Account, or reset it from the login page.',
+          'Sign out everywhere.',
+          'Check your email, country, plan, and recent notifications.',
+          'Contact support with timestamps and what changed, but never send your password.',
+        ],
+      },
+    ],
+    related: ['keep-your-account-secure', 'reset-or-change-password', 'log-out-of-not-spotify', 'remove-saved-login-details'],
+  },
+  'remove-saved-login-details': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify stores refresh sessions in secure httpOnly cookies and tokens in app state. It does not manage your browser password manager, so saved passwords must be removed in the browser or operating system.',
+        ],
+        bullets: [
+          'Sign out of Not Spotify first.',
+          'Remove saved passwords from your browser password settings if needed.',
+          'On shared devices, use Sign out everywhere after changing your password.',
+        ],
+      },
+    ],
+    related: ['log-out-of-not-spotify', 'keep-your-account-secure', 'reset-or-change-password', 'suspicious-account-activity'],
+  },
+  'app-keeps-crashing': {
+    blocks: [
+      {
+        paragraphs: [
+          'Most crashes in the web app come from stale built assets, browser storage, or a backend/API mismatch during development. The app shell is a PWA, so cached files can survive refreshes.',
+        ],
+        bullets: [
+          'Refresh the page and try again.',
+          'Clear site data if the PWA keeps loading an old build.',
+          'Check the browser console for red errors and the API base URL.',
+          'If this is the desktop shell, rebuild the frontend before packaging Tauri again.',
+        ],
+      },
+    ],
+    related: ['web-player-help', 'app-not-playing-music', 'sound-or-volume-issues', 'contact-us'],
+  },
+  'sound-or-volume-issues': {
+    blocks: [
+      {
+        paragraphs: [
+          'Sound is produced by the browser audio element and the Web Audio processing chain for equalizer, quality, and normalization. If the track is playing but silent or distorted, check both device output and app audio settings.',
+        ],
+        steps: [
+          'Make sure the player volume and device volume are not muted.',
+          'Try another track to rule out a bad source file.',
+          'Turn Equalizer back to Off or Flat.',
+          'Toggle Volume normalization off and on.',
+          'If Data Saver is on, turn it off and try Normal or High quality.',
+        ],
+      },
+    ],
+    related: ['volume-normalization', 'equalizer', 'data-saver', 'app-not-playing-music'],
+  },
+  'downloads-not-working': {
+    blocks: [
+      {
+        paragraphs: [
+          'Downloads are Premium-gated and depend on the backend being able to fetch the audio object from storage. The app uses the same storage keys as playback, then packages album and playlist downloads as ZIP files.',
+        ],
+        bullets: [
+          'Free users receive a 403 for track downloads.',
+          'A storage fetch failure means the object key, bucket, CORS, or presigned URL path needs checking.',
+          'For PWA offline audio, make sure the browser has enough storage and the track has loaded successfully once.',
+        ],
+      },
+    ],
+    related: ['download-and-offline-listening', 'app-not-playing-music', 'not-spotify-premium', 'remove-downloads'],
+  },
+  'remove-downloads': {
+    blocks: [
+      {
+        paragraphs: [
+          'Offline audio saved by the PWA is stored in browser storage on that device. Removing it clears local copies but does not remove the track from your library or playlists.',
+        ],
+        bullets: [
+          'Use the offline/download control for the track when available.',
+          'Clear site data to remove all local offline copies for this browser.',
+          'Downloaded ZIP files for albums or playlists are normal files; delete them from your downloads folder.',
+        ],
+      },
+    ],
+    related: ['download-and-offline-listening', 'downloads-not-working', 'liked-songs', 'web-player-help'],
+  },
+  'blocked-users': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify does not have a blocked-users list yet. To reduce interaction with someone, remove them as a friend, stop following them, or make playlists private.',
+        ],
+        bullets: [
+          'Unfriending removes the accepted friend relationship.',
+          'Unfollowing stops their reposts and profile activity from being part of your follow graph.',
+          'Private playlists are visible only to you.',
+        ],
+      },
+    ],
+    related: ['privacy-settings', 'private-listening', 'report-content-or-users', 'create-and-edit-playlists'],
+  },
+  'report-content-or-users': {
+    blocks: [
+      {
+        paragraphs: [
+          'A full in-app report workflow is not built yet. For the project version, gather the exact content link and enough context for an admin to review it.',
+        ],
+        bullets: [
+          'Include the track, playlist, artist, user profile, or message link.',
+          'Say what is wrong and when you saw it.',
+          'Do not include passwords, private tokens, or full payment details.',
+        ],
+      },
+    ],
+    related: ['copyright-claims', 'blocked-users', 'contact-us', 'privacy-settings'],
+  },
+  'copyright-claims': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify is an artist-upload project, not a licensed commercial catalogue. If an uploaded track or video appears to use content without permission, an admin needs the content link and claimant details to review it.',
+        ],
+        bullets: [
+          'Send the track, album, playlist, or video URL.',
+          'Include the claimant name and a short ownership explanation.',
+          'Admins can reject, remove, or revoke artist content through the review tools.',
+        ],
+      },
+    ],
+    related: ['report-content-or-users', 'contact-us', 'privacy-settings', 'keep-your-account-secure'],
+  },
+  'contact-us': {
+    blocks: [
+      {
+        paragraphs: [
+          'A real support ticket form is on the system roadmap, but it is not shipped yet. Until then, use this article as the checklist for what to include when you contact the project team or admin.',
+        ],
+        bullets: [
+          'Your account email.',
+          'The page or content link where the issue happened.',
+          'The exact error message and approximate time.',
+          'What you expected to happen and what actually happened.',
+        ],
+      },
+    ],
+    related: ['failed-payment-help', 'app-not-playing-music', 'report-content-or-users', 'download-your-data'],
+  },
+  'download-your-data': {
+    blocks: [
+      {
+        paragraphs: [
+          'You can download a JSON export of the data Not Spotify stores for your signed-in account. The export is generated by GET /me/export and only returns data scoped to the authenticated user.',
+        ],
+      },
+      {
+        heading: 'Download your export',
+        steps: [
+          'Open Account.',
+          'Go to Security and privacy.',
+          'Select "Download your data".',
+          'Save the JSON file when your browser downloads it.',
+        ],
+      },
+      {
+        heading: 'What is included',
+        bullets: [
+          'Profile and plan fields: name, email, country, plan, plan tier, account dates, and Stripe status fields that are already visible to the app.',
+          'Library data: owned playlists and tracks, saved playlists, saved tracks, saved albums, ratings, and recent searches.',
+          'Listening and social data: play history, notifications, accepted or pending friendships, follows, and shared-plan invites or seats involving your account.',
+        ],
+      },
+      {
+        heading: 'What is not included',
+        bullets: [
+          'Passwords, refresh tokens, full card numbers, CVC codes, and bank details are never included.',
+          'Advertising profiles, voice recordings, and third-party data categories are not listed because Not Spotify does not store them.',
+        ],
+      },
+    ],
+    related: ['privacy-settings', 'private-listening', 'edit-your-profile', 'close-or-recover-account'],
+  },
 }
 
 function slugify(value: string) {
@@ -1194,6 +2024,10 @@ function titleFromSlug(slug: string) {
 function supportTopicHref(value: string) {
   const slug = ARTICLE_INDEX.has(value) ? value : slugify(value)
   return `/support?topic=${encodeURIComponent(slug)}`
+}
+
+function supportSearchHref(value: string) {
+  return `/support?search=${encodeURIComponent(value.trim())}`
 }
 
 function supportMinimumBlock(items: string[]): ArticleBlock {
@@ -1578,53 +2412,124 @@ function getArticle(slug: string): ArticleDetail {
   }
 }
 
-function findArticleByQuery(query: string) {
-  const normalized = query.trim().toLowerCase()
-  if (!normalized) return null
-
-  return (
-    Array.from(ARTICLE_INDEX.values()).find(({ article, group, section }) =>
-      [article.title, group.title, section.title].some((value) => value.toLowerCase().includes(normalized)),
-    ) ?? null
-  )
+function articleBlocksSearchText(blocks: ArticleBlock[]) {
+  return blocks
+    .flatMap((block) => [
+      block.heading,
+      ...(block.paragraphs ?? []),
+      ...(block.bullets ?? []),
+      ...(block.ordered ?? []),
+      ...(block.steps ?? []),
+      block.cta?.label,
+    ])
+    .filter(Boolean)
+    .join(' ')
 }
 
-function filterGroups(query: string) {
+function getArticleSearchResults(query: string, limit = 20): ArticleDetail[] {
   const normalized = query.trim().toLowerCase()
-  if (!normalized) return SUPPORT_GROUPS
+  if (!normalized) return []
 
-  return SUPPORT_GROUPS.map((group) => {
-    const groupMatches = group.title.toLowerCase().includes(normalized) || group.description.toLowerCase().includes(normalized)
-    if (groupMatches) return group
+  const terms = normalized.split(/\s+/).filter(Boolean)
 
-    const sections = group.sections
-      .map((section) => {
-        const sectionMatches = section.title.toLowerCase().includes(normalized)
-        const articles = sectionMatches
-          ? section.articles
-          : section.articles.filter((item) => item.title.toLowerCase().includes(normalized))
-        return articles.length > 0 ? { ...section, articles } : null
-      })
-      .filter((section): section is HelpSection => Boolean(section))
+  return Array.from(ARTICLE_INDEX.values())
+    .map((entry, index) => {
+      const { article, group, section } = entry
+      const articleDetail = getArticle(article.slug)
+      const title = articleDetail.title.toLowerCase()
+      const groupText = group.title.toLowerCase()
+      const sectionText = section.title.toLowerCase()
+      const slugText = article.slug.replace(/-/g, ' ').toLowerCase()
+      const bodyText = articleBlocksSearchText(articleDetail.blocks).toLowerCase()
+      const searchable = `${title} ${groupText} ${sectionText} ${slugText} ${bodyText}`
 
-    return sections.length > 0 ? { ...group, sections } : null
-  }).filter((group): group is HelpGroup => Boolean(group))
+      let score = 0
+      if (title === normalized) score += 120
+      if (title.startsWith(normalized)) score += 90
+      if (title.includes(normalized)) score += 70
+      if (slugText.includes(normalized)) score += 45
+      if (sectionText.includes(normalized)) score += 28
+      if (groupText.includes(normalized)) score += 18
+      if (bodyText.includes(normalized)) score += 16
+
+      for (const term of terms) {
+        if (title.includes(term)) score += 20
+        else if (slugText.includes(term)) score += 14
+        else if (sectionText.includes(term) || groupText.includes(term)) score += 8
+        else if (bodyText.includes(term)) score += 5
+      }
+
+      if (terms.length > 1 && terms.every((term) => searchable.includes(term))) score += 18
+
+      return { article: articleDetail, score, index }
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, limit)
+    .map((item) => item.article)
+}
+
+function getArticleSearchSuggestions(query: string, limit = 4): ArticleDetail[] {
+  return getArticleSearchResults(query, limit)
+}
+
+function getArticleExcerpt(article: ArticleDetail, query: string) {
+  const text = articleBlocksSearchText(article.blocks).replace(/\s+/g, ' ').trim()
+  if (!text) return `${article.title} is part of ${article.groupTitle}.`
+
+  const normalized = query.trim().toLowerCase()
+  const terms = normalized.split(/\s+/).filter(Boolean)
+  const haystack = text.toLowerCase()
+  const firstMatch = terms.map((term) => haystack.indexOf(term)).filter((index) => index >= 0).sort((a, b) => a - b)[0] ?? 0
+  const start = Math.max(0, firstMatch - 48)
+  const end = Math.min(text.length, start + 190)
+  const prefix = start > 0 ? '...' : ''
+  const suffix = end < text.length ? '...' : ''
+
+  return `${prefix}${text.slice(start, end).trim()}${suffix}`
+}
+
+function highlightQueryText(text: string, query: string) {
+  const terms = Array.from(new Set(query.trim().split(/\s+/).filter((term) => term.length > 1)))
+  if (terms.length === 0) return text
+
+  const pattern = new RegExp(`(${terms.map(escapeRegExp).join('|')})`, 'ig')
+  return text.split(pattern).map((part, index) => {
+    if (terms.some((term) => part.toLowerCase() === term.toLowerCase())) {
+      return (
+        <mark key={`${part}-${index}`} className="bg-transparent font-black text-white/85">
+          {part}
+        </mark>
+      )
+    }
+
+    return part
+  })
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 export function SupportPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const topicSlug = searchParams.get('topic')
+  const searchTerm = searchParams.get('search') ?? ''
   const selectedArticle = topicSlug ? getArticle(topicSlug) : null
-  useDocumentTitle(selectedArticle?.title ?? 'Support')
+  useDocumentTitle(selectedArticle?.title ?? (searchTerm.trim() ? `Search results for ${searchTerm.trim()}` : 'Support'))
 
   const { user, isAuthenticated, logout } = useAuthStore()
   const [query, setQuery] = useState('')
   const [activeMode, setActiveMode] = useState<'ai' | 'basic'>('ai')
 
+  useEffect(() => {
+    setQuery(searchTerm)
+  }, [searchTerm])
+
   const submitSearch = () => {
-    const match = findArticleByQuery(query)
-    if (match) navigate(supportTopicHref(match.article.slug))
+    const normalized = query.trim()
+    navigate(normalized ? supportSearchHref(normalized) : '/support')
   }
 
   return (
@@ -1639,6 +2544,14 @@ export function SupportPage() {
             activeMode={activeMode}
             setActiveMode={setActiveMode}
             onSearch={submitSearch}
+          />
+        ) : searchTerm.trim() ? (
+          <SearchResultsPage
+            searchTerm={searchTerm}
+            query={query}
+            setQuery={setQuery}
+            onSearch={submitSearch}
+            onClear={() => navigate('/support')}
           />
         ) : (
           <SupportHome
@@ -1664,13 +2577,13 @@ function SupportHeader({
   logout: () => void
 }) {
   return (
-    <header className="sticky top-0 z-50 flex h-14 items-center justify-between bg-black px-4 shadow-[0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="flex min-w-0 items-center gap-7">
-        <Link to="/" className="flex items-center gap-2.5 text-white" aria-label="Not Spotify home">
-          <SpotifyMark className="h-8 w-8 text-white" />
-          <span className="hidden text-2xl font-black tracking-[-0.02em] sm:inline">Not Spotify</span>
+    <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-black px-4 shadow-[0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="flex min-w-0 items-center gap-6">
+        <Link to="/" className="flex items-center gap-2 text-white" aria-label="Not Spotify home">
+          <SpotifyMark className="h-6 w-6 text-white" />
+          <span className="hidden text-xl font-black tracking-[-0.02em] sm:inline">Not Spotify</span>
         </Link>
-        <nav className="hidden items-center gap-8 text-sm font-black text-white md:flex">
+        <nav className="hidden items-center gap-7 text-xs font-black text-white md:flex">
           <Link to="/premium" className="transition-colors hover:text-primary">
             Explore Premium
           </Link>
@@ -1678,7 +2591,7 @@ function SupportHeader({
         </nav>
       </div>
 
-      <div className="flex shrink-0 items-center gap-5 text-sm font-black text-white">
+      <div className="flex shrink-0 items-center gap-4 text-xs font-black text-white">
         <button
           type="button"
           className="hidden items-center gap-2 text-white/90 transition-colors hover:text-white sm:flex"
@@ -1693,9 +2606,9 @@ function SupportHeader({
             </button>
             <Link
               to="/account"
-              className="flex h-10 items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 text-sm font-black text-black transition-transform hover:scale-105 active:scale-95"
+              className="flex h-8 items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-3 text-xs font-black text-black transition-transform hover:scale-105 active:scale-95"
             >
-              <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Account'} size="sm" round className="!h-8 !w-8 bg-[#535353] text-xs text-white" />
+              <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Account'} size="sm" round className="!h-6 !w-6 bg-[#535353] text-[10px] text-white" />
               Account
             </Link>
           </>
@@ -1706,7 +2619,7 @@ function SupportHeader({
             </Link>
             <Link
               to="/signup"
-              className="rounded-full bg-white px-5 py-2.5 text-sm font-black text-black transition-transform hover:scale-105 active:scale-95"
+              className="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105 active:scale-95"
             >
               Sign up
             </Link>
@@ -1730,66 +2643,47 @@ function SupportHome({
   setActiveMode: (value: 'ai' | 'basic') => void
   onSearch: () => void
 }) {
-  const visibleGroups = useMemo(() => filterGroups(query), [query])
-  const visibleQuickHelp = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    const quick = QUICK_HELP_SLUGS.map((slug) => getArticle(slug))
-    if (!normalized) return quick
-    return quick.filter((item) => item.title.toLowerCase().includes(normalized))
-  }, [query])
+  const quickHelp = useMemo(() => QUICK_HELP_SLUGS.map((slug) => getArticle(slug)), [])
 
   return (
     <>
-      <section className="relative overflow-hidden px-4 pb-14 pt-16 sm:pt-20">
-        <div className="pointer-events-none absolute left-1/2 top-36 h-44 w-[560px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_50%,rgba(30,215,96,0.22),transparent_38%),radial-gradient(circle_at_72%_55%,rgba(68,122,255,0.26),transparent_42%)] blur-3xl" />
+      <section className="relative z-20 overflow-visible px-4 pb-10 pt-10 sm:pt-11">
+        <div className="pointer-events-none absolute left-1/2 top-28 h-36 w-[470px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_50%,rgba(30,215,96,0.18),transparent_38%),radial-gradient(circle_at_72%_55%,rgba(68,122,255,0.2),transparent_42%)] blur-3xl" />
 
-        <div className="relative mx-auto max-w-[610px] text-center">
-          <h1 className="text-[40px] font-black leading-none tracking-[-0.02em] text-white sm:text-6xl">
+        <div className="relative mx-auto max-w-[520px] text-center">
+          <h1 className="text-[32px] font-black leading-none tracking-[-0.02em] text-white sm:text-[40px]">
             Not Spotify Support
           </h1>
 
-          <div className="mx-auto mt-10 rounded-[2px] border border-white/35 bg-[#121212] p-3 shadow-[0_18px_70px_rgba(0,0,0,0.45)]">
+          <div className="mx-auto mt-8 max-w-[390px] rounded-[2px] border border-white/35 bg-[#121212] p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.42)]">
             <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
 
-            <label className="relative block">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-6 w-6 -translate-y-1/2 text-black/70" />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') onSearch()
-                }}
-                placeholder="Search"
-                className="h-14 w-full bg-white pl-14 pr-4 text-base font-semibold text-black placeholder:text-black/55 focus:outline-none focus:ring-2 focus:ring-[#1ed760]"
-                aria-label="Search support"
-              />
-            </label>
+            <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search" />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-[680px] px-4 pb-16">
-        <BrowseHelpArticles groups={visibleGroups} />
+      <section className="relative z-0 mx-auto max-w-[390px] px-4 pb-10">
+        <BrowseHelpArticles groups={SUPPORT_GROUPS} />
       </section>
 
-      <section className="bg-[#2a2a2a] px-4 py-10 sm:py-12">
-        <div className="mx-auto max-w-[610px]">
-          <div className="mb-8 flex items-center justify-between">
-            <h2 className="text-2xl font-black tracking-[-0.02em] text-white">Quick help</h2>
-            <SlidersHorizontal className="hidden h-5 w-5 text-white/40 sm:block" />
+      <section className="relative z-0 bg-[#2a2a2a] px-4 py-7 sm:py-8">
+        <div className="mx-auto max-w-[390px]">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="text-lg font-black tracking-[-0.02em] text-white">Quick help</h2>
+            <SlidersHorizontal className="hidden h-4 w-4 text-white/40 sm:block" />
           </div>
 
           <div className="space-y-1">
-            {visibleQuickHelp.length > 0 ? (
-              visibleQuickHelp.map((item) => (
+            {quickHelp.length > 0 ? (
+              quickHelp.map((item) => (
                 <Link
                   key={item.slug}
                   to={supportTopicHref(item.slug)}
-                  className="flex items-center justify-between py-3.5 text-base font-black text-white transition-colors hover:text-[#1ed760]"
+                  className="flex items-center justify-between py-3 text-xs font-black text-white transition-colors hover:text-[#1ed760]"
                 >
                   <span>{item.title}</span>
-                  <ChevronRight className="h-6 w-6 text-white/55" />
+                  <ChevronRight className="h-5 w-5 text-white/55" />
                 </Link>
               ))
             ) : (
@@ -1803,14 +2697,14 @@ function SupportHome({
 }
 
 function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
-  const [openGroup, setOpenGroup] = useState<string | null>('payments')
-  const [openSection, setOpenSection] = useState<string | null>('charge-help')
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
+  const [openSection, setOpenSection] = useState<string | null>(null)
 
   return (
     <div>
-      <h2 className="text-2xl font-black tracking-[-0.02em] text-white">Browse help articles</h2>
+      <h2 className="text-lg font-black tracking-[-0.02em] text-white">Browse help articles</h2>
 
-      <div className="mt-5">
+      <div className="mt-4">
         {groups.length > 0 ? (
           groups.map(({ id, title, Icon, sections }) => {
             const isOpen = openGroup === id
@@ -1820,17 +2714,17 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
                 <button
                   type="button"
                   onClick={() => setOpenGroup(isOpen ? null : id)}
-                  className="group flex w-full items-center gap-4 py-5 text-left"
+                  className="group flex w-full items-center gap-3 py-3.5 text-left"
                   aria-expanded={isOpen}
                 >
-                  <Icon className="h-5 w-5 shrink-0 text-[#1ed760]" strokeWidth={2.4} />
-                  <span className="min-w-0 flex-1 text-base font-black text-white">{title}</span>
-                  <ChevronDown className={cn('h-5 w-5 shrink-0 text-white/60 transition-transform group-hover:text-white', isOpen && 'rotate-180')} />
+                  <Icon className="h-4 w-4 shrink-0 text-[#1ed760]" strokeWidth={2.4} />
+                  <span className="min-w-0 flex-1 text-xs font-black text-white">{title}</span>
+                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/60 transition-transform group-hover:text-white', isOpen && 'rotate-180')} />
                 </button>
 
                 <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
                   <div className="overflow-hidden">
-                    <div className="pb-5 pl-7">
+                    <div className="pb-3 pl-6">
                       {sections.map((section) => {
                         const sectionOpen = openSection === section.id
                         return (
@@ -1838,20 +2732,20 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
                             <button
                               type="button"
                               onClick={() => setOpenSection(sectionOpen ? null : section.id)}
-                              className="flex w-full items-center justify-between py-2.5 text-left text-sm font-black text-white transition-colors hover:text-[#1ed760]"
+                              className="flex w-full items-center justify-between py-2 text-left text-xs font-black text-white transition-colors hover:text-[#1ed760]"
                               aria-expanded={sectionOpen}
                             >
                               <span>{section.title}</span>
-                              <ChevronDown className={cn('h-4 w-4 text-white/60 transition-transform', sectionOpen && 'rotate-180')} />
+                              <ChevronDown className={cn('h-3.5 w-3.5 text-white/60 transition-transform', sectionOpen && 'rotate-180')} />
                             </button>
                             <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', sectionOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
                               <div className="overflow-hidden">
-                                <div className="pb-2 pl-5">
+                                <div className="pb-2 pl-4">
                                   {section.articles.map((item) => (
                                     <Link
                                       key={item.slug}
                                       to={supportTopicHref(item.slug)}
-                                      className="block rounded-sm py-2 text-sm font-bold text-white/90 transition-colors hover:text-[#1ed760]"
+                                      className="block rounded-sm py-1.5 text-xs font-bold text-white/90 transition-colors hover:text-[#1ed760]"
                                     >
                                       {item.title}
                                     </Link>
@@ -1878,6 +2772,69 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
   )
 }
 
+function SearchResultsPage({
+  searchTerm,
+  query,
+  setQuery,
+  onSearch,
+  onClear,
+}: {
+  searchTerm: string
+  query: string
+  setQuery: (value: string) => void
+  onSearch: () => void
+  onClear: () => void
+}) {
+  const normalized = searchTerm.trim()
+  const results = useMemo(() => getArticleSearchResults(normalized, 30), [normalized])
+
+  return (
+    <section className="px-4 pb-20 pt-7">
+      <div className="mx-auto max-w-[390px]">
+        <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} onClear={onClear} placeholder="Search support" />
+
+        <nav className="mt-5 flex items-center gap-2 text-xs font-black text-white/65">
+          <Link to="/support" className="transition-colors hover:text-white">
+            Home
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 text-white/45" />
+          <span className="text-white/80">Search Results</span>
+        </nav>
+
+        <p className="mt-7 text-xs font-black text-white/75">
+          {results.length} search {results.length === 1 ? 'result' : 'results'} for "{normalized}"
+        </p>
+
+        {results.length > 0 ? (
+          <div className="mt-3 divide-y divide-white/10">
+            {results.map((article) => {
+              const excerpt = getArticleExcerpt(article, normalized)
+
+              return (
+                <Link key={article.slug} to={supportTopicHref(article.slug)} className="block py-4 text-left transition-colors hover:text-[#1ed760]">
+                  <span className="mb-2 flex items-center gap-1.5 text-[10px] font-black text-[#1ed760]">
+                    <FileText className="h-3.5 w-3.5" />
+                    Help article
+                  </span>
+                  <span className="block text-xs font-black text-white">{article.title}</span>
+                  <span className="mt-1 block text-[11px] font-semibold leading-4 text-white/60">
+                    {highlightQueryText(excerpt, normalized)}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-sm border border-white/15 bg-white/[0.03] p-5">
+            <p className="text-sm font-black text-white">No results found</p>
+            <p className="mt-2 text-xs font-semibold leading-5 text-white/60">Try a different keyword or browse help articles from the support home page.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function ArticlePage({
   article,
   query,
@@ -1894,8 +2851,8 @@ function ArticlePage({
   onSearch: () => void
 }) {
   return (
-    <section className="relative overflow-hidden px-4 pb-20 pt-6">
-      <div className="pointer-events-none absolute left-1/2 top-8 h-56 w-[720px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_25%_35%,rgba(30,215,96,0.18),transparent_40%),radial-gradient(circle_at_70%_35%,rgba(68,122,255,0.24),transparent_45%)] blur-3xl" />
+    <section className="relative overflow-hidden px-4 pb-16 pt-5">
+      <div className="pointer-events-none absolute left-1/2 top-8 h-44 w-[560px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_25%_35%,rgba(30,215,96,0.14),transparent_40%),radial-gradient(circle_at_70%_35%,rgba(68,122,255,0.18),transparent_45%)] blur-3xl" />
 
       <div className="relative mx-auto grid max-w-[1120px] gap-12 lg:grid-cols-[minmax(0,650px)_330px] lg:gap-20">
         <div className="min-w-0">
@@ -1955,32 +2912,112 @@ function ArticleSearchPanel({
   onSearch: () => void
 }) {
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        onSearch()
-      }}
-      className="rounded-[3px] border border-white/35 bg-[#121212] p-3 shadow-[0_18px_70px_rgba(0,0,0,0.38)]"
-    >
+    <div className="rounded-[3px] border border-white/35 bg-[#121212] p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.36)]">
       <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
-      <div className="relative">
-        <textarea
+      <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search support" />
+    </div>
+  )
+}
+
+function SupportSearchField({
+  query,
+  setQuery,
+  onSearch,
+  onClear,
+  placeholder,
+}: {
+  query: string
+  setQuery: (value: string) => void
+  onSearch: () => void
+  onClear?: () => void
+  placeholder: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const normalized = query.trim()
+  const suggestions = useMemo(() => getArticleSearchSuggestions(query, 4), [query])
+  const showDropdown = isOpen && normalized.length > 0
+
+  const closeWhenFocusLeaves = (event: FocusEvent<HTMLDivElement>) => {
+    const nextFocus = event.relatedTarget
+    if (!(nextFocus instanceof Node) || !event.currentTarget.contains(nextFocus)) {
+      setIsOpen(false)
+    }
+  }
+
+  const runSearch = () => {
+    setIsOpen(false)
+    onSearch()
+  }
+
+  return (
+    <div className="relative text-left" onBlur={closeWhenFocusLeaves}>
+      <label className="relative block">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-black/75" />
+        <input
+          type="text"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Ask a question or describe your issue"
-          rows={2}
-          className="min-h-20 w-full resize-none bg-transparent pb-10 pr-14 pt-3 text-base font-semibold text-white placeholder:text-white/82 focus:outline-none"
-          aria-label="Ask a support question"
-        />
-        <button
-          type="submit"
-          className="absolute bottom-0 right-0 flex h-10 w-10 items-center justify-center rounded-full bg-[#1ed760] text-black transition-transform hover:scale-105 active:scale-95"
+          onFocus={() => setIsOpen(true)}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setIsOpen(true)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              runSearch()
+            }
+            if (event.key === 'Escape') setIsOpen(false)
+          }}
+          placeholder={placeholder}
+          className="h-10 w-full border border-black/80 bg-white pl-10 pr-10 text-sm font-semibold text-black placeholder:text-black/55 focus:outline-none focus:ring-2 focus:ring-[#1ed760]"
           aria-label="Search support"
-        >
-          <ArrowRight className="h-6 w-6" />
-        </button>
-      </div>
-    </form>
+          aria-expanded={showDropdown}
+          aria-haspopup="listbox"
+        />
+        {query.length > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery('')
+              setIsOpen(false)
+              onClear?.()
+            }}
+            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-black/70 transition-colors hover:bg-black/5 hover:text-black"
+            aria-label="Clear support search"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </label>
+
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full z-50 -mt-px border border-black/80 bg-white py-1 text-black shadow-[0_18px_38px_rgba(0,0,0,0.35)]" role="listbox">
+          {suggestions.map((item) => (
+            <Link
+              key={item.slug}
+              to={supportTopicHref(item.slug)}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setIsOpen(false)}
+              className="flex min-h-9 items-center gap-2 px-3 py-1.5 text-xs font-medium text-black transition-colors hover:bg-black/[0.06] focus:bg-black/[0.06] focus:outline-none"
+              role="option"
+            >
+              <FileText className="h-4 w-4 shrink-0 text-black/65" />
+              <span className="min-w-0 truncate">{item.title}</span>
+            </Link>
+          ))}
+
+          <button
+            type="button"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={runSearch}
+            className="flex min-h-9 w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-black transition-colors hover:bg-black/[0.06] focus:bg-black/[0.06] focus:outline-none"
+          >
+            <Search className="h-4 w-4 shrink-0 text-black/65" />
+            <span className="min-w-0 truncate font-black">{normalized}</span>
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -1992,7 +3029,7 @@ function SearchModeTabs({
   setActiveMode: (value: 'ai' | 'basic') => void
 }) {
   return (
-    <div className="mx-auto mb-3 flex h-8 max-w-[360px] rounded-full bg-[#2a2a2a] p-0.5 text-[12px] font-black">
+    <div className="mx-auto mb-2.5 flex h-6 max-w-[215px] rounded-full bg-[#2a2a2a] p-0.5 text-[10px] font-black">
       <button
         type="button"
         onClick={() => setActiveMode('ai')}
@@ -2003,7 +3040,7 @@ function SearchModeTabs({
             : 'border-transparent text-white/70 hover:text-white',
         )}
       >
-        <Search className="h-3.5 w-3.5" />
+        <Search className="h-3 w-3" />
         Search with AI
       </button>
       <button
@@ -2016,7 +3053,7 @@ function SearchModeTabs({
             : 'border-transparent text-white/70 hover:text-white',
         )}
       >
-        <Bot className="h-3.5 w-3.5" />
+        <Bot className="h-3 w-3" />
         Basic Search
       </button>
     </div>

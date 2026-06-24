@@ -40,7 +40,7 @@ Today `SupportPage.tsx` has ~60 article slugs but only **~10 have hand-written c
 - [x] Removed two-step-protection article; folded real guidance into "Keep your account secure" (no 2FA → password + logout + sign-out-everywhere). Also removed the Samsung-login fiction. *(done 2026-06-24)*
 - [x] Removed "Connect to a device" / speaker articles; section is now "Web player & app" with a real "Web player & installing the app" article. *(done 2026-06-24)*
 - [x] Relabeled "Private listening" → "Listening privacy & visibility" with honest content (no private session; playlist visibility + presence + logout). *(done 2026-06-24)*
-- [x] Decided "Download your data": **removed from nav** until `GET /me/export` is built (§5), rather than ship a placeholder. *(done 2026-06-24)*
+- [x] "Download your data": rebuilt honestly after `GET /me/export` shipped; article restored to the privacy nav with the exact exported fields. *(done 2026-06-24)*
 
 ---
 
@@ -91,7 +91,7 @@ This is the BFU content plan. Structure mirrors the **deep nested nav** in the r
 - [x] Song radio & "Fans also like" — how the station is built ✅ *(2026-06-24, follow-along)*
 - [ ] Picture-in-Picture & OS media keys ✅
 - [ ] Audio ads on Free — why you hear them, how Premium removes them ✅
-- [x] "App not playing music" troubleshooter ✅ *(real article; follow-along conversion still pending §4)*
+- [x] "App not playing music" troubleshooter ✅ *(real article; follow-along conversion done 2026-06-24)*
 
 ### Playlists & library
 - [x] Create & edit playlists; cover art (5 MB, jpg/jpeg/png/webp) ✅ *(pre-existing real article)*
@@ -161,25 +161,25 @@ The brief: *"add it to the support for user to follow the guide to add checkmark
 - [x] Keyboard-accessible (`role="checkbox"` button; Space/Enter toggle); no native `confirm()`.
 
 ### First guides to convert (high-traffic, all real)
-- [ ] **"Music won't play"** — connection ✅, not muted ✅, try another track ✅, re-login if session expired ✅, (uploads) check file type/size ✅.
-- [ ] **"Upgrade to Premium"** — open `/premium`, pick a plan, pay with test card, wait for webhook confirmation. ✅
-- [ ] **"Cancel Premium"** — Account → Subscription → Cancel → confirm → token refresh. ✅
-- [ ] **"Invite a Family/Duo member"** — Account → members → email → send → they accept. ✅
+- [x] **"Music won't play"** - converted to an interactive checklist covering connection, volume, alternate track, re-login, upload file rules, and S3/CORS checks. *(done 2026-06-24)*
+- [x] **"Upgrade to Premium"** - `not-spotify-premium` now has an interactive upgrade checklist. *(done 2026-06-24)*
+- [x] **"Cancel Premium"** - `how-to-cancel-premium-plans` now has an interactive cancel checklist. *(done 2026-06-24)*
+- [x] **"Invite a Family/Duo member"** - invite/accept flow converted to an interactive checklist. *(done 2026-06-24)*
 - [ ] **"Upload your own audio"** — `/uploads` → pick file (allowed types/size) → it appears in your private locker. ✅
-- [ ] **"Make a smart playlist"** — create → add rules → save → tracks resolve automatically. ✅
+- [x] **"Make a smart playlist"** - smart-rule creation flow added as an interactive checklist. *(done 2026-06-24)*
 - [ ] **"Fix grey cover gradients / media won't load (S3)"** — admin-facing: check bucket CORS, presigned-URL expiry. ✅
 
 ---
 
 ## 5. "Understanding your data" / Download your data — build, *then* document
 
-Spotify's screenshots lean hard on the data-export article. We **don't have export today**, so per the rule we don't write the how-to yet. But it's very feasible and a strong BFU addition because the data already lives in `MeController`.
+Spotify's screenshots lean hard on the data-export article. We now have a real export path, so the article is back in the support nav and documents only the fields Not Spotify actually returns.
 
-- [ ] **Build** `GET /me/export` → a JSON (or ZIP of JSON files) bundle of the caller's own data: profile, playlists (+ tracks), play history, listening stats, recent searches, library saves, friends/follows, notifications. *(All already queryable in `MeController`.)*
-- [ ] Gate to the authenticated user; never expose another account's data.
-- [ ] Frontend: a "Download your data" button in Account / Privacy that calls the endpoint.
-- [ ] **Then** write the article — an *honest* "Understanding your data" that lists exactly the fields we actually export (not Spotify's 20-field list). Use a data-type → what's-included table like the screenshot, but only our real fields.
-- [ ] Skip the GDPR-Article-15 / advertising-inference / voice-input sections — we don't have that data.
+- [x] **Build** `GET /me/export` - JSON bundle of the caller's own profile, playlists (+ tracks), play history, 30-day listening stats, recent searches, library saves, uploads, ratings, friends/follows, notifications, and shared-plan rows. *(done 2026-06-24)*
+- [x] Gate to the authenticated user; never expose another account's data. Covered by `MeExportControllerTests.Export_ReturnsOnlyCallerScopedData`. *(done 2026-06-24)*
+- [x] Frontend: a "Download your data" button in Account / Privacy that calls the endpoint and downloads JSON. *(done 2026-06-24)*
+- [x] **Then** write the article - `download-your-data` lists exactly what the export includes/excludes. *(done 2026-06-24)*
+- [x] Skip the GDPR-Article-15 / advertising-inference / voice-input sections - article explicitly says Not Spotify does not store those categories. *(done 2026-06-24)*
 
 > If we choose **not** to build export for the submission, remove the data-download article entirely rather than ship a placeholder.
 
@@ -188,7 +188,7 @@ Spotify's screenshots lean hard on the data-export article. We **don't have expo
 ## 6. Article-page UX upgrades (match the screenshots)
 
 - [x] **"Was this article helpful? 👍 / 👎"** at the bottom of every article (v1 = localStorage, `ArticleFeedback`). *(done 2026-06-24)* — v2 (POST to feedback table) still open.
-- [ ] **Related Articles** — rendered; make sure every real article has a curated `related` list (not the auto slice).
+- [x] **Related Articles** - every visible support article now has an explicit curated `related` list instead of the automatic slice. *(done 2026-06-24)*
 - [ ] **Breadcrumbs** — already present (Home → Group); extend to Home → Group → Section for the deep nav.
 - [x] **Deep nested sidebar** — group→section→article expandable; active article auto-expands its ancestors (`ArticleSidebar` effect). *(already wired)*
 - [x] **"Manage your account" CTA card** — present.
@@ -198,21 +198,21 @@ Spotify's screenshots lean hard on the data-export article. We **don't have expo
 
 ## 7. Implementation phases (suggested order)
 
-1. ✅ **Honesty pass** (§1–2): done 2026-06-24. Reset/change password, Google login, and redeem-via-Stripe were built (not deleted); gift-card articles rewritten as redeem; two-step-protection, Samsung login, and Connect/speaker articles removed; "Private listening" relabeled to real visibility content; "Download your data" pulled from nav until `/me/export` exists. Facebook/Apple remain honest "not available". *(Remaining nit: `cant-play-abroad` still uses generic filler — no geo-locking exists; tidy later.)*
-2. ✅ **Follow-along checklist block** (§4): `steps` block type + per-article localStorage progress + reset (`GuideSteps` in `SupportPage.tsx`). Shipped 2026-06-24. Starter guides converted so far: reset/change password, Google sign-in, redeem a code, Data Saver. Remaining starter guides (music won't play, upgrade/cancel Premium, invite member, upload audio, smart playlist, S3 media) still to convert.
-3. **Real article content** (§3): replacing `buildDefaultArticleBlocks` filler section by section. Done so far: auth/login cluster, redeem, Data Saver & audio quality, the **full App settings cluster** (volume normalization, crossfade & transitions, autoplay, equalizer, playback speed, sleep timer, appearance, language — all follow-along), "Keep your account secure", and "Web player & installing the app". *(2026-06-24)* Next strongest: Playback & listening (shuffle/repeat, lyrics/queue, song radio) and Playlists.
-4. ✅ **Helpfulness feedback** (§6): "Was this article helpful?" (localStorage v1, `ArticleFeedback`). Shipped 2026-06-24. Curated `related` lists still being filled in.
-5. **Download-your-data** (§5): build `GET /me/export`, then write the data article.
+1. ✅ **Honesty pass** (§1-2): done 2026-06-24. Reset/change password, Google login, redeem-via-Stripe, Data Saver, and Download your data are documented only because the features exist. Unsupported Facebook/Apple login, blocked users, address checks, and country playback locks are written as not available instead of fake how-tos.
+2. ✅ **Follow-along checklist block** (§4): `steps` block type + per-article localStorage progress + reset (`GuideSteps` in `SupportPage.tsx`). Shipped 2026-06-24. Starter guides converted include reset/change password, Google sign-in, redeem a code, Data Saver, app settings, music will not play, upgrade/cancel Premium, invite member, and smart playlists.
+3. ✅ **Real article content** (§3): every visible support nav slug now has custom `ARTICLE_DETAILS` content (88/88), including billing, Premium/shared plans, account/security, playback/downloads, privacy/reporting, playlists, discovery, and data export. `buildDefaultArticleBlocks()` is now a safety fallback, not used by the visible catalogue. *(done 2026-06-24)*
+4. ✅ **Helpfulness feedback** (§6): "Was this article helpful?" (localStorage v1, `ArticleFeedback`) plus curated related lists for every visible article. *(done 2026-06-24)*
+5. ✅ **Download-your-data** (§5): `GET /me/export`, Account download button, support article, and backend scoping test shipped. *(done 2026-06-24)*
 6. **Context-aware error links** (§6) tying the app to support.
 
 > **New feature shipped alongside the docs:** **Data Saver** toggle (Settings → Audio) forces the audio engine to the Low tier — see `effectiveQuality()` in `audioEngine.ts` and the `data-saver` support article.
 
 ## 8. Definition of done
 
-- [ ] No support article describes a feature we don't ship (the DO-NOT-WRITE list is respected).
-- [ ] Every article in the nav opens to unique, feature-accurate content — no generated filler left.
+- [x] No support article describes a feature we don't ship (the DO-NOT-WRITE list is respected; unavailable features are labeled as unavailable).
+- [x] Every article in the nav opens to unique, feature-accurate content - 88/88 visible slugs have `ARTICLE_DETAILS`; no generated filler remains in the visible catalogue.
 - [ ] At least the 7 starter guides are interactive checklists with saved progress and in-app deep links.
-- [ ] Every article ends with "Was this helpful?" and a curated Related list.
-- [ ] Deep nested sidebar reflects the real catalogue and auto-expands the open article's ancestors.
-- [ ] "Download your data" either works end-to-end (endpoint + button + honest article) or is absent — never a placeholder.
-- [ ] Copy never asks users for passwords, tokens, full card numbers, or secrets.
+- [x] Every article ends with "Was this helpful?" and a curated Related list.
+- [x] Deep nested sidebar reflects the real catalogue and auto-expands the open article's ancestors.
+- [x] "Download your data" works end-to-end (endpoint + Account button + honest article) - never a placeholder.
+- [x] Copy never asks users for passwords, tokens, full card numbers, or secrets.

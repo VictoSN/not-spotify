@@ -126,4 +126,9 @@ export const meService = {
   async clearRecentSearches(): Promise<void> {
     await api.delete('/me/recent-searches')
   },
+
+  async exportData(): Promise<unknown> {
+    const res = await api.get<unknown>('/me/export')
+    return res.data
+  },
 }

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
-import { PinIcon } from '@/components/icons/PinIcon'
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -18,7 +17,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon, PlayIcon } from '@heroicons/react/24/solid'
+import { HeartIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -31,13 +30,15 @@ import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Playlist } from '@/types/playlist'
-import { PlaylistMenu, type PlaylistMenuHandle } from '@/components/cards/PlaylistMenu'
+import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
+import { openMenuAtPointer } from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
 import { useDragStore } from '@/stores/dragStore'
 import { useTrackDrop } from '@/hooks/useTrackDrop'
 import { useLibraryDrop } from '@/hooks/useLibraryDrop'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext, type PlaybackContextInput } from '@/hooks/usePlaybackContext'
 import { DROP_GREEN } from '@/utils/trackDnd'
 import { notify } from '@/utils/toast'
 import {
@@ -132,7 +133,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const playWithGate = usePlaybackGate()
+  const currentContextType = usePlayerStore((s) => s.currentContextType)
+  const currentContextId = usePlayerStore((s) => s.currentContextId)
+  const startContext = usePlayContextGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const { t } = useTranslation()
@@ -375,16 +378,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       likedSongsQuery.includes(query.trim().toLowerCase()))
 
   const isNowPlaying = (item: LibItem) =>
-    !!currentTrack &&
-    ((item.kind === 'album' && currentTrack.album.id === item.id) ||
-      (item.kind === 'artist' && currentTrack.artist.id === item.id))
+    (item.kind === 'album' && currentTrack?.album.id === item.id) ||
+    (item.kind === 'artist' && currentTrack?.artist.id === item.id) ||
+    (item.kind === 'playlist' && currentContextType === 'playlist' && currentContextId === item.id)
 
   const playLikedSongs = () => {
     if (likedSongs.length === 0) {
       notify.info('No liked songs yet')
       return
     }
-    playWithGate(likedSongs[0], likedSongs)
+    startContext({ type: 'liked', id: 'liked' }, likedSongs)
   }
 
   const playLibraryItem = async (item: LibItem) => {
@@ -392,25 +395,31 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       if (item.kind === 'playlist') {
         const playlist = savedPlaylists.find((p) => p.id === item.id)
         const tracks = (playlist?.tracks ?? []).map((row) => row.track)
-        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        if (tracks.length > 0) startContext({ type: 'playlist', id: item.id }, tracks)
         else notify.info('No tracks in this playlist yet')
         return
       }
 
       if (item.kind === 'album') {
         const tracks = await trackService.getByAlbum(item.id)
-        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        if (tracks.length > 0) startContext({ type: 'album', id: item.id }, tracks)
         else notify.info('No tracks available for this release yet')
         return
       }
 
       const tracks = await artistService.getTopTracks(item.id, 20)
-      if (tracks.length > 0) playWithGate(tracks[0], tracks)
+      if (tracks.length > 0) startContext({ type: 'artist', id: item.id }, tracks)
       else notify.info('No tracks available for this artist yet')
     } catch {
       notify.error("Couldn't start playback")
     }
   }
+
+  // The full Playlist for a playlist library row (drives its right-click menu);
+  // undefined for albums/artists, which keep the ⋯ menu only.
+  const playlistById = useMemo(() => new Map(savedPlaylists.map((p) => [p.id, p])), [savedPlaylists])
+  const playlistFor = (item: LibItem): Playlist | undefined =>
+    item.kind === 'playlist' ? playlistById.get(item.id) : undefined
 
   // ── Folders (a client-side grouping layer over `items`) ─────────
   const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
@@ -812,7 +821,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
                 compact={compactLibrary}
                 folders={folders}
-                playlists={savedPlaylists}
                 isNowPlaying={isNowPlaying}
                 renaming={renamingFolderId === folder.id}
                 renameValue={renameValue}
@@ -826,6 +834,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 rowMenuKey={rowMenuKey}
                 setRowMenuKey={setRowMenuKey}
                 onPlayItem={playLibraryItem}
+                playlistFor={playlistFor}
               />
             ))}
           </div>
@@ -861,62 +870,46 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     compactLibrary ? 'mb-1.5' : 'mb-2',
                   )}>
                     <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
-                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
-                  <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
-                  <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                  <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                  <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                     {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                   </p>
                 </NavLink>
               </TrackDropZone>
             )}
-            {ungroupedItems.map((item) => {
-              const playlist = item.kind === 'playlist' ? savedPlaylists.find((p) => p.id === item.id) : undefined
-              return (
-                <TrackDropZone
-                  key={item.key}
-                  accepts={item.acceptsTracks}
-                  onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+            {ungroupedItems.map((item) => (
+              <TrackDropZone
+                key={item.key}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+              >
+                <LibraryGridCard
+                  item={item}
+                  compact={compactLibrary}
+                  nowPlaying={isNowPlaying(item)}
+                  onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                  onPlay={() => playLibraryItem(item)}
+                  menuPlaylist={playlistFor(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                  }}
                 >
-                  {playlist ? (
-                    <PlaylistLibraryRow
-                      item={item}
-                      playlist={playlist}
-                      variant="grid"
-                      compact={compactLibrary}
-                      nowPlaying={isNowPlaying(item)}
-                      pinned={pinned.has(item.key)}
-                      showPin
-                      onPlay={() => playLibraryItem(item)}
-                      onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
-                    />
-                  ) : (
-                    <LibraryGridCard
-                      item={item}
-                      compact={compactLibrary}
-                      nowPlaying={isNowPlaying(item)}
-                      onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
-                      onPlay={() => playLibraryItem(item)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                      }}
-                    >
-                      <RowOverlay
-                        variant="grid"
-                        itemKey={item.key}
-                        pinned={pinned.has(item.key)}
-                        showPin
-                        folders={folders}
-                        menuOpen={rowMenuKey === item.key}
-                        onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                        onCloseMenu={() => setRowMenuKey(null)}
-                      />
-                    </LibraryGridCard>
-                  )}
-                </TrackDropZone>
-              )
-            })}
+                  <RowOverlay
+                    variant="grid"
+                    itemKey={item.key}
+                    pinned={pinned.has(item.key)}
+                    showPin
+                    folders={folders}
+                    menuOpen={rowMenuKey === item.key}
+                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                    onCloseMenu={() => setRowMenuKey(null)}
+                  />
+                </LibraryGridCard>
+              </TrackDropZone>
+            ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
@@ -937,62 +930,47 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 >
                   <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-600 to-indigo-300">
                     <HeartIcon className="h-5 w-5 text-white" />
-                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
-                    <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                    <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                       {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                     </p>
                   </div>
                 </NavLink>
               </TrackDropZone>
             )}
-            {ungroupedItems.map((item) => {
-              const playlist = item.kind === 'playlist' ? savedPlaylists.find((p) => p.id === item.id) : undefined
-              return (
-                <TrackDropZone
-                  key={item.key}
-                  accepts={item.acceptsTracks}
-                  onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+            {ungroupedItems.map((item) => (
+              <TrackDropZone
+                key={item.key}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+              >
+                <LibraryListRow
+                  item={item}
+                  compact={compactLibrary}
+                  nowPlaying={isNowPlaying(item)}
+                  onPlay={() => playLibraryItem(item)}
+                  menuPlaylist={playlistFor(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                  }}
                 >
-                  {playlist ? (
-                    <PlaylistLibraryRow
-                      item={item}
-                      playlist={playlist}
-                      variant="list"
-                      compact={compactLibrary}
-                      nowPlaying={isNowPlaying(item)}
-                      pinned={pinned.has(item.key)}
-                      showPin
-                      onPlay={() => playLibraryItem(item)}
-                    />
-                  ) : (
-                    <LibraryListRow
-                      item={item}
-                      compact={compactLibrary}
-                      nowPlaying={isNowPlaying(item)}
-                      onPlay={() => playLibraryItem(item)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                      }}
-                    >
-                      <RowOverlay
-                        variant="list"
-                        itemKey={item.key}
-                        pinned={pinned.has(item.key)}
-                        showPin
-                        folders={folders}
-                        menuOpen={rowMenuKey === item.key}
-                        onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                        onCloseMenu={() => setRowMenuKey(null)}
-                      />
-                    </LibraryListRow>
-                  )}
-                </TrackDropZone>
-              )
-            })}
+                  <RowOverlay
+                    variant="list"
+                    itemKey={item.key}
+                    pinned={pinned.has(item.key)}
+                    showPin
+                    folders={folders}
+                    menuOpen={rowMenuKey === item.key}
+                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                    onCloseMenu={() => setRowMenuKey(null)}
+                  />
+                </LibraryListRow>
+              </TrackDropZone>
+            ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
@@ -1216,100 +1194,42 @@ function RowMenu({
 }
 
 /**
- * A library row for a playlist whose ⋯ button and right-click both open the
- * full PlaylistMenu (queue, edit/delete, visibility, move-to-folder, pin,
- * share…) — the album-card-style menu, adjusted for playlists. Albums and
- * artists keep the lighter folder-only RowOverlay.
+ * Cover overlay play/pause button. Derives its icon purely from the global
+ * player (no local state): pause when this surface is the active *playing*
+ * context, play otherwise. Clicking toggles play/pause when active, or starts
+ * the surface via `onStart` when it isn't. Stays visible while active.
  */
-function PlaylistLibraryRow({
-  item,
-  playlist,
-  variant,
-  compact,
-  nowPlaying,
-  pinned,
-  showPin,
-  onPlay,
-  onNavigate,
-}: {
-  item: LibItem
-  playlist: Playlist
-  variant: 'list' | 'grid'
-  compact: boolean
-  nowPlaying: boolean
-  pinned: boolean
-  showPin: boolean
-  onPlay: () => void | Promise<void>
-  onNavigate?: () => void
-}) {
-  const menuRef = useRef<PlaylistMenuHandle>(null)
-  const onContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault()
-    menuRef.current?.openAt(e.clientX, e.clientY)
-  }
-  const overlay = (
-    <>
-      {showPin && <PinButton itemKey={item.key} pinned={pinned} variant={variant} />}
-      <div
-        className={cn(
-          'absolute z-20',
-          variant === 'list' ? 'right-1.5 top-1/2 -translate-y-1/2' : 'right-2 top-2',
-        )}
-        onClick={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-        }}
-      >
-        <PlaylistMenu
-          playlist={playlist}
-          ref={menuRef}
-          hoverGroup="row"
-          triggerClassName={cn(
-            'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90',
-            variant === 'grid' && 'bg-page/70 backdrop-blur-sm',
-          )}
-          triggerIconClassName="h-4 w-4"
-        />
-      </div>
-    </>
-  )
-  return variant === 'grid' ? (
-    <LibraryGridCard
-      item={item}
-      compact={compact}
-      nowPlaying={nowPlaying}
-      onPlay={onPlay}
-      onNavigate={onNavigate ?? (() => {})}
-      onContextMenu={onContextMenu}
-    >
-      {overlay}
-    </LibraryGridCard>
-  ) : (
-    <LibraryListRow item={item} compact={compact} nowPlaying={nowPlaying} onPlay={onPlay} onContextMenu={onContextMenu}>
-      {overlay}
-    </LibraryListRow>
-  )
-}
-
 function LibraryPlayButton({
   label,
-  onPlay,
+  context,
+  onStart,
 }: {
   label: string
-  onPlay: () => void | Promise<void>
+  context: PlaybackContextInput
+  onStart: () => void | Promise<void>
 }) {
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const { isActiveContext, isPlayingContext } = usePlaybackContext(context)
   return (
     <button
       type="button"
-      aria-label={`Play ${label}`}
+      aria-label={isPlayingContext ? `Pause ${label}` : `Play ${label}`}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
-        void onPlay()
+        if (isActiveContext) togglePlayPause()
+        else void onStart()
       }}
-      className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+      className={cn(
+        'absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white transition-opacity duration-150 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
+        isActiveContext ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
+      )}
     >
-      <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+      {isPlayingContext ? (
+        <PauseIcon className="h-5 w-5" />
+      ) : (
+        <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+      )}
     </button>
   )
 }
@@ -1322,6 +1242,7 @@ function LibraryListRow({
   children,
   onPlay,
   onContextMenu,
+  menuPlaylist,
 }: {
   item: LibItem
   compact: boolean
@@ -1329,9 +1250,15 @@ function LibraryListRow({
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
+  menuPlaylist?: Playlist
 }) {
+  // Playlists get the Spotify-style pointer menu; other rows keep the ⋯ behaviour.
+  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const handleContextMenu = menuPlaylist
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
+    : onContextMenu
   return (
-    <div className="group/row relative" onContextMenu={onContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
         to={item.to}
         className={({ isActive }) =>
@@ -1353,16 +1280,17 @@ function LibraryListRow({
           ) : (
             <span className={compact ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
-          <LibraryPlayButton label={item.name} onPlay={onPlay} />
+          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
         <div className="min-w-0 flex-1 pr-14">
-          <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+          <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
             {item.name}
           </p>
-          <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
+          <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
         </div>
       </NavLink>
       {children}
+      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
     </div>
   )
 }
@@ -1376,6 +1304,7 @@ function LibraryGridCard({
   children,
   onPlay,
   onContextMenu,
+  menuPlaylist,
 }: {
   item: LibItem
   compact: boolean
@@ -1384,9 +1313,14 @@ function LibraryGridCard({
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
+  menuPlaylist?: Playlist
 }) {
+  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const handleContextMenu = menuPlaylist
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
+    : onContextMenu
   return (
-    <div className="group/row relative" onContextMenu={onContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
         to={item.to}
         onClick={onNavigate}
@@ -1410,14 +1344,15 @@ function LibraryGridCard({
           ) : (
             <span className={compact ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
-          <LibraryPlayButton label={item.name} onPlay={onPlay} />
+          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
-        <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+        <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}
         </p>
-        <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
+        <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
       </NavLink>
       {children}
+      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
     </div>
   )
 }
@@ -1428,7 +1363,6 @@ function FolderGroup({
   contents,
   compact,
   folders,
-  playlists,
   isNowPlaying,
   renaming,
   renameValue,
@@ -1439,12 +1373,12 @@ function FolderGroup({
   rowMenuKey,
   setRowMenuKey,
   onPlayItem,
+  playlistFor,
 }: {
   folder: LibraryFolder
   contents: LibItem[]
   compact: boolean
   folders: LibraryFolder[]
-  playlists: Playlist[]
   isNowPlaying: (item: LibItem) => boolean
   renaming: boolean
   renameValue: string
@@ -1455,6 +1389,7 @@ function FolderGroup({
   rowMenuKey: string | null
   setRowMenuKey: (key: string | null) => void
   onPlayItem: (item: LibItem) => void | Promise<void>
+  playlistFor: (item: LibItem) => Playlist | undefined
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1572,49 +1507,52 @@ function FolderGroup({
           {contents.length === 0 ? (
             <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
           ) : (
-            contents.map((item) => {
-              const playlist = item.kind === 'playlist' ? playlists.find((p) => p.id === item.id) : undefined
-              return playlist ? (
-                <PlaylistLibraryRow
-                  key={item.key}
-                  item={item}
-                  playlist={playlist}
+            contents.map((item) => (
+              <LibraryListRow
+                key={item.key}
+                item={item}
+                compact={compact}
+                nowPlaying={isNowPlaying(item)}
+                onPlay={() => onPlayItem(item)}
+                menuPlaylist={playlistFor(item)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                }}
+              >
+                <RowOverlay
                   variant="list"
-                  compact={compact}
-                  nowPlaying={isNowPlaying(item)}
+                  itemKey={item.key}
                   pinned={false}
                   showPin={false}
-                  onPlay={() => onPlayItem(item)}
+                  folders={folders}
+                  menuOpen={rowMenuKey === item.key}
+                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                  onCloseMenu={() => setRowMenuKey(null)}
                 />
-              ) : (
-                <LibraryListRow
-                  key={item.key}
-                  item={item}
-                  compact={compact}
-                  nowPlaying={isNowPlaying(item)}
-                  onPlay={() => onPlayItem(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                  }}
-                >
-                  <RowOverlay
-                    variant="list"
-                    itemKey={item.key}
-                    pinned={false}
-                    showPin={false}
-                    folders={folders}
-                    menuOpen={rowMenuKey === item.key}
-                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                    onCloseMenu={() => setRowMenuKey(null)}
-                  />
-                </LibraryListRow>
-              )
-            })
+              </LibraryListRow>
+            ))
           )}
         </div>
       )}
     </div>
+  )
+}
+
+function PinIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M9 3.5h6M10.5 3.5v5.2L8 11.7v1.1h8v-1.1L13.5 8.7V3.5M12 12.8V20.5" />
+    </svg>
   )
 }
 

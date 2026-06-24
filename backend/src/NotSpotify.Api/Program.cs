@@ -883,6 +883,95 @@ if (args.Contains("update-artist"))
     return;
 }
 
+// Update one artist's genre by name (creates the genre if it doesn't exist).
+// Usage:
+// dotnet run -- update-artist-genre --artist "Zedd" --genre "Electronic"
+
+if (args.Contains("update-artist-genre"))
+{
+    string? GetArg(string key)
+    {
+        var i = Array.IndexOf(args, key);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    }
+
+    var artistName = GetArg("--artist");
+    var genreName = GetArg("--genre");
+
+    if (string.IsNullOrWhiteSpace(artistName))
+    {
+        Console.WriteLine("[update-artist-genre] --artist is required");
+        return;
+    }
+
+    if (string.IsNullOrWhiteSpace(genreName))
+    {
+        Console.WriteLine("[update-artist-genre] --genre is required");
+        return;
+    }
+
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var genreSlug = genreName
+        .Trim()
+        .ToLowerInvariant()
+        .Replace("&", "and")
+        .Replace("/", "-")
+        .Replace(" ", "-");
+
+    var genre = await db.Genres.FirstOrDefaultAsync(g =>
+        g.Name.ToLower() == genreName.ToLower() ||
+        g.Slug.ToLower() == genreSlug);
+
+    if (genre is null)
+    {
+        genre = new Genre
+        {
+            Name = genreName.Trim(),
+            Slug = genreSlug
+        };
+
+        db.Genres.Add(genre);
+        await db.SaveChangesAsync();
+
+        Console.WriteLine($"[update-artist-genre] Created genre '{genre.Name}' ({genre.Slug})");
+    }
+
+    var tracks = await db.Tracks
+        .Include(t => t.Artist)
+        .Include(t => t.TrackGenres)
+        .Where(t => t.Artist.Name.ToLower() == artistName.ToLower())
+        .ToListAsync();
+
+    if (tracks.Count == 0)
+    {
+        Console.WriteLine($"[update-artist-genre] No tracks found for artist '{artistName}'");
+        return;
+    }
+
+    var updated = 0;
+
+    foreach (var track in tracks)
+    {
+        if (!track.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+        {
+            track.TrackGenres.Add(new TrackGenre
+            {
+                TrackId = track.Id,
+                GenreId = genre.Id
+            });
+
+            updated++;
+        }
+    }
+
+    await db.SaveChangesAsync();
+
+    Console.WriteLine($"[update-artist-genre] Updated {updated}/{tracks.Count} tracks for '{artistName}' → {genre.Name}");
+    return;
+}
+
 app.Run();
 
 static async Task RepairKnownInstrumentalLyricsAsync(AppDbContext db)

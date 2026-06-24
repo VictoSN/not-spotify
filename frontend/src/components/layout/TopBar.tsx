@@ -568,9 +568,6 @@ export function TopBar() {
             {t('topbar.premium')}
           </Link>
           <InstallAppButton className="transition-colors hover:text-primary" />
-          <Link to="/support" className="transition-colors hover:text-primary">
-            {t('topbar.support')}
-          </Link>
         </div>
       )}
 

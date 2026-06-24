@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "@microsoft/signalr": "^10.0.0"
+    "@microsoft/signalr": "^10.0.0",
+    "node-vibrant": "^4.0.4"
   }
 }

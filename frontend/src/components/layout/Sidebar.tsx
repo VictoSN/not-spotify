@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
+import { PinIcon } from '@/components/icons/PinIcon'
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -29,6 +30,8 @@ import { useTranslation } from '@/i18n/useTranslation'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
+import type { Playlist } from '@/types/playlist'
+import { PlaylistMenu, type PlaylistMenuHandle } from '@/components/cards/PlaylistMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
 import { useDragStore } from '@/stores/dragStore'
@@ -809,6 +812,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
                 compact={compactLibrary}
                 folders={folders}
+                playlists={savedPlaylists}
                 isNowPlaying={isNowPlaying}
                 renaming={renamingFolderId === folder.id}
                 renameValue={renameValue}
@@ -866,36 +870,53 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
-            {ungroupedItems.map((item) => (
-              <TrackDropZone
-                key={item.key}
-                accepts={item.acceptsTracks}
-                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
-              >
-                <LibraryGridCard
-                  item={item}
-                  compact={compactLibrary}
-                  nowPlaying={isNowPlaying(item)}
-                  onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
-                  onPlay={() => playLibraryItem(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                  }}
+            {ungroupedItems.map((item) => {
+              const playlist = item.kind === 'playlist' ? savedPlaylists.find((p) => p.id === item.id) : undefined
+              return (
+                <TrackDropZone
+                  key={item.key}
+                  accepts={item.acceptsTracks}
+                  onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
                 >
-                  <RowOverlay
-                    variant="grid"
-                    itemKey={item.key}
-                    pinned={pinned.has(item.key)}
-                    showPin
-                    folders={folders}
-                    menuOpen={rowMenuKey === item.key}
-                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                    onCloseMenu={() => setRowMenuKey(null)}
-                  />
-                </LibraryGridCard>
-              </TrackDropZone>
-            ))}
+                  {playlist ? (
+                    <PlaylistLibraryRow
+                      item={item}
+                      playlist={playlist}
+                      variant="grid"
+                      compact={compactLibrary}
+                      nowPlaying={isNowPlaying(item)}
+                      pinned={pinned.has(item.key)}
+                      showPin
+                      onPlay={() => playLibraryItem(item)}
+                      onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                    />
+                  ) : (
+                    <LibraryGridCard
+                      item={item}
+                      compact={compactLibrary}
+                      nowPlaying={isNowPlaying(item)}
+                      onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                      onPlay={() => playLibraryItem(item)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                      }}
+                    >
+                      <RowOverlay
+                        variant="grid"
+                        itemKey={item.key}
+                        pinned={pinned.has(item.key)}
+                        showPin
+                        folders={folders}
+                        menuOpen={rowMenuKey === item.key}
+                        onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                        onCloseMenu={() => setRowMenuKey(null)}
+                      />
+                    </LibraryGridCard>
+                  )}
+                </TrackDropZone>
+              )
+            })}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
@@ -927,35 +948,51 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
-            {ungroupedItems.map((item) => (
-              <TrackDropZone
-                key={item.key}
-                accepts={item.acceptsTracks}
-                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
-              >
-                <LibraryListRow
-                  item={item}
-                  compact={compactLibrary}
-                  nowPlaying={isNowPlaying(item)}
-                  onPlay={() => playLibraryItem(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                  }}
+            {ungroupedItems.map((item) => {
+              const playlist = item.kind === 'playlist' ? savedPlaylists.find((p) => p.id === item.id) : undefined
+              return (
+                <TrackDropZone
+                  key={item.key}
+                  accepts={item.acceptsTracks}
+                  onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
                 >
-                  <RowOverlay
-                    variant="list"
-                    itemKey={item.key}
-                    pinned={pinned.has(item.key)}
-                    showPin
-                    folders={folders}
-                    menuOpen={rowMenuKey === item.key}
-                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                    onCloseMenu={() => setRowMenuKey(null)}
-                  />
-                </LibraryListRow>
-              </TrackDropZone>
-            ))}
+                  {playlist ? (
+                    <PlaylistLibraryRow
+                      item={item}
+                      playlist={playlist}
+                      variant="list"
+                      compact={compactLibrary}
+                      nowPlaying={isNowPlaying(item)}
+                      pinned={pinned.has(item.key)}
+                      showPin
+                      onPlay={() => playLibraryItem(item)}
+                    />
+                  ) : (
+                    <LibraryListRow
+                      item={item}
+                      compact={compactLibrary}
+                      nowPlaying={isNowPlaying(item)}
+                      onPlay={() => playLibraryItem(item)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                      }}
+                    >
+                      <RowOverlay
+                        variant="list"
+                        itemKey={item.key}
+                        pinned={pinned.has(item.key)}
+                        showPin
+                        folders={folders}
+                        menuOpen={rowMenuKey === item.key}
+                        onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                        onCloseMenu={() => setRowMenuKey(null)}
+                      />
+                    </LibraryListRow>
+                  )}
+                </TrackDropZone>
+              )
+            })}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
@@ -1178,6 +1215,82 @@ function RowMenu({
   )
 }
 
+/**
+ * A library row for a playlist whose ⋯ button and right-click both open the
+ * full PlaylistMenu (queue, edit/delete, visibility, move-to-folder, pin,
+ * share…) — the album-card-style menu, adjusted for playlists. Albums and
+ * artists keep the lighter folder-only RowOverlay.
+ */
+function PlaylistLibraryRow({
+  item,
+  playlist,
+  variant,
+  compact,
+  nowPlaying,
+  pinned,
+  showPin,
+  onPlay,
+  onNavigate,
+}: {
+  item: LibItem
+  playlist: Playlist
+  variant: 'list' | 'grid'
+  compact: boolean
+  nowPlaying: boolean
+  pinned: boolean
+  showPin: boolean
+  onPlay: () => void | Promise<void>
+  onNavigate?: () => void
+}) {
+  const menuRef = useRef<PlaylistMenuHandle>(null)
+  const onContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    menuRef.current?.openAt(e.clientX, e.clientY)
+  }
+  const overlay = (
+    <>
+      {showPin && <PinButton itemKey={item.key} pinned={pinned} variant={variant} />}
+      <div
+        className={cn(
+          'absolute z-20',
+          variant === 'list' ? 'right-1.5 top-1/2 -translate-y-1/2' : 'right-2 top-2',
+        )}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      >
+        <PlaylistMenu
+          playlist={playlist}
+          ref={menuRef}
+          hoverGroup="row"
+          triggerClassName={cn(
+            'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90',
+            variant === 'grid' && 'bg-page/70 backdrop-blur-sm',
+          )}
+          triggerIconClassName="h-4 w-4"
+        />
+      </div>
+    </>
+  )
+  return variant === 'grid' ? (
+    <LibraryGridCard
+      item={item}
+      compact={compact}
+      nowPlaying={nowPlaying}
+      onPlay={onPlay}
+      onNavigate={onNavigate ?? (() => {})}
+      onContextMenu={onContextMenu}
+    >
+      {overlay}
+    </LibraryGridCard>
+  ) : (
+    <LibraryListRow item={item} compact={compact} nowPlaying={nowPlaying} onPlay={onPlay} onContextMenu={onContextMenu}>
+      {overlay}
+    </LibraryListRow>
+  )
+}
+
 function LibraryPlayButton({
   label,
   onPlay,
@@ -1315,6 +1428,7 @@ function FolderGroup({
   contents,
   compact,
   folders,
+  playlists,
   isNowPlaying,
   renaming,
   renameValue,
@@ -1330,6 +1444,7 @@ function FolderGroup({
   contents: LibItem[]
   compact: boolean
   folders: LibraryFolder[]
+  playlists: Playlist[]
   isNowPlaying: (item: LibItem) => boolean
   renaming: boolean
   renameValue: string
@@ -1457,51 +1572,49 @@ function FolderGroup({
           {contents.length === 0 ? (
             <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
           ) : (
-            contents.map((item) => (
-              <LibraryListRow
-                key={item.key}
-                item={item}
-                compact={compact}
-                nowPlaying={isNowPlaying(item)}
-                onPlay={() => onPlayItem(item)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                }}
-              >
-                <RowOverlay
+            contents.map((item) => {
+              const playlist = item.kind === 'playlist' ? playlists.find((p) => p.id === item.id) : undefined
+              return playlist ? (
+                <PlaylistLibraryRow
+                  key={item.key}
+                  item={item}
+                  playlist={playlist}
                   variant="list"
-                  itemKey={item.key}
+                  compact={compact}
+                  nowPlaying={isNowPlaying(item)}
                   pinned={false}
                   showPin={false}
-                  folders={folders}
-                  menuOpen={rowMenuKey === item.key}
-                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                  onCloseMenu={() => setRowMenuKey(null)}
+                  onPlay={() => onPlayItem(item)}
                 />
-              </LibraryListRow>
-            ))
+              ) : (
+                <LibraryListRow
+                  key={item.key}
+                  item={item}
+                  compact={compact}
+                  nowPlaying={isNowPlaying(item)}
+                  onPlay={() => onPlayItem(item)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
+                  }}
+                >
+                  <RowOverlay
+                    variant="list"
+                    itemKey={item.key}
+                    pinned={false}
+                    showPin={false}
+                    folders={folders}
+                    menuOpen={rowMenuKey === item.key}
+                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
+                    onCloseMenu={() => setRowMenuKey(null)}
+                  />
+                </LibraryListRow>
+              )
+            })
           )}
         </div>
       )}
     </div>
-  )
-}
-
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9 3.5h6M10.5 3.5v5.2L8 11.7v1.1h8v-1.1L13.5 8.7V3.5M12 12.8V20.5" />
-    </svg>
   )
 }
 

@@ -101,11 +101,18 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   const hiddenBtnRef = useRef<HTMLButtonElement>(null)
   const menuOpenRef = useRef(false)
   const closeRef = useRef<(() => void) | null>(null)
+  const closedAtRef = useRef(0)
   const openAt = (x: number, y: number) => {
     if (menuOpenRef.current) {
       closeRef.current?.()
       return
     }
+    // A right-click's pointerdown makes Headless close the open menu *before*
+    // this contextmenu handler runs (they're separate native events, so React
+    // flushes the close between them) — menuOpenRef therefore already reads
+    // false. Without this guard the menu would instantly reopen, looking like
+    // it never closes. Treat a just-closed menu as the toggle-off.
+    if (Date.now() - closedAtRef.current < 300) return
     setCoords({ x, y })
     requestAnimationFrame(() => hiddenBtnRef.current?.click())
   }
@@ -274,6 +281,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   return (
     <Menu>
       {({ close, open }) => {
+        if (menuOpenRef.current && !open) closedAtRef.current = Date.now()
         menuOpenRef.current = open
         closeRef.current = close
         return (

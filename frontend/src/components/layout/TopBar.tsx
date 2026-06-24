@@ -55,7 +55,6 @@ export function TopBar() {
   const [showMenu, setShowMenu] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
   const friendRequests = useFriendStore((s) => s.requests)
-  const friends = useFriendStore((s) => s.friends)
   const pendingCount = friendRequests.length
   const socialPanelOpen = useUiStore((s) => s.socialPanelOpen)
   const toggleSocialPanel = useUiStore((s) => s.toggleSocialPanel)
@@ -211,22 +210,6 @@ export function TopBar() {
     debouncedSearchValue.length > 0 &&
     suggestionsDoneQuery !== debouncedSearchValue
   const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
-  const profileUpdates = [
-    ...friendRequests.map((request) => ({
-      id: `request-${request.id}`,
-      userId: request.fromUser.id,
-      name: request.fromUser.name,
-      avatarUrl: request.fromUser.avatarUrl,
-      time: formatRelativeShort(request.createdAt),
-    })),
-    ...friends.map((friend, index) => ({
-      id: `friend-${friend.userId}`,
-      userId: friend.userId,
-      name: friend.name,
-      avatarUrl: friend.avatarUrl,
-      time: index === 0 ? t('topbar.recently') : '',
-    })),
-  ].slice(0, 6)
 
   const searchPanel = shouldShowSearchPanel && (
     <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-[#282828] py-2 shadow-2xl [scrollbar-color:rgba(255,255,255,0.3)_transparent] [scrollbar-width:thin]">
@@ -693,31 +676,6 @@ export function TopBar() {
               >
                 {t('topbar.logOut')}
               </button>
-              <div className="my-1 border-t border-secondary/10" />
-              <div className="px-4 pb-2 pt-3">
-                <h3 className="text-base font-black text-primary">{t('topbar.yourUpdates')}</h3>
-              </div>
-              <div className="max-h-64 overflow-y-auto pb-1 [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]">
-                {profileUpdates.length > 0 ? (
-                  profileUpdates.map((update) => (
-                    <Link
-                      key={update.id}
-                      to={`/user/${update.userId}`}
-                      onClick={() => setShowMenu(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-white/10"
-                    >
-                      <Avatar src={update.avatarUrl} alt={update.name} size="md" round className="h-12 w-12 shrink-0 text-base" />
-                      <span className="min-w-0 flex-1 text-sm leading-5">
-                        <span className="font-black text-primary">{update.name}</span>
-                        <span className="font-bold text-primary"> {t('topbar.startedFollowingYou')}</span>
-                        {update.time && <span className="font-bold text-secondary"> · {update.time}</span>}
-                      </span>
-                    </Link>
-                  ))
-                ) : (
-                  <p className="px-4 py-5 text-sm font-semibold text-secondary">{t('topbar.noUpdates')}</p>
-                )}
-              </div>
             </div>
           </>
         )}
@@ -725,24 +683,6 @@ export function TopBar() {
 
     </header>
   )
-}
-
-function formatRelativeShort(value: string) {
-  const time = new Date(value).getTime()
-  if (Number.isNaN(time)) return ''
-  const diff = Math.max(0, Date.now() - time)
-  const minute = 60 * 1000
-  const hour = 60 * minute
-  const day = 24 * hour
-  const week = 7 * day
-  const month = 30 * day
-  const year = 365 * day
-  if (diff < hour) return `${Math.max(1, Math.floor(diff / minute))}m`
-  if (diff < day) return `${Math.floor(diff / hour)}h`
-  if (diff < week) return `${Math.floor(diff / day)}d`
-  if (diff < month) return `${Math.floor(diff / week)}w`
-  if (diff < year) return `${Math.floor(diff / month)}mo`
-  return `${Math.floor(diff / year)}y`
 }
 
 function SearchSuggestionsSkeleton() {

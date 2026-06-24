@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { PlayIcon, HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
@@ -10,6 +11,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { playlistService } from '@/services/playlistService'
 import { PlaylistCover } from './PlaylistCover'
+import { PlaylistMenu, type PlaylistMenuHandle } from './PlaylistMenu'
 
 interface PlaylistCardProps {
   playlist: Playlist
@@ -23,6 +25,7 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const { savedPlaylists, savePlaylist, unsavePlaylist } = useLibraryStore()
   const isSaved = savedPlaylists.some((p) => p.id === playlist.id)
+  const menuTriggerRef = useRef<PlaylistMenuHandle>(null)
 
   const handlePlay = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -58,7 +61,10 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
         if (playlist.coverUrl) getDominantColor(playlist.coverUrl).then((c) => c && setHoverColor(c))
       }}
       onMouseLeave={() => setHoverColor(null)}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        menuTriggerRef.current?.openAt(e.clientX, e.clientY)
+      }}
       className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
@@ -88,6 +94,18 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
         <span className="truncate">{playlist.name}</span>
       </p>
       {playlist.description && <p className="text-xs text-secondary mt-0.5 line-clamp-2">{playlist.description}</p>}
+
+      {/* Right-click target only — the visible trigger stays hidden; the menu
+          portals out of this hidden wrapper. */}
+      <div
+        className="hidden"
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+      >
+        <PlaylistMenu playlist={playlist} ref={menuTriggerRef} />
+      </div>
     </Link>
   )
 }

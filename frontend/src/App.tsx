@@ -16,6 +16,24 @@ export default function App() {
     hydrateFromCookie()
   }, [hydrateFromCookie])
 
+  // Spotify-style: suppress the browser's native right-click menu app-wide so
+  // right-click is reserved for our own context menus. Still allow the native
+  // menu inside editable fields (so copy/paste/spellcheck works) and wherever
+  // an element opts back in with [data-native-context-menu].
+  useEffect(() => {
+    const onContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null
+      if (
+        target?.closest('input, textarea, [contenteditable=""], [contenteditable="true"], [data-native-context-menu]')
+      ) {
+        return
+      }
+      e.preventDefault()
+    }
+    document.addEventListener('contextmenu', onContextMenu)
+    return () => document.removeEventListener('contextmenu', onContextMenu)
+  }, [])
+
   // Hold the first paint until the cookie session is resolved, so a logged-in
   // refresh never flashes the logged-out chrome (and protected routes don't bounce).
   if (isInitializing) {

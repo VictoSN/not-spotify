@@ -17,7 +17,7 @@ import {
   PencilIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon } from '@heroicons/react/24/solid'
+import { HeartIcon, PlayIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -27,8 +27,14 @@ import { useRatingStore } from '@/stores/ratingStore'
 import { getPinnedSet, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import { useTranslation } from '@/i18n/useTranslation'
 import type { Track } from '@/types/track'
+import type { Artist } from '@/types/artist'
+import type { Album } from '@/types/album'
+import { artistService } from '@/services/artistService'
+import { trackService } from '@/services/trackService'
 import { useDragStore } from '@/stores/dragStore'
 import { useTrackDrop } from '@/hooks/useTrackDrop'
+import { useLibraryDrop } from '@/hooks/useLibraryDrop'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { DROP_GREEN } from '@/utils/trackDnd'
 import { notify } from '@/utils/toast'
 import {
@@ -97,14 +103,33 @@ function getInitialCompactLibrary(): boolean {
   }
 }
 
+function albumKindLabel(type: Album['type']): string {
+  if (type === 'single') return 'Single'
+  if (type === 'ep') return 'EP'
+  if (type === 'compilation') return 'Compilation'
+  return 'Album'
+}
+
 export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const navigate = useNavigate()
-  const { savedPlaylists, savedAlbums, followedArtists, likedSongs, createPlaylist, fetchLibrary } = useLibraryStore()
+  const {
+    savedPlaylists,
+    savedAlbums,
+    savedAlbumIds,
+    followedArtists,
+    followedArtistIds,
+    likedSongs,
+    createPlaylist,
+    fetchLibrary,
+    followArtist,
+    saveAlbum,
+  } = useLibraryStore()
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
   const likeTrack = useLibraryStore((s) => s.likeTrack)
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const playWithGate = usePlaybackGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const { t } = useTranslation()
@@ -127,6 +152,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
+  const libraryDragActive = useDragStore(
+    (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum,
+  )
 
   const setView = (v: 'list' | 'grid') => {
     setViewMode(v)
@@ -252,9 +280,31 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     notify.success('Added to Liked Songs')
   }
 
-  // The whole "Your Library" header is also a drop target (→ Liked Songs), so a track
-  // can always be dropped "into the library" regardless of filters/scroll position.
-  const libraryHeaderDrop = useTrackDrop(isAuthenticated, dropTrackOnLiked)
+  const dropArtistOnLibrary = async (artist: Artist) => {
+    if (followedArtistIds.has(artist.id)) {
+      notify.info('Already in Your Library')
+      return
+    }
+    await followArtist(artist)
+    notify.success('Added artist to Your Library')
+  }
+
+  const dropAlbumOnLibrary = async (album: Album) => {
+    if (savedAlbumIds.has(album.id)) {
+      notify.info('Already in Your Library')
+      return
+    }
+    await saveAlbum(album)
+    notify.success('Saved to Your Library')
+  }
+
+  // The whole library surface is a drop target, so tracks, artists, albums, and
+  // singles can be saved regardless of filters or scroll position.
+  const libraryDrop = useLibraryDrop(isAuthenticated, {
+    onDropTrack: dropTrackOnLiked,
+    onDropArtist: dropArtistOnLibrary,
+    onDropAlbum: dropAlbumOnLibrary,
+  })
 
   // ── Build the library list ──────────────────────────────────────
   const items = useMemo<LibItem[]>(() => {
@@ -276,7 +326,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       id: a.id,
       kind: 'album',
       name: a.title,
-      subtitle: t('sidebar.subtitle.album', { artist: a.artist.name }),
+      subtitle: `${albumKindLabel(a.type)} • ${a.artist.name}`,
       image: a.coverUrl,
       round: false,
       to: `/album/${a.id}`,
@@ -325,6 +375,39 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     !!currentTrack &&
     ((item.kind === 'album' && currentTrack.album.id === item.id) ||
       (item.kind === 'artist' && currentTrack.artist.id === item.id))
+
+  const playLikedSongs = () => {
+    if (likedSongs.length === 0) {
+      notify.info('No liked songs yet')
+      return
+    }
+    playWithGate(likedSongs[0], likedSongs)
+  }
+
+  const playLibraryItem = async (item: LibItem) => {
+    try {
+      if (item.kind === 'playlist') {
+        const playlist = savedPlaylists.find((p) => p.id === item.id)
+        const tracks = (playlist?.tracks ?? []).map((row) => row.track)
+        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        else notify.info('No tracks in this playlist yet')
+        return
+      }
+
+      if (item.kind === 'album') {
+        const tracks = await trackService.getByAlbum(item.id)
+        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        else notify.info('No tracks available for this release yet')
+        return
+      }
+
+      const tracks = await artistService.getTopTracks(item.id, 20)
+      if (tracks.length > 0) playWithGate(tracks[0], tracks)
+      else notify.info('No tracks available for this artist yet')
+    } catch {
+      notify.error("Couldn't start playback")
+    }
+  }
 
   // ── Folders (a client-side grouping layer over `items`) ─────────
   const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
@@ -445,7 +528,15 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   if (collapsed && !libraryExpanded) {
     return (
-      <aside style={frameStyle} className={frameClass}>
+      <aside
+        {...libraryDrop.dropProps}
+        style={
+          libraryDrop.isOver
+            ? { ...frameStyle, boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
+            : frameStyle
+        }
+        className={frameClass}
+      >
         <button
           onClick={() => setWidth(DEFAULT_W)}
           className="m-3 w-12 h-12 rounded-md flex items-center justify-center text-secondary hover:text-primary hover:bg-elevated hover:scale-105 transition-all"
@@ -455,7 +546,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <CollapseIcon className="h-6 w-6" />
         </button>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide">
+        <div
+          className={cn(
+            'flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide transition-opacity duration-150',
+            libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
+          )}
+        >
           <Link
             to="/library?tab=liked"
             title={t('sidebar.likedSongs')}
@@ -495,17 +591,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   ]
 
   return (
-    <aside style={frameStyle} className={frameClass}>
+    <aside
+      {...libraryDrop.dropProps}
+      style={
+        libraryDrop.isOver
+          ? { ...frameStyle, boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
+          : frameStyle
+      }
+      className={frameClass}
+    >
       {/* Header */}
-      <div
-        {...libraryHeaderDrop.dropProps}
-        style={
-          libraryHeaderDrop.isOver
-            ? { boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
-            : undefined
-        }
-        className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2 rounded-md transition-[box-shadow,background-color] duration-150"
-      >
+      <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2 rounded-md transition-[box-shadow,background-color] duration-150">
         <div className="relative flex min-w-0 items-center">
           {!libraryExpanded && (
             <button
@@ -697,7 +793,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       </div>
 
       {/* Folders + library list/grid */}
-      <div key={libraryExpanded ? 'expanded' : 'normal'} className="flex-1 overflow-y-auto px-2 pb-2 animate-fade-in">
+      <div
+        key={libraryExpanded ? 'expanded' : 'normal'}
+        className={cn(
+          'flex-1 overflow-y-auto px-2 pb-2 animate-fade-in transition-opacity duration-150',
+          libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
+        )}
+      >
         {hasFolderSection && (
           <div className="mb-1 flex flex-col">
             {folders.map((folder) => (
@@ -719,6 +821,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 onRenameCancel={() => setRenamingFolderId(null)}
                 rowMenuKey={rowMenuKey}
                 setRowMenuKey={setRowMenuKey}
+                onPlayItem={playLibraryItem}
               />
             ))}
           </div>
@@ -743,20 +846,23 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   onClick={() => libraryExpanded && setLibraryExpanded(false)}
                   className={({ isActive }) =>
                     cn(
-                      'block rounded-md transition-colors',
+                      'group/row block rounded-md transition-colors',
                       compactLibrary ? 'p-1.5' : 'p-2',
                       isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                     )
                   }
                 >
                   <div className={cn(
-                    'aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center',
+                    'relative aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center overflow-hidden',
                     compactLibrary ? 'mb-1.5' : 'mb-2',
                   )}>
                     <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
                   </div>
-                  <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
-                  {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
+                  <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
+                  <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                    {t('sidebar.likedSongsSub', { n: likedSongs.length })}
+                  </p>
                 </NavLink>
               </TrackDropZone>
             )}
@@ -771,6 +877,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   compact={compactLibrary}
                   nowPlaying={isNowPlaying(item)}
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                  onPlay={() => playLibraryItem(item)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setRowMenuKey(rowMenuKey === item.key ? null : item.key)
@@ -801,21 +908,21 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   to="/library?tab=liked"
                   className={({ isActive }) =>
                     cn(
-                      'flex items-center rounded-md transition-colors',
-                      compactLibrary ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+                      'group/row flex items-center rounded-md transition-colors',
+                      compactLibrary ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
                       isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                     )
                   }
                 >
-                  <div className={cn(
-                    'rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0',
-                    compactLibrary ? 'h-9 w-9' : 'h-12 w-12',
-                  )}>
-                    <HeartIcon className={cn('text-white', compactLibrary ? 'h-4 w-4' : 'h-5 w-5')} />
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-600 to-indigo-300">
+                    <HeartIcon className="h-5 w-5 text-white" />
+                    <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-primary truncate">{t('sidebar.likedSongs')}</p>
-                    {!compactLibrary && <p className="text-xs text-secondary truncate">{t('sidebar.likedSongsSub', { n: likedSongs.length })}</p>}
+                    <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
+                    <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                      {t('sidebar.likedSongsSub', { n: likedSongs.length })}
+                    </p>
                   </div>
                 </NavLink>
               </TrackDropZone>
@@ -830,6 +937,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   item={item}
                   compact={compactLibrary}
                   nowPlaying={isNowPlaying(item)}
+                  onPlay={() => playLibraryItem(item)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setRowMenuKey(rowMenuKey === item.key ? null : item.key)
@@ -861,9 +969,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 }
 
 /**
- * Wraps a library row as a drop target for dragged tracks. While any track is being
- * dragged, valid targets show a faint green ring; the hovered target gets a bright
- * green ring + tint and a subtle lift — Spotify's sidebar drop affordance.
+ * Wraps a library row as a drop target for dragged tracks. The hovered valid target
+ * gets a bright green ring + tint and a subtle lift.
  */
 function TrackDropZone({
   accepts,
@@ -876,18 +983,15 @@ function TrackDropZone({
   className?: string
   children: React.ReactNode
 }) {
-  const dragging = useDragStore((s) => s.draggedTrack != null)
   const { isOver, dropProps } = useTrackDrop(accepts, onDropTrack)
-  const armed = accepts && dragging
   return (
     <div
+      data-track-drop-zone={accepts ? 'true' : undefined}
       {...(accepts ? dropProps : {})}
       style={
         isOver
           ? { boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
-          : armed
-            ? { boxShadow: `inset 0 0 0 1px ${DROP_GREEN}66` }
-            : undefined
+          : undefined
       }
       className={cn(
         'rounded-md transition-[box-shadow,background-color,transform] duration-150',
@@ -1074,18 +1178,43 @@ function RowMenu({
   )
 }
 
+function LibraryPlayButton({
+  label,
+  onPlay,
+}: {
+  label: string
+  onPlay: () => void | Promise<void>
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Play ${label}`}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        void onPlay()
+      }}
+      className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+    >
+      <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+    </button>
+  )
+}
+
 /** A library row in list layout (used by the flat list + inside folders). */
 function LibraryListRow({
   item,
   compact,
   nowPlaying,
   children,
+  onPlay,
   onContextMenu,
 }: {
   item: LibItem
   compact: boolean
   nowPlaying: boolean
   children?: React.ReactNode
+  onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
@@ -1095,15 +1224,14 @@ function LibraryListRow({
         className={({ isActive }) =>
           cn(
             'flex items-center rounded-md transition-colors',
-            compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+            compact ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
             isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
           )
         }
       >
         <div
           className={cn(
-            'shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
-            compact ? 'h-9 w-9' : 'h-12 w-12',
+            'relative h-12 w-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
             item.round ? 'rounded-full' : 'rounded-md',
           )}
         >
@@ -1112,10 +1240,13 @@ function LibraryListRow({
           ) : (
             <span className={compact ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
+          <LibraryPlayButton label={item.name} onPlay={onPlay} />
         </div>
         <div className="min-w-0 flex-1 pr-14">
-          <p className={cn('text-sm font-medium truncate', nowPlaying ? 'text-accent' : 'text-primary')}>{item.name}</p>
-          {!compact && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+          <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+            {item.name}
+          </p>
+          <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
         </div>
       </NavLink>
       {children}
@@ -1130,6 +1261,7 @@ function LibraryGridCard({
   nowPlaying,
   onNavigate,
   children,
+  onPlay,
   onContextMenu,
 }: {
   item: LibItem
@@ -1137,6 +1269,7 @@ function LibraryGridCard({
   nowPlaying: boolean
   onNavigate: () => void
   children?: React.ReactNode
+  onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
@@ -1154,7 +1287,7 @@ function LibraryGridCard({
       >
         <div
           className={cn(
-            'aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
+            'relative aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
             compact ? 'mb-1.5' : 'mb-2',
             item.round ? 'rounded-full' : 'rounded-md',
           )}
@@ -1164,9 +1297,12 @@ function LibraryGridCard({
           ) : (
             <span className={compact ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
           )}
+          <LibraryPlayButton label={item.name} onPlay={onPlay} />
         </div>
-        <p className={cn('text-sm font-medium truncate', nowPlaying ? 'text-accent' : 'text-primary')}>{item.name}</p>
-        {!compact && <p className="text-xs text-secondary truncate">{item.subtitle}</p>}
+        <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+          {item.name}
+        </p>
+        <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
       </NavLink>
       {children}
     </div>
@@ -1188,6 +1324,7 @@ function FolderGroup({
   onRenameCancel,
   rowMenuKey,
   setRowMenuKey,
+  onPlayItem,
 }: {
   folder: LibraryFolder
   contents: LibItem[]
@@ -1202,6 +1339,7 @@ function FolderGroup({
   onRenameCancel: () => void
   rowMenuKey: string | null
   setRowMenuKey: (key: string | null) => void
+  onPlayItem: (item: LibItem) => void | Promise<void>
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1325,6 +1463,7 @@ function FolderGroup({
                 item={item}
                 compact={compact}
                 nowPlaying={isNowPlaying(item)}
+                onPlay={() => onPlayItem(item)}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   setRowMenuKey(rowMenuKey === item.key ? null : item.key)

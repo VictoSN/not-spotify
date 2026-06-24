@@ -63,7 +63,7 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
       <Link
         to={`/album/${track.album.id}`}
         draggable={false}
-        className={`block rounded-lg transition-colors ${flush ? 'p-0 hover:bg-transparent' : 'p-3 hover:bg-surface'}`}
+        className={`block rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
       >
         <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
           <img src={track.album.coverUrl} alt={track.title} draggable={false} className="w-full h-full object-cover" />
@@ -106,7 +106,7 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
       {/* Right-click target + hover "…" affordance. Rendered as a sibling of the Link
           (not nested inside the anchor) so it stays valid HTML and never navigates. */}
       <div
-        className="absolute right-3 top-3 z-10"
+        className="hidden"
         onClick={(e) => {
           e.preventDefault()
           e.stopPropagation()

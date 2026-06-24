@@ -69,7 +69,7 @@ describe('libraryStore.syncPlaylistTracks', () => {
 })
 
 describe('libraryStore logout reset', () => {
-  it('clears the library and drops localStorage caches on logout', async () => {
+  it('clears volatile library state but keeps local followed artists on logout', async () => {
     await useLibraryStore.getState().followArtist(artist('a1'))
     expect(localStorage.getItem('ns-followed-artists')).not.toBeNull()
 
@@ -79,6 +79,6 @@ describe('libraryStore logout reset', () => {
     expect(useLibraryStore.getState().followedArtists).toEqual([])
     expect(useLibraryStore.getState().likedSongs).toEqual([])
     expect(useLibraryStore.getState().followedArtistIds.size).toBe(0)
-    expect(localStorage.getItem('ns-followed-artists')).toBeNull()
+    expect(JSON.parse(localStorage.getItem('ns-followed-artists')!).map((a: Artist) => a.id)).toEqual(['a1'])
   })
 })

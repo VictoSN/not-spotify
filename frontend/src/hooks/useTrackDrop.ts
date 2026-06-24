@@ -17,8 +17,10 @@ export function useTrackDrop(canDrop: boolean, onDropTrack: (track: Track) => vo
 
   const onDragOver = (e: React.DragEvent) => {
     if (!canDrop || !isTrackDrag(e)) return
+    e.stopPropagation()
     e.preventDefault() // required to allow a drop
     e.dataTransfer.dropEffect = 'copy'
+    window.dispatchEvent(new Event('ns-track-drop-zone-over'))
     if (!isOver) setIsOver(true)
   }
 
@@ -30,6 +32,7 @@ export function useTrackDrop(canDrop: boolean, onDropTrack: (track: Track) => vo
 
   const onDrop = (e: React.DragEvent) => {
     if (!canDrop || !isTrackDrag(e)) return
+    e.stopPropagation()
     e.preventDefault()
     setIsOver(false)
     const track = useDragStore.getState().draggedTrack

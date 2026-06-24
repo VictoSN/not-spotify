@@ -99,7 +99,13 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   // We park it under the pointer, then click it, so the menu spawns at the cursor.
   const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
   const hiddenBtnRef = useRef<HTMLButtonElement>(null)
+  const menuOpenRef = useRef(false)
+  const closeRef = useRef<(() => void) | null>(null)
   const openAt = (x: number, y: number) => {
+    if (menuOpenRef.current) {
+      closeRef.current?.()
+      return
+    }
     setCoords({ x, y })
     requestAnimationFrame(() => hiddenBtnRef.current?.click())
   }
@@ -267,7 +273,10 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
 
   return (
     <Menu>
-      {({ close }) => (
+      {({ close, open }) => {
+        menuOpenRef.current = open
+        closeRef.current = close
+        return (
         <>
           {/* Visible "…" affordance — a plain button that opens the menu just below it. */}
           <button
@@ -280,7 +289,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
               setRemoveSubmenuOpen(false)
               setPlaylistQuery('')
               setRemovePlaylistQuery('')
-              openFromButton(e)
+              if (open) close()
+              else openFromButton(e)
             }}
             className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
           >
@@ -768,7 +778,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
             <ShareToChatModal track={track} onClose={() => setShareToChatOpen(false)} />
           )}
         </>
-      )}
+        )
+      }}
     </Menu>
   )
 })

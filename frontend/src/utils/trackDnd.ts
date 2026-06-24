@@ -1,20 +1,24 @@
 import type { Track } from '@/types/track'
+import type { Artist } from '@/types/artist'
+import type { Album } from '@/types/album'
 
-/** Custom drag type so drop targets can tell a track drag apart from any other drag. */
+/** Custom drag types so drop targets can tell app content apart from other drags. */
 export const TRACK_DND_MIME = 'application/x-notspotify-track'
+export const ARTIST_DND_MIME = 'application/x-notspotify-artist'
+export const ALBUM_DND_MIME = 'application/x-notspotify-album'
 
 /** Spotify's green — used for the drop affordance regardless of the app's accent theme. */
 export const DROP_GREEN = '#1ed760'
 
 /**
- * Builds a small Spotify-style "pill" showing the dragged track's title and registers
+ * Builds a small Spotify-style "pill" showing the dragged content label and registers
  * it as the drag image. The element is appended off-screen, snapshotted by the browser,
  * then removed on the next tick.
  */
-export function setTrackDragImage(e: React.DragEvent, track: Track) {
+function setDragPillImage(e: React.DragEvent, label: string) {
   if (typeof document === 'undefined') return
   const pill = document.createElement('div')
-  pill.textContent = track.title
+  pill.textContent = label
   pill.style.cssText = [
     'position:fixed',
     'top:-1000px',
@@ -41,4 +45,16 @@ export function setTrackDragImage(e: React.DragEvent, track: Track) {
     /* setDragImage unsupported — fall back to the default ghost */
   }
   window.setTimeout(() => pill.remove(), 0)
+}
+
+export function setTrackDragImage(e: React.DragEvent, track: Track) {
+  setDragPillImage(e, track.title)
+}
+
+export function setArtistDragImage(e: React.DragEvent, artist: Artist) {
+  setDragPillImage(e, artist.name)
+}
+
+export function setAlbumDragImage(e: React.DragEvent, album: Album) {
+  setDragPillImage(e, album.title)
 }

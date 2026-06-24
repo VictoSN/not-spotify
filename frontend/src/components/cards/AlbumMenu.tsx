@@ -1,0 +1,253 @@
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import {
+  ArrowTopRightOnSquareIcon,
+  EllipsisHorizontalIcon,
+  MusicalNoteIcon,
+  RadioIcon,
+  ShareIcon,
+  UserIcon,
+} from '@heroicons/react/24/outline'
+import { CheckCircleIcon, PlusCircleIcon } from '@heroicons/react/24/solid'
+import type { Album } from '@/types/album'
+import { trackService } from '@/services/trackService'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { shareLink } from '@/utils/share'
+import { notify } from '@/utils/toast'
+import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
+
+interface AlbumMenuProps {
+  album: Album
+  alwaysVisible?: boolean
+  triggerClassName?: string
+  triggerIconClassName?: string
+}
+
+export interface AlbumMenuHandle {
+  openAt: (x: number, y: number) => void
+}
+
+export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function AlbumMenu({
+  album,
+  alwaysVisible,
+  triggerClassName,
+  triggerIconClassName,
+}, ref) {
+  const navigate = useNavigate()
+  const playWithGate = usePlaybackGate()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const savedAlbumIds = useLibraryStore((s) => s.savedAlbumIds)
+  const saveAlbum = useLibraryStore((s) => s.saveAlbum)
+  const unsaveAlbum = useLibraryStore((s) => s.unsaveAlbum)
+  const isSaved = savedAlbumIds.has(album.id)
+  const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
+  const hiddenBtnRef = useRef<HTMLButtonElement>(null)
+  const menuOpenRef = useRef(false)
+  const closeRef = useRef<(() => void) | null>(null)
+
+  const openAt = (x: number, y: number) => {
+    if (menuOpenRef.current) {
+      closeRef.current?.()
+      return
+    }
+    setCoords({ x, y })
+    requestAnimationFrame(() => hiddenBtnRef.current?.click())
+  }
+
+  const openFromButton = (e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    openAt(r.left, r.bottom + 4)
+  }
+
+  useImperativeHandle(ref, () => ({ openAt }), [])
+
+  const gate = (title: string, action: () => void | Promise<void>) => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title, imageUrl: album.coverUrl })
+      return
+    }
+    void action()
+  }
+
+  const handleToggleSave = () =>
+    gate('Save albums with a free account', async () => {
+      if (isSaved) {
+        await unsaveAlbum(album.id)
+        notify.success('Removed from Your Library')
+      } else {
+        await saveAlbum(album)
+        notify.success('Saved to Your Library')
+      }
+    })
+
+  const handleAlbumRadio = () =>
+    gate('Start album radio with a free account', async () => {
+      try {
+        const tracks = await trackService.getByAlbum(album.id)
+        if (tracks.length > 0) playWithGate(tracks[0], tracks)
+        else notify.info('No tracks available for this album yet')
+      } catch {
+        notify.error("Couldn't start album radio")
+      }
+    })
+
+  const handleShare = async () => {
+    const result = await shareLink(`/album/${album.id}`, {
+      title: album.title,
+      text: `${album.title} · ${album.artist.name}`,
+    })
+    if (result === 'copied') notify.success('Link copied to clipboard')
+    else if (result === 'failed') notify.error("Couldn't copy link")
+  }
+
+  const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+
+  return (
+    <Menu>
+      {({ close, open }) => {
+        menuOpenRef.current = open
+        closeRef.current = close
+        return (
+          <>
+            <button
+              type="button"
+              aria-label={`More options for ${album.title}`}
+              onClick={(e) => {
+                e.preventDefault()
+                stop(e)
+                if (open) close()
+                else openFromButton(e)
+              }}
+              className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
+            >
+              <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-white'} />
+            </button>
+
+            {createPortal(
+              <MenuButton
+                ref={hiddenBtnRef}
+                aria-hidden
+                tabIndex={-1}
+                className="fixed h-0 w-0 p-0 opacity-0 pointer-events-none"
+                style={{ left: coords.x, top: coords.y }}
+              />,
+              document.body,
+            )}
+
+            <MenuItems
+              anchor="bottom start"
+              modal={false}
+              transition
+              onClick={stop}
+              className="z-50 w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+            >
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    handleToggleSave()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  {isSaved ? <CheckCircleIcon className="w-4 h-4 text-accent" /> : <PlusCircleIcon className="w-4 h-4" />}
+                  {isSaved ? 'Remove from Your Library' : 'Save to Your Library'}
+                </button>
+              </MenuItem>
+
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    handleAlbumRadio()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <RadioIcon className="w-4 h-4" />
+                  Go to album radio
+                </button>
+              </MenuItem>
+
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    void handleShare()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <ShareIcon className="w-4 h-4" />
+                  Share
+                </button>
+              </MenuItem>
+
+              <div className="my-1 h-px bg-secondary/20" />
+
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    navigate(`/album/${album.id}`)
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <MusicalNoteIcon className="w-4 h-4" />
+                  Go to album
+                </button>
+              </MenuItem>
+
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    navigate(`/artist/${album.artist.id}`)
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <UserIcon className="w-4 h-4" />
+                  Go to artist
+                </button>
+              </MenuItem>
+
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    navigate(`/album/${album.id}`)
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <span>Open album page</span>
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
+                </button>
+              </MenuItem>
+
+              <InstallAppMenuItem
+                label="Open in Desktop app"
+                onSelect={close}
+                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e]"
+              />
+            </MenuItems>
+          </>
+        )
+      }}
+    </Menu>
+  )
+})

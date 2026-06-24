@@ -48,7 +48,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   isLoading: false,
 
   fetchLibrary: async () => {
-    set({ isLoading: true, savedPlaylists: [], likedSongs: [], likedTrackIds: new Set(), followedArtists: [], followedArtistIds: new Set() })
+    set({ isLoading: true, savedPlaylists: [], likedSongs: [], likedTrackIds: new Set() })
     try {
       const [playlists, savedRows, savedAlbums] = await Promise.all([
         playlistService.getUserPlaylists(),
@@ -256,7 +256,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 useAuthStore.subscribe((state, prev) => {
   if (!prev.isAuthenticated || state.isAuthenticated) return
   try {
-    localStorage.removeItem('ns-followed-artists')
+    // Keep ns-followed-artists: follows are local-only until the backend supports them.
     // clean up any legacy liked-songs keys from before backend persistence
     localStorage.removeItem('ns-liked-tracks')
     localStorage.removeItem('ns-liked-at')

@@ -31,6 +31,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { trackService } from '@/services/trackService'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
+import { usePointerMenu } from '@/hooks/usePointerMenu'
+import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { shareLink } from '@/utils/share'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { repostService } from '@/services/repostService'
@@ -51,9 +53,7 @@ interface TrackRowMenuProps {
 }
 
 /** Imperative handle so parents can open the menu at the pointer on right-click. */
-export interface TrackRowMenuHandle {
-  openAt: (x: number, y: number) => void
-}
+export type TrackRowMenuHandle = PointerMenuHandle
 
 export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(function TrackRowMenu({
   track,
@@ -94,26 +94,10 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   const queue = usePlayerStore((s) => s.queue)
   const offline = useOfflineTrack(track)
 
-  // The real Headless UI trigger is an invisible button portaled to <body> (so it
-  // escapes any transformed ancestor that would otherwise break `position: fixed`).
-  // We park it under the pointer, then click it, so the menu spawns at the cursor.
-  const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
-  const hiddenBtnRef = useRef<HTMLButtonElement>(null)
-  const menuOpenRef = useRef(false)
-  const closeRef = useRef<(() => void) | null>(null)
-  const openAt = (x: number, y: number) => {
-    if (menuOpenRef.current) {
-      closeRef.current?.()
-      return
-    }
-    setCoords({ x, y })
-    requestAnimationFrame(() => hiddenBtnRef.current?.click())
-  }
-  const openFromButton = (e: React.MouseEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    openAt(r.left, r.bottom + 4)
-  }
-  useImperativeHandle(ref, () => ({ openAt }), [])
+  // Pointer-anchored open/close/reopen behaviour shared with every other menu.
+  const menu = usePointerMenu()
+  const { coords, hiddenBtnRef, openAt, openFromButton } = menu
+  useImperativeHandle(ref, () => ({ openAt }), [openAt])
 
   const isLiked = likedTrackIds.has(track.id)
   const isInQueue = queue.some((t) => t.id === track.id)
@@ -274,8 +258,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   return (
     <Menu>
       {({ close, open }) => {
-        menuOpenRef.current = open
-        closeRef.current = close
+        menu.sync(open, close)
         return (
         <>
           {/* Visible "…" affordance — a plain button that opens the menu just below it. */}

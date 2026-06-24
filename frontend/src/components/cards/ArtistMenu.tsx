@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
@@ -18,8 +18,10 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
+import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 
 interface ArtistMenuProps {
@@ -29,9 +31,7 @@ interface ArtistMenuProps {
   triggerIconClassName?: string
 }
 
-export interface ArtistMenuHandle {
-  openAt: (x: number, y: number) => void
-}
+export type ArtistMenuHandle = PointerMenuHandle
 
 export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function ArtistMenu({
   artist,
@@ -47,26 +47,10 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
   const followArtist = useLibraryStore((s) => s.followArtist)
   const unfollowArtist = useLibraryStore((s) => s.unfollowArtist)
   const isFollowing = followedArtistIds.has(artist.id)
-  const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
-  const hiddenBtnRef = useRef<HTMLButtonElement>(null)
-  const menuOpenRef = useRef(false)
-  const closeRef = useRef<(() => void) | null>(null)
+  const menu = usePointerMenu()
+  const { coords, hiddenBtnRef, openAt, openFromButton } = menu
 
-  const openAt = (x: number, y: number) => {
-    if (menuOpenRef.current) {
-      closeRef.current?.()
-      return
-    }
-    setCoords({ x, y })
-    requestAnimationFrame(() => hiddenBtnRef.current?.click())
-  }
-
-  const openFromButton = (e: React.MouseEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    openAt(r.left, r.bottom + 4)
-  }
-
-  useImperativeHandle(ref, () => ({ openAt }), [])
+  useImperativeHandle(ref, () => ({ openAt }), [openAt])
 
   const gate = (title: string, action: () => void | Promise<void>) => {
     if (!isAuthenticated) {
@@ -112,8 +96,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
   return (
     <Menu>
       {({ close, open }) => {
-        menuOpenRef.current = open
-        closeRef.current = close
+        menu.sync(open, close)
         return (
         <>
           <button

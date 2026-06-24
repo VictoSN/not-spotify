@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
@@ -6,6 +6,7 @@ import {
   ArrowTopRightOnSquareIcon,
   EllipsisHorizontalIcon,
   MusicalNoteIcon,
+  QueueListIcon,
   RadioIcon,
   ShareIcon,
   UserIcon,
@@ -16,9 +17,12 @@ import { trackService } from '@/services/trackService'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
+import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 
 interface AlbumMenuProps {
@@ -28,9 +32,7 @@ interface AlbumMenuProps {
   triggerIconClassName?: string
 }
 
-export interface AlbumMenuHandle {
-  openAt: (x: number, y: number) => void
-}
+export type AlbumMenuHandle = PointerMenuHandle
 
 export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function AlbumMenu({
   album,
@@ -45,27 +47,12 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
   const savedAlbumIds = useLibraryStore((s) => s.savedAlbumIds)
   const saveAlbum = useLibraryStore((s) => s.saveAlbum)
   const unsaveAlbum = useLibraryStore((s) => s.unsaveAlbum)
+  const addToQueue = usePlayerStore((s) => s.addToQueue)
   const isSaved = savedAlbumIds.has(album.id)
-  const [coords, setCoords] = useState<{ x: number; y: number }>({ x: -9999, y: -9999 })
-  const hiddenBtnRef = useRef<HTMLButtonElement>(null)
-  const menuOpenRef = useRef(false)
-  const closeRef = useRef<(() => void) | null>(null)
+  const menu = usePointerMenu()
+  const { coords, hiddenBtnRef, openAt, openFromButton } = menu
 
-  const openAt = (x: number, y: number) => {
-    if (menuOpenRef.current) {
-      closeRef.current?.()
-      return
-    }
-    setCoords({ x, y })
-    requestAnimationFrame(() => hiddenBtnRef.current?.click())
-  }
-
-  const openFromButton = (e: React.MouseEvent) => {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    openAt(r.left, r.bottom + 4)
-  }
-
-  useImperativeHandle(ref, () => ({ openAt }), [])
+  useImperativeHandle(ref, () => ({ openAt }), [openAt])
 
   const gate = (title: string, action: () => void | Promise<void>) => {
     if (!isAuthenticated) {
@@ -83,6 +70,21 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
       } else {
         await saveAlbum(album)
         notify.success('Saved to Your Library')
+      }
+    })
+
+  const handleAddToQueue = () =>
+    gate('Add to queue with a free account', async () => {
+      try {
+        const tracks = await trackService.getByAlbum(album.id)
+        if (tracks.length === 0) {
+          notify.info('No tracks available for this album yet')
+          return
+        }
+        tracks.forEach((track) => addToQueue(track))
+        notify.success(`Added ${tracks.length} song${tracks.length === 1 ? '' : 's'} to queue`)
+      } catch {
+        notify.error("Couldn't add to queue")
       }
     })
 
@@ -111,8 +113,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
   return (
     <Menu>
       {({ close, open }) => {
-        menuOpenRef.current = open
-        closeRef.current = close
+        menu.sync(open, close)
         return (
           <>
             <button
@@ -147,6 +148,21 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
               onClick={stop}
               className="z-50 w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
             >
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    handleAddToQueue()
+                    close()
+                  }}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                >
+                  <QueueListIcon className="w-4 h-4" />
+                  Add to queue
+                </button>
+              </MenuItem>
+
               <MenuItem>
                 <button
                   type="button"

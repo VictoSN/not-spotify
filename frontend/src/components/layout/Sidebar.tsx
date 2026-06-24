@@ -29,6 +29,9 @@ import { useTranslation } from '@/i18n/useTranslation'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
+import type { Playlist } from '@/types/playlist'
+import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
+import { openMenuAtPointer } from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
 import { useDragStore } from '@/stores/dragStore'
@@ -408,6 +411,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       notify.error("Couldn't start playback")
     }
   }
+
+  // The full Playlist for a playlist library row (drives its right-click menu);
+  // undefined for albums/artists, which keep the ⋯ menu only.
+  const playlistById = useMemo(() => new Map(savedPlaylists.map((p) => [p.id, p])), [savedPlaylists])
+  const playlistFor = (item: LibItem): Playlist | undefined =>
+    item.kind === 'playlist' ? playlistById.get(item.id) : undefined
 
   // ── Folders (a client-side grouping layer over `items`) ─────────
   const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
@@ -822,6 +831,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 rowMenuKey={rowMenuKey}
                 setRowMenuKey={setRowMenuKey}
                 onPlayItem={playLibraryItem}
+                playlistFor={playlistFor}
               />
             ))}
           </div>
@@ -859,8 +869,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
                     <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
                   </div>
-                  <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
-                  <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                  <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                  <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                     {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                   </p>
                 </NavLink>
@@ -878,6 +888,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   nowPlaying={isNowPlaying(item)}
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
                   onPlay={() => playLibraryItem(item)}
+                  menuPlaylist={playlistFor(item)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setRowMenuKey(rowMenuKey === item.key ? null : item.key)
@@ -919,8 +930,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     <LibraryPlayButton label={t('sidebar.likedSongs')} onPlay={playLikedSongs} />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-base font-bold leading-5 text-primary">{t('sidebar.likedSongs')}</p>
-                    <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">
+                    <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                       {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                     </p>
                   </div>
@@ -938,6 +949,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   compact={compactLibrary}
                   nowPlaying={isNowPlaying(item)}
                   onPlay={() => playLibraryItem(item)}
+                  menuPlaylist={playlistFor(item)}
                   onContextMenu={(e) => {
                     e.preventDefault()
                     setRowMenuKey(rowMenuKey === item.key ? null : item.key)
@@ -1209,6 +1221,7 @@ function LibraryListRow({
   children,
   onPlay,
   onContextMenu,
+  menuPlaylist,
 }: {
   item: LibItem
   compact: boolean
@@ -1216,9 +1229,15 @@ function LibraryListRow({
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
+  menuPlaylist?: Playlist
 }) {
+  // Playlists get the Spotify-style pointer menu; other rows keep the ⋯ behaviour.
+  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const handleContextMenu = menuPlaylist
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
+    : onContextMenu
   return (
-    <div className="group/row relative" onContextMenu={onContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
         to={item.to}
         className={({ isActive }) =>
@@ -1243,13 +1262,14 @@ function LibraryListRow({
           <LibraryPlayButton label={item.name} onPlay={onPlay} />
         </div>
         <div className="min-w-0 flex-1 pr-14">
-          <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+          <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
             {item.name}
           </p>
-          <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
+          <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
         </div>
       </NavLink>
       {children}
+      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
     </div>
   )
 }
@@ -1263,6 +1283,7 @@ function LibraryGridCard({
   children,
   onPlay,
   onContextMenu,
+  menuPlaylist,
 }: {
   item: LibItem
   compact: boolean
@@ -1271,9 +1292,14 @@ function LibraryGridCard({
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onContextMenu?: (e: React.MouseEvent) => void
+  menuPlaylist?: Playlist
 }) {
+  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const handleContextMenu = menuPlaylist
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
+    : onContextMenu
   return (
-    <div className="group/row relative" onContextMenu={onContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
         to={item.to}
         onClick={onNavigate}
@@ -1299,12 +1325,13 @@ function LibraryGridCard({
           )}
           <LibraryPlayButton label={item.name} onPlay={onPlay} />
         </div>
-        <p className={cn('truncate text-base font-bold leading-5', nowPlaying ? 'text-accent' : 'text-primary')}>
+        <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}
         </p>
-        <p className="truncate text-sm font-semibold leading-5 text-[#b3b3b3]">{item.subtitle}</p>
+        <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
       </NavLink>
       {children}
+      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
     </div>
   )
 }
@@ -1325,6 +1352,7 @@ function FolderGroup({
   rowMenuKey,
   setRowMenuKey,
   onPlayItem,
+  playlistFor,
 }: {
   folder: LibraryFolder
   contents: LibItem[]
@@ -1340,6 +1368,7 @@ function FolderGroup({
   rowMenuKey: string | null
   setRowMenuKey: (key: string | null) => void
   onPlayItem: (item: LibItem) => void | Promise<void>
+  playlistFor: (item: LibItem) => Playlist | undefined
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1464,6 +1493,7 @@ function FolderGroup({
                 compact={compact}
                 nowPlaying={isNowPlaying(item)}
                 onPlay={() => onPlayItem(item)}
+                menuPlaylist={playlistFor(item)}
                 onContextMenu={(e) => {
                   e.preventDefault()
                   setRowMenuKey(rowMenuKey === item.key ? null : item.key)

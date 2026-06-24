@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -14,6 +13,7 @@ import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
 import { NowPlayingBars } from '@/components/common/NowPlayingBars'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { useRatingStore } from '@/stores/ratingStore'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
@@ -44,6 +44,8 @@ export function TrackRow({
   context,
 }: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const currentContextType = usePlayerStore((s) => s.currentContextType)
+  const currentContextId = usePlayerStore((s) => s.currentContextId)
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
   const { getAggregate, seedAggregate } = useRatingStore()
   const playWithGate = usePlaybackGate()
@@ -52,6 +54,10 @@ export function TrackRow({
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isMobile = useIsMobile()
   const isCurrent = currentTrack?.id === track.id
+  const matchesRowContext = context
+    ? currentContextType === context.type && currentContextId === context.id
+    : currentContextType == null
+  const isCurrentInRowContext = isCurrent && matchesRowContext
   const isLiked = likedTrackIds.has(track.id)
   const { ratingCount, averageRating } = getAggregate(track.id)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
@@ -64,7 +70,7 @@ export function TrackRow({
   }, [track.id, track.ratingCount, track.averageRating, seedAggregate])
 
   const handlePlay = () => {
-    if (isCurrent) {
+    if (isCurrentInRowContext) {
       if (isPlaying) pause()
       else resume()
     } else if (context) {
@@ -109,11 +115,11 @@ export function TrackRow({
     >
       {/* Index / play indicator */}
       <div className="flex items-center justify-center w-4">
-        <span className={`group-hover:hidden flex items-center justify-center text-sm ${isCurrent ? 'text-accent' : 'text-secondary'}`}>
-          {isCurrent && isPlaying ? <NowPlayingBars className="h-3.5" /> : index + 1}
+        <span className={`group-hover:hidden flex items-center justify-center text-sm ${isCurrentInRowContext ? 'text-accent' : 'text-secondary'}`}>
+          {isCurrentInRowContext && isPlaying ? <NowPlayingBars className="h-3.5" /> : index + 1}
         </span>
-        <button className="hidden group-hover:flex" aria-label={isPlaying && isCurrent ? 'Pause' : 'Play'}>
-          {isCurrent && isPlaying ? (
+        <button className="hidden group-hover:flex" aria-label={isPlaying && isCurrentInRowContext ? 'Pause' : 'Play'}>
+          {isCurrentInRowContext && isPlaying ? (
             <PauseIcon className="w-4 h-4 text-primary" />
           ) : (
             <PlayIcon className="w-4 h-4 text-primary" />
@@ -130,7 +136,7 @@ export function TrackRow({
           className="w-10 h-10 rounded flex-shrink-0 object-cover"
         />
         <div className="min-w-0">
-          <p className={`text-sm font-medium truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>
+          <p className={`text-sm font-medium truncate ${isCurrentInRowContext ? 'text-accent' : 'text-primary'}`}>
             <Link
               to={`/track/${track.id}`}
               draggable={false}
@@ -206,11 +212,7 @@ export function TrackRow({
             className={`transition-opacity ${isLiked ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
             aria-label={isLiked ? 'Unlike' : 'Like'}
           >
-            {isLiked ? (
-              <HeartSolid className="w-4 h-4 text-accent" />
-            ) : (
-              <HeartIcon className="w-4 h-4 text-secondary hover:text-primary" />
-            )}
+            <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4 text-secondary hover:text-primary" />
           </button>
         </div>
 

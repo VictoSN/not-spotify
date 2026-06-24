@@ -1,7 +1,8 @@
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { DailyMix } from '@/services/trackService'
 import { usePlayerStore } from '@/stores/playerStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 
 interface MixTileProps {
   mix: DailyMix
@@ -14,8 +15,9 @@ interface MixTileProps {
  * Daily mixes are ephemeral (no dedicated page), so the tile isn't a link.
  */
 export function MixTile({ mix, flush = false }: MixTileProps) {
-  const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
-  const playWithGate = usePlaybackGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const startContext = usePlayContextGate()
+  const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'mix', id: mix.id })
 
   // First four distinct album covers for the mosaic.
   const covers: string[] = []
@@ -25,16 +27,9 @@ export function MixTile({ mix, flush = false }: MixTileProps) {
     if (covers.length === 4) break
   }
 
-  const mixIsPlaying = isPlaying && currentTrack != null && mix.tracks.some((t) => t.id === currentTrack.id)
-
   const handlePlay = () => {
-    if (mixIsPlaying) {
-      pause()
-    } else if (currentTrack && mix.tracks.some((t) => t.id === currentTrack.id)) {
-      resume()
-    } else if (mix.tracks.length > 0) {
-      playWithGate(mix.tracks[0], mix.tracks)
-    }
+    if (isActiveContext) togglePlayPause()
+    else if (mix.tracks.length > 0) startContext({ type: 'mix', id: mix.id }, mix.tracks)
   }
 
   const accent = mix.color ?? '#1db954'
@@ -67,10 +62,14 @@ export function MixTile({ mix, flush = false }: MixTileProps) {
 
         <button
           onClick={handlePlay}
-          className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
-          aria-label={mixIsPlaying ? `Pause ${mix.title}` : `Play ${mix.title}`}
+          className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 ${
+            isActiveContext
+              ? 'opacity-100'
+              : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
+          }`}
+          aria-label={isPlayingContext ? `Pause ${mix.title}` : `Play ${mix.title}`}
         >
-          {mixIsPlaying ? (
+          {isPlayingContext ? (
             <PauseIcon className="w-5 h-5 text-white" />
           ) : (
             <PlayIcon className="w-5 h-5 text-white ml-0.5" />

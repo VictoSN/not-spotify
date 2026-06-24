@@ -7,7 +7,6 @@ import {
   EllipsisHorizontalIcon,
   PlusIcon,
   MinusCircleIcon,
-  HeartIcon as HeartOutlineIcon,
   QueueListIcon,
   ForwardIcon,
   UserIcon,
@@ -22,7 +21,6 @@ import {
   CheckCircleIcon,
   IdentificationIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -37,6 +35,7 @@ import { shareLink } from '@/utils/share'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { repostService } from '@/services/repostService'
 import { notify } from '@/utils/toast'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 
 interface TrackRowMenuProps {
   track: Track
@@ -522,11 +521,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                 }}
                 className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
               >
-                {isLiked ? (
-                  <HeartSolidIcon className="w-4 h-4 text-accent" />
-                ) : (
-                  <HeartOutlineIcon className="w-4 h-4" />
-                )}
+                <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4" />
                 {isLiked ? 'Remove from your Liked Songs' : 'Save to your Liked Songs'}
               </button>
             </MenuItem>

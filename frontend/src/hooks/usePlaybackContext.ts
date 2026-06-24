@@ -15,13 +15,15 @@ export interface PlaybackContextState {
 
 /**
  * Derives whether a given album/playlist/artist/liked surface is the one the
- * global player is currently playing — the single source of truth for every
- * play/pause button in the app. No card keeps its own local play state.
+ * global player is currently playing. No card keeps its own local play state.
  *
- * Albums/artists match on the current track's own album/artist id (so playing
- * any track of the album lights its button), and also on the explicit context.
- * Playlists/liked match only on the explicit context, since a track can belong
- * to many playlists.
+ * Albums follow the current track's album id unless an explicit artist or mix
+ * context owns playback. Artist/mix playback can queue album tracks, but it
+ * must not make album UI look active.
+ *
+ * Everything else (artist/playlist/liked/mix) matches only the explicit playback
+ * context. In particular, an artist or mix button must never light up just
+ * because the current track happens to be inside that surface.
  */
 export function usePlaybackContext(context: PlaybackContextInput | null): PlaybackContextState {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -32,14 +34,13 @@ export function usePlaybackContext(context: PlaybackContextInput | null): Playba
   const isActiveContext = (() => {
     if (!context) return false
     const matchesContext = ctxType === context.type && ctxId === context.id
-    switch (context.type) {
-      case 'album':
-        return currentTrack?.album.id === context.id || matchesContext
-      case 'artist':
-        return currentTrack?.artist.id === context.id || matchesContext
-      default:
-        return matchesContext
+    // Albums derive from the current track, unless artist/mix playback owns the queue.
+    if (context.type === 'album') {
+      if (ctxType === 'artist' || ctxType === 'mix') return false
+      return currentTrack?.album.id === context.id
     }
+    // Artist / playlist / liked / mix react only to the explicit context.
+    return matchesContext
   })()
 
   return { isActiveContext, isPlayingContext: isActiveContext && isPlaying }

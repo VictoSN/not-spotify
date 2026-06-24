@@ -1,9 +1,8 @@
 import { Link } from 'react-router-dom'
-import { HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useTranslation } from '@/i18n/useTranslation'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { StarRating } from './StarRating'
 
 export function NowPlayingInfo() {
@@ -45,11 +44,7 @@ export function NowPlayingInfo() {
         </div>
       </div>
       <button onClick={toggleLike} aria-label={isLiked ? t('player.unlike') : t('player.like')}>
-        {isLiked ? (
-          <HeartSolid className="w-4 h-4 text-accent" />
-        ) : (
-          <HeartIcon className="w-4 h-4 text-secondary hover:text-primary transition-colors" />
-        )}
+        <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4 text-secondary hover:text-primary" />
       </button>
     </div>
   )

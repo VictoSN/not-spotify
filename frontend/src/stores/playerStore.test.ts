@@ -62,6 +62,8 @@ beforeEach(() => {
     duration: 0,
     queue: [],
     queueIndex: -1,
+    currentContextType: null,
+    currentContextId: null,
     history: [],
     volume: 0.8,
     isMuted: false,
@@ -391,5 +393,36 @@ describe('playerStore — audio ads', () => {
     const s = usePlayerStore.getState()
     expect(s.currentAd).toBeNull()
     expect(s.currentTrack?.id).toBe('a') // nothing was queued behind the ad, so nothing advances
+  })
+})
+
+describe('playerStore — playback context', () => {
+  it('playContext() records the album/playlist context that seeded the queue', () => {
+    setPremium()
+    const q = [track('a'), track('b'), track('c')]
+    usePlayerStore.getState().playContext({ type: 'playlist', id: 'pl1' }, q, 1)
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('b')
+    expect(s.queueIndex).toBe(1)
+    expect(s.isPlaying).toBe(true)
+    expect(s.currentContextType).toBe('playlist')
+    expect(s.currentContextId).toBe('pl1')
+    expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('play() (a standalone pick) clears any previous context', () => {
+    setPremium()
+    usePlayerStore.getState().playContext({ type: 'album', id: 'al1' }, [track('a'), track('b')])
+    expect(usePlayerStore.getState().currentContextType).toBe('album')
+    usePlayerStore.getState().play(track('z'))
+    const s = usePlayerStore.getState()
+    expect(s.currentContextType).toBeNull()
+    expect(s.currentContextId).toBeNull()
+  })
+
+  it('playContext() ignores an out-of-range start index', () => {
+    setPremium()
+    usePlayerStore.getState().playContext({ type: 'album', id: 'al1' }, [], 0)
+    expect(usePlayerStore.getState().currentContextType).toBeNull()
   })
 })

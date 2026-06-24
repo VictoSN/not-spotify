@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowTopRightOnSquareIcon,
-  HeartIcon,
   ChevronLeftIcon,
   ChevronDoubleRightIcon,
   Bars3Icon,
   ArrowsPointingOutIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid, CheckBadgeIcon } from '@heroicons/react/24/solid'
+import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -828,11 +828,7 @@ export function NowPlayingPanel() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? t('player.unlike') : t('player.like')}>
-                {isLiked ? (
-                  <HeartSolid className="w-6 h-6 text-accent" />
-                ) : (
-                  <HeartIcon className="w-6 h-6 text-secondary hover:text-primary transition-colors" />
-                )}
+                <AnimatedLikeIcon liked={isLiked} className="w-6 h-6" heartClassName="w-6 h-6 text-secondary hover:text-primary" />
               </button>
             </div>
           </div>

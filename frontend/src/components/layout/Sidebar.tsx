@@ -31,6 +31,8 @@ import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Playlist } from '@/types/playlist'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
+import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
+import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
@@ -48,9 +50,6 @@ import {
   renameFolder,
   deleteFolder,
   setFolderCollapsed,
-  addItemToFolder,
-  removeItemFromFolder,
-  folderOfItem,
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
 import { cn } from '@/utils/cn'
@@ -152,7 +151,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [pinned, setPinned] = useState<Set<string>>(getPinnedSet)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
-  const [rowMenuKey, setRowMenuKey] = useState<string | null>(null)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
@@ -378,8 +376,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       likedSongsQuery.includes(query.trim().toLowerCase()))
 
   const isNowPlaying = (item: LibItem) =>
-    (item.kind === 'album' && currentTrack?.album.id === item.id) ||
-    (item.kind === 'artist' && currentTrack?.artist.id === item.id) ||
+    (item.kind === 'album' && currentContextType !== 'artist' && currentContextType !== 'mix' && currentTrack?.album.id === item.id) ||
+    (item.kind === 'artist' && currentContextType === 'artist' && currentContextId === item.id) ||
     (item.kind === 'playlist' && currentContextType === 'playlist' && currentContextId === item.id)
 
   const playLikedSongs = () => {
@@ -420,6 +418,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const playlistById = useMemo(() => new Map(savedPlaylists.map((p) => [p.id, p])), [savedPlaylists])
   const playlistFor = (item: LibItem): Playlist | undefined =>
     item.kind === 'playlist' ? playlistById.get(item.id) : undefined
+  const albumById = useMemo(() => new Map(savedAlbums.map((a) => [a.id, a])), [savedAlbums])
+  const albumFor = (item: LibItem): Album | undefined =>
+    item.kind === 'album' ? albumById.get(item.id) : undefined
+  const artistById = useMemo(() => new Map(followedArtists.map((a) => [a.id, a])), [followedArtists])
+  const artistFor = (item: LibItem): Artist | undefined =>
+    item.kind === 'artist' ? artistById.get(item.id) : undefined
 
   // ── Folders (a client-side grouping layer over `items`) ─────────
   const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
@@ -698,7 +702,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         {filter !== 'all' && (
           <button
             onClick={() => setFilter('all')}
-            className="w-6 h-6 rounded-full bg-elevated hover:bg-elevated/70 text-primary flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-all"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-elevated text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
             aria-label={t('sidebar.clearFilter')}
           >
             <XMarkIcon className="w-3.5 h-3.5" />
@@ -711,7 +715,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               key={c.key}
               onClick={() => setFilter(filter === c.key ? 'all' : c.key)}
               className={cn(
-                'px-2.5 py-1 rounded-full text-xs font-medium transition-all active:scale-95',
+                'flex h-8 items-center rounded-full px-3 text-xs font-medium transition-all active:scale-95',
                 filter === c.key
                   ? 'bg-primary text-page'
                   : 'bg-elevated text-primary hover:bg-elevated/70',
@@ -820,7 +824,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 folder={folder}
                 contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
                 compact={compactLibrary}
-                folders={folders}
                 isNowPlaying={isNowPlaying}
                 renaming={renamingFolderId === folder.id}
                 renameValue={renameValue}
@@ -831,10 +834,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 }}
                 onRenameCommit={() => commitRename(folder.id)}
                 onRenameCancel={() => setRenamingFolderId(null)}
-                rowMenuKey={rowMenuKey}
-                setRowMenuKey={setRowMenuKey}
                 onPlayItem={playLibraryItem}
                 playlistFor={playlistFor}
+                albumFor={albumFor}
+                artistFor={artistFor}
               />
             ))}
           </div>
@@ -892,20 +895,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                  }}
+                  menuAlbum={albumFor(item)}
+                  menuArtist={artistFor(item)}
                 >
                   <RowOverlay
                     variant="grid"
                     itemKey={item.key}
                     pinned={pinned.has(item.key)}
                     showPin
-                    folders={folders}
-                    menuOpen={rowMenuKey === item.key}
-                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                    onCloseMenu={() => setRowMenuKey(null)}
                   />
                 </LibraryGridCard>
               </TrackDropZone>
@@ -953,20 +950,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   nowPlaying={isNowPlaying(item)}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                  }}
+                  menuAlbum={albumFor(item)}
+                  menuArtist={artistFor(item)}
                 >
                   <RowOverlay
                     variant="list"
                     itemKey={item.key}
                     pinned={pinned.has(item.key)}
                     showPin
-                    folders={folders}
-                    menuOpen={rowMenuKey === item.key}
-                    onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                    onCloseMenu={() => setRowMenuKey(null)}
                   />
                 </LibraryListRow>
               </TrackDropZone>
@@ -1063,134 +1054,13 @@ function RowOverlay({
   itemKey,
   pinned,
   showPin,
-  folders,
-  menuOpen,
-  onToggleMenu,
-  onCloseMenu,
 }: {
   variant: 'list' | 'grid'
   itemKey: string
   pinned: boolean
   showPin: boolean
-  folders: LibraryFolder[]
-  menuOpen: boolean
-  onToggleMenu: () => void
-  onCloseMenu: () => void
 }) {
-  return (
-    <>
-      {showPin && <PinButton itemKey={itemKey} pinned={pinned} variant={variant} />}
-      <RowMenu
-        variant={variant}
-        itemKey={itemKey}
-        folders={folders}
-        open={menuOpen}
-        onToggle={onToggleMenu}
-        onClose={onCloseMenu}
-      />
-    </>
-  )
-}
-
-/** Per-row dropdown to move an item into / out of a folder. */
-function RowMenu({
-  variant,
-  itemKey,
-  folders,
-  open,
-  onToggle,
-  onClose,
-}: {
-  variant: 'list' | 'grid'
-  itemKey: string
-  folders: LibraryFolder[]
-  open: boolean
-  onToggle: () => void
-  onClose: () => void
-}) {
-  const { t } = useTranslation()
-  const currentFolderId = folderOfItem(folders, itemKey)
-  const stop = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-  }
-  return (
-    <div
-      className={cn(
-        'absolute z-20',
-        variant === 'list' ? 'right-1.5 top-1/2 -translate-y-1/2' : 'right-2 top-2',
-      )}
-    >
-      <button
-        type="button"
-        onClick={(e) => {
-          stop(e)
-          onToggle()
-        }}
-        aria-label={t('sidebar.moveToFolder')}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        className={cn(
-          'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-          variant === 'grid' && 'bg-page/70 backdrop-blur-sm',
-          open ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
-        )}
-      >
-        <EllipsisHorizontalIcon className="h-4 w-4" />
-      </button>
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={(e) => { stop(e); onClose() }} />
-          <div className="absolute right-0 top-full z-50 mt-1 w-52 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-            <p className="px-3 pb-1 pt-2 text-xs font-bold text-secondary">{t('sidebar.moveToFolder')}</p>
-            <div className="max-h-56 overflow-y-auto">
-              {folders.length === 0 && <p className="px-3 py-1.5 text-xs text-secondary">{t('sidebar.noFolders')}</p>}
-              {folders.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={(e) => {
-                    stop(e)
-                    addItemToFolder(f.id, itemKey)
-                    onClose()
-                  }}
-                  className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                >
-                  <span className="truncate">{f.name}</span>
-                  {currentFolderId === f.id && <CheckIcon className="h-4 w-4 shrink-0 text-accent" />}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={(e) => {
-                stop(e)
-                const f = createFolder()
-                addItemToFolder(f.id, itemKey)
-                onClose()
-              }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-            >
-              <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.newFolder')}
-            </button>
-            {currentFolderId && (
-              <>
-                <div className="my-1 border-t border-secondary/10" />
-                <button
-                  onClick={(e) => {
-                    stop(e)
-                    removeItemFromFolder(itemKey)
-                    onClose()
-                  }}
-                  className="w-full px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                >
-                  {t('sidebar.removeFromFolder')}
-                </button>
-              </>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  )
+  return showPin ? <PinButton itemKey={itemKey} pinned={pinned} variant={variant} /> : null
 }
 
 /**
@@ -1241,22 +1111,30 @@ function LibraryListRow({
   nowPlaying,
   children,
   onPlay,
-  onContextMenu,
   menuPlaylist,
+  menuAlbum,
+  menuArtist,
 }: {
   item: LibItem
   compact: boolean
   nowPlaying: boolean
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
-  onContextMenu?: (e: React.MouseEvent) => void
   menuPlaylist?: Playlist
+  menuAlbum?: Album
+  menuArtist?: Artist
 }) {
   // Playlists get the Spotify-style pointer menu; other rows keep the ⋯ behaviour.
-  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
+  const albumMenuRef = useRef<AlbumMenuHandle>(null)
+  const artistMenuRef = useRef<ArtistMenuHandle>(null)
   const handleContextMenu = menuPlaylist
-    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
-    : onContextMenu
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, playlistMenuRef)
+    : menuAlbum
+      ? (e: React.MouseEvent) => openMenuAtPointer(e, albumMenuRef)
+      : menuArtist
+        ? (e: React.MouseEvent) => openMenuAtPointer(e, artistMenuRef)
+        : undefined
   return (
     <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
@@ -1290,7 +1168,17 @@ function LibraryListRow({
         </div>
       </NavLink>
       {children}
-      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
+      {menuPlaylist && <PlaylistRowMenu ref={playlistMenuRef} playlist={menuPlaylist} />}
+      {menuAlbum && (
+        <div className="hidden">
+          <AlbumMenu ref={albumMenuRef} album={menuAlbum} />
+        </div>
+      )}
+      {menuArtist && (
+        <div className="hidden">
+          <ArtistMenu ref={artistMenuRef} artist={menuArtist} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1303,8 +1191,9 @@ function LibraryGridCard({
   onNavigate,
   children,
   onPlay,
-  onContextMenu,
   menuPlaylist,
+  menuAlbum,
+  menuArtist,
 }: {
   item: LibItem
   compact: boolean
@@ -1312,13 +1201,20 @@ function LibraryGridCard({
   onNavigate: () => void
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
-  onContextMenu?: (e: React.MouseEvent) => void
   menuPlaylist?: Playlist
+  menuAlbum?: Album
+  menuArtist?: Artist
 }) {
-  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
+  const albumMenuRef = useRef<AlbumMenuHandle>(null)
+  const artistMenuRef = useRef<ArtistMenuHandle>(null)
   const handleContextMenu = menuPlaylist
-    ? (e: React.MouseEvent) => openMenuAtPointer(e, menuRef)
-    : onContextMenu
+    ? (e: React.MouseEvent) => openMenuAtPointer(e, playlistMenuRef)
+    : menuAlbum
+      ? (e: React.MouseEvent) => openMenuAtPointer(e, albumMenuRef)
+      : menuArtist
+        ? (e: React.MouseEvent) => openMenuAtPointer(e, artistMenuRef)
+        : undefined
   return (
     <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
@@ -1352,7 +1248,17 @@ function LibraryGridCard({
         <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
       </NavLink>
       {children}
-      {menuPlaylist && <PlaylistRowMenu ref={menuRef} playlist={menuPlaylist} />}
+      {menuPlaylist && <PlaylistRowMenu ref={playlistMenuRef} playlist={menuPlaylist} />}
+      {menuAlbum && (
+        <div className="hidden">
+          <AlbumMenu ref={albumMenuRef} album={menuAlbum} />
+        </div>
+      )}
+      {menuArtist && (
+        <div className="hidden">
+          <ArtistMenu ref={artistMenuRef} artist={menuArtist} />
+        </div>
+      )}
     </div>
   )
 }
@@ -1362,7 +1268,6 @@ function FolderGroup({
   folder,
   contents,
   compact,
-  folders,
   isNowPlaying,
   renaming,
   renameValue,
@@ -1370,15 +1275,14 @@ function FolderGroup({
   onRenameStart,
   onRenameCommit,
   onRenameCancel,
-  rowMenuKey,
-  setRowMenuKey,
   onPlayItem,
   playlistFor,
+  albumFor,
+  artistFor,
 }: {
   folder: LibraryFolder
   contents: LibItem[]
   compact: boolean
-  folders: LibraryFolder[]
   isNowPlaying: (item: LibItem) => boolean
   renaming: boolean
   renameValue: string
@@ -1386,10 +1290,10 @@ function FolderGroup({
   onRenameStart: () => void
   onRenameCommit: () => void
   onRenameCancel: () => void
-  rowMenuKey: string | null
-  setRowMenuKey: (key: string | null) => void
   onPlayItem: (item: LibItem) => void | Promise<void>
   playlistFor: (item: LibItem) => Playlist | undefined
+  albumFor: (item: LibItem) => Album | undefined
+  artistFor: (item: LibItem) => Artist | undefined
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1515,20 +1419,14 @@ function FolderGroup({
                 nowPlaying={isNowPlaying(item)}
                 onPlay={() => onPlayItem(item)}
                 menuPlaylist={playlistFor(item)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setRowMenuKey(rowMenuKey === item.key ? null : item.key)
-                }}
+                menuAlbum={albumFor(item)}
+                menuArtist={artistFor(item)}
               >
                 <RowOverlay
                   variant="list"
                   itemKey={item.key}
                   pinned={false}
                   showPin={false}
-                  folders={folders}
-                  menuOpen={rowMenuKey === item.key}
-                  onToggleMenu={() => setRowMenuKey(rowMenuKey === item.key ? null : item.key)}
-                  onCloseMenu={() => setRowMenuKey(null)}
                 />
               </LibraryListRow>
             ))

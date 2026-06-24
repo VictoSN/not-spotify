@@ -5,8 +5,6 @@ import {
   ArrowDownTrayIcon,
   CodeBracketIcon,
 } from '@heroicons/react/24/outline'
-import { CheckCircleIcon, HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
-import { HeartIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { trackService } from '@/services/trackService'
@@ -16,6 +14,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { Spinner } from '@/components/ui/Spinner'
@@ -237,11 +236,7 @@ export function TrackDetailPage() {
           className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors"
           aria-label={isLiked ? t('player.unlike') : t('player.like')}
         >
-          {isLiked ? (
-            <HeartSolid className="w-7 h-7 text-accent" />
-          ) : (
-            <HeartIcon className="w-7 h-7" />
-          )}
+          <AnimatedLikeIcon liked={isLiked} className="w-7 h-7" heartClassName="w-7 h-7" />
         </button>
 
         {/* Download (premium only) */}
@@ -461,11 +456,7 @@ function PopularArtistTrackRow({
           isLiked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
         }`}
       >
-        {isLiked ? (
-          <CheckCircleIcon className="h-5 w-5 text-accent" />
-        ) : (
-          <HeartIcon className="h-5 w-5 text-secondary transition-colors hover:text-primary" />
-        )}
+        <AnimatedLikeIcon liked={isLiked} className="h-5 w-5" heartClassName="h-5 w-5 text-secondary hover:text-primary" />
       </button>
 
       <span className="justify-self-end text-sm font-semibold text-secondary">

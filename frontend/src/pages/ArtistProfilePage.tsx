@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { PlayIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { ShareIcon } from '@heroicons/react/24/outline'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { artistService } from '@/services/artistService'
+import { trackService } from '@/services/trackService'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayerStore } from '@/stores/playerStore'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -40,7 +43,16 @@ export function ArtistProfilePage() {
   const [shareCopied, setShareCopied] = useState(false)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [bioOpen, setBioOpen] = useState(false)
-  const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const currentContextType = usePlayerStore((s) => s.currentContextType)
+  const currentContextId = usePlayerStore((s) => s.currentContextId)
+  // The artist button reacts ONLY when this artist is the explicit context —
+  // never just because the current track happens to be by them.
+  const { isActiveContext: artistActive, isPlayingContext: artistPlaying } =
+    usePlaybackContext(id ? { type: 'artist', id } : null)
   const { followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -84,6 +96,24 @@ export function ArtistProfilePage() {
     }
     if (isFollowing) unfollowArtist(artist.id)
     else followArtist(artist)
+  }
+
+  const playTrackThroughAlbum = async (track: Track) => {
+    const isSameTrack = currentTrack?.id === track.id
+    const isSameAlbumContext = currentContextType === 'album' && currentContextId === track.album.id
+    if (isSameTrack && isSameAlbumContext) {
+      togglePlayPause()
+      return
+    }
+
+    try {
+      const albumTracks = await trackService.getByAlbum(track.album.id)
+      const queue = albumTracks.length > 0 ? albumTracks : [track]
+      const startIndex = Math.max(queue.findIndex((queuedTrack) => queuedTrack.id === track.id), 0)
+      startContext({ type: 'album', id: track.album.id }, queue, startIndex)
+    } catch {
+      startContext({ type: 'album', id: track.album.id }, [track], 0)
+    }
   }
 
   return (
@@ -154,8 +184,19 @@ export function ArtistProfilePage() {
         {/* Actions */}
         <div className="mx-auto flex max-w-[1360px] items-center gap-4 px-5 py-6 md:px-8">
         {topTracks.length > 0 && (
-          <Button onClick={() => playWithGate(topTracks[0], topTracks)} size="lg" className="gap-2">
-            <PlayIcon className="w-5 h-5" /> {t('common.play')}
+          <Button
+            onClick={() => {
+              if (artistActive) togglePlayPause()
+              else startContext({ type: 'artist', id: artist.id }, topTracks)
+            }}
+            size="lg"
+            className="gap-2"
+          >
+            {artistPlaying ? (
+              <><PauseIcon className="w-5 h-5" /> {t('player.pause')}</>
+            ) : (
+              <><PlayIcon className="w-5 h-5" /> {t('common.play')}</>
+            )}
           </Button>
         )}
         <Button variant={isFollowing ? 'outline' : 'secondary'} onClick={toggleFollow}>
@@ -185,7 +226,20 @@ export function ArtistProfilePage() {
                       key={track.id}
                       track={track}
                       index={i}
-                      onPlay={() => playWithGate(track, topTracks)}
+                      active={
+                        currentTrack?.id === track.id &&
+                        currentContextType === 'album' &&
+                        currentContextId === track.album.id
+                      }
+                      playing={
+                        currentTrack?.id === track.id &&
+                        currentContextType === 'album' &&
+                        currentContextId === track.album.id &&
+                        isPlaying
+                      }
+                      // Playing a song here uses the album+track method: the song's
+                      // album button reacts, the artist button does not.
+                      onPlay={() => void playTrackThroughAlbum(track)}
                     />
                   ))}
                 </div>
@@ -319,10 +373,14 @@ export function ArtistProfilePage() {
 function ArtistPopularTrackRow({
   track,
   index,
+  active = false,
+  playing = false,
   onPlay,
 }: {
   track: Track
   index: number
+  active?: boolean
+  playing?: boolean
   onPlay: () => void
 }) {
   return (
@@ -339,8 +397,15 @@ function ArtistPopularTrackRow({
       className="group grid min-h-14 cursor-pointer grid-cols-[28px_44px_minmax(0,1fr)_52px] items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.07] md:grid-cols-[28px_44px_minmax(0,1fr)_104px_52px]"
     >
       <div className="flex h-8 items-center justify-center text-sm font-semibold text-secondary">
-        <span className="group-hover:hidden">{index + 1}</span>
-        <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
+        {/* The currently-playing row shows a pause toggle; others show their rank, swapping to play on hover. */}
+        {playing ? (
+          <PauseIcon className="h-4 w-4 text-accent" />
+        ) : (
+          <>
+            <span className={`group-hover:hidden ${active ? 'text-accent' : ''}`}>{index + 1}</span>
+            <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
+          </>
+        )}
       </div>
 
       <img src={track.album.coverUrl} alt="" className="h-10 w-10 rounded object-cover shadow-md" />
@@ -349,7 +414,7 @@ function ArtistPopularTrackRow({
         <Link
           to={`/track/${track.id}`}
           onClick={(event) => event.stopPropagation()}
-          className="block truncate text-sm font-black text-primary hover:underline"
+          className={`block truncate text-sm font-black hover:underline ${active ? 'text-accent' : 'text-primary'}`}
         >
           {track.title}
         </Link>

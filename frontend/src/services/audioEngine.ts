@@ -153,9 +153,12 @@ export function effectiveQuality(): string {
 }
 
 const clampVol = (v: number) => Math.max(0, Math.min(1, v))
+// Leave a little digital headroom so the app feels closer to Spotify's loudness
+// instead of pushing every track right up against full-scale output.
+const MASTER_OUTPUT_GAIN = 0.72
 const volumeToGain = (volume: number) => {
   const clamped = clampVol(volume)
-  return clamped === 0 ? 0 : Math.pow(clamped, 1.75)
+  return clamped === 0 ? 0 : Math.pow(clamped, 1.75) * MASTER_OUTPUT_GAIN
 }
 
 class AudioEngine {
@@ -372,7 +375,7 @@ class AudioEngine {
       c.ratio.setValueAtTime(6, now)
       c.attack.setValueAtTime(0.01, now)
       c.release.setValueAtTime(0.3, now)
-      this.normalizeGain.gain.setTargetAtTime(1.6, now, 0.05)
+      this.normalizeGain.gain.setTargetAtTime(1.18, now, 0.05)
     } else {
       c.threshold.setValueAtTime(0, now)
       c.knee.setValueAtTime(0, now)
@@ -537,10 +540,24 @@ class AudioEngine {
     let prevIsMuted = false
     let prevSeek = 0
     let prevRate = 1
+    let prevContextKey = ''
+    let prevQueueIndex = -1
 
     this.unsubscribe = usePlayerStore.subscribe((state) => {
-      const { currentTrack, isPlaying, volume, isMuted, currentTime, duration, playbackRate } = state
+      const {
+        currentTrack,
+        isPlaying,
+        volume,
+        isMuted,
+        currentTime,
+        duration,
+        playbackRate,
+        currentContextType,
+        currentContextId,
+        queueIndex,
+      } = state
       const target = isMuted ? 0 : volumeToGain(volume)
+      const contextKey = `${currentContextType ?? ''}:${currentContextId ?? ''}`
 
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {
@@ -548,6 +565,15 @@ class AudioEngine {
           prevTrackId = currentTrack.id
           prevIsPlaying = isPlaying
           prevSeek = 0
+          prevContextKey = contextKey
+          prevQueueIndex = queueIndex
+        } else if (contextKey !== prevContextKey || queueIndex !== prevQueueIndex) {
+          // Starting a different context can reuse the same first track. Treat it
+          // as a deliberate restart even though the track id did not change.
+          this.activeDeck.currentTime = currentTime
+          prevSeek = currentTime
+          prevContextKey = contextKey
+          prevQueueIndex = queueIndex
         } else if (Math.abs(currentTime - this.activeDeck.currentTime) > 1.5 && currentTime !== prevSeek) {
           // External seek (not from our own timeupdate tick).
           this.activeDeck.currentTime = currentTime

@@ -88,7 +88,7 @@ function advanceWithAdGate(next: Track, nextIndex: number) {
 export type RepeatMode = 'off' | 'one' | 'all'
 
 /** What kind of surface seeded the current queue (album page, playlist, etc.). */
-export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked'
+export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked' | 'mix'
 export interface PlayContext {
   type: PlayContextType
   id: string

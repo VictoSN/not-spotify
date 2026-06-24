@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ChevronDownIcon, HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -10,6 +9,7 @@ import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { NowPlayingLyrics } from './NowPlayingLyrics'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 
 export function MobileNowPlayingSheet() {
   const { currentTrack, isNowPlayingOpen, toggleNowPlaying, queue, queueIndex } = usePlayerStore()
@@ -95,10 +95,7 @@ export function MobileNowPlayingSheet() {
             className="shrink-0 mt-1 p-1 transition-transform active:scale-90"
             aria-label={isLiked ? 'Unlike' : 'Like'}
           >
-            {isLiked
-              ? <HeartSolid className="w-7 h-7 text-accent" />
-              : <HeartIcon className="w-7 h-7 text-secondary hover:text-primary transition-colors" />
-            }
+            <AnimatedLikeIcon liked={isLiked} className="w-7 h-7" heartClassName="w-7 h-7 text-secondary hover:text-primary" />
           </button>
         </div>
 

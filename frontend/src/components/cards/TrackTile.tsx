@@ -21,18 +21,19 @@ interface TrackTileProps {
  *  Right-click (or the hover "…") opens the track menu; the tile is draggable into
  *  the sidebar library/playlists. */
 export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
-  const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
+  const { currentTrack, isPlaying, pause, resume, currentContextType } = usePlayerStore()
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const isCurrent = currentTrack?.id === track.id
+  const isTrackSurfaceActive = isCurrent && currentContextType == null
 
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (isCurrent) {
+    if (isTrackSurfaceActive) {
       if (isPlaying) pause()
       else resume()
     } else {
@@ -70,16 +71,16 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
           <button
             onClick={handlePlay}
             className="absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-200 shadow-lg hover:scale-105"
-            aria-label={isCurrent && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
+            aria-label={isTrackSurfaceActive && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
           >
-            {isCurrent && isPlaying ? (
+            {isTrackSurfaceActive && isPlaying ? (
               <PauseIcon className="w-5 h-5 text-white" />
             ) : (
               <PlayIcon className="w-5 h-5 text-white ml-0.5" />
             )}
           </button>
         </div>
-        <p className={`text-sm font-semibold truncate ${isCurrent ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
+        <p className={`text-sm font-semibold truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
         <p className="text-xs text-secondary mt-0.5 truncate">
           <span
             role="link"

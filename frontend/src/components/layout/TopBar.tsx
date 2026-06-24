@@ -202,7 +202,7 @@ export function TopBar() {
   // Spotify-style account menu: text-only rows, with a trailing external-link
   // arrow on the items that conceptually leave the app (Account/Premium/Install).
   const userMenuItemClass =
-    'flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-black text-primary transition-colors hover:bg-white/10'
+    'flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-medium text-primary transition-colors hover:bg-white/10'
   const userMenuArrowClass = 'h-4 w-4 shrink-0 text-secondary'
   const suggestionsLoading =
     showSearchPanel &&

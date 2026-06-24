@@ -2,10 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Track } from '@/types/track'
 
 // The store records plays and fetches ads as side effects; mock those services so
-// tests stay offline and synchronous-ish. artistService is dynamically imported by
-// the autoplay branch.
+// tests stay offline and synchronous-ish. trackService.getRadio is dynamically
+// imported to fill the queue with recommendations (standalone + end-of-queue).
 vi.mock('@/services/trackService', () => ({
-  trackService: { recordPlay: vi.fn(() => Promise.resolve()) },
+  trackService: {
+    recordPlay: vi.fn(() => Promise.resolve()),
+    getRadio: vi.fn(() => Promise.resolve([])),
+  },
 }))
 const getNext = vi.fn(() => Promise.resolve<unknown>(null))
 vi.mock('@/services/adService', () => ({
@@ -14,13 +17,10 @@ vi.mock('@/services/adService', () => ({
     getNext: (...args: unknown[]) => getNext(...(args as [])),
   },
 }))
-vi.mock('@/services/artistService', () => ({
-  artistService: { getTopTracks: vi.fn(() => Promise.resolve([])) },
-}))
 
 import { usePlayerStore } from './playerStore'
 import { useAuthStore } from './authStore'
-import { artistService } from '@/services/artistService'
+import { trackService } from '@/services/trackService'
 
 const track = (id: string): Track =>
   ({
@@ -97,6 +97,40 @@ describe('playerStore — transport & queue', () => {
     expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
   })
 
+  it('play() of a standalone song fills Up Next with song recommendations', async () => {
+    setPremium()
+    vi.mocked(trackService.getRadio).mockResolvedValue([track('rec1'), track('rec2')])
+    usePlayerStore.getState().play(track('solo')) // no queue → standalone
+    await flush()
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('solo')
+    expect(s.queueIndex).toBe(0)
+    expect(s.queue.map((t) => t.id)).toEqual(['solo', 'rec1', 'rec2'])
+  })
+
+  it('play() of a playlist/album leaves its queue untouched (no rec fill)', async () => {
+    setPremium()
+    vi.mocked(trackService.getRadio).mockResolvedValue([track('rec1'), track('rec2')])
+    const q = [track('a'), track('b'), track('c')]
+    usePlayerStore.getState().play(q[0], q)
+    await flush()
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('a playlist played before the rec fetch resolves cancels the standalone fill', async () => {
+    setPremium()
+    let resolveRecs: (tracks: Track[]) => void = () => {}
+    vi.mocked(trackService.getRadio).mockReturnValue(
+      new Promise<Track[]>((r) => { resolveRecs = r }),
+    )
+    usePlayerStore.getState().play(track('solo')) // standalone — kicks off the fetch
+    usePlayerStore.getState().play(track('a'), [track('a'), track('b')]) // playlist arrives first
+    resolveRecs([track('rec1')]) // stale fetch resolves late
+    await flush()
+    // The stale recommendations must not append onto the playlist queue.
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual(['a', 'b'])
+  })
+
   it('addToQueue appends; playNext inserts right after the current track', () => {
     setPremium()
     usePlayerStore.getState().play(track('a'), [track('a'), track('b')])
@@ -160,8 +194,20 @@ describe('playerStore — transport & queue', () => {
 
   it('skipNext autoplays more from the artist when a premium queue runs out', async () => {
     setPremium()
-    vi.mocked(artistService.getTopTracks).mockResolvedValue([track('x'), track('y')])
+    vi.mocked(trackService.getRadio).mockResolvedValue([track('x'), track('y')])
     // autoplay defaults on (no ns-pref-autoplay set); end of a sequential queue.
+    usePlayerStore.setState({ queue: [track('a'), track('b')], queueIndex: 1, currentTrack: track('b'), isPlaying: true })
+    usePlayerStore.getState().skipNext()
+    await flush()
+    const s = usePlayerStore.getState()
+    expect(s.currentTrack?.id).toBe('x')
+    expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'x', 'y'])
+  })
+
+  it('autoplays recommendations for FREE users too when a queue runs out', async () => {
+    setFree()
+    vi.mocked(trackService.getRadio).mockResolvedValue([track('x'), track('y')])
+    // A playlist/album queue that has reached its last track.
     usePlayerStore.setState({ queue: [track('a'), track('b')], queueIndex: 1, currentTrack: track('b'), isPlaying: true })
     usePlayerStore.getState().skipNext()
     await flush()

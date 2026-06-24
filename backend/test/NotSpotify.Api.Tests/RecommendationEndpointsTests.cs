@@ -266,7 +266,7 @@ public class RecommendationEndpointsTests
     }
 
     [Fact]
-    public async Task Radio_ReturnsSeedFirst_AndRanksRelatedAboveUnrelated()
+    public async Task Radio_ReturnsSeedFirst_AndStaysInTheGenreBubble()
     {
         await using var db = TestHelpers.NewDb();
         var (artist, album) = db.AddArtistAlbum("Main");
@@ -277,7 +277,7 @@ public class RecommendationEndpointsTests
         var seed = db.AddTrack("Seed", artist, album, playCount: 1);
         var sameArtist = db.AddTrack("Same artist", artist, album, playCount: 1);
         var sameGenre = db.AddTrack("Same genre", other, otherAlbum, playCount: 1);
-        var unrelated = db.AddTrack("Unrelated", other, otherAlbum, playCount: 1);
+        var unrelated = db.AddTrack("Unrelated", other, otherAlbum, playCount: 999); // huge plays, wrong genre
         db.Tag(seed, rock);
         db.Tag(sameGenre, rock);
         db.Tag(unrelated, pop);
@@ -287,27 +287,29 @@ public class RecommendationEndpointsTests
 
         Assert.Equal(seed.Id, dtos[0].Id); // station always starts with the seed
         var ids = dtos.Select(d => d.Id).ToList();
-        Assert.True(ids.IndexOf(sameGenre.Id) < ids.IndexOf(unrelated.Id));
-        Assert.True(ids.IndexOf(sameArtist.Id) < ids.IndexOf(unrelated.Id));
+        Assert.Contains(sameGenre.Id, ids);  // shares the seed's genre
+        Assert.Contains(sameArtist.Id, ids); // same artist is the same bubble
+        // A different-genre track never jumps into the bubble — even with 999 plays.
+        Assert.DoesNotContain(dtos, d => d.Id == unrelated.Id);
+        Assert.True(ids.IndexOf(sameGenre.Id) < ids.IndexOf(sameArtist.Id)); // genre match beats genre-less same-artist
     }
 
     [Fact]
-    public async Task Radio_RanksCoListenedTracksAboveGenreOnlyMatches()
+    public async Task Radio_WithinGenre_RanksCoListenedAboveGenreOnly()
     {
         await using var db = TestHelpers.NewDb();
         var (a1, al1) = db.AddArtistAlbum("Seed artist");
         var (a2, al2) = db.AddArtistAlbum("Other artist");
         var g1 = db.AddGenre("G1", "g1");
-        var g2 = db.AddGenre("G2", "g2");
         var u1 = db.AddUser(Guid.NewGuid(), "u1");
         var u2 = db.AddUser(Guid.NewGuid(), "u2");
 
         var seed = db.AddTrack("Seed", a1, al1);
-        var coListened = db.AddTrack("Co-listened", a2, al2); // no genre/artist overlap — only co-play
-        var genreOnly = db.AddTrack("Genre only", a2, al2);   // shares the seed genre, never co-played
+        var coListened = db.AddTrack("Co-listened", a2, al2); // same genre AND co-played
+        var genreOnly = db.AddTrack("Genre only", a2, al2);   // same genre, never co-played
         db.Tag(seed, g1);
+        db.Tag(coListened, g1);
         db.Tag(genreOnly, g1);
-        db.Tag(coListened, g2);
         // Everyone who played the seed also played the co-listened track.
         db.AddPlay(u1, seed); db.AddPlay(u1, coListened);
         db.AddPlay(u2, seed); db.AddPlay(u2, coListened);
@@ -317,8 +319,8 @@ public class RecommendationEndpointsTests
 
         Assert.Equal(seed.Id, dtos[0].Id);
         var ids = dtos.Select(d => d.Id).ToList();
-        // Co-listen similarity is weighted ×3 vs a genre overlap ×1, so it must win
-        // even though the co-listened track shares neither artist nor genre with the seed.
+        // Both sit in the seed's genre bubble; the co-listened one ("listeners like
+        // you also played") ranks higher within it.
         Assert.True(ids.IndexOf(coListened.Id) < ids.IndexOf(genreOnly.Id));
     }
 

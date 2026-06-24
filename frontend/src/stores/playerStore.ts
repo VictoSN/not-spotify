@@ -97,6 +97,57 @@ function autoplayEnabled(): boolean {
   }
 }
 
+// How many recommended tracks we keep queued ahead — both when filling a
+// standalone song's "Up Next" and when topping the queue up after it runs out.
+const REC_QUEUE_SIZE = 15
+
+/** Recommendations for a song, minus anything already in `existing`. */
+async function fetchRecommendations(track: Track, existing: Track[]): Promise<Track[]> {
+  // Song-based "radio": ranked by co-listen ("listeners like you also played") and
+  // genre overlap *across artists*, not locked to the seed's artist. This is what
+  // keeps an album going once it ends — same-artist top tracks would just be the
+  // album we already played, leaving nothing fresh to queue.
+  // Dynamic import avoids a store→service→store cycle at module load.
+  const { trackService } = await import('@/services/trackService')
+  // Ask for enough to still net ~REC_QUEUE_SIZE after dropping everything already in
+  // the queue — an album seed's radio is heavy on that album's own tracks, which we
+  // dedupe away. Backend clamps this to 60.
+  const want = Math.min(60, existing.length + REC_QUEUE_SIZE + 5)
+  const recs = await trackService.getRadio(track.id, want)
+  const seen = new Set(existing.map((t) => t.id))
+  return recs.filter((t) => !seen.has(t.id)).slice(0, REC_QUEUE_SIZE)
+}
+
+// --- Standalone "recommended → Up Next" -----------------------------------
+// Playing a song on its own (a track page, a track card, a recommendation) gives
+// a one-item queue, so "Up Next" would be empty. We fill it with the same artist
+// recommendations the Now Playing panel shows, so the recommended track becomes
+// the next in queue. Playing a playlist/album hands us a real multi-track queue,
+// which we leave untouched. The token is bumped on every play()/setQueue() so a
+// slow fetch from a previous standalone play can't append onto a queue the user
+// has since replaced.
+let standaloneFillToken = 0
+
+function fillStandaloneQueue(track: Track, newQueue: Track[]) {
+  const token = ++standaloneFillToken
+  if (newQueue.length > 1) return // a real playlist/album context — leave it alone
+  void (async () => {
+    try {
+      const fresh = await fetchRecommendations(track, newQueue)
+      const s = usePlayerStore.getState()
+      // Bail if the user moved on: a newer play/queue ran, the track changed, or a
+      // real queue arrived while we were fetching.
+      if (token !== standaloneFillToken) return
+      if (s.currentTrack?.id !== track.id) return
+      if (s.queue.length > 1) return
+      if (fresh.length === 0) return
+      usePlayerStore.setState({ queue: [...s.queue, ...fresh] })
+    } catch {
+      /* recommendations are best-effort; leave the lone track queued */
+    }
+  })()
+}
+
 interface PlayerState {
   currentTrack: Track | null
   isPlaying: boolean
@@ -192,6 +243,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTime: 0,
     })
     recordPlay(track.id)
+    // Standalone song → fill Up Next with this artist's recommendations.
+    fillStandaloneQueue(track, newQueue)
   },
 
   pause: () => set({ isPlaying: false }),
@@ -219,23 +272,23 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     if (nextIndex >= queue.length) {
       if (repeatMode === 'all') nextIndex = 0
-      else if (autoplayEnabled() && currentTrack && !isFreeUser()) {
-        // Autoplay: queue ran out — keep going with more from the same artist.
-        // Dynamic import avoids a store→service→store cycle at module load.
-        void import('@/services/artistService').then(async ({ artistService }) => {
+      else if (autoplayEnabled() && currentTrack) {
+        // Autoplay: the queue (playlist, album, or a standalone song) ran out — keep
+        // going with recommendations based on the last song. Applies to everyone;
+        // free users still pass through the ad gate as each track advances.
+        void (async () => {
           try {
-            const more = await artistService.getTopTracks(currentTrack.artist.id, 10)
-            const base = get().queue
-            const seen = new Set(base.map((t) => t.id))
-            const fresh = more.filter((t) => !seen.has(t.id))
+            const fresh = await fetchRecommendations(currentTrack, get().queue)
+            // Bail if the user started something else while we were fetching.
+            if (get().currentTrack?.id !== currentTrack.id) return
             if (fresh.length === 0) { set({ isPlaying: false }); return }
-            const next = fresh[0]
-            set({ queue: [...base, ...fresh], queueIndex: base.length, currentTrack: next, currentTime: 0, isPlaying: true })
-            recordPlay(next.id)
+            const base = get().queue
+            set({ queue: [...base, ...fresh] })
+            advanceWithAdGate(fresh[0], base.length)
           } catch {
             set({ isPlaying: false })
           }
-        })
+        })()
         return
       }
       else { set({ isPlaying: false }); return }
@@ -285,6 +338,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setQueue: (tracks, startIndex = 0) => {
     const track = tracks[startIndex]
     if (!track) return
+    // An explicit queue (playlist/album) cancels any pending standalone rec fill.
+    standaloneFillToken++
     set({ queue: tracks, queueIndex: startIndex, currentTrack: track, isPlaying: true, currentTime: 0 })
     recordPlay(track.id)
   },

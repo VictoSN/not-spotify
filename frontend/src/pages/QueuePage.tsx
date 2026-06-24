@@ -18,15 +18,16 @@ export function QueuePage() {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const queue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
-  const history = usePlayerStore((s) => s.history)
   const reorderQueue = usePlayerStore((s) => s.reorderQueue)
   const removeFromQueue = usePlayerStore((s) => s.removeFromQueue)
   const isPremium = useAuthStore((s) => s.user?.capabilities?.unlimitedPlayback !== false)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const upNext = queueIndex >= 0 ? queue.slice(queueIndex + 1) : queue
-  const recent = [...history].reverse().slice(0, 12)
-  const hasQueueState = Boolean(currentTrack || upNext.length || recent.length)
+  // Already-played tracks from THIS queue, in play order (oldest first, the most
+  // recent sitting just above "Now playing" — YouTube-style).
+  const played = queueIndex > 0 ? queue.slice(0, queueIndex) : []
+  const hasQueueState = Boolean(currentTrack || upNext.length || played.length)
 
   const move = (fromIndex: number, toIndex: number) => {
     if (!isPremium || toIndex <= queueIndex || fromIndex === toIndex) return
@@ -67,6 +68,18 @@ export function QueuePage() {
           </div>
         ) : (
           <div className="grid gap-8">
+            {played.length > 0 && (
+              <QueueSection title="Played">
+                <div role="list" aria-label="Already played tracks" className="grid gap-1 opacity-70">
+                  {played.map((track, index) => (
+                    <div key={`${track.id}-${index}`} role="listitem">
+                      <TrackCard track={track} queue={queue} />
+                    </div>
+                  ))}
+                </div>
+              </QueueSection>
+            )}
+
             {currentTrack && (
               <QueueSection title="Now playing">
                 <TrackCard track={currentTrack} queue={queue.length ? queue : [currentTrack]} />
@@ -113,18 +126,6 @@ export function QueuePage() {
                 <p className="rounded-lg bg-surface/60 px-4 py-5 text-sm text-secondary">Nothing queued up next.</p>
               )}
             </QueueSection>
-
-            {recent.length > 0 && (
-              <QueueSection title="Recently played">
-                <div role="list" aria-label="Recently played tracks" className="grid gap-1">
-                  {recent.map((track, index) => (
-                    <div key={`${track.id}-${index}`} role="listitem">
-                      <TrackCard track={track} queue={[track]} />
-                    </div>
-                  ))}
-                </div>
-              </QueueSection>
-            )}
           </div>
         )}
       </div>

@@ -334,11 +334,13 @@ public class TracksController : ControllerBase
     }
 
     /// <summary>
-    /// Builds an endless "station" seeded from a track. Ranks the rest of the
-    /// catalogue by a blend of co-listen similarity (how often other listeners
-    /// played a candidate in the same sessions as the seed) and genre overlap,
-    /// with the seed's own artist boosted. The seed track is returned first.
-    /// Falls back to genre-only / trending when there's no play data yet.
+    /// Builds an endless "station" seeded from a track. The seed's genres are the
+    /// "bubble": every candidate must share a genre with the seed (or be by the same
+    /// artist, which is the same bubble), so the station never jumps from, say, J-pop
+    /// to country. Within that bubble, co-listen similarity ("listeners who played the
+    /// seed also played this") and play count decide the order. A thin pool is padded
+    /// with the most-played tracks *in the same genres* — only a seed with no genres at
+    /// all widens to overall trending. The seed track is returned first.
     /// </summary>
     [HttpGet("{id:guid}/radio")]
     public async Task<ActionResult<IEnumerable<TrackDto>>> Radio(Guid id, [FromQuery] int limit = 30, CancellationToken ct = default)
@@ -373,14 +375,19 @@ public class TracksController : ControllerBase
             foreach (var c in coPlays) coListenScore[c.TrackId] = c.Count;
         }
 
-        // Candidate pool: co-listen matches + genre matches + same artist.
+        // Candidate pool: stay in the seed's genre bubble. Genre overlap (or same artist)
+        // is a hard gate, not just a ranking nudge — co-listen sorts *within* the bubble
+        // rather than dragging in an unrelated genre. A genre-less seed has no bubble, so
+        // it falls back to co-listen + same artist.
+        var hasGenres = seedGenreIds.Count > 0;
         var coIds = coListenScore.Keys.ToList();
         var candidates = await BaseQuery()
             .Where(t => t.Id != id && (
-                coIds.Contains(t.Id) ||
                 t.ArtistId == seed.ArtistId ||
-                t.TrackGenres.Any(tg => seedGenreIds.Contains(tg.GenreId))))
-            .Take(limit * 6)
+                (hasGenres
+                    ? t.TrackGenres.Any(tg => seedGenreIds.Contains(tg.GenreId))
+                    : coIds.Contains(t.Id))))
+            .Take(limit * 8)
             .ToListAsync(ct);
 
         var maxCo = coListenScore.Count > 0 ? coListenScore.Values.Max() : 1;
@@ -389,7 +396,9 @@ public class TracksController : ControllerBase
             var co = coListenScore.GetValueOrDefault(t.Id) / (double)maxCo;       // 0..1
             var genre = t.TrackGenres.Count(tg => seedGenreIds.Contains(tg.GenreId));
             var sameArtist = t.ArtistId == seed.ArtistId ? 1 : 0;
-            return co * 3.0 + genre * 1.0 + sameArtist * 0.5;
+            // Genre overlap dominates so the bubble holds; co-listen orders within it;
+            // same artist is only a light nudge (we want variety, not the same album).
+            return genre * 2.0 + co * 1.5 + sameArtist * 0.25;
         }
 
         var ranked = candidates
@@ -398,11 +407,15 @@ public class TracksController : ControllerBase
             .Take(limit - 1)
             .ToList();
 
-        // Pad with trending if the pool was thin.
+        // Pad a thin pool with the most-played tracks in the SAME genres — never a random
+        // cross-genre filler. Only a genre-less seed widens to overall trending.
         if (ranked.Count < limit - 1)
         {
             var have = ranked.Select(t => t.Id).Append(id).ToHashSet();
-            var fillers = await BaseQuery()
+            var fillerQuery = BaseQuery();
+            if (hasGenres)
+                fillerQuery = fillerQuery.Where(t => t.TrackGenres.Any(tg => seedGenreIds.Contains(tg.GenreId)));
+            var fillers = await fillerQuery
                 .OrderByDescending(t => t.PlayCount)
                 .Take(limit * 2)
                 .ToListAsync(ct);

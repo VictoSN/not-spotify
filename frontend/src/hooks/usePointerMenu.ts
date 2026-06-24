@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
  * The single source of truth for the app's right-click ("context") menu
@@ -18,6 +18,8 @@ import { useCallback, useRef, useState } from 'react'
  *  - Right-click a different item → that item's menu opens; the old one is
  *    dismissed by Headless UI's outside-press handling.
  *  - Click outside / Esc → close (handled by Headless UI's Menu).
+ *  - Scroll the page → close (the menu is parked at a fixed cursor point, so it
+ *    would otherwise drift away from what it points at).
  */
 export interface PointerMenuController {
   coords: { x: number; y: number }
@@ -37,6 +39,28 @@ export function usePointerMenu(): PointerMenuController {
   const menuOpenRef = useRef(false)
   const closeRef = useRef<(() => void) | null>(null)
   const closedAtRef = useRef(0)
+  // Removes the scroll-to-close listeners; non-null only while the menu is open.
+  const unbindScrollRef = useRef<(() => void) | null>(null)
+
+  // Bound only while open (so we don't keep dozens of idle scroll listeners on a
+  // page full of cards). Scrolling *inside* the menu panel is ignored.
+  const bindScrollClose = useCallback(() => {
+    if (unbindScrollRef.current) return
+    const onScroll = (e: Event) => {
+      const target = e.target as Node | null
+      if (target instanceof Element && target.closest('[role="menu"]')) return
+      closeRef.current?.()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('wheel', onScroll, { capture: true, passive: true })
+    window.addEventListener('touchmove', onScroll, { capture: true, passive: true })
+    unbindScrollRef.current = () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('wheel', onScroll, true)
+      window.removeEventListener('touchmove', onScroll, true)
+      unbindScrollRef.current = null
+    }
+  }, [])
 
   const openAt = useCallback((x: number, y: number) => {
     if (menuOpenRef.current) {
@@ -51,8 +75,11 @@ export function usePointerMenu(): PointerMenuController {
     // it never closes. Treat a just-closed menu as the toggle-off.
     if (Date.now() - closedAtRef.current < 300) return
     setCoords({ x, y })
-    requestAnimationFrame(() => hiddenBtnRef.current?.click())
-  }, [])
+    requestAnimationFrame(() => {
+      hiddenBtnRef.current?.click()
+      bindScrollClose()
+    })
+  }, [bindScrollClose])
 
   const openFromButton = useCallback((e: React.MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -60,10 +87,16 @@ export function usePointerMenu(): PointerMenuController {
   }, [openAt])
 
   const sync = useCallback((open: boolean, close: () => void) => {
-    if (menuOpenRef.current && !open) closedAtRef.current = Date.now()
+    if (menuOpenRef.current && !open) {
+      closedAtRef.current = Date.now()
+      unbindScrollRef.current?.()
+    }
     menuOpenRef.current = open
     closeRef.current = close
   }, [])
+
+  // Drop any lingering scroll listeners if the menu unmounts while open.
+  useEffect(() => () => unbindScrollRef.current?.(), [])
 
   return { coords, hiddenBtnRef, openAt, openFromButton, sync }
 }

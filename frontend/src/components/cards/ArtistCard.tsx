@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Artist } from '@/types/artist'
 import { artistService } from '@/services/artistService'
 import { formatNumber } from '@/utils/formatNumber'
@@ -14,6 +13,7 @@ import { useDragStore } from '@/stores/dragStore'
 import { useHueStore } from '@/stores/hueStore'
 import { ARTIST_DND_MIME, setArtistDragImage } from '@/utils/trackDnd'
 import { ArtistMenu, type ArtistMenuHandle } from './ArtistMenu'
+import { CardPlayButton } from './CardPlayButton'
 
 interface ArtistCardProps {
   artist: Artist
@@ -97,22 +97,14 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
               <div className="flex h-full w-full items-center justify-center text-4xl">A</div>
             )}
           </div>
-          <button
+          <CardPlayButton
+            variant="artist"
             onClick={handlePlay}
-            className={`absolute bottom-1 right-1 z-10 flex h-11 w-11 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-60 ${
-              isActiveContext
-                ? 'opacity-100'
-                : 'opacity-100 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100'
-            }`}
-            aria-label={isPlayingContext ? `Pause ${artist.name}` : `Play ${artist.name}`}
+            isPlaying={isPlayingContext}
+            isActive={isActiveContext}
+            ariaLabel={isPlayingContext ? `Pause ${artist.name}` : `Play ${artist.name}`}
             disabled={loading}
-          >
-            {isPlayingContext ? (
-              <PauseIcon className="h-5 w-5 text-black" />
-            ) : (
-              <PlayIcon className="ml-0.5 h-5 w-5 text-black" />
-            )}
-          </button>
+          />
         </div>
         <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{artist.name}</p>
         <p className="text-xs text-secondary mt-0.5">{formatNumber(artist.monthlyListeners)} listeners</p>

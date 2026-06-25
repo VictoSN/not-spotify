@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { useHueStore } from '@/stores/hueStore'
@@ -14,6 +13,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDragStore } from '@/stores/dragStore'
 import { ALBUM_DND_MIME, setAlbumDragImage } from '@/utils/trackDnd'
 import { AlbumMenu, type AlbumMenuHandle } from './AlbumMenu'
+import { CardPlayButton } from './CardPlayButton'
 
 interface AlbumCardProps {
   album: Album
@@ -90,22 +90,13 @@ export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: A
       >
         <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
           <img src={album.coverUrl} alt={album.title} draggable={false} className="w-full h-full object-cover" />
-          <button
+          <CardPlayButton
             onClick={handlePlay}
-            className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 disabled:opacity-60 ${
-              isActiveContext
-                ? 'opacity-100'
-                : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
-            }`}
-            aria-label={isPlayingContext ? `Pause ${album.title}` : `Play ${album.title}`}
+            isPlaying={isPlayingContext}
+            isActive={isActiveContext}
+            ariaLabel={isPlayingContext ? `Pause ${album.title}` : `Play ${album.title}`}
             disabled={loading}
-          >
-            {isPlayingContext ? (
-              <PauseIcon className="w-5 h-5 text-white" />
-            ) : (
-              <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-            )}
-          </button>
+          />
         </div>
         <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{album.title}</p>
         <p className="text-xs text-secondary mt-0.5 truncate">

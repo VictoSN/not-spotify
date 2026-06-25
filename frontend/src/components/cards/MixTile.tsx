@@ -1,8 +1,8 @@
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { DailyMix } from '@/services/trackService'
 import { usePlayerStore } from '@/stores/playerStore'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { usePlaybackContext } from '@/hooks/usePlaybackContext'
+import { CardPlayButton } from './CardPlayButton'
 
 interface MixTileProps {
   mix: DailyMix
@@ -62,21 +62,12 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
           <p className="text-xs font-black uppercase tracking-wide text-white drop-shadow">{mix.subtitle}</p>
         </div>
 
-        <button
+        <CardPlayButton
           onClick={handlePlay}
-          className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 ${
-            isActiveContext
-              ? 'opacity-100'
-              : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
-          }`}
-          aria-label={isPlayingContext ? `Pause ${mix.title}` : `Play ${mix.title}`}
-        >
-          {isPlayingContext ? (
-            <PauseIcon className="w-5 h-5 text-white" />
-          ) : (
-            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-          )}
-        </button>
+          isPlaying={isPlayingContext}
+          isActive={isActiveContext}
+          ariaLabel={isPlayingContext ? `Pause ${mix.title}` : `Play ${mix.title}`}
+        />
       </div>
       <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{mix.title}</p>
       <p className="text-xs text-secondary mt-0.5 truncate">

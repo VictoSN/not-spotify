@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { PlayIcon, PauseIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolid, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { useHueStore } from '@/stores/hueStore'
@@ -15,6 +15,7 @@ import { playlistService } from '@/services/playlistService'
 import { openMenuAtPointer } from '@/utils/contextMenu'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from './PlaylistRowMenu'
 import { PlaylistCover } from './PlaylistCover'
+import { CardPlayButton } from './CardPlayButton'
 
 interface PlaylistCardProps {
   playlist: Playlist
@@ -78,21 +79,12 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
-        <button
+        <CardPlayButton
           onClick={handlePlay}
-          className={`absolute bottom-2 right-2 w-10 h-10 bg-accent rounded-full flex items-center justify-center translate-y-0 transition-all duration-200 shadow-lg hover:scale-105 ${
-            isActiveContext
-              ? 'opacity-100'
-              : 'opacity-100 md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0'
-          }`}
-          aria-label={isPlayingContext ? `Pause ${playlist.name}` : `Play ${playlist.name}`}
-        >
-          {isPlayingContext ? (
-            <PauseIcon className="w-5 h-5 text-white" />
-          ) : (
-            <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-          )}
-        </button>
+          isPlaying={isPlayingContext}
+          isActive={isActiveContext}
+          ariaLabel={isPlayingContext ? `Pause ${playlist.name}` : `Play ${playlist.name}`}
+        />
         <button
           onClick={handleLike}
           className={`absolute top-2 right-2 transition-all ${isSaved ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}

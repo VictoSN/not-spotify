@@ -551,12 +551,42 @@ public class TracksController : ControllerBase
 
     private async Task<List<Models.Track>> BuildDailyMixTracksAsync(Guid genreId, Guid? me, int size, CancellationToken ct)
     {
+        // Catalogue is loosely tagged — admins sometimes attach popular genres
+        // (e.g., "rock") to tracks that aren't really that style. To keep mixes
+        // coherent, only include tracks from artists whose own catalogue is
+        // *actually* dominated by this genre. "Dominated" = the genre is one of
+        // the artist's top-2 most-common genres across their approved tracks.
+        var artistGenreCounts = await _db.TrackGenres
+            .Where(tg => tg.Track.Status == "approved")
+            .GroupBy(tg => new { tg.Track.ArtistId, tg.GenreId })
+            .Select(g => new { g.Key.ArtistId, g.Key.GenreId, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var qualifiedArtistIds = artistGenreCounts
+            .GroupBy(x => x.ArtistId)
+            .Where(g => g.OrderByDescending(x => x.Count).Take(2).Any(x => x.GenreId == genreId))
+            .Select(g => g.Key)
+            .ToHashSet();
+
         var pool = await BaseQuery()
             .Where(t => t.TrackGenres.Any(tg => tg.GenreId == genreId))
+            .Where(t => qualifiedArtistIds.Contains(t.ArtistId))
             .OrderByDescending(t => t.PlayCount)
             .ThenBy(t => t.Id) // deterministic order before the seeded shuffle
             .Take(size * 2)
             .ToListAsync(ct);
+
+        // Safety net for very small catalogues: if the artist filter wiped the
+        // pool, fall back to genre tag alone so the row isn't empty.
+        if (pool.Count == 0)
+        {
+            pool = await BaseQuery()
+                .Where(t => t.TrackGenres.Any(tg => tg.GenreId == genreId))
+                .OrderByDescending(t => t.PlayCount)
+                .ThenBy(t => t.Id)
+                .Take(size * 2)
+                .ToListAsync(ct);
+        }
 
         if (pool.Count == 0) return pool;
 

@@ -13,6 +13,7 @@ import { KaraokeView } from '@/components/player/KaraokeView'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
+import { useHueStore } from '@/stores/hueStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 import { KeyboardShortcutsHelp } from '@/components/common/KeyboardShortcutsHelp'
@@ -41,6 +42,25 @@ export function AppShell() {
   const karaokeVisible = isKaraokeOpen && !!currentTrack
   const nowPlayingExpandedVisible = isNowPlayingExpanded && !socialPanelOpen && !isMobile && isNowPlayingOpen
   const prevAuth = useRef(isAuthenticated)
+
+  // Scroll detection for the main content area — drives the Spotify-style locked
+  // header tint (the TopBar picks up the page hue once you scroll past the hero).
+  const setHeaderScrolled = useHueStore((s) => s.setHeaderScrolled)
+  const mainScrollRef = useRef<HTMLDivElement>(null)
+  const scrolledRef = useRef(false)
+  const handleMainScroll = () => {
+    const next = (mainScrollRef.current?.scrollTop ?? 0) > 8
+    if (next !== scrolledRef.current) {
+      scrolledRef.current = next
+      setHeaderScrolled(next)
+    }
+  }
+  // Reset the tint whenever the route changes so a new page starts un-tinted
+  // (the scroll container is shared and keeps its position across navigations).
+  useEffect(() => {
+    scrolledRef.current = false
+    setHeaderScrolled(false)
+  }, [location.pathname, setHeaderScrolled])
 
   // Real-time presence via WebSocket — instant online/offline updates.
   usePresenceSocket()
@@ -107,7 +127,11 @@ export function AppShell() {
           )}
         >
           {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
-          <div className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}>
+          <div
+            ref={mainScrollRef}
+            onScroll={handleMainScroll}
+            className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}
+          >
             <Outlet />
           </div>
           {karaokeVisible && (

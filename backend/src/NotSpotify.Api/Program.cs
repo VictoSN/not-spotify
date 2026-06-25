@@ -762,8 +762,8 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(scope.ServiceProvider);
     await RepairKnownInstrumentalLyricsAsync(db);
 
-    // Fill the romanization-aware search blob for any rows that don't have one yet
-    // (new column, freshly seeded/imported data). Idempotent + cheap once populated.
+    // Fill the romanization-aware search blob for new rows, and recompute once
+    // when the curated alias dictionary version changes.
     try
     {
         var backfilled = await NotSpotify.Api.Services.SearchTextBackfill.RunAsync(db);

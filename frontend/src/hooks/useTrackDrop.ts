@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Track } from '@/types/track'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME } from '@/utils/trackDnd'
@@ -12,6 +12,16 @@ import { TRACK_DND_MIME } from '@/utils/trackDnd'
  */
 export function useTrackDrop(canDrop: boolean, onDropTrack: (track: Track) => void) {
   const [isOver, setIsOver] = useState(false)
+
+  useEffect(() => {
+    const clear = () => setIsOver(false)
+    window.addEventListener('dragend', clear)
+    window.addEventListener('drop', clear)
+    return () => {
+      window.removeEventListener('dragend', clear)
+      window.removeEventListener('drop', clear)
+    }
+  }, [])
 
   const isTrackDrag = (e: React.DragEvent) => e.dataTransfer.types.includes(TRACK_DND_MIME)
 

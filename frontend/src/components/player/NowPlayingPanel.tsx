@@ -27,7 +27,6 @@ import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
-import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 import { shareLink } from '@/utils/share'
@@ -50,10 +49,10 @@ function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEve
   return (
     <div
       onMouseDown={onMouseDown}
-      className="group absolute top-0 left-0 h-full w-2 cursor-grab active:cursor-grabbing z-20 flex justify-center"
+      className="group absolute -left-2 top-0 z-20 flex h-full w-2 cursor-grab justify-center active:cursor-grabbing"
       aria-hidden="true"
     >
-      <div className="w-px h-full bg-transparent group-hover:bg-secondary/60 transition-colors" />
+      <div className="h-full w-px bg-transparent transition-colors group-hover:bg-secondary/70" />
     </div>
   )
 }
@@ -275,7 +274,6 @@ export function NowPlayingPanel() {
   const video = videoData && videoData.trackId === trackId ? videoData.video : null
   const artistVideos = artistVideosData && artistVideosData.artistId === artistId ? artistVideosData.videos : []
   const tourDates = tourData && tourData.artistId === artistId ? tourData.dates : []
-  const heroColor = useDominantColor(currentTrack?.album.coverUrl)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
 
   useEffect(() => {
@@ -294,7 +292,7 @@ export function NowPlayingPanel() {
     else el.pause()
   }, [isPlaying, video])
   const panelClass = cn(
-    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex',
+    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-visible rounded-lg bg-surface lg:flex',
     isNowPlayingExpanded ? 'min-w-0' : 'shrink-0',
     !dragging && 'transition-[width,flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
   )
@@ -404,17 +402,7 @@ export function NowPlayingPanel() {
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[78vh]"
-            style={{
-              background: heroColor
-                ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.9)} 0%, ${withAlpha(heroColor, 0.48)} 44%, rgba(18,18,18,0.96) 100%)`
-                : 'linear-gradient(180deg, #24364a 0%, #182432 48%, #121212 100%)',
-            }}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 hidden aspect-square h-[60vh] -translate-x-1/2 bg-cover bg-center opacity-20 blur-[1px] lg:block"
-            style={{ backgroundImage: `url(${currentTrack.album.coverUrl})` }}
+            className="pointer-events-none absolute inset-x-0 top-0 h-[78vh] bg-gradient-to-b from-[#181818] via-[#151515] to-[#121212]"
           />
 
           <div
@@ -732,19 +720,6 @@ export function NowPlayingPanel() {
         onScroll={(event) => setPanelBodyScrolled(event.currentTarget.scrollTop > 8)}
         className="relative min-h-0 flex-1 overflow-y-auto"
       >
-        {/* Dynamic colour hue from the cover */}
-        <div
-          aria-hidden
-          className={cn(
-            'pointer-events-none absolute transition-opacity duration-700',
-            isNowPlayingExpanded ? 'inset-0 opacity-80' : 'inset-x-0 top-0 h-80',
-          )}
-          style={{
-            background: heroColor
-              ? `linear-gradient(180deg, ${withAlpha(heroColor, 0.7)} 0%, ${withAlpha(heroColor, 0.15)} 50%, transparent 100%)`
-              : undefined,
-          }}
-        />
         {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
         {video && (
           <div
@@ -845,7 +820,7 @@ export function NowPlayingPanel() {
         </div>
 
         {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
-        <NowPlayingLyrics track={currentTrack} accentColor={heroColor} />
+        <NowPlayingLyrics track={currentTrack} />
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (

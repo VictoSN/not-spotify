@@ -25,9 +25,10 @@ public static class SearchTextBuilder
     public static string Normalize(string? input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
-        var sb = new StringBuilder(input.Length);
+        var folded = input.Normalize(NormalizationForm.FormKC);
+        var sb = new StringBuilder(folded.Length);
         var pendingSpace = false;
-        foreach (var ch in input)
+        foreach (var ch in folded)
         {
             if (char.IsLetterOrDigit(ch))
             {
@@ -51,8 +52,9 @@ public static class SearchTextBuilder
     public static string Concat(string? input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
-        var sb = new StringBuilder(input.Length);
-        foreach (var ch in input)
+        var folded = input.Normalize(NormalizationForm.FormKC);
+        var sb = new StringBuilder(folded.Length);
+        foreach (var ch in folded)
             if (char.IsLetterOrDigit(ch)) sb.Append(char.ToLowerInvariant(ch));
         return sb.ToString();
     }
@@ -107,20 +109,27 @@ public static class SearchTextBuilder
 /// </summary>
 public sealed record AliasEntry(
     string[]? Pinyin = null,
+    string[]? Romaji = null,
     string[]? English = null,
     string[]? Hanzi = null)
 {
     public IEnumerable<string> Expand()
     {
-        if (Pinyin is { Length: > 0 })
-        {
-            yield return string.Join(' ', Pinyin);                               // ni hao bu hao
-            yield return string.Concat(Pinyin);                                  // nihaobuhao
-            yield return string.Concat(Pinyin.Where(s => s.Length > 0)
-                                             .Select(s => s[0]));                 // nhbh
-        }
+        foreach (var v in ExpandSyllables(Pinyin)) yield return v;
+        foreach (var v in ExpandSyllables(Romaji)) yield return v;
         foreach (var e in English ?? Array.Empty<string>()) yield return e;
         foreach (var h in Hanzi ?? Array.Empty<string>()) yield return h;
+    }
+
+    private static IEnumerable<string> ExpandSyllables(string[]? syllables)
+    {
+        if (syllables is { Length: > 0 })
+        {
+            yield return string.Join(' ', syllables);                            // ni hao bu hao / kai kai kitan
+            yield return string.Concat(syllables);                               // nihaobuhao / kaikaikitan
+            yield return string.Concat(syllables.Where(s => s.Length > 0)
+                                                .Select(s => s[0]));              // nhbh / kkk
+        }
     }
 }
 
@@ -135,6 +144,10 @@ public sealed record AliasEntry(
 /// </summary>
 public static class SearchAliases
 {
+    // Bump when aliases change. Startup uses this to recompute existing SearchText
+    // rows once, so imported songs get new search terms without a manual command.
+    public const string Version = "2026-06-25-japanese-eve-7oops-ao-no-waltz";
+
     private static IReadOnlyDictionary<string, AliasEntry> Index(Dictionary<string, AliasEntry> raw)
     {
         var indexed = new Dictionary<string, AliasEntry>(StringComparer.Ordinal);
@@ -154,6 +167,13 @@ public static class SearchAliases
         // 周杰倫 (Jay Chou)
         ["Jay Chou"] = new(Pinyin: new[] { "zhou", "jie", "lun" }, Hanzi: new[] { "周杰倫", "周杰伦" }),
         ["周杰倫"]    = new(Pinyin: new[] { "zhou", "jie", "lun" }, English: new[] { "Jay Chou" }),
+
+        // Japanese catalogue aliases. 7!! is pronounced "seven oops"; the artist
+        // is often searched with either the symbol form or the spoken form.
+        ["7!!"] = new(English: new[] { "seven oops", "seven!!", "7 oops", "seven" }),
+        ["seven oops"] = new(English: new[] { "7!!", "seven!!", "7 oops" }),
+        ["Eve"] = new(Hanzi: new[] { "イブ" }),
+        ["イブ"] = new(English: new[] { "Eve" }),
     });
 
     public static readonly IReadOnlyDictionary<string, AliasEntry> Album = Index(new()
@@ -191,6 +211,95 @@ public static class SearchAliases
             English: new[] { "minus one minute" }),
         ["明明"] = new(
             Pinyin: new[] { "ming", "ming" }),
+
+        // ── Japanese tracks: native script ⇄ romaji / English title search ─────
+        // Eve
+        ["廻廻奇譚"] = new(
+            Romaji: new[] { "kai", "kai", "kitan" },
+            English: new[] { "kaikai kitan" }),
+        ["Kaikai Kitan"] = new(
+            Romaji: new[] { "kai", "kai", "kitan" },
+            Hanzi: new[] { "廻廻奇譚" }),
+        ["ドラマツルギー"] = new(
+            Romaji: new[] { "doramatsurugi" },
+            English: new[] { "dramaturgy" }),
+        ["Dramaturgy"] = new(
+            Romaji: new[] { "doramatsurugi" },
+            Hanzi: new[] { "ドラマツルギー" }),
+        ["アウトサイダー"] = new(
+            Romaji: new[] { "autosaida" },
+            English: new[] { "outsider" }),
+        ["Outsider"] = new(
+            Romaji: new[] { "autosaida" },
+            Hanzi: new[] { "アウトサイダー" }),
+        ["ナンセンス文学"] = new(
+            Romaji: new[] { "nansensu", "bungaku" },
+            English: new[] { "nonsense bungaku", "nonsense literature" }),
+        ["Nonsense Bungaku"] = new(
+            Romaji: new[] { "nansensu", "bungaku" },
+            Hanzi: new[] { "ナンセンス文学" }),
+        ["お気に召すまま"] = new(
+            Romaji: new[] { "oki", "ni", "mesu", "mama" },
+            English: new[] { "as you like it" }),
+        ["ラストダンス"] = new(
+            Romaji: new[] { "rasuto", "dansu" },
+            English: new[] { "last dance" }),
+        ["Last Dance"] = new(
+            Romaji: new[] { "rasuto", "dansu" },
+            Hanzi: new[] { "ラストダンス" }),
+        ["僕らまだアンダーグラウンド"] = new(
+            Romaji: new[] { "bokura", "mada", "andaguraundo" },
+            English: new[] { "we're still underground", "bokura mada underground" }),
+        ["夜は仄か"] = new(
+            Romaji: new[] { "yoru", "wa", "honoka" }),
+        ["Yoru wa Honoka"] = new(
+            Romaji: new[] { "yoru", "wa", "honoka" },
+            Hanzi: new[] { "夜は仄か" }),
+        ["群青讃歌"] = new(
+            Romaji: new[] { "gunjo", "sanka" },
+            English: new[] { "gunjou sanka" }),
+        ["Gunjo Sanka"] = new(
+            Romaji: new[] { "gunjo", "sanka" },
+            Hanzi: new[] { "群青讃歌" }),
+        ["心予報"] = new(
+            Romaji: new[] { "kokoro", "yohou" },
+            English: new[] { "heart forecast" }),
+        ["蒼のワルツ"] = new(
+            Romaji: new[] { "ao", "no", "warutsu" },
+            English: new[] { "ao no waltz", "blue waltz" }),
+        ["Ao no Waltz"] = new(
+            Romaji: new[] { "ao", "no", "warutsu" },
+            Hanzi: new[] { "蒼のワルツ" }),
+
+        // 7!!
+        ["オレンジ"] = new(
+            Romaji: new[] { "orenji" },
+            English: new[] { "orange" }),
+        ["Orange"] = new(
+            Romaji: new[] { "orenji" },
+            Hanzi: new[] { "オレンジ" }),
+        ["ラヴァーズ"] = new(
+            Romaji: new[] { "ravazu" },
+            English: new[] { "lovers" }),
+        ["Lovers"] = new(
+            Romaji: new[] { "ravazu" },
+            Hanzi: new[] { "ラヴァーズ" }),
+        ["スタートライン"] = new(
+            Romaji: new[] { "sutato", "rain" },
+            English: new[] { "start line" }),
+        ["Start Line"] = new(
+            Romaji: new[] { "sutato", "rain" },
+            Hanzi: new[] { "スタートライン" }),
+        ["バイバイ"] = new(
+            Romaji: new[] { "bai", "bai" },
+            English: new[] { "bye bye" }),
+        ["Bye Bye"] = new(
+            Romaji: new[] { "bai", "bai" },
+            Hanzi: new[] { "バイバイ" }),
+        ["きみがいるなら"] = new(
+            Romaji: new[] { "kimi", "ga", "iru", "nara" }),
+        ["この広い空の下で"] = new(
+            Romaji: new[] { "kono", "hiroi", "sora", "no", "shita", "de" }),
 
         // ── 周杰倫的床邊故事 / Jay Chou's Bedtime Stories (2016) ────────────────────
         ["不該"]       = new(Pinyin: new[] { "bu", "gai" }, English: new[] { "shouldn't be" }),

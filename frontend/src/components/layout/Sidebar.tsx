@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import {
@@ -155,6 +155,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const [libraryBodyScrolled, setLibraryBodyScrolled] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
   const libraryDragActive = useDragStore(
@@ -169,6 +170,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const toggleLibraryExpanded = () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
     setIsLibraryAnimating(true)
+    setLibraryBodyScrolled(false)
     // Slightly longer than the 300ms width transition so the reveal lands after it settles.
     libAnimTimer.current = window.setTimeout(() => setIsLibraryAnimating(false), 320)
     setLibraryExpanded(!libraryExpanded)
@@ -189,6 +191,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const collapsed = width <= RAIL
   const grid = libraryExpanded || viewMode === 'grid'
   const compactCreateButton = !libraryExpanded && width < 292
+  const handleLibraryBodyScroll = (event: UIEvent<HTMLDivElement>) => {
+    const next = event.currentTarget.scrollTop > 8
+    setLibraryBodyScrolled((current) => (current === next ? current : next))
+  }
+
+  useEffect(() => {
+    setLibraryBodyScrolled(false)
+  }, [collapsed, libraryExpanded, filter, query, viewMode])
 
   // Populate the library app-wide (today only LibraryPage triggers this).
   useEffect(() => {
@@ -477,7 +487,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg bg-sidebar select-none',
+    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-lg bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
     !dragging &&
@@ -506,7 +516,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   if (!isAuthenticated) {
     return (
       <aside style={frameStyle} className={frameClass}>
-        <div className="group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3">
+        <div
+          className={cn(
+            'group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3 transition-[background-color,box-shadow] duration-200',
+            libraryBodyScrolled ? 'shadow-[0_8px_20px_rgba(0,0,0,0.22)]' : 'shadow-none',
+          )}
+        >
           <div className="relative flex min-w-0 items-center">
             <button
               onClick={() => setWidth(RAIL)}
@@ -536,7 +551,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        <div onScroll={handleLibraryBodyScroll} className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <div className="flex flex-col gap-3">
             <section className="rounded-lg bg-elevated p-4">
               <h2 className="text-sm font-bold text-primary">{t('sidebar.auth.createTitle')}</h2>
@@ -571,11 +586,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     return (
       <aside
         {...libraryDrop.dropProps}
-        style={
-          libraryDrop.isOver
-            ? { ...frameStyle, boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
-            : frameStyle
-        }
+        style={frameStyle}
         className={frameClass}
       >
         <button
@@ -615,6 +626,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           ))}
         </div>
 
+        {libraryDrop.isOver && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 z-30 rounded-lg border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
+            style={{ borderColor: DROP_GREEN }}
+          />
+        )}
         <DragHandle onMouseDown={onDragStart} />
       </aside>
     )
@@ -630,100 +648,102 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   return (
     <aside
       {...libraryDrop.dropProps}
-      style={
-        libraryDrop.isOver
-          ? { ...frameStyle, boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
-          : frameStyle
-      }
+      style={frameStyle}
       className={frameClass}
     >
-      {/* Header */}
-      <div className="group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 rounded-md bg-sidebar px-4 pb-3 pt-3 transition-[box-shadow,background-color] duration-150">
-        <div className="relative flex min-w-0 items-center">
-          {!libraryExpanded && (
-            <button
-              onClick={() => setWidth(RAIL)}
-              className={cn(
-                'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
-                // Reveal on hover only once the resize has settled, so it never flashes in mid-minimize.
-                !isLibraryAnimating && 'group-hover/sidebar:visible group-hover/sidebar:opacity-100',
-              )}
-              aria-label={t('sidebar.collapse')}
-            >
-              <CollapseIcon className="h-6 w-6 -scale-x-100" />
-              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
-            </button>
-          )}
-          <span
-            className={cn(
-              'truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200',
-              !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
+      <div
+        className={cn(
+          'sticky top-0 z-20 shrink-0 rounded-t-lg bg-sidebar transition-[background-color,box-shadow,backdrop-filter] duration-200',
+          libraryBodyScrolled ? 'shadow-[0_8px_20px_rgba(0,0,0,0.22)] backdrop-blur-md' : 'shadow-none backdrop-blur-0',
+        )}
+      >
+        {/* Header */}
+        <div className="group/library-header flex items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3">
+          <div className="relative flex min-w-0 items-center">
+            {!libraryExpanded && (
+              <button
+                onClick={() => setWidth(RAIL)}
+                className={cn(
+                  'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
+                  // Reveal on hover only once the resize has settled, so it never flashes in mid-minimize.
+                  !isLibraryAnimating && 'group-hover/sidebar:visible group-hover/sidebar:opacity-100',
+                )}
+                aria-label={t('sidebar.collapse')}
+              >
+                <CollapseIcon className="h-6 w-6 -scale-x-100" />
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
+              </button>
             )}
-          >
-            {t('sidebar.title')}
-          </span>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <div className="relative">
-            <button
-              onClick={() => setCreateMenuOpen((v) => !v)}
+            <span
               className={cn(
-                'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
-                compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
+                'truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200',
+                !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
-              aria-label={t('sidebar.createAria')}
-              aria-haspopup="menu"
-              aria-expanded={createMenuOpen}
             >
-              <PlusIcon className="h-[18px] w-[18px] stroke-[2]" />
-              {!compactCreateButton && <span>{t('sidebar.create')}</span>}
-              {!createMenuOpen && (
-                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
-                  {t('sidebar.createTooltip')}
-                </span>
-              )}
-            </button>
-            {createMenuOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-                  <button
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      handleCreate()
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                  >
-                    <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.playlist')}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCreateMenuOpen(false)
-                      handleCreateFolder()
-                    }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                  >
-                    <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.folder')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-          <button
-            onClick={toggleLibraryExpanded}
-            className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
-            aria-label={libraryExpanded ? t('sidebar.minimize') : t('sidebar.expand')}
-          >
-            {libraryExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
-            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
-              {libraryExpanded ? t('sidebar.minimize') : t('sidebar.expand')}
+              {t('sidebar.title')}
             </span>
-          </button>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <div className="relative">
+              <button
+                onClick={() => setCreateMenuOpen((v) => !v)}
+                className={cn(
+                  'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
+                  compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
+                )}
+                aria-label={t('sidebar.createAria')}
+                aria-haspopup="menu"
+                aria-expanded={createMenuOpen}
+              >
+                <PlusIcon className="h-[18px] w-[18px] stroke-[2]" />
+                {!compactCreateButton && <span>{t('sidebar.create')}</span>}
+                {!createMenuOpen && (
+                  <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
+                    {t('sidebar.createTooltip')}
+                  </span>
+                )}
+              </button>
+              {createMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
+                  <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                    <button
+                      onClick={() => {
+                        setCreateMenuOpen(false)
+                        handleCreate()
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.playlist')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCreateMenuOpen(false)
+                        handleCreateFolder()
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.folder')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <button
+              onClick={toggleLibraryExpanded}
+              className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
+              aria-label={libraryExpanded ? t('sidebar.minimize') : t('sidebar.expand')}
+            >
+              {libraryExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
+                {libraryExpanded ? t('sidebar.minimize') : t('sidebar.expand')}
+              </span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Filter chips */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2 bg-sidebar px-4 pb-3">
+        {/* Filter chips */}
+        <div className="flex flex-wrap items-center gap-2 bg-sidebar px-4 pb-3">
         {filter !== 'all' && (
           <button
             onClick={() => setFilter('all')}
@@ -833,9 +853,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         </div>
       </div>
 
+      </div>
+
       {/* Folders + library list/grid */}
       <div
         key={libraryExpanded ? 'expanded' : 'normal'}
+        onScroll={handleLibraryBodyScroll}
         className={cn(
           // Mounts fresh at opacity-0 each toggle so the list↔grid reflow happens unseen while
           // the panel resizes, then fades in once the width settles (isLibraryAnimating clears).
@@ -997,6 +1020,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         )}
       </div>
 
+      {libraryDrop.isOver && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-30 rounded-lg border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
+          style={{ borderColor: DROP_GREEN }}
+        />
+      )}
       <DragHandle onMouseDown={onDragStart} />
     </aside>
   )
@@ -1004,7 +1034,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
 /**
  * Wraps a library row as a drop target for dragged tracks. The hovered valid target
- * gets a bright green ring + tint and a subtle lift.
+ * gets a bright Spotify-green ring without tinting the row content.
  */
 function TrackDropZone({
   accepts,
@@ -1024,11 +1054,11 @@ function TrackDropZone({
       {...(accepts ? dropProps : {})}
       style={
         isOver
-          ? { boxShadow: `inset 0 0 0 2px ${DROP_GREEN}`, backgroundColor: `${DROP_GREEN}1a` }
+          ? { boxShadow: `0 0 0 2px ${DROP_GREEN}, 0 0 0 4px ${DROP_GREEN}24` }
           : undefined
       }
       className={cn(
-        'rounded-md transition-[box-shadow,background-color,transform] duration-150',
+        'rounded-md transition-[box-shadow,transform] duration-150',
         isOver && 'scale-[1.01]',
         className,
       )}
@@ -1522,10 +1552,10 @@ function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => voi
   return (
     <div
       onMouseDown={onMouseDown}
-      className="group absolute top-0 right-0 h-full w-2 cursor-grab active:cursor-grabbing z-20 flex justify-center"
+      className="group absolute -right-2 top-0 z-20 flex h-full w-2 cursor-grab justify-center active:cursor-grabbing"
       aria-hidden="true"
     >
-      <div className="w-px h-full bg-transparent group-hover:bg-secondary/60 transition-colors" />
+      <div className="h-full w-px bg-transparent transition-colors group-hover:bg-secondary/70" />
     </div>
   )
 }

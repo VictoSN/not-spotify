@@ -45,7 +45,10 @@ export function HorizontalScroller({ children }: HorizontalScrollerProps) {
     <div className="group/scroller relative">
       <div
         ref={scrollerRef}
-        className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide scroll-smooth"
+        // Pull the row left by the cards' own p-3 (12px) so the first card's artwork
+        // lines up with the section heading (which has no padding), while each card
+        // keeps its hover-highlight padding — matching Spotify's alignment.
+        className="flex gap-4 overflow-x-auto pb-2 -mx-3 scrollbar-hide scroll-smooth"
       >
         {children}
       </div>

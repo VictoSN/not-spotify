@@ -84,12 +84,17 @@ export function TopBar() {
   const trimmedSearchValue = searchValue.trim()
   const debouncedSearchValue = useDebounce(trimmedSearchValue, 220)
   const activeSuggestions = suggestionsState?.query === trimmedSearchValue ? suggestionsState.data : null
+  const suggestionTracks = activeSuggestions
+    ? [...activeSuggestions.tracks, ...(activeSuggestions.tracksByLyrics ?? [])].filter(
+        (track, index, rows) => rows.findIndex((row) => row.id === track.id) === index,
+      )
+    : []
   const matchingRecents = visibleRecents
     .filter((recent) => !trimmedSearchValue || recent.term.toLowerCase().includes(trimmedSearchValue.toLowerCase()))
     .slice(0, trimmedSearchValue ? 8 : 20)
   const hasSuggestionResults =
     !!activeSuggestions &&
-    (activeSuggestions.tracks.length > 0 ||
+    (suggestionTracks.length > 0 ||
       activeSuggestions.artists.length > 0 ||
       activeSuggestions.albums.length > 0 ||
       activeSuggestions.playlists.length > 0)
@@ -271,7 +276,7 @@ export function TopBar() {
 
           {trimmedSearchValue && activeSuggestions && (
             <>
-          {activeSuggestions.tracks.slice(0, 3).map((track) => (
+          {suggestionTracks.slice(0, 3).map((track) => (
             <button
               key={`track-${track.id}`}
               type="button"

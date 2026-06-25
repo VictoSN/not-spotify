@@ -52,6 +52,17 @@ public class SearchTextBuilderTests
         Assert.True(Matches(blob, "eric chou"));
     }
 
+    [Theory]
+    [InlineData("7!!")]
+    [InlineData("７！！")]
+    [InlineData("seven oops")]
+    [InlineData("seven!!")]
+    public void Artist_SevenOops_IsFoundBySymbolAndSpokenName(string query)
+    {
+        var blob = SearchTextBuilder.ForArtist("7!!");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
     [Fact]
     public void Album_IsFoundByPinyinAndEnglish()
     {
@@ -61,11 +72,65 @@ public class SearchTextBuilderTests
         Assert.True(Matches(blob, "愛教會我們的事"));
     }
 
+    [Theory]
+    [InlineData("廻廻奇譚")]
+    [InlineData("kaikai kitan")]
+    [InlineData("kaikaikitan")]
+    [InlineData("kkk")]
+    [InlineData("Eve")]
+    [InlineData("Ｅｖｅ")]
+    public void Track_EveKanjiTitle_IsFoundByRomajiAndArtist(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("廻廻奇譚", "Eve", "廻廻奇譚");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Theory]
+    [InlineData("ドラマツルギー")]
+    [InlineData("dramaturgy")]
+    [InlineData("doramatsurugi")]
+    public void Track_EveKanaTitle_IsFoundByRomajiAndEnglish(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("ドラマツルギー", "Eve", "文化");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Theory]
+    [InlineData("蒼のワルツ")]
+    [InlineData("ao no waltz")]
+    [InlineData("aonowaltz")]
+    [InlineData("ao no warutsu")]
+    [InlineData("blue waltz")]
+    public void Track_EveAoNoWaltz_IsFoundByRomajiAndEnglish(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("蒼のワルツ", "Eve", "蒼のワルツ");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Theory]
+    [InlineData("オレンジ")]
+    [InlineData("orange")]
+    [InlineData("orenji")]
+    [InlineData("seven oops")]
+    public void Track_SevenOopsOrange_IsFoundByEnglishRomajiAndArtistAlias(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("オレンジ", "7!!", "オレンジ");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Fact]
+    public void Track_RomanizedJapaneseTitle_IsFoundByNativeScript()
+    {
+        var blob = SearchTextBuilder.ForTrack("Kaikai Kitan", "Eve", "Kaikai Kitan");
+        Assert.True(Matches(blob, "廻廻奇譚"));
+    }
+
     [Fact]
     public void Normalize_CollapsesCjkAndAsciiPunctuationToSpaces()
     {
         Assert.Equal("你 好不好", SearchTextBuilder.Normalize("你，好不好？"));
         Assert.Equal("hello world", SearchTextBuilder.Normalize("  Hello,   World! "));
+        Assert.Equal("7 eve", SearchTextBuilder.Normalize("７！！ Ｅｖｅ"));
     }
 
     [Fact]

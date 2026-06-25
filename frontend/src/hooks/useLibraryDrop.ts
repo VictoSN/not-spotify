@@ -24,7 +24,13 @@ export function useLibraryDrop(canDrop: boolean, handlers: LibraryDropHandlers) 
   useEffect(() => {
     const clear = () => setIsOver(false)
     window.addEventListener('ns-track-drop-zone-over', clear)
-    return () => window.removeEventListener('ns-track-drop-zone-over', clear)
+    window.addEventListener('dragend', clear)
+    window.addEventListener('drop', clear)
+    return () => {
+      window.removeEventListener('ns-track-drop-zone-over', clear)
+      window.removeEventListener('dragend', clear)
+      window.removeEventListener('drop', clear)
+    }
   }, [])
 
   const getDropKind = (e: React.DragEvent): LibraryDropKind | null => {

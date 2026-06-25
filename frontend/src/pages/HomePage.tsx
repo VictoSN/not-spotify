@@ -33,6 +33,7 @@ import { MixTile } from '@/components/cards/MixTile'
 import { Spinner } from '@/components/ui/Spinner'
 import type { DailyMix } from '@/services/trackService'
 import { useTranslation } from '@/i18n/useTranslation'
+import { cn } from '@/utils/cn'
 
 const PREVIEW_LIMIT = 10
 
@@ -117,10 +118,19 @@ export function HomePage() {
   const baseColor = useDominantColor(heroSeed)
   const hoverColor = useHueStore((s) => s.hoverColor)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  // Whether the main content area is scrolled past the hero (set by AppShell);
+  // drives the Home filter bar's locked-hue background — the global header is unaffected.
+  const headerScrolled = useHueStore((s) => s.headerScrolled)
   // Hovering a card tints the hue toward that cover; otherwise follow the playing track.
   const heroColor = hoverColor ?? baseColor
 
   useEffect(() => () => setHoverColor(null), [setHoverColor])
+
+  // Home's own filter ("All / Music / Podcasts") — lives in the page content, not
+  // the global header. 'music' hides podcasts; 'podcasts' shows only podcasts.
+  const [homeFilter, setHomeFilter] = useState<'all' | 'music' | 'podcasts'>('all')
+  const showMusic = homeFilter !== 'podcasts'
+  const showPodcasts = homeFilter !== 'music'
 
   const getGreeting = () => {
     const h = new Date().getHours()
@@ -138,6 +148,7 @@ export function HomePage() {
   }
 
   const quickPicks = savedPlaylists.slice(0, 6)
+  const homeHeaderBackground = headerScrolled ? (baseColor ?? 'var(--c-base)') : 'transparent'
 
   // ISO alpha-2 → display name (e.g. "US" → "United States"); falls back to the code.
   const countryCode = (user?.country || 'US').toUpperCase()
@@ -161,9 +172,43 @@ export function HomePage() {
         }}
       />
 
-      <div className="relative px-4 py-6">
+      {/* Home filter bar — a Home-page-only sticky header (All / Music / Podcasts).
+          It locks to the top of the content scroll area and adopts the page hue once
+          scrolled. This is intentionally separate from the global app header, which
+          must stay visually independent. */}
+      <div
+        className="sticky top-0 z-20 transition-colors duration-300 ease-out motion-reduce:transition-none"
+        style={{
+          backgroundColor: homeHeaderBackground,
+          boxShadow: headerScrolled ? `32px 0 0 ${homeHeaderBackground}` : 'none',
+        }}
+      >
+        <div className="flex items-center gap-2 px-4 py-3">
+          {([
+            { key: 'all', label: t('home.filter.all') },
+            { key: 'music', label: t('home.filter.music') },
+            { key: 'podcasts', label: t('home.filter.podcasts') },
+          ] as const).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setHomeFilter(f.key)}
+              className={cn(
+                'flex h-8 items-center rounded-full px-3.5 text-sm font-medium transition-all active:scale-95',
+                homeFilter === f.key
+                  ? 'bg-primary text-page'
+                  : 'bg-elevated/80 text-primary hover:bg-elevated backdrop-blur-sm',
+              )}
+              aria-pressed={homeFilter === f.key}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="relative px-4 pb-6">
         {isAuthenticated && (
-          <h1 className="text-3xl font-bold text-primary mb-6">
+          <h1 className="text-3xl font-bold text-primary mb-6 mt-2">
             {getGreeting()}
             {user ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>
@@ -221,7 +266,7 @@ export function HomePage() {
         )}
 
         {/* Quick access — the same library shown in the sidebar */}
-        {isAuthenticated && quickPicks.length > 0 && (
+        {showMusic && isAuthenticated && quickPicks.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
             {quickPicks.map((p) => {
               const tracks = p.tracks?.map((pt) => pt.track) ?? []
@@ -233,16 +278,16 @@ export function HomePage() {
                     if (p.coverUrl) getDominantColor(p.coverUrl).then((c) => c && setHoverColor(c))
                   }}
                   onMouseLeave={() => setHoverColor(null)}
-                  className="relative flex items-center gap-3 bg-elevated/40 hover:bg-elevated rounded-md overflow-hidden group transition-colors"
+                  className="relative flex items-center gap-4 bg-elevated/40 hover:bg-elevated rounded-md overflow-hidden group transition-colors"
                 >
-                  <div className="w-14 h-14 shrink-0 bg-surface flex items-center justify-center overflow-hidden">
+                  <div className="w-20 h-20 shrink-0 bg-surface flex items-center justify-center overflow-hidden">
                     {p.coverUrl ? (
                       <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover" />
                     ) : (
-                      <MusicalNoteIcon className="w-6 h-6 text-secondary" />
+                      <MusicalNoteIcon className="w-7 h-7 text-secondary" />
                     )}
                   </div>
-                  <span className="text-sm font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
+                  <span className="text-base font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
                   {tracks.length > 0 && (
                     <button
                       onClick={(e) => {
@@ -262,7 +307,7 @@ export function HomePage() {
         )}
 
         {/* Daily Mixes — genre-based, personalised mixes */}
-        {dailyMixes.length > 0 && (
+        {showMusic && dailyMixes.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.madeForYou')} />
             <HorizontalScroller>
@@ -274,7 +319,7 @@ export function HomePage() {
         )}
 
         {/* For You Today — personalised, auth only */}
-        {isAuthenticated && forYou.length > 0 && (
+        {showMusic && isAuthenticated && forYou.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.forYouToday')} />
             <HorizontalScroller>
@@ -286,7 +331,7 @@ export function HomePage() {
         )}
 
         {/* Recents — auth only, hidden until the user has played something */}
-        {isAuthenticated && recents.length > 0 && (
+        {showMusic && isAuthenticated && recents.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.recentlyPlayed')} />
             <HorizontalScroller>
@@ -298,7 +343,7 @@ export function HomePage() {
         )}
 
         {/* Trending now */}
-        {trending.length > 0 && (
+        {showMusic && trending.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.trendingNow')} href="/charts" />
             <HorizontalScroller>
@@ -310,7 +355,7 @@ export function HomePage() {
         )}
 
         {/* Most Liked */}
-        {mostLiked.length > 0 && (
+        {showMusic && mostLiked.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.mostLiked')} />
             <HorizontalScroller>
@@ -322,7 +367,7 @@ export function HomePage() {
         )}
 
         {/* Popular in the listener's country */}
-        {popularInCountry.length > 0 && (
+        {showMusic && popularInCountry.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} />
             <HorizontalScroller>
@@ -334,7 +379,7 @@ export function HomePage() {
         )}
 
         {/* Recommended playlists */}
-        {recommendedPlaylists.length > 0 && (
+        {showMusic && recommendedPlaylists.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.recommendedPlaylists')} href="/playlists" />
             <HorizontalScroller>
@@ -346,7 +391,7 @@ export function HomePage() {
         )}
 
         {/* New Music */}
-        {newMusic.length > 0 && (
+        {showMusic && newMusic.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.newMusic')} />
             <HorizontalScroller>
@@ -358,7 +403,7 @@ export function HomePage() {
         )}
 
         {/* Popular artists */}
-        {popularArtists.length > 0 && (
+        {showMusic && popularArtists.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.popularArtists')} href="/popular-artists" />
             <HorizontalScroller>
@@ -370,7 +415,7 @@ export function HomePage() {
         )}
 
         {/* New releases */}
-        {newReleases.length > 0 && (
+        {showMusic && newReleases.length > 0 && (
           <section className="mb-8">
             <SectionHeader
               title={isAuthenticated ? t('home.section.newReleases') : t('home.section.popularAlbums')}
@@ -385,7 +430,7 @@ export function HomePage() {
         )}
 
         {/* Podcasts */}
-        {podcasts.length > 0 && (
+        {showPodcasts && podcasts.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.podcasts')} href="/podcasts" />
             <HorizontalScroller>
@@ -411,7 +456,7 @@ export function HomePage() {
         )}
 
         {/* Music videos */}
-        {musicVideos.length > 0 && (
+        {showMusic && musicVideos.length > 0 && (
           <section className="mb-8">
             <SectionHeader title={t('home.section.musicVideos')} href="/videos" />
             <HorizontalScroller>

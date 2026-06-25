@@ -1,10 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import {
-  PlayIcon,
-  ArrowDownTrayIcon,
-  CodeBracketIcon,
-} from '@heroicons/react/24/outline'
+import { ArrowDownTrayIcon, CodeBracketIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { trackService } from '@/services/trackService'
@@ -18,8 +15,10 @@ import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { Spinner } from '@/components/ui/Spinner'
+import { Button } from '@/components/ui/Button'
 import { LyricsView } from '@/components/player/LyricsView'
-import { TrackRowMenu, type TrackRowMenuHandle } from '@/components/cards/TrackRowMenu'
+import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { CommentSection } from '@/components/comments/CommentSection'
 import { SectionHeader } from '@/components/common/SectionHeader'
@@ -29,9 +28,6 @@ import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 import { usePlayerStore } from '@/stores/playerStore'
-import { useDragStore } from '@/stores/dragStore'
-import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
-import { openMenuAtPointer } from '@/utils/contextMenu'
 
 export function TrackDetailPage() {
   const { t } = useTranslation()
@@ -57,7 +53,12 @@ export function TrackDetailPage() {
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const [downloading, setDownloading] = useState(false)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const pause = usePlayerStore((s) => s.pause)
+  const resume = usePlayerStore((s) => s.resume)
   const seek = usePlayerStore((s) => s.seek)
+  const isCurrentTrack = !!track && currentTrack?.id === track.id
+  const isThisTrackPlaying = isCurrentTrack && isPlaying
 
   const isLiked = track ? likedTrackIds.has(track.id) : false
 
@@ -107,7 +108,13 @@ export function TrackDetailPage() {
   }, [artistId, id])
 
   const handlePlay = () => {
-    if (track) playWithGate(track, [track])
+    if (!track) return
+    if (isCurrentTrack) {
+      if (isPlaying) pause()
+      else resume()
+    } else {
+      playWithGate(track, [track])
+    }
   }
 
   const handleSeek = (seconds: number) => {
@@ -222,13 +229,13 @@ export function TrackDetailPage() {
       {/* ── Action bar ───────────────────────────────────────────── */}
       <div className="flex items-center gap-4 px-4 sm:px-6 py-4">
         {/* Play */}
-        <button
-          onClick={handlePlay}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-accent hover:bg-accent/80 active:scale-95 transition-all shadow-lg"
-          aria-label={t('common.play')}
-        >
-          <PlayIcon className="w-6 h-6 text-white ml-0.5" />
-        </button>
+        <Button onClick={handlePlay} size="lg" className="gap-2">
+          {isThisTrackPlaying ? (
+            <><PauseIcon className="w-5 h-5" /> {t('player.pause')}</>
+          ) : (
+            <><PlayIcon className="w-5 h-5" /> {t('common.play')}</>
+          )}
+        </Button>
 
         {/* Like */}
         <button
@@ -316,7 +323,7 @@ export function TrackDetailPage() {
           </div>
           <div>
             {artistTracks.map((tr, i) => (
-              <PopularArtistTrackRow key={tr.id} track={tr} index={i} queue={artistTracks} />
+              <TrackRow key={tr.id} track={tr} index={i} queue={artistTracks} showPlayCount />
             ))}
           </div>
           <Link
@@ -356,127 +363,3 @@ export function TrackDetailPage() {
   )
 }
 
-function PopularArtistTrackRow({
-  track,
-  index,
-  queue,
-}: {
-  track: Track
-  index: number
-  queue: Track[]
-}) {
-  const playWithGate = usePlaybackGate()
-  const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const openAuthPrompt = useAuthPromptStore((s) => s.open)
-  const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
-  const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
-  const isLiked = likedTrackIds.has(track.id)
-
-  const play = () => playWithGate(track, queue)
-
-  const toggleLike = (event: React.MouseEvent) => {
-    event.preventDefault()
-    event.stopPropagation()
-    if (!isAuthenticated) {
-      openAuthPrompt({ title: 'Like songs with a free account', imageUrl: track.album.coverUrl })
-      return
-    }
-    if (isLiked) void unlikeTrack(track.id)
-    else void likeTrack(track)
-  }
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      draggable
-      onClick={play}
-      onContextMenu={(event) => openMenuAtPointer(event, menuTriggerRef)}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          play()
-        }
-      }}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = 'copy'
-        event.dataTransfer.setData(TRACK_DND_MIME, track.id)
-        event.dataTransfer.setData('text/plain', `${track.title} - ${track.artist.name}`)
-        setTrackDragImage(event, track)
-        setDraggedTrack(track)
-        event.currentTarget.style.opacity = '0.4'
-      }}
-      onDragEnd={(event) => {
-        setDraggedTrack(null)
-        event.currentTarget.style.opacity = ''
-      }}
-      className="group grid h-14 cursor-pointer grid-cols-[32px_48px_minmax(0,1fr)_52px] items-center gap-3 rounded px-3 transition-colors hover:bg-white/[0.08] focus-visible:bg-white/[0.08] focus-visible:outline-none md:grid-cols-[36px_48px_minmax(0,1fr)_minmax(120px,0.48fr)_40px_52px_32px]"
-    >
-      <div className="flex items-center justify-center text-sm font-semibold text-secondary">
-        <span className="group-hover:hidden">{index + 1}</span>
-        <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
-      </div>
-
-      <img
-        src={track.album.coverUrl}
-        alt=""
-        draggable={false}
-        className="h-12 w-12 rounded-sm object-cover shadow-md"
-      />
-
-      <div className="min-w-0">
-        <Link
-          to={`/track/${track.id}`}
-          draggable={false}
-          onClick={(event) => event.stopPropagation()}
-          className="block truncate text-base font-bold leading-5 text-primary hover:underline"
-        >
-          {track.title}
-        </Link>
-        <Link
-          to={`/artist/${track.artist.id}`}
-          draggable={false}
-          onClick={(event) => event.stopPropagation()}
-          className="mt-0.5 block truncate text-sm font-semibold leading-5 text-secondary transition-colors hover:text-primary hover:underline"
-        >
-          {track.artist.name}
-        </Link>
-      </div>
-
-      <span className="hidden truncate text-sm font-semibold text-secondary md:block">
-        {formatNumber(track.playCount)}
-      </span>
-
-      <button
-        type="button"
-        onClick={toggleLike}
-        aria-label={isLiked ? 'Remove from Liked Songs' : 'Save to Liked Songs'}
-        className={`hidden justify-self-center transition-opacity md:block ${
-          isLiked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        }`}
-      >
-        <AnimatedLikeIcon liked={isLiked} className="h-5 w-5" heartClassName="h-5 w-5 text-secondary hover:text-primary" />
-      </button>
-
-      <span className="justify-self-end text-sm font-semibold text-secondary">
-        {formatMs(track.durationMs)}
-      </span>
-
-      <div
-        className="hidden justify-self-end md:block"
-        onClick={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-      >
-        <TrackRowMenu
-          track={track}
-          ref={menuTriggerRef}
-          triggerClassName="rounded-full p-1 text-secondary hover:text-primary"
-          triggerIconClassName="h-5 w-5"
-        />
-      </div>
-    </div>
-  )
-}

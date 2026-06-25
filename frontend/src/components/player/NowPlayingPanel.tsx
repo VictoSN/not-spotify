@@ -27,6 +27,7 @@ import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
+import { useDominantColor } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 import { shareLink } from '@/utils/share'
@@ -112,6 +113,7 @@ export function NowPlayingPanel() {
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const setNowPlayingExpanded = usePlayerStore((s) => s.setNowPlayingExpanded)
   const isPremium = useAuthStore((s) => s.user?.capabilities?.unlimitedPlayback !== false)
+  const albumHeroColor = useDominantColor(currentTrack?.album.coverUrl, { resetOnChange: true })
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
@@ -390,6 +392,12 @@ export function NowPlayingPanel() {
     const heroOpacity = Math.max(0, 1 - heroProgress * 1.35)
     const expandedVideos = artistVideos.filter((item) => item.id !== video?.id).slice(0, 8)
     const fallbackMediaTracks = expandedVideos.length === 0 ? relatedTracks.slice(0, 8) : []
+    // A soft radial glow at the top centred behind the artwork, layered over a
+    // vertical fade that deepens into the page colour — fills the panel edge to
+    // edge and keeps the cover visually fused with the background (Spotify-like).
+    const expandedHeroBackground = albumHeroColor
+      ? `radial-gradient(130% 70% at 50% 0%, color-mix(in srgb, ${albumHeroColor} 55%, transparent) 0%, transparent 72%), linear-gradient(to bottom, color-mix(in srgb, ${albumHeroColor} 72%, #121212) 0%, color-mix(in srgb, ${albumHeroColor} 40%, #121212) 45%, color-mix(in srgb, ${albumHeroColor} 12%, #121212) 72%, #121212 100%)`
+      : 'linear-gradient(to bottom, #181818 0%, #151515 52%, #121212 100%)'
 
     return (
       <aside ref={panelRef} style={panelStyle} className={panelClass}>
@@ -402,7 +410,8 @@ export function NowPlayingPanel() {
         >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-x-0 top-0 h-[78vh] bg-gradient-to-b from-[#181818] via-[#151515] to-[#121212]"
+            className="pointer-events-none absolute inset-x-0 top-0 h-[78vh] transition-[background] duration-500 ease-out"
+            style={{ background: expandedHeroBackground }}
           />
 
           <div
@@ -451,8 +460,15 @@ export function NowPlayingPanel() {
           </div>
 
           <section className="relative z-10 flex min-h-[calc(100vh-13rem)] items-center justify-center px-8 pb-20 pt-6">
+            {albumHeroColor && (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-1/2 h-[62vh] w-[62vh] max-w-[88%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-55 blur-[130px] transition-[background] duration-500 ease-out"
+                style={{ background: albumHeroColor, opacity: heroOpacity * 0.55 }}
+              />
+            )}
             <div
-              className="w-[min(35rem,57vh,46vw)] max-w-full transition-[opacity,transform] duration-150 ease-out"
+              className="relative z-10 w-[min(35rem,57vh,46vw)] max-w-full transition-[opacity,transform] duration-150 ease-out"
               style={{
                 opacity: heroOpacity,
                 transform: `translateY(${-heroProgress * 110}px) scale(${1 - heroProgress * 0.08})`,

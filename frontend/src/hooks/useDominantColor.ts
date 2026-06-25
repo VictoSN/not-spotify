@@ -85,6 +85,46 @@ export function artworkSectionGradient(color: string): string {
   return `linear-gradient(180deg, color-mix(in srgb, ${color} var(--artwork-section-strength), var(--c-page)) 0, color-mix(in srgb, ${color} 10%, transparent) 8rem, transparent 20rem)`
 }
 
+// How much each node-vibrant swatch is allowed to represent the whole cover.
+// Taking the `Vibrant` swatch outright biases toward small, intensely-saturated
+// accents (a red fan, gold text, a neon prop) over the colour that actually
+// fills the frame — so the Fábula cover, a wall of purple behind an orange fan,
+// used to tint the page brown/orange. We instead prefer the deep, muted,
+// background-like swatches (dark-muted → muted → dark-vibrant → vibrant) and
+// push the light highlight swatches (skin, blown-out gold) to the back, exactly
+// the order Spotify's now-playing hue follows.
+const SWATCH_WEIGHT: Record<string, number> = {
+  DarkMuted: 1.35,
+  Muted: 1.2,
+  DarkVibrant: 1.12,
+  Vibrant: 1.0,
+  LightMuted: 0.62,
+  LightVibrant: 0.5,
+}
+
+/**
+ * Pick the swatch that best represents the artwork's *background*. Each swatch
+ * is scored by population (how much of the image it covers) × a category weight
+ * (favouring dark/muted background tones) and lightly by saturation so a muddy
+ * tie breaks toward the more colourful option. This keeps a large purple field
+ * winning over a small vivid accent, and a real colour winning over flat grey.
+ */
+function pickSwatchHex(palette: Record<string, { hex: string; population: number; hsl: number[] } | null>): string | null {
+  let bestHex: string | null = null
+  let bestScore = -1
+  for (const [name, swatch] of Object.entries(palette)) {
+    if (!swatch || swatch.population <= 0) continue
+    const saturation = swatch.hsl?.[1] ?? 0
+    const weight = SWATCH_WEIGHT[name] ?? 1
+    const score = swatch.population * weight * (0.6 + saturation * 0.4)
+    if (score > bestScore) {
+      bestScore = score
+      bestHex = swatch.hex
+    }
+  }
+  return bestHex
+}
+
 export async function getDominantColor(url: string): Promise<string | null> {
   const cached = cache.get(url)
   if (cached) return cached
@@ -111,9 +151,7 @@ export async function getDominantColor(url: string): Promise<string | null> {
       if (!res.ok) return null
       objectUrl = URL.createObjectURL(await res.blob())
       const palette = await new Vibrant(objectUrl).getPalette()
-      const hex =
-        palette.Vibrant?.hex ?? palette.LightVibrant?.hex ?? palette.DarkVibrant?.hex ?? palette.Muted?.hex ?? null
-      const color = normalizeHue(hex)
+      const color = normalizeHue(pickSwatchHex(palette))
       if (color) cache.set(url, color)
       return color
     } catch {

@@ -623,17 +623,9 @@ export function ArtistDashboardPage() {
       )}
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-primary">Artist Dashboard</h1>
-          <p className="text-secondary text-sm mt-1">Manage your profile, releases, and submissions.</p>
-        </div>
-        {!isRevoked && (
-          <Button onClick={() => { setShowAlbumForm((v) => !v); setAlbumFormError(null) }}>
-            <PlusCircleIcon className="w-5 h-5" />
-            {showAlbumForm ? 'Cancel' : 'New release'}
-          </Button>
-        )}
+      <div>
+        <h1 className="text-3xl font-bold text-primary">Artist Dashboard</h1>
+        <p className="text-secondary text-sm mt-1">Manage your profile, releases, and submissions.</p>
       </div>
 
       {error && (
@@ -980,7 +972,15 @@ export function ArtistDashboardPage() {
 
       {/* ── Releases section header ───────────────────────────────────────── */}
       <div>
-        <h2 className="text-xl font-bold text-primary mb-3">Releases</h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold text-primary">Releases</h2>
+          {!isRevoked && (
+            <Button onClick={() => { setShowAlbumForm((v) => !v); setAlbumFormError(null) }}>
+              <PlusCircleIcon className="w-5 h-5" />
+              {showAlbumForm ? 'Cancel' : 'New release'}
+            </Button>
+          )}
+        </div>
 
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>

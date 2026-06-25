@@ -21,7 +21,6 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
 import { formatMs } from '@/utils/formatTime'
 import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
@@ -113,9 +112,9 @@ export function AlbumDetailPage() {
           className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl flex-shrink-0 object-cover self-center sm:self-auto"
         />
         <div className="min-w-0 pb-2">
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="accent">{album.type.toUpperCase()}</Badge>
-          </div>
+          <p className="mb-1 text-xs font-black uppercase tracking-wide text-primary">
+            {album.type.toUpperCase()}
+          </p>
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-2 break-words">{album.title}</h1>
           {/* Stats row */}
           <div className="flex items-center gap-4 mb-2 flex-wrap">

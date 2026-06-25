@@ -21,7 +21,7 @@ interface FriendPanelProps {
 
 // ─── Friend search section ───────────────────────────────────────────────────
 
-function FriendSearch() {
+function FriendSearch({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<UserSearchResult[]>([])
   const [sentIds, setSentIds] = useState<Set<string>>(new Set())
@@ -81,20 +81,22 @@ function FriendSearch() {
         const sent = sentIds.has(u.id)
         return (
           <div key={u.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface rounded-md">
-            <Avatar src={u.avatarUrl} alt={u.name} size="sm" round />
-            <div className="flex-1 min-w-0">
-              <p className="flex items-center gap-1 text-sm font-semibold text-primary truncate">
-                <span className="truncate">{u.name}</span>
-                {u.isArtist && <CheckBadgeIcon className="h-3.5 w-3.5 shrink-0 text-accent" aria-label="Verified artist" />}
-              </p>
-              {u.isArtist ? (
-                <p className="text-xs text-secondary truncate">Artist</p>
-              ) : u.mutualFriendsCount > 0 ? (
-                <p className="text-xs text-secondary truncate">
-                  {u.mutualFriendsCount} mutual friend{u.mutualFriendsCount !== 1 ? 's' : ''}
+            <Link to={`/user/${u.id}`} onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3">
+              <Avatar src={u.avatarUrl} alt={u.name} size="sm" round />
+              <div className="flex-1 min-w-0">
+                <p className="flex items-center gap-1 text-sm font-semibold text-primary truncate">
+                  <span className="truncate">{u.name}</span>
+                  {u.isArtist && <CheckBadgeIcon className="h-3.5 w-3.5 shrink-0 text-accent" aria-label="Verified artist" />}
                 </p>
-              ) : null}
-            </div>
+                {u.isArtist ? (
+                  <p className="text-xs text-secondary truncate">Artist</p>
+                ) : u.mutualFriendsCount > 0 ? (
+                  <p className="text-xs text-secondary truncate">
+                    {u.mutualFriendsCount} mutual friend{u.mutualFriendsCount !== 1 ? 's' : ''}
+                  </p>
+                ) : null}
+              </div>
+            </Link>
             {isFriend ? (
               <span className="text-xs text-secondary shrink-0">Friends</span>
             ) : sent ? (
@@ -250,7 +252,7 @@ function FriendsList({ onClose }: { onClose: () => void }) {
 
 // ─── Suggestions ("People you may know") ─────────────────────────────────────
 
-function FriendSuggestions() {
+function FriendSuggestions({ onClose }: { onClose: () => void }) {
   const suggestions = useFriendStore((s) => s.suggestions)
   const sendRequest = useFriendStore((s) => s.sendRequest)
   const friends = useFriendStore((s) => s.friends)
@@ -280,13 +282,15 @@ function FriendSuggestions() {
         const sent = sentIds.has(s.id)
         return (
           <div key={s.id} className="flex items-center gap-3 px-3 py-2 hover:bg-surface rounded-md">
-            <Avatar src={s.avatarUrl} alt={s.name} size="sm" round />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-primary truncate">{s.name}</p>
-              <p className="text-xs text-secondary truncate">
-                {s.mutualFriendsCount} mutual friend{s.mutualFriendsCount !== 1 ? 's' : ''}
-              </p>
-            </div>
+            <Link to={`/user/${s.id}`} onClick={onClose} className="flex min-w-0 flex-1 items-center gap-3">
+              <Avatar src={s.avatarUrl} alt={s.name} size="sm" round />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-primary truncate">{s.name}</p>
+                <p className="text-xs text-secondary truncate">
+                  {s.mutualFriendsCount} mutual friend{s.mutualFriendsCount !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </Link>
             {isFriend ? (
               <span className="text-xs text-secondary shrink-0">Friends</span>
             ) : sent ? (
@@ -327,10 +331,10 @@ export function FriendPanel({ onClose = () => {}, embedded = false }: FriendPane
       ? 'h-full overflow-y-auto py-2'
       : 'absolute right-0 top-full z-50 mt-2 max-h-[520px] w-80 overflow-y-auto rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl'
     }>
-      <FriendSearch />
+      <FriendSearch onClose={onClose} />
       <PendingRequests />
       <FriendsList onClose={onClose} />
-      <FriendSuggestions />
+      <FriendSuggestions onClose={onClose} />
     </div>
   )
 }

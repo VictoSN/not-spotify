@@ -161,6 +161,22 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum,
   )
 
+  // True for the duration of an expand/minimize. Hover-only chrome (the collapse
+  // icon, the title nudge) is suppressed while this is set so it can't flicker in
+  // mid-resize, and the content crossfades so its list↔grid reflow is masked.
+  const [isLibraryAnimating, setIsLibraryAnimating] = useState(false)
+  const libAnimTimer = useRef<number | null>(null)
+  const toggleLibraryExpanded = () => {
+    if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
+    setIsLibraryAnimating(true)
+    // Slightly longer than the 300ms width transition so the reveal lands after it settles.
+    libAnimTimer.current = window.setTimeout(() => setIsLibraryAnimating(false), 320)
+    setLibraryExpanded(!libraryExpanded)
+  }
+  useEffect(() => () => {
+    if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
+  }, [])
+
   const setView = (v: 'list' | 'grid') => {
     setViewMode(v)
     try {
@@ -461,9 +477,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar relative min-w-0 rounded-lg bg-sidebar flex flex-col overflow-hidden select-none',
-    // Animate width (rail/drag) but expand instantly — a growing grid reflows columns and looks glitchy.
-    !dragging && 'transition-[flex-basis,opacity,transform] duration-300 ease-out',
+    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-lg bg-sidebar select-none',
+    // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
+    // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
+    !dragging &&
+      'transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
     takeoverHidden ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100',
   )
 
@@ -473,7 +491,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       <aside style={frameStyle} className={frameClass}>
         <button
           onClick={() => setWidth(DEFAULT_W)}
-          className="m-3 w-12 h-12 rounded-md flex items-center justify-center text-secondary hover:text-primary hover:bg-elevated hover:scale-105 transition-all"
+          className="m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
           aria-label={t('sidebar.expand')}
           title={t('sidebar.expand')}
         >
@@ -488,17 +506,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   if (!isAuthenticated) {
     return (
       <aside style={frameStyle} className={frameClass}>
-        <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2">
+        <div className="group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3">
           <div className="relative flex min-w-0 items-center">
             <button
               onClick={() => setWidth(RAIL)}
-              className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
+              className="spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/sidebar:visible group-hover/sidebar:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
-              <CollapseIcon className="h-5 w-5 -scale-x-100" />
+              <CollapseIcon className="h-6 w-6 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
-            <span className="truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200 group-hover/library-header:pl-7">
+            <span className="truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200 group-hover/sidebar:pl-9">
               {t('sidebar.title')}
             </span>
           </div>
@@ -518,7 +536,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-2">
+        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <div className="flex flex-col gap-3">
             <section className="rounded-lg bg-elevated p-4">
               <h2 className="text-sm font-bold text-primary">{t('sidebar.auth.createTitle')}</h2>
@@ -562,7 +580,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       >
         <button
           onClick={() => setWidth(DEFAULT_W)}
-          className="m-3 w-12 h-12 rounded-md flex items-center justify-center text-secondary hover:text-primary hover:bg-elevated hover:scale-105 transition-all"
+          className="m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
           aria-label={t('sidebar.expand')}
           title={t('sidebar.expand')}
         >
@@ -571,7 +589,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
         <div
           className={cn(
-            'flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide transition-opacity duration-150',
+            'flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide transition-opacity duration-150 animate-sidebar-retract',
             libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
           )}
         >
@@ -620,28 +638,32 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       className={frameClass}
     >
       {/* Header */}
-      <div className="group/library-header flex items-center justify-between px-4 pt-3 pb-3 gap-2 rounded-md transition-[box-shadow,background-color] duration-150">
+      <div className="group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 rounded-md bg-sidebar px-4 pb-3 pt-3 transition-[box-shadow,background-color] duration-150">
         <div className="relative flex min-w-0 items-center">
           {!libraryExpanded && (
             <button
               onClick={() => setWidth(RAIL)}
-              className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:text-primary group-hover/library-header:translate-x-0 group-hover/library-header:opacity-100"
+              className={cn(
+                'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
+                // Reveal on hover only once the resize has settled, so it never flashes in mid-minimize.
+                !isLibraryAnimating && 'group-hover/sidebar:visible group-hover/sidebar:opacity-100',
+              )}
               aria-label={t('sidebar.collapse')}
             >
-              <CollapseIcon className="h-5 w-5 -scale-x-100" />
+              <CollapseIcon className="h-6 w-6 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
           )}
           <span
             className={cn(
               'truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200',
-              !libraryExpanded && 'group-hover/library-header:pl-7',
+              !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
             )}
           >
             {t('sidebar.title')}
           </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex shrink-0 items-center gap-1">
           <div className="relative">
             <button
               onClick={() => setCreateMenuOpen((v) => !v)}
@@ -688,7 +710,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             )}
           </div>
           <button
-            onClick={() => setLibraryExpanded(!libraryExpanded)}
+            onClick={toggleLibraryExpanded}
             className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
             aria-label={libraryExpanded ? t('sidebar.minimize') : t('sidebar.expand')}
           >
@@ -701,7 +723,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       </div>
 
       {/* Filter chips */}
-      <div className="flex items-center gap-2 px-4 pb-3 flex-wrap">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 bg-sidebar px-4 pb-3">
         {filter !== 'all' && (
           <button
             onClick={() => setFilter('all')}
@@ -730,7 +752,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       </div>
 
       {/* Search + sort */}
-      <div className="flex h-9 items-center justify-between gap-2 px-4 pb-2">
+      <div className="flex h-9 shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-2">
         {searchOpen ? (
           <div
             className={cn('library-search-field relative', libraryExpanded ? 'w-full max-w-sm flex-none' : 'flex-1')}
@@ -815,7 +837,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       <div
         key={libraryExpanded ? 'expanded' : 'normal'}
         className={cn(
-          'flex-1 overflow-y-auto px-2 pb-2 animate-fade-in transition-opacity duration-150',
+          // Mounts fresh at opacity-0 each toggle so the list↔grid reflow happens unseen while
+          // the panel resizes, then fades in once the width settles (isLibraryAnimating clears).
+          'min-h-0 flex-1 overflow-y-auto px-2 pb-2 transition-opacity duration-300 ease-out motion-reduce:transition-none',
+          isLibraryAnimating ? 'opacity-0' : 'opacity-100',
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
       >

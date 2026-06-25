@@ -299,6 +299,22 @@ body,
   animation: ns-fade-in 0.22s ease-out;
 }
 
+/* Library sidebar retract — the icon rail gently slides + fades in as the panel
+ * minimizes, so the collapse reads as one clean motion instead of a content pop. */
+@keyframes ns-sidebar-retract {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.animate-sidebar-retract {
+  animation: ns-sidebar-retract 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 /* Now-playing equalizer — animated bars marking the currently playing track.
  * Colour comes from `currentColor`, so set text-accent (or any) on the element. */
 @keyframes ns-eq {
@@ -993,6 +1009,7 @@ html[data-theme="light"] .premium-plan-title-student {
   .animate-auth-art-out,
   .animate-mini-player-in,
   .animate-karaoke-swap-in,
+  .animate-sidebar-retract,
   .library-search-field,
   .search-skeleton-shimmer,
   .premium-reveal,

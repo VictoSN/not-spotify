@@ -95,27 +95,27 @@ export function AppShell() {
       >
         {!isMobile && <Sidebar takeoverHidden={nowPlayingExpandedVisible} />}
 
-        {/* Expanded library or expanded now-playing takes over the middle row. */}
-        {!libraryExpanded && (
-          <main
-            className={cn(
-              'min-w-0 rounded-lg bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
-              nowPlayingExpandedVisible
-                ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
-                : 'flex-1 basis-0 translate-x-0 opacity-100',
-            )}
-          >
-            {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
-            <div className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}>
-              <Outlet />
+        {/* Expanded library or expanded now-playing takes over the middle row. The main
+            card stays mounted and collapses to zero width so the library can smoothly grow
+            into it (and reclaim it on minimize) — unmounting here would jump the layout. */}
+        <main
+          className={cn(
+            'min-w-0 rounded-lg bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+            nowPlayingExpandedVisible || libraryExpanded
+              ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
+              : 'flex-1 basis-0 translate-x-0 opacity-100',
+          )}
+        >
+          {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
+          <div className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}>
+            <Outlet />
+          </div>
+          {karaokeVisible && (
+            <div className="flex-1 min-h-0">
+              <KaraokeView />
             </div>
-            {karaokeVisible && (
-              <div className="flex-1 min-h-0">
-                <KaraokeView />
-              </div>
-            )}
-          </main>
-        )}
+          )}
+        </main>
 
         {/* Right rail on desktop, responsive overlay on smaller screens. */}
         {isAuthenticated && (

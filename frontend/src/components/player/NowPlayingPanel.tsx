@@ -125,6 +125,7 @@ export function NowPlayingPanel() {
   const [artistBioOpen, setArtistBioOpen] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
   const [expandedScroll, setExpandedScroll] = useState(0)
+  const [panelBodyScrolled, setPanelBodyScrolled] = useState(false)
   const panelRef = useRef<HTMLElement | null>(null)
   const videoElRef = useRef<HTMLVideoElement | null>(null)
   const creditsRef = useRef<HTMLDivElement | null>(null)
@@ -234,6 +235,10 @@ export function NowPlayingPanel() {
   // Fetch any music video associated with the playing track.
   const trackId = currentTrack?.id
   useEffect(() => {
+    setPanelBodyScrolled(false)
+  }, [trackId])
+
+  useEffect(() => {
     if (!trackId) {
       setVideoData(null)
       return
@@ -289,7 +294,7 @@ export function NowPlayingPanel() {
     else el.pause()
   }, [isPlaying, video])
   const panelClass = cn(
-    'relative hidden flex-col overflow-hidden rounded-lg bg-surface lg:flex',
+    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex',
     isNowPlayingExpanded ? 'min-w-0' : 'shrink-0',
     !dragging && 'transition-[width,flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
   )
@@ -323,7 +328,7 @@ export function NowPlayingPanel() {
   if (!currentTrack) {
     return (
       <aside ref={panelRef} style={panelStyle} className={panelClass}>
-        <div className="flex items-center justify-between p-4">
+        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-surface/80 p-4 backdrop-blur">
           <h2 className="text-base font-bold text-primary">{t('np.title')}</h2>
           <div className="flex items-center gap-1">
             <button
@@ -336,11 +341,11 @@ export function NowPlayingPanel() {
             </button>
             <button
               onClick={() => setNowPlayingCollapsed(true)}
-              className="rounded-full p-1 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
               aria-label={t('np.collapse')}
               title={t('np.collapse')}
             >
-              <CollapseIcon />
+              <CollapseIcon className="h-6 w-6" />
             </button>
           </div>
         </div>
@@ -423,7 +428,7 @@ export function NowPlayingPanel() {
               {currentTrack.album.title}
             </Link>
 
-            <div className="flex shrink-0 items-center gap-3 text-secondary">
+            <div className="invisible flex shrink-0 items-center gap-3 text-secondary opacity-0 transition-opacity duration-200 group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100">
               <Link
                 to={`/artist/${currentTrack.artist.id}`}
                 className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:text-primary active:scale-95"
@@ -680,7 +685,53 @@ export function NowPlayingPanel() {
       {artist && (
         <ArtistBioDialog artist={artist} open={artistBioOpen} onClose={() => setArtistBioOpen(false)} />
       )}
-      <div className="relative flex-1 overflow-y-auto">
+      <div
+        className={cn(
+          'group/np-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-4 transition-[background-color,box-shadow,backdrop-filter] duration-200',
+          panelBodyScrolled
+            ? 'bg-surface/90 shadow-[0_8px_20px_rgba(0,0,0,0.22)] backdrop-blur-md'
+            : 'bg-transparent shadow-none backdrop-blur-0',
+        )}
+      >
+        <div className="relative flex min-w-0 flex-1 items-center">
+          <button
+            onClick={() => setNowPlayingCollapsed(true)}
+            className="spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100 active:scale-95"
+            aria-label={t('np.collapse')}
+            title={t('np.collapse')}
+          >
+            <CollapseIcon className="h-6 w-6" />
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('np.collapse')}</span>
+          </button>
+          <Link
+            to={`/album/${currentTrack.album.id}`}
+            className="min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 hover:underline group-hover/now-playing-panel:pl-9"
+          >
+            {currentTrack.album.title}
+          </Link>
+        </div>
+        <div className="invisible flex shrink-0 items-center gap-2 opacity-0 transition-opacity duration-200 group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100">
+          <TrackRowMenu
+            track={currentTrack}
+            alwaysVisible
+            onViewCredits={scrollToCredits}
+            triggerClassName="flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            triggerIconClassName="h-5 w-5 stroke-[2.4] text-secondary hover:text-primary"
+          />
+          <button
+            onClick={toggleWide}
+            className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+            title={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+          >
+            {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+          </button>
+        </div>
+      </div>
+      <div
+        onScroll={(event) => setPanelBodyScrolled(event.currentTarget.scrollTop > 8)}
+        className="relative min-h-0 flex-1 overflow-y-auto"
+      >
         {/* Dynamic colour hue from the cover */}
         <div
           aria-hidden
@@ -694,76 +745,6 @@ export function NowPlayingPanel() {
               : undefined,
           }}
         />
-        {/* Header */}
-        <div className={cn(
-          'group/np-header sticky top-0 z-20 flex items-center justify-between gap-2 p-4',
-          isNowPlayingExpanded ? 'bg-transparent' : 'bg-surface/80 backdrop-blur',
-        )}>
-          <div className="relative flex min-w-0 flex-1 items-center">
-            {!isNowPlayingExpanded && (
-              <button
-                onClick={() => setNowPlayingCollapsed(true)}
-                className="spotify-tooltip-anchor absolute left-0 z-10 -translate-x-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/np-header:translate-x-0 group-hover/np-header:opacity-100 group-focus-within/np-header:translate-x-0 group-focus-within/np-header:opacity-100 active:scale-95"
-                aria-label={t('np.collapse')}
-                title={t('np.collapse')}
-              >
-                <CollapseIcon />
-                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('np.collapse')}</span>
-              </button>
-            )}
-            <Link
-              to={`/album/${currentTrack.album.id}`}
-              className={cn(
-                'min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 hover:underline',
-                !isNowPlayingExpanded && 'group-hover/np-header:pl-7 group-focus-within/np-header:pl-7',
-              )}
-            >
-              {currentTrack.album.title}
-            </Link>
-          </div>
-          <div className={cn(
-            'flex shrink-0 items-center gap-2 transition-opacity duration-200',
-            isNowPlayingExpanded ? 'opacity-100' : 'opacity-0 group-hover/np-header:opacity-100 group-focus-within/np-header:opacity-100',
-          )}>
-            {isNowPlayingExpanded && (
-              <Link
-                to={`/artist/${currentTrack.artist.id}`}
-                className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
-                aria-label={currentTrack.artist.name}
-              >
-                {artistAvatarUrl ? (
-                  <img
-                    src={artistAvatarUrl}
-                    alt=""
-                    className="h-5 w-5 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[10px] font-bold text-primary">
-                    {currentTrack.artist.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{currentTrack.artist.name}</span>
-              </Link>
-            )}
-            {isNowPlayingExpanded && <span className="h-5 w-px bg-secondary/25" aria-hidden="true" />}
-            <TrackRowMenu
-              track={currentTrack}
-              alwaysVisible
-              onViewCredits={scrollToCredits}
-              triggerClassName="flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-              triggerIconClassName="h-5 w-5 stroke-[2.4] text-secondary hover:text-primary"
-            />
-            <button
-              onClick={toggleWide}
-              className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-              aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
-              title={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
-            >
-              {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
-            </button>
-          </div>
-        </div>
-
         {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
         {video && (
           <div
@@ -850,7 +831,7 @@ export function NowPlayingPanel() {
               <button
                 type="button"
                 onClick={shareCurrentTrack}
-                className="spotify-tooltip-anchor relative mt-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/np-album:opacity-100 group-focus-within/np-album:opacity-100 active:scale-95"
+                className="spotify-tooltip-anchor invisible relative mt-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100 active:scale-95"
                 aria-label={`Share ${currentTrack.title}`}
               >
                 <ShareIcon className="h-5 w-5 stroke-[2.1]" />

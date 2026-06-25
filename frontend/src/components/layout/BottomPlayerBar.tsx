@@ -2,7 +2,7 @@
 import { EllipsisHorizontalIcon, QueueListIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { MicVocal } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
@@ -32,7 +32,18 @@ export function BottomPlayerBar() {
   const stopJam = useJamStore((s) => s.stopJam)
   const isMobile = useIsMobile()
   const location = useLocation()
+  const navigate = useNavigate()
   const queueOpen = location.pathname === '/queue'
+  // Toggle the queue: open it, or step back out of it when it's already showing
+  // so the same button can exit. Falls back to home if there's no history to pop.
+  const toggleQueue = () => {
+    if (queueOpen) {
+      if (window.history.length > 1) navigate(-1)
+      else navigate('/')
+    } else {
+      navigate('/queue')
+    }
+  }
   const [moreOpen, setMoreOpen] = useState(false)
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -108,15 +119,16 @@ export function BottomPlayerBar() {
           </button>
         )}
         {currentTrack && (
-          <Link
-            to="/queue"
+          <button
+            type="button"
+            onClick={toggleQueue}
             className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
             aria-label={t('player.queue')}
-            aria-current={queueOpen ? 'page' : undefined}
+            aria-pressed={queueOpen}
             title={t('player.queue')}
           >
             <QueueListIcon className="h-5 w-5" />
-          </Link>
+          </button>
         )}
         <VolumeControl />
         {currentTrack && (

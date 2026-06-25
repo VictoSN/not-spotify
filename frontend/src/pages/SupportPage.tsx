@@ -3287,7 +3287,7 @@ function ArticleSidebar({ article }: { article: ArticleDetail }) {
               <button
                 type="button"
                 onClick={() => setOpenGroup(groupOpen ? null : group.id)}
-                className="flex w-full items-center justify-between px-6 py-5 text-left text-base font-black transition-colors hover:bg-white/[0.04]"
+                className="flex w-full items-center justify-between px-6 py-5 text-left text-base font-black text-white transition-colors hover:bg-white/[0.04]"
                 aria-expanded={groupOpen}
               >
                 <span>{group.title}</span>

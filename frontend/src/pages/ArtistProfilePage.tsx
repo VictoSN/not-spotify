@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
-import { CheckBadgeIcon } from '@heroicons/react/24/solid'
-import { ShareIcon } from '@heroicons/react/24/outline'
+import { CheckBadgeIcon, PauseIcon as PauseSolidIcon, PlayIcon as PlaySolidIcon } from '@heroicons/react/24/solid'
+import { PauseIcon as PauseOutlineIcon, PlayIcon as PlayOutlineIcon, ShareIcon } from '@heroicons/react/24/outline'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
@@ -46,6 +45,7 @@ export function ArtistProfilePage() {
   const [shareCopied, setShareCopied] = useState(false)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [bioOpen, setBioOpen] = useState(false)
+  const [popularExpanded, setPopularExpanded] = useState(false)
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -68,7 +68,8 @@ export function ArtistProfilePage() {
 
   useEffect(() => {
     if (!id) return
-    Promise.all([artistService.getById(id), artistService.getTopTracks(id, 5), artistService.getAlbums(id)]).then(
+    setPopularExpanded(false)
+    Promise.all([artistService.getById(id), artistService.getTopTracks(id, 10), artistService.getAlbums(id)]).then(
       ([a, t, al]) => {
         setArtist(a)
         setTopTracks(t)
@@ -92,6 +93,7 @@ export function ArtistProfilePage() {
   const isFollowing = followedArtistIds.has(artist.id)
   const heroHue = derivedHeroHue ?? 'hsl(210 7% 24%)'
   const artistPick = albums[0] ?? null
+  const visibleTopTracks = popularExpanded ? topTracks : topTracks.slice(0, 5)
   const toggleFollow = () => {
     if (!isAuthenticated) {
       openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
@@ -185,7 +187,7 @@ export function ArtistProfilePage() {
         background: artworkSectionGradient(heroHue),
       }}>
         {/* Actions */}
-        <div className="mx-auto flex max-w-[1360px] items-center gap-4 px-5 py-6 md:px-8">
+        <div className="flex w-full items-center gap-4 px-5 py-6 md:px-8">
         {topTracks.length > 0 && (
           <Button
             onClick={() => {
@@ -196,9 +198,9 @@ export function ArtistProfilePage() {
             className="gap-2"
           >
             {artistPlaying ? (
-              <><PauseIcon className="w-5 h-5" /> {t('player.pause')}</>
+              <><PauseSolidIcon className="w-5 h-5" /> {t('player.pause')}</>
             ) : (
-              <><PlayIcon className="w-5 h-5" /> {t('common.play')}</>
+              <><PlaySolidIcon className="w-5 h-5" /> {t('common.play')}</>
             )}
           </Button>
         )}
@@ -219,12 +221,12 @@ export function ArtistProfilePage() {
         </div>
 
         {(topTracks.length > 0 || artistPick) && (
-          <section className="mx-auto mb-8 grid max-w-[1360px] gap-10 px-5 md:px-8 lg:grid-cols-[minmax(0,1.85fr)_minmax(320px,1fr)] lg:items-start xl:gap-14">
+          <section className="mb-8 grid w-full max-w-none gap-10 px-5 md:px-8 lg:grid-cols-[minmax(0,13fr)_minmax(0,7fr)] lg:items-start xl:gap-14">
             {topTracks.length > 0 && (
               <div className="min-w-0">
                 <SectionHeader title={t('detail.popular')} />
                 <div className="space-y-1">
-                  {topTracks.map((track, i) => (
+                  {visibleTopTracks.map((track, i) => (
                     <ArtistPopularTrackRow
                       key={track.id}
                       track={track}
@@ -246,27 +248,36 @@ export function ArtistProfilePage() {
                     />
                   ))}
                 </div>
+                {topTracks.length > 5 && (
+                  <button
+                    type="button"
+                    onClick={() => setPopularExpanded((expanded) => !expanded)}
+                    className="mt-4 text-sm font-black text-secondary transition-colors hover:text-primary"
+                  >
+                    {popularExpanded ? 'Show less' : 'See more'}
+                  </button>
+                )}
               </div>
             )}
 
             {artistPick && (
-              <aside className="hidden min-w-0 pt-1 lg:block">
-                <h2 className="mb-4 text-xl font-bold text-primary">Artist pick</h2>
+              <aside className="hidden min-w-0 lg:block">
+                <h2 className="mb-4 text-2xl font-black text-primary">Artist pick</h2>
                 <Link
                   to={`/album/${artistPick.id}`}
-                  className="group flex max-w-[460px] items-center gap-4 rounded-md p-2 transition-colors hover:bg-white/5"
+                  className="group flex w-full max-w-[520px] items-start gap-3 rounded-md transition-colors hover:bg-white/5"
                 >
                   <img
                     src={artistPick.coverUrl}
                     alt={artistPick.title}
-                    className="h-24 w-24 shrink-0 rounded object-cover shadow-lg"
+                    className="h-[88px] w-[88px] shrink-0 rounded object-cover shadow-lg"
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="mb-2 inline-flex max-w-full items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold text-black">
-                      <Avatar src={artist.imageUrl} alt={artist.name} size="sm" round className="!h-5 !w-5 text-[10px]" />
-                      <span className="truncate">{artist.name} recommends</span>
+                    <span className="mb-2 flex max-w-full items-center gap-2 text-sm font-semibold text-secondary">
+                      <Avatar src={artist.imageUrl} alt={artist.name} size="sm" round className="!h-6 !w-6 text-[10px]" />
+                      <span className="truncate">Posted by {artist.name}</span>
                     </span>
-                    <span className="block line-clamp-2 text-sm font-black text-primary group-hover:underline">
+                    <span className="block line-clamp-2 text-base font-black text-primary group-hover:underline">
                       {artistPick.title}
                     </span>
                     <span className="mt-1 block text-sm font-semibold capitalize text-secondary">{artistPick.type}</span>
@@ -414,37 +425,55 @@ function ArtistPopularTrackRow({
           onPlay()
         }
       }}
-      className="group grid min-h-[52px] cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_28px_44px] items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-white/[0.07] md:grid-cols-[24px_40px_minmax(0,1fr)_104px_28px_44px]"
+      className="group grid cursor-pointer grid-cols-[16px_minmax(0,1fr)_28px_50px] items-center gap-4 rounded-md px-4 py-2 transition-colors hover:bg-elevated/60 md:grid-cols-[16px_minmax(0,1fr)_150px_32px_50px]"
     >
-      <div className="flex h-8 w-6 items-center justify-center text-sm text-secondary">
-        {/* Currently-playing row shows the animated equalizer; others show their rank.
-            Hovering always swaps to a play/pause control. */}
-        {active && playing ? (
-          <>
-            <NowPlayingBars className="group-hover:hidden" />
-            <PauseIcon className="hidden h-4 w-4 text-primary group-hover:block" />
-          </>
-        ) : (
-          <>
-            <span className={cn('group-hover:hidden', active && 'text-accent')}>{index + 1}</span>
-            <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
-          </>
-        )}
+      <div className="flex w-4 items-center justify-center">
+        <span className={cn('flex items-center justify-center text-sm group-hover:hidden', active ? 'text-accent' : 'text-secondary')}>
+          {active && playing ? <NowPlayingBars className="h-3.5" /> : index + 1}
+        </span>
+        <button className="hidden group-hover:flex" aria-label={active && playing ? 'Pause' : 'Play'}>
+          {active && playing ? (
+            <PauseOutlineIcon className="h-4 w-4 text-primary" />
+          ) : (
+            <PlayOutlineIcon className="h-4 w-4 text-primary" />
+          )}
+        </button>
       </div>
 
-      <img src={track.album.coverUrl} alt="" className="h-10 w-10 rounded object-cover shadow-md" />
-
-      {/* Title only — the artist name is redundant on the artist's own page (Spotify style). */}
-      <Link
-        to={`/track/${track.id}`}
-        onClick={(event) => event.stopPropagation()}
-        className={cn('min-w-0 truncate text-sm font-normal hover:underline', active ? 'text-accent' : 'text-primary')}
-      >
-        {track.title}
-      </Link>
+      <div className="flex min-w-0 items-center gap-3">
+        <img
+          src={track.album.coverUrl}
+          alt={track.album.title}
+          draggable={false}
+          className="h-10 w-10 flex-shrink-0 rounded object-cover"
+        />
+        <div className="min-w-0">
+          <p className={cn('truncate text-sm font-normal', active ? 'text-accent' : 'text-primary')}>
+            <Link
+              to={`/track/${track.id}`}
+              draggable={false}
+              onClick={(event) => event.stopPropagation()}
+              className="hover:underline"
+            >
+              {track.title}
+            </Link>
+            {track.explicit && <span className="ml-1 rounded bg-elevated px-1 text-xs text-secondary">E</span>}
+          </p>
+          <p className="truncate text-xs text-secondary">
+            <Link
+              to={`/artist/${track.artist.id}`}
+              draggable={false}
+              onClick={(event) => event.stopPropagation()}
+              className="hover:text-primary hover:underline"
+            >
+              {track.artist.name}
+            </Link>
+          </p>
+        </div>
+      </div>
 
       <span className="hidden justify-self-end text-sm font-normal text-secondary md:block">
-        {formatNumber(track.playCount)}
+        {track.playCount.toLocaleString()}
       </span>
 
       <button

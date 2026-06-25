@@ -627,6 +627,56 @@ body,
   align-items: center;
 }
 
+.premium-hero-copy {
+  color: #e8e8e8;
+}
+
+.premium-hero-title,
+.premium-payment-note {
+  color: #ffffff;
+}
+
+.premium-payment-note {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.premium-primary-cta {
+  background: #ffffff;
+  color: #000000;
+}
+
+.premium-hero-secondary-cta {
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
+.premium-hero-secondary-cta:hover {
+  border-color: #ffffff;
+}
+
+.premium-promo-banner {
+  background: #191919;
+}
+
+.premium-promo-title {
+  color: #ffffff;
+}
+
+.premium-promo-copy,
+.premium-plan-sub,
+.premium-plan-fine-print {
+  color: #b3b3b3;
+}
+
+.premium-promo-button {
+  background: #1ed760;
+  color: #000000;
+}
+
+.premium-promo-button:hover {
+  background: #3be477;
+}
+
 .premium-payment-badge {
   display: inline-flex;
   min-width: 4rem;
@@ -649,17 +699,107 @@ body,
 }
 
 .premium-plan-card {
+  background: #242424;
+  color: #ffffff;
   transform: translateY(0);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.12);
+  box-shadow: none;
   transition:
     transform 0.22s ease,
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
+    background-color 0.22s ease;
 }
 
 .premium-plan-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.22);
+  background-color: #2a2a2a;
+}
+
+.premium-plan-eyebrow,
+.premium-plan-mark,
+.premium-plan-price,
+.premium-plan-perks {
+  color: #ffffff;
+}
+
+.premium-plan-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.premium-plan-title-free {
+  color: #ffffff;
+}
+
+.premium-plan-title-monthly {
+  color: #ffd2d7;
+}
+
+.premium-plan-title-yearly {
+  color: #c4f0c5;
+}
+
+.premium-plan-title-duo {
+  color: #ffc862;
+}
+
+.premium-plan-title-family {
+  color: #a5bbd1;
+}
+
+.premium-plan-title-student {
+  color: #c4b1d4;
+}
+
+.premium-plan-button-free {
+  background: #535353;
+  color: #ffffff;
+}
+
+.premium-plan-button-free:hover {
+  background: #636363;
+}
+
+.premium-plan-button-monthly {
+  background: #ffd2d7;
+  color: #000000;
+}
+
+.premium-plan-button-monthly:hover {
+  background: #ffe1e5;
+}
+
+.premium-plan-button-yearly {
+  background: #c4f0c5;
+  color: #000000;
+}
+
+.premium-plan-button-yearly:hover {
+  background: #d4f7d5;
+}
+
+.premium-plan-button-duo {
+  background: #ffc862;
+  color: #000000;
+}
+
+.premium-plan-button-duo:hover {
+  background: #ffd684;
+}
+
+.premium-plan-button-family {
+  background: #a5bbd1;
+  color: #000000;
+}
+
+.premium-plan-button-family:hover {
+  background: #bbccdd;
+}
+
+.premium-plan-button-student {
+  background: #c4b1d4;
+  color: #000000;
+}
+
+.premium-plan-button-student:hover {
+  background: #d3c3df;
 }
 
 .premium-plans-focus {
@@ -677,13 +817,121 @@ html[data-theme="light"] .premium-page {
 html[data-theme="light"] .premium-hero {
   border-color: rgba(7, 22, 13, 0.08);
   background:
-    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.16), transparent 16rem),
-    radial-gradient(circle at 12% 18%, rgba(30, 215, 96, 0.32), transparent 18rem),
-    radial-gradient(circle at 94% 26%, rgba(199, 249, 216, 0.23), transparent 17rem),
-    linear-gradient(180deg, #121512 0%, #0f1110 100%);
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.78), transparent 18rem),
+    radial-gradient(circle at 12% 18%, rgba(30, 215, 96, 0.22), transparent 20rem),
+    radial-gradient(circle at 94% 26%, rgba(126, 171, 149, 0.24), transparent 19rem),
+    linear-gradient(180deg, #f7fbf8 0%, #e8efeb 100%);
   box-shadow:
     0 22px 70px rgba(17, 24, 39, 0.16),
     0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+html[data-theme="light"] .premium-hero::after {
+  background:
+    linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.42) 42%, transparent 58%),
+    repeating-linear-gradient(90deg, rgba(13, 23, 18, 0.055) 0 1px, transparent 1px 86px);
+  opacity: 0.42;
+}
+
+html[data-theme="light"] .premium-glow-left {
+  background: #7de7a7;
+  opacity: 0.36;
+}
+
+html[data-theme="light"] .premium-glow-right {
+  background: #a9bfb4;
+  opacity: 0.28;
+}
+
+html[data-theme="light"] .premium-hero-title {
+  color: #111815;
+}
+
+html[data-theme="light"] .premium-hero-copy {
+  color: #3e4742;
+}
+
+html[data-theme="light"] .premium-payment-note {
+  color: #58635d;
+}
+
+html[data-theme="light"] .premium-primary-cta {
+  background: #111815;
+  color: #ffffff;
+  box-shadow:
+    0 18px 50px rgba(30, 215, 96, 0.16),
+    inset 0 -10px 18px rgba(30, 215, 96, 0.1);
+}
+
+html[data-theme="light"] .premium-hero-secondary-cta {
+  border-color: rgba(17, 24, 21, 0.24);
+  color: #111815;
+}
+
+html[data-theme="light"] .premium-hero-secondary-cta:hover {
+  border-color: rgba(17, 24, 21, 0.55);
+}
+
+html[data-theme="light"] .premium-promo-banner {
+  background: #ffffff;
+  box-shadow: 0 16px 42px rgba(17, 24, 20, 0.08);
+}
+
+html[data-theme="light"] .premium-promo-title {
+  color: #111815;
+}
+
+html[data-theme="light"] .premium-promo-copy,
+html[data-theme="light"] .premium-plan-sub,
+html[data-theme="light"] .premium-plan-fine-print {
+  color: #5d665f;
+}
+
+html[data-theme="light"] .premium-plan-card {
+  background: #ffffff;
+  color: #111815;
+  box-shadow:
+    0 16px 42px rgba(17, 24, 20, 0.08),
+    inset 0 0 0 1px rgba(17, 24, 20, 0.08);
+}
+
+html[data-theme="light"] .premium-plan-card:hover {
+  background: #fbfdfb;
+}
+
+html[data-theme="light"] .premium-plan-eyebrow,
+html[data-theme="light"] .premium-plan-mark,
+html[data-theme="light"] .premium-plan-price,
+html[data-theme="light"] .premium-plan-perks {
+  color: #111815;
+}
+
+html[data-theme="light"] .premium-plan-divider {
+  background: rgba(17, 24, 20, 0.12);
+}
+
+html[data-theme="light"] .premium-plan-title-free {
+  color: #111815;
+}
+
+html[data-theme="light"] .premium-plan-title-monthly {
+  color: #c64559;
+}
+
+html[data-theme="light"] .premium-plan-title-yearly {
+  color: #238445;
+}
+
+html[data-theme="light"] .premium-plan-title-duo {
+  color: #a96800;
+}
+
+html[data-theme="light"] .premium-plan-title-family {
+  color: #3f6f98;
+}
+
+html[data-theme="light"] .premium-plan-title-student {
+  color: #76518f;
 }
 
 @keyframes premium-reveal {

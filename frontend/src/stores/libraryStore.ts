@@ -6,6 +6,7 @@ import type { Playlist, PlaylistTrack, PlaylistVisibility, SmartPlaylistRules } 
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
 import { albumService } from '@/services/albumService'
+import { artistService } from '@/services/artistService'
 import { useAuthStore } from './authStore'
 
 interface LibraryState {
@@ -65,6 +66,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         const stored = localStorage.getItem('ns-followed-artists')
         if (stored) followedArtists = JSON.parse(stored)
       } catch { /* ignore */ }
+      followedArtists = await refreshFollowedArtists(followedArtists)
       const followedIds = new Set(followedArtists.map((a) => a.id))
 
       set({
@@ -248,6 +250,25 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set((s) => ({ savedPlaylists: s.savedPlaylists.filter((p) => p.id !== playlistId) }))
   },
 }))
+
+async function refreshFollowedArtists(artists: Artist[]) {
+  if (artists.length === 0) return artists
+  const refreshed = await Promise.all(
+    artists.map(async (artist) => {
+      try {
+        return await artistService.getById(artist.id)
+      } catch {
+        return artist
+      }
+    }),
+  )
+  try {
+    localStorage.setItem('ns-followed-artists', JSON.stringify(refreshed))
+  } catch {
+    /* ignore */
+  }
+  return refreshed
+}
 
 // Clear the personal library the moment the user logs out — no refresh needed.
 // Only fire on the authenticated → unauthenticated transition (not during the

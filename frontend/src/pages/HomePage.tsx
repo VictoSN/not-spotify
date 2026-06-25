@@ -308,8 +308,8 @@ export function HomePage() {
 
         {/* Daily Mixes — genre-based, personalised mixes */}
         {showMusic && dailyMixes.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.madeForYou')} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.madeForYou')} variant="home" />
             <HorizontalScroller>
               {dailyMixes.map((mix) => (
                 <MixTile key={mix.id} mix={mix} flush />
@@ -320,8 +320,8 @@ export function HomePage() {
 
         {/* For You Today — personalised, auth only */}
         {showMusic && isAuthenticated && forYou.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.forYouToday')} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.forYouToday')} variant="home" />
             <HorizontalScroller>
               {forYou.map((track) => (
                 <TrackTile key={track.id} track={track} queue={forYou} flush />
@@ -332,8 +332,8 @@ export function HomePage() {
 
         {/* Recents — auth only, hidden until the user has played something */}
         {showMusic && isAuthenticated && recents.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.recentlyPlayed')} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.recentlyPlayed')} variant="home" />
             <HorizontalScroller>
               {recents.map((track) => (
                 <TrackTile key={track.id} track={track} queue={recents} flush />
@@ -344,8 +344,8 @@ export function HomePage() {
 
         {/* Trending now */}
         {showMusic && trending.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.trendingNow')} href="/charts" />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.trendingNow')} href="/charts" variant="home" />
             <HorizontalScroller>
               {trending.map((track) => (
                 <TrackTile key={track.id} track={track} queue={trending} flush />
@@ -356,8 +356,8 @@ export function HomePage() {
 
         {/* Most Liked */}
         {showMusic && mostLiked.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.mostLiked')} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.mostLiked')} variant="home" />
             <HorizontalScroller>
               {mostLiked.map((track) => (
                 <TrackTile key={track.id} track={track} queue={mostLiked} flush />
@@ -368,8 +368,8 @@ export function HomePage() {
 
         {/* Popular in the listener's country */}
         {showMusic && popularInCountry.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} variant="home" />
             <HorizontalScroller>
               {popularInCountry.map((track) => (
                 <TrackTile key={track.id} track={track} queue={popularInCountry} flush />
@@ -380,8 +380,8 @@ export function HomePage() {
 
         {/* Recommended playlists */}
         {showMusic && recommendedPlaylists.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.recommendedPlaylists')} href="/playlists" />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.recommendedPlaylists')} href="/playlists" variant="home" />
             <HorizontalScroller>
               {recommendedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} flush />
@@ -392,8 +392,8 @@ export function HomePage() {
 
         {/* New Music */}
         {showMusic && newMusic.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.newMusic')} />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.newMusic')} variant="home" />
             <HorizontalScroller>
               {newMusic.map((track) => (
                 <TrackTile key={track.id} track={track} queue={newMusic} flush />
@@ -404,8 +404,8 @@ export function HomePage() {
 
         {/* Popular artists */}
         {showMusic && popularArtists.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.popularArtists')} href="/popular-artists" />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.popularArtists')} href="/popular-artists" variant="home" />
             <HorizontalScroller>
               {popularArtists.map((artist) => (
                 <ArtistCard key={artist.id} artist={artist} flush />
@@ -416,10 +416,11 @@ export function HomePage() {
 
         {/* New releases */}
         {showMusic && newReleases.length > 0 && (
-          <section className="mb-8">
+          <section className="mb-6">
             <SectionHeader
               title={isAuthenticated ? t('home.section.newReleases') : t('home.section.popularAlbums')}
               href="/new-releases"
+              variant="home"
             />
             <HorizontalScroller>
               {newReleases.slice(0, PREVIEW_LIMIT).map((album) => (
@@ -431,8 +432,8 @@ export function HomePage() {
 
         {/* Podcasts */}
         {showPodcasts && podcasts.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.podcasts')} href="/podcasts" />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.podcasts')} href="/podcasts" variant="home" />
             <HorizontalScroller>
               {podcasts.map((p) => (
                 <Link
@@ -457,8 +458,8 @@ export function HomePage() {
 
         {/* Music videos */}
         {showMusic && musicVideos.length > 0 && (
-          <section className="mb-8">
-            <SectionHeader title={t('home.section.musicVideos')} href="/videos" />
+          <section className="mb-6">
+            <SectionHeader title={t('home.section.musicVideos')} href="/videos" variant="home" />
             <HorizontalScroller>
               {musicVideos.map((v) => (
                 <Link key={v.id} to={`/videos/${v.id}`} className="group w-64 shrink-0 rounded-lg transition-colors">

@@ -24,6 +24,9 @@ import { ArtistBadgesDialog } from '@/components/common/ArtistBadgesDialog'
 import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
+import { NowPlayingBars } from '@/components/common/NowPlayingBars'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
+import { cn } from '@/utils/cn'
 import { formatNumber } from '@/utils/formatNumber'
 import { formatMs } from '@/utils/formatTime'
 import { shareLink } from '@/utils/share'
@@ -383,6 +386,23 @@ function ArtistPopularTrackRow({
   playing?: boolean
   onPlay: () => void
 }) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
+  const likeTrack = useLibraryStore((s) => s.likeTrack)
+  const unlikeTrack = useLibraryStore((s) => s.unlikeTrack)
+  const isLiked = likedTrackIds.has(track.id)
+
+  const toggleLike = (event: React.MouseEvent) => {
+    event.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Like songs with a free account', imageUrl: track.album.coverUrl })
+      return
+    }
+    if (isLiked) unlikeTrack(track.id)
+    else likeTrack(track)
+  }
+
   return (
     <div
       role="button"
@@ -394,15 +414,19 @@ function ArtistPopularTrackRow({
           onPlay()
         }
       }}
-      className="group grid min-h-14 cursor-pointer grid-cols-[28px_44px_minmax(0,1fr)_52px] items-center gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-white/[0.07] md:grid-cols-[28px_44px_minmax(0,1fr)_104px_52px]"
+      className="group grid min-h-[52px] cursor-pointer grid-cols-[24px_40px_minmax(0,1fr)_28px_44px] items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-white/[0.07] md:grid-cols-[24px_40px_minmax(0,1fr)_104px_28px_44px]"
     >
-      <div className="flex h-8 items-center justify-center text-sm font-semibold text-secondary">
-        {/* The currently-playing row shows a pause toggle; others show their rank, swapping to play on hover. */}
-        {playing ? (
-          <PauseIcon className="h-4 w-4 text-accent" />
+      <div className="flex h-8 w-6 items-center justify-center text-sm text-secondary">
+        {/* Currently-playing row shows the animated equalizer; others show their rank.
+            Hovering always swaps to a play/pause control. */}
+        {active && playing ? (
+          <>
+            <NowPlayingBars className="group-hover:hidden" />
+            <PauseIcon className="hidden h-4 w-4 text-primary group-hover:block" />
+          </>
         ) : (
           <>
-            <span className={`group-hover:hidden ${active ? 'text-accent' : ''}`}>{index + 1}</span>
+            <span className={cn('group-hover:hidden', active && 'text-accent')}>{index + 1}</span>
             <PlayIcon className="hidden h-4 w-4 text-primary group-hover:block" />
           </>
         )}
@@ -410,28 +434,32 @@ function ArtistPopularTrackRow({
 
       <img src={track.album.coverUrl} alt="" className="h-10 w-10 rounded object-cover shadow-md" />
 
-      <div className="min-w-0">
-        <Link
-          to={`/track/${track.id}`}
-          onClick={(event) => event.stopPropagation()}
-          className={`block truncate text-sm font-black hover:underline ${active ? 'text-accent' : 'text-primary'}`}
-        >
-          {track.title}
-        </Link>
-        <Link
-          to={`/artist/${track.artist.id}`}
-          onClick={(event) => event.stopPropagation()}
-          className="mt-0.5 block truncate text-sm font-semibold text-secondary transition-colors hover:text-primary hover:underline"
-        >
-          {track.artist.name}
-        </Link>
-      </div>
+      {/* Title only — the artist name is redundant on the artist's own page (Spotify style). */}
+      <Link
+        to={`/track/${track.id}`}
+        onClick={(event) => event.stopPropagation()}
+        className={cn('min-w-0 truncate text-sm font-normal hover:underline', active ? 'text-accent' : 'text-primary')}
+      >
+        {track.title}
+      </Link>
 
-      <span className="hidden justify-self-end text-sm font-semibold text-secondary md:block">
+      <span className="hidden justify-self-end text-sm font-normal text-secondary md:block">
         {formatNumber(track.playCount)}
       </span>
 
-      <span className="justify-self-end text-sm font-semibold text-secondary">
+      <button
+        type="button"
+        onClick={toggleLike}
+        aria-label={isLiked ? `Remove ${track.title} from Liked Songs` : `Save ${track.title} to Liked Songs`}
+        className={cn(
+          'flex items-center justify-center transition-opacity',
+          isLiked ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+        )}
+      >
+        <AnimatedLikeIcon liked={isLiked} className="h-4 w-4" heartClassName="h-4 w-4 text-secondary hover:text-primary" />
+      </button>
+
+      <span className="justify-self-end text-sm font-normal text-secondary">
         {formatMs(track.durationMs)}
       </span>
     </div>

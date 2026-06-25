@@ -176,6 +176,7 @@ public static class MusicImporter
                 {
                     Id = Guid.NewGuid(),
                     Name = artistName,
+                    SearchText = SearchTextBuilder.ForArtist(artistName),
                     Bio = info.Bio,
                     Country = info.Country,
                     Verified = true,
@@ -256,6 +257,7 @@ public static class MusicImporter
                     Id = Guid.NewGuid(),
                     ArtistId = artist.Id,
                     Title = albumTitle,
+                    SearchText = SearchTextBuilder.ForAlbum(albumTitle, artistName),
                     Type = ResolveAlbumType(albumTitle, audioFiles.Count),
                     ReleaseDate = release,
                     Country = info.Country,
@@ -328,6 +330,7 @@ public static class MusicImporter
                     existing.AudioKey = audioKey;
                     existing.DurationMs = durationMs;
                     existing.Waveform ??= waveformJson;
+                    existing.SearchText ??= SearchTextBuilder.ForTrack(title, artistName, albumTitle);
                     if (instrumental)
                     {
                         existing.SyncedLyrics = "__none__";
@@ -346,6 +349,7 @@ public static class MusicImporter
                     {
                         Id = Guid.NewGuid(),
                         Title = title,
+                        SearchText = SearchTextBuilder.ForTrack(title, artistName, albumTitle),
                         DurationMs = durationMs,
                         AudioUrl = string.Empty,
                         AudioKey = audioKey,

@@ -18,9 +18,11 @@ import { ArtistMenu, type ArtistMenuHandle } from './ArtistMenu'
 interface ArtistCardProps {
   artist: Artist
   flush?: boolean
+  /** Render the name bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
+  boldTitle?: boolean
 }
 
-export function ArtistCard({ artist, flush = false }: ArtistCardProps) {
+export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistCardProps) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'artist', id: artist.id })
@@ -112,7 +114,7 @@ export function ArtistCard({ artist, flush = false }: ArtistCardProps) {
             )}
           </button>
         </div>
-        <p className="text-sm font-semibold text-primary truncate">{artist.name}</p>
+        <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{artist.name}</p>
         <p className="text-xs text-secondary mt-0.5">{formatNumber(artist.monthlyListeners)} listeners</p>
       </Link>
 

@@ -136,7 +136,7 @@ export function TrackRow({
           className="w-10 h-10 rounded flex-shrink-0 object-cover"
         />
         <div className="min-w-0">
-          <p className={`text-sm font-medium truncate ${isCurrentInRowContext ? 'text-accent' : 'text-primary'}`}>
+          <p className={`text-sm font-normal truncate ${isCurrentInRowContext ? 'text-accent' : 'text-primary'}`}>
             <Link
               to={`/track/${track.id}`}
               draggable={false}

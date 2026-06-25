@@ -31,6 +31,14 @@ public class Track
     /// </summary>
     public string? SyncedLyrics { get; set; }
 
+    /// <summary>
+    /// Match-only search blob: normalized title + artist/album names + romanization
+    /// aliases (pinyin, no-space pinyin, initials, English). Built by
+    /// <see cref="Services.SearchTextBuilder"/>. Never displayed — the UI always shows
+    /// the original <see cref="Title"/>. Null until backfilled.
+    /// </summary>
+    public string? SearchText { get; set; }
+
     // approved | pending | rejected  (admin-created tracks are approved by default)
     public string Status { get; set; } = "approved";
     public string? ReviewNote { get; set; }

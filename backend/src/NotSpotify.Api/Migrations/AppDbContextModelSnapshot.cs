@@ -219,6 +219,9 @@ namespace NotSpotify.Api.Migrations
                     b.Property<string>("ReviewNote")
                         .HasColumnType("text");
 
+                    b.Property<string>("SearchText")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -240,6 +243,8 @@ namespace NotSpotify.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ArtistId");
+
+                    b.HasIndex("SearchText");
 
                     b.HasIndex("Status");
 
@@ -411,6 +416,9 @@ namespace NotSpotify.Api.Migrations
                     b.Property<DateTime?>("RevokedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("SearchText")
+                        .HasColumnType("text");
+
                     b.Property<string>("Twitter")
                         .HasColumnType("text");
 
@@ -423,6 +431,8 @@ namespace NotSpotify.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Name");
+
+                    b.HasIndex("SearchText");
 
                     b.ToTable("Artists");
                 });
@@ -1014,6 +1024,9 @@ namespace NotSpotify.Api.Migrations
                     b.Property<string>("ReviewNote")
                         .HasColumnType("text");
 
+                    b.Property<string>("SearchText")
+                        .HasColumnType("text");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1039,6 +1052,8 @@ namespace NotSpotify.Api.Migrations
                     b.HasIndex("AlbumId");
 
                     b.HasIndex("ArtistId");
+
+                    b.HasIndex("SearchText");
 
                     b.HasIndex("Status");
 

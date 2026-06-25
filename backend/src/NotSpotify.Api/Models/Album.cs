@@ -4,6 +4,13 @@ public class Album
 {
     public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Match-only search blob (normalized title + artist name + romanization aliases).
+    /// Built by <see cref="Services.SearchTextBuilder"/>; never displayed. Null until backfilled.
+    /// </summary>
+    public string? SearchText { get; set; }
+
     public string Type { get; set; } = "album";
     public string CoverUrl { get; set; } = string.Empty;
     public string? CoverKey { get; set; }

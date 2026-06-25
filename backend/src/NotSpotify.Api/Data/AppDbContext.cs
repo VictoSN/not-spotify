@@ -55,6 +55,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         b.Entity<Artist>(e =>
         {
             e.HasIndex(x => x.Name);
+            e.HasIndex(x => x.SearchText);
         });
 
         b.Entity<Album>(e =>
@@ -71,6 +72,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             e.HasIndex(x => x.Status);
             e.HasIndex(x => x.SubmittedByUserId);
+            e.HasIndex(x => x.SearchText);
         });
 
         b.Entity<Track>(e =>
@@ -92,6 +94,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             e.HasIndex(x => x.Title);
             e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.SearchText);
             e.Property(x => x.Waveform).HasColumnType("jsonb");
         });
 

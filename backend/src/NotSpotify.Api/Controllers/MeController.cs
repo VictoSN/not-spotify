@@ -1039,6 +1039,7 @@ public class MeController : ControllerBase
         {
             Id = Guid.NewGuid(),
             Title = req.Title,
+            SearchText = SearchTextBuilder.ForTrack(req.Title, artist?.Name ?? album.Artist?.Name, album.Title),
             AlbumId = req.AlbumId,
             ArtistId = user.ArtistId.Value,
             DurationMs = req.DurationMs,
@@ -1506,6 +1507,7 @@ public class MeController : ControllerBase
         if (req.TrackNumber.HasValue) track.TrackNumber = req.TrackNumber.Value;
         if (req.Title is not null) track.Title = req.Title;
         if (req.Explicit.HasValue) track.Explicit = req.Explicit.Value;
+        if (titleChanged) track.SearchText = SearchTextBuilder.ForTrack(track.Title, track.Artist?.Name, track.Album?.Title);
         // Lyrics can be set or cleared (empty string → null)
         if (req.Lyrics is not null)
             track.Lyrics = string.IsNullOrWhiteSpace(req.Lyrics) ? null : req.Lyrics.Trim();

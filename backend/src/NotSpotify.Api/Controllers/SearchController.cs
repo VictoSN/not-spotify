@@ -33,12 +33,19 @@ public class SearchController : ControllerBase
         var like = $"%{q}%";
         var wantAll = string.IsNullOrEmpty(type);
 
+        // Romanization-aware match: also probe the normalized SearchText blob, which
+        // carries pinyin / no-space pinyin / initials / English aliases for CJK titles
+        // (e.g. "ni hao" → 你，好不好？). Display still uses the original Title/Name.
+        var normalized = SearchTextBuilder.Normalize(q);
+        var searchLike = string.IsNullOrEmpty(normalized) ? null : $"%{normalized}%";
+
         IEnumerable<TrackDto> tracks = Array.Empty<TrackDto>();
         IEnumerable<TrackDto> tracksByLyrics = Array.Empty<TrackDto>();
         if (wantAll || type == "track")
         {
             var rows = await _db.Tracks
-                .Where(t => EF.Functions.ILike(t.Title, like))
+                .Where(t => EF.Functions.ILike(t.Title, like)
+                    || (searchLike != null && t.SearchText != null && EF.Functions.ILike(t.SearchText, searchLike)))
                 .Include(t => t.Artist).Include(t => t.Album)
                 .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
                 .Take(20).ToListAsync(ct);
@@ -62,7 +69,8 @@ public class SearchController : ControllerBase
         if (wantAll || type == "artist")
         {
             var rows = await _db.Artists
-                .Where(a => EF.Functions.ILike(a.Name, like))
+                .Where(a => EF.Functions.ILike(a.Name, like)
+                    || (searchLike != null && a.SearchText != null && EF.Functions.ILike(a.SearchText, searchLike)))
                 .Take(20).ToListAsync(ct);
             artists = rows.Select(a => _mapper.ToDto(a));
         }
@@ -71,7 +79,8 @@ public class SearchController : ControllerBase
         if (wantAll || type == "album")
         {
             var rows = await _db.Albums
-                .Where(a => EF.Functions.ILike(a.Title, like))
+                .Where(a => EF.Functions.ILike(a.Title, like)
+                    || (searchLike != null && a.SearchText != null && EF.Functions.ILike(a.SearchText, searchLike)))
                 .Include(a => a.Artist)
                 .Take(20).ToListAsync(ct);
             albums = rows.Select(a => _mapper.ToDto(a));

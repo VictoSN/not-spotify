@@ -4,6 +4,13 @@ public class Artist
 {
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Match-only search blob (normalized name + romanization aliases). Built by
+    /// <see cref="Services.SearchTextBuilder"/>; never displayed. Null until backfilled.
+    /// </summary>
+    public string? SearchText { get; set; }
+
     public string? Bio { get; set; }
     public string? ImageUrl { get; set; }
     public string? ImageKey { get; set; }

@@ -202,7 +202,7 @@ export function TopBar() {
   // Spotify-style account menu: text-only rows, with a trailing external-link
   // arrow on the items that conceptually leave the app (Account/Premium/Install).
   const userMenuItemClass =
-    'flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-medium text-primary transition-colors hover:bg-white/10'
+    'flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-medium text-primary transition-colors hover:bg-primary/10'
   const userMenuArrowClass = 'h-4 w-4 shrink-0 text-secondary'
   const suggestionsLoading =
     showSearchPanel &&
@@ -212,7 +212,7 @@ export function TopBar() {
   const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
 
   const searchPanel = shouldShowSearchPanel && (
-    <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-[#282828] py-2 shadow-2xl [scrollbar-color:rgba(255,255,255,0.3)_transparent] [scrollbar-width:thin]">
+    <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-elevated py-2 shadow-2xl [scrollbar-color:rgba(128,128,128,0.4)_transparent] [scrollbar-width:thin]">
       {showSuggestionSkeleton ? (
         <SearchSuggestionsSkeleton />
       ) : (
@@ -231,9 +231,9 @@ export function TopBar() {
             <button
               type="button"
               onClick={() => submitSearch(trimmedSearchValue)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-secondary">
                 <MagnifyingGlassIcon className="h-5 w-5" />
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
@@ -245,14 +245,14 @@ export function TopBar() {
           {matchingRecents.map((recent) => (
             <div
               key={recent.id}
-              className="group flex items-center gap-1 px-2 py-1 transition-colors hover:bg-white/10"
+              className="group flex items-center gap-1 px-2 py-1 transition-colors hover:bg-primary/10"
             >
               <button
                 type="button"
                 onClick={() => handleRecentClick(recent.term)}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-secondary">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-secondary">
                   <MagnifyingGlassIcon className="h-5 w-5" />
                 </span>
                 <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">{recent.term}</span>
@@ -276,7 +276,7 @@ export function TopBar() {
               key={`track-${track.id}`}
               type="button"
               onClick={() => openSuggestion(`/track/${track.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
             >
               <img src={track.album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
               <span className="min-w-0 flex-1">
@@ -294,12 +294,12 @@ export function TopBar() {
               key={`artist-${artist.id}`}
               type="button"
               onClick={() => openSuggestion(`/artist/${artist.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
             >
               {artist.imageUrl ? (
                 <img src={artist.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
               ) : (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-secondary">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-secondary">
                   {artist.name.slice(0, 1).toUpperCase()}
                 </span>
               )}
@@ -320,7 +320,7 @@ export function TopBar() {
               key={`album-${album.id}`}
               type="button"
               onClick={() => openSuggestion(`/album/${album.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
             >
               <img src={album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
               <span className="min-w-0 flex-1">
@@ -337,12 +337,12 @@ export function TopBar() {
               key={`playlist-${playlist.id}`}
               type="button"
               onClick={() => openSuggestion(`/playlist/${playlist.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
             >
               {playlist.coverUrl ? (
                 <img src={playlist.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
               ) : (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-white/10 text-secondary">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded bg-primary/10 text-secondary">
                   <MusicalNoteIcon className="h-5 w-5" />
                 </span>
               )}
@@ -366,7 +366,7 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={handleClearRecentSearches}
-                className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-white/10 active:scale-95"
+                className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-primary/10 active:scale-95"
               >
                 {t('topbar.clearRecentSearches')}
               </button>
@@ -388,7 +388,7 @@ export function TopBar() {
         <div className="hidden md:flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
           <button
             onClick={() => navigate('/')}
-            className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
+            className="topbar-control spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
             aria-label={t('topbar.home')}
             aria-current={isHome ? 'page' : undefined}
           >
@@ -474,7 +474,7 @@ export function TopBar() {
       <div className="absolute left-1/2 top-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 lg:flex">
         <button
           onClick={() => navigate('/')}
-          className="spotify-tooltip-anchor relative flex h-12 min-h-12 w-12 min-w-12 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
+          className="topbar-control spotify-tooltip-anchor relative flex h-12 min-h-12 w-12 min-w-12 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
           aria-label={t('topbar.home')}
           aria-current={isHome ? 'page' : undefined}
         >
@@ -530,7 +530,7 @@ export function TopBar() {
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center text-secondary hover:text-primary transition-all shrink-0"
+          className="topbar-control w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center text-secondary hover:text-primary transition-all shrink-0"
           aria-label={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
           title={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
         >
@@ -590,7 +590,7 @@ export function TopBar() {
             setShowMenu((v) => !v)
             setSocialPanelOpen(false)
           }}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
+          className="topbar-control flex h-10 w-10 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
           aria-label={t('topbar.userMenu')}
         >
           <Avatar src={user?.avatarUrl} alt={user?.name ?? t('topbar.user')} size="sm" round className="!h-full !w-full text-sm" />
@@ -599,7 +599,7 @@ export function TopBar() {
         {showMenu && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-[#282828] py-2 shadow-2xl">
+            <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
               <Link
                 to="/account"
                 onClick={() => setShowMenu(false)}

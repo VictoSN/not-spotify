@@ -15,12 +15,14 @@ interface TrackTileProps {
   track: Track
   queue?: Track[]
   flush?: boolean
+  /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
+  boldTitle?: boolean
 }
 
 /** Spotify-style square tile: cover with a rising hover play button + title/artist.
  *  Right-click (or the hover "…") opens the track menu; the tile is draggable into
  *  the sidebar library/playlists. */
-export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
+export function TrackTile({ track, queue, flush = false, boldTitle = false }: TrackTileProps) {
   const { currentTrack, isPlaying, pause, resume, currentContextType } = usePlayerStore()
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
@@ -80,7 +82,7 @@ export function TrackTile({ track, queue, flush = false }: TrackTileProps) {
             )}
           </button>
         </div>
-        <p className={`text-sm font-semibold truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
+        <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
         <p className="text-xs text-secondary mt-0.5 truncate">
           <span
             role="link"

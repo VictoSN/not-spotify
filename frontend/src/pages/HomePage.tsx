@@ -402,7 +402,7 @@ export function HomePage() {
                       <MicrophoneIcon className="h-10 w-10 text-secondary/60" />
                     )}
                   </div>
-                  <div className="truncate font-bold text-primary">{p.title}</div>
+                  <div className="truncate font-normal text-primary">{p.title}</div>
                   <div className="truncate text-sm text-secondary">{p.author}</div>
                 </Link>
               ))}
@@ -427,7 +427,7 @@ export function HomePage() {
                       </span>
                     </div>
                   </div>
-                  <div className="truncate px-1 font-semibold text-primary">{v.title}</div>
+                  <div className="truncate px-1 font-normal text-primary">{v.title}</div>
                   <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
                 </Link>
               ))}

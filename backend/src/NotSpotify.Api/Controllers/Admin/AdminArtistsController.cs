@@ -55,6 +55,7 @@ public class AdminArtistsController : ControllerBase
         {
             Id = Guid.NewGuid(),
             Name = req.Name,
+            SearchText = SearchTextBuilder.ForArtist(req.Name),
             Bio = req.Bio,
             Instagram = req.Instagram,
             Twitter = req.Twitter,
@@ -80,12 +81,26 @@ public class AdminArtistsController : ControllerBase
         var a = await _db.Artists.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound();
 
+        var nameChanged = req.Name is not null && req.Name != a.Name;
         if (req.Name is not null) a.Name = req.Name;
         if (req.Bio is not null) a.Bio = req.Bio;
         if (req.Instagram is not null) a.Instagram = req.Instagram;
         if (req.Twitter is not null) a.Twitter = req.Twitter;
         if (req.Website is not null) a.Website = req.Website;
         if (req.Verified is not null) a.Verified = req.Verified.Value;
+
+        a.SearchText = SearchTextBuilder.ForArtist(a.Name);
+        // A rename ripples into the albums/tracks that embed this artist's name in
+        // their own search blobs — recompute those too so search stays consistent.
+        if (nameChanged)
+        {
+            var albums = await _db.Albums.Where(al => al.ArtistId == id).ToListAsync(ct);
+            foreach (var al in albums) al.SearchText = SearchTextBuilder.ForAlbum(al.Title, a.Name);
+
+            var tracks = await _db.Tracks.Where(t => t.ArtistId == id)
+                .Include(t => t.Album).ToListAsync(ct);
+            foreach (var t in tracks) t.SearchText = SearchTextBuilder.ForTrack(t.Title, a.Name, t.Album?.Title);
+        }
 
         await _db.SaveChangesAsync(ct);
         return Ok(_mapper.ToDto(a));

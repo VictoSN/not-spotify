@@ -36,6 +36,7 @@ import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu
 import { openMenuAtPointer } from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
+import { playlistService } from '@/services/playlistService'
 import { useDragStore } from '@/stores/dragStore'
 import { useTrackDrop } from '@/hooks/useTrackDrop'
 import { useLibraryDrop } from '@/hooks/useLibraryDrop'
@@ -391,8 +392,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const playLibraryItem = async (item: LibItem) => {
     try {
       if (item.kind === 'playlist') {
-        const playlist = savedPlaylists.find((p) => p.id === item.id)
-        const tracks = (playlist?.tracks ?? []).map((row) => row.track)
+        const cached = savedPlaylists.find((p) => p.id === item.id)
+        let tracks = (cached?.tracks ?? []).map((row) => row.track)
+        // Library rows come from the summary endpoint, which omits the track
+        // list (only a count) — fetch the full playlist so it can actually play.
+        if (tracks.length === 0) {
+          const full = await playlistService.getById(item.id)
+          tracks = (full.tracks ?? []).map((row) => row.track)
+        }
         if (tracks.length > 0) startContext({ type: 'playlist', id: item.id }, tracks)
         else notify.info('No tracks in this playlist yet')
         return

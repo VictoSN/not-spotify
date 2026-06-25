@@ -19,9 +19,11 @@ interface AlbumCardProps {
   album: Album
   tracks?: Track[]
   flush?: boolean
+  /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
+  boldTitle?: boolean
 }
 
-export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
+export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: AlbumCardProps) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'album', id: album.id })
@@ -105,7 +107,7 @@ export function AlbumCard({ album, tracks, flush = false }: AlbumCardProps) {
             )}
           </button>
         </div>
-        <p className="text-sm font-semibold text-primary truncate">{album.title}</p>
+        <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{album.title}</p>
         <p className="text-xs text-secondary mt-0.5 truncate">
           {album.releaseDate.slice(0, 4)} ·{' '}
           <span

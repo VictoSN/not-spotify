@@ -743,6 +743,18 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(scope.ServiceProvider);
     await RepairKnownInstrumentalLyricsAsync(db);
+
+    // Fill the romanization-aware search blob for any rows that don't have one yet
+    // (new column, freshly seeded/imported data). Idempotent + cheap once populated.
+    try
+    {
+        var backfilled = await NotSpotify.Api.Services.SearchTextBackfill.RunAsync(db);
+        if (backfilled > 0) Console.WriteLine($"[SearchText] Backfilled {backfilled} row(s).");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[SearchText] Backfill skipped: {ex.Message}");
+    }
 }
 
 // One-time bulk catalogue import (`dotnet run -- import-music [--path <dir>] [--dry-run]`).
@@ -751,6 +763,18 @@ using (var scope = app.Services.CreateScope())
 if (args.Contains("import-music"))
 {
     await MusicImporter.RunAsync(app.Services, args);
+    return;
+}
+
+// Force-recompute the romanization-aware SearchText blob for every Artist/Album/Track
+// (`dotnet run -- backfill-search-text`). Use after editing the alias dictionary in
+// SearchAliases — startup only fills rows that are still null.
+if (args.Contains("backfill-search-text"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var n = await NotSpotify.Api.Services.SearchTextBackfill.RunAsync(db, force: true);
+    Console.WriteLine($"[SearchText] Recomputed {n} row(s).");
     return;
 }
 

@@ -72,16 +72,17 @@ public class AdminTracksController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TrackDto>> Create([FromBody] CreateTrackRequest req, CancellationToken ct = default)
     {
-        var albumExists = await _db.Albums.AnyAsync(a => a.Id == req.AlbumId, ct);
-        if (!albumExists) return BadRequest(new { message = "Album not found." });
+        var album = await _db.Albums.FirstOrDefaultAsync(a => a.Id == req.AlbumId, ct);
+        if (album is null) return BadRequest(new { message = "Album not found." });
 
-        var artistExists = await _db.Artists.AnyAsync(a => a.Id == req.ArtistId, ct);
-        if (!artistExists) return BadRequest(new { message = "Artist not found." });
+        var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct);
+        if (artist is null) return BadRequest(new { message = "Artist not found." });
 
         var track = new Track
         {
             Id = Guid.NewGuid(),
             Title = req.Title,
+            SearchText = SearchTextBuilder.ForTrack(req.Title, artist.Name, album.Title),
             AlbumId = req.AlbumId,
             ArtistId = req.ArtistId,
             DurationMs = req.DurationMs,
@@ -119,18 +120,26 @@ public class AdminTracksController : ControllerBase
         if (req.TrackNumber is not null) t.TrackNumber = req.TrackNumber.Value;
         if (req.DiscNumber is not null) t.DiscNumber = req.DiscNumber.Value;
         if (req.Explicit is not null) t.Explicit = req.Explicit.Value;
+
+        var artistName = t.Artist.Name;
+        var albumTitle = t.Album.Title;
         if (req.ArtistId is not null)
         {
-            var exists = await _db.Artists.AnyAsync(a => a.Id == req.ArtistId.Value, ct);
-            if (!exists) return BadRequest(new { message = "Artist not found." });
+            var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == req.ArtistId.Value, ct);
+            if (artist is null) return BadRequest(new { message = "Artist not found." });
             t.ArtistId = req.ArtistId.Value;
+            artistName = artist.Name;
         }
         if (req.AlbumId is not null)
         {
-            var exists = await _db.Albums.AnyAsync(a => a.Id == req.AlbumId.Value, ct);
-            if (!exists) return BadRequest(new { message = "Album not found." });
+            var album = await _db.Albums.FirstOrDefaultAsync(a => a.Id == req.AlbumId.Value, ct);
+            if (album is null) return BadRequest(new { message = "Album not found." });
             t.AlbumId = req.AlbumId.Value;
+            albumTitle = album.Title;
         }
+
+        // Title / artist / album all feed the romanization-aware search blob.
+        t.SearchText = SearchTextBuilder.ForTrack(t.Title, artistName, albumTitle);
 
         await _db.SaveChangesAsync(ct);
 

@@ -197,13 +197,14 @@ public class AdminAlbumsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<AlbumDto>> Create([FromBody] CreateAlbumRequest req, CancellationToken ct = default)
     {
-        var artistExists = await _db.Artists.AnyAsync(a => a.Id == req.ArtistId, ct);
-        if (!artistExists) return BadRequest(new { message = "Artist not found." });
+        var artist = await _db.Artists.FirstOrDefaultAsync(a => a.Id == req.ArtistId, ct);
+        if (artist is null) return BadRequest(new { message = "Artist not found." });
 
         var album = new Album
         {
             Id = Guid.NewGuid(),
             Title = req.Title,
+            SearchText = SearchTextBuilder.ForAlbum(req.Title, artist.Name),
             ArtistId = req.ArtistId,
             Type = req.Type,
             ReleaseDate = req.ReleaseDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
@@ -259,16 +260,33 @@ public class AdminAlbumsController : ControllerBase
         var a = await _db.Albums.Include(x => x.Artist).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (a is null) return NotFound();
 
+        var titleChanged = req.Title is not null && req.Title != a.Title;
         if (req.Title is not null) a.Title = req.Title;
         if (req.Type is not null) a.Type = req.Type;
         if (req.ReleaseDate is not null) a.ReleaseDate = req.ReleaseDate.Value;
         if (req.Label is not null) a.Label = req.Label;
         if (req.Copyright is not null) a.Copyright = req.Copyright;
+
+        var artistName = a.Artist?.Name;
+        var artistChanged = false;
         if (req.ArtistId is not null)
         {
-            var artistExists = await _db.Artists.AnyAsync(x => x.Id == req.ArtistId.Value, ct);
-            if (!artistExists) return BadRequest(new { message = "Artist not found." });
+            var artist = await _db.Artists.FirstOrDefaultAsync(x => x.Id == req.ArtistId.Value, ct);
+            if (artist is null) return BadRequest(new { message = "Artist not found." });
+            artistChanged = a.ArtistId != req.ArtistId.Value;
             a.ArtistId = req.ArtistId.Value;
+            artistName = artist.Name;
+        }
+
+        a.SearchText = SearchTextBuilder.ForAlbum(a.Title, artistName);
+        // The album title feeds its tracks' search blobs — recompute them on a retitle
+        // (artist changes are reflected via the artist controller's own cascade).
+        if (titleChanged || artistChanged)
+        {
+            var tracks = await _db.Tracks.Where(t => t.AlbumId == id)
+                .Include(t => t.Artist).ToListAsync(ct);
+            foreach (var t in tracks)
+                t.SearchText = SearchTextBuilder.ForTrack(t.Title, t.Artist?.Name, a.Title);
         }
 
         await _db.SaveChangesAsync(ct);

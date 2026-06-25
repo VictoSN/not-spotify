@@ -19,9 +19,11 @@ import { PlaylistCover } from './PlaylistCover'
 interface PlaylistCardProps {
   playlist: Playlist
   flush?: boolean
+  /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
+  boldTitle?: boolean
 }
 
-export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
+export function PlaylistCard({ playlist, flush = false, boldTitle = false }: PlaylistCardProps) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'playlist', id: playlist.id })
@@ -103,7 +105,7 @@ export function PlaylistCard({ playlist, flush = false }: PlaylistCardProps) {
           )}
         </button>
       </div>
-      <p className="text-sm font-semibold text-primary truncate flex items-center gap-1">
+      <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate flex items-center gap-1`}>
         {playlist.isFeatured && <StarIcon className="w-3.5 h-3.5 text-accent shrink-0" title="Featured" />}
         {playlist.smartRules && <SparklesIcon className="w-3.5 h-3.5 text-accent shrink-0" title="Smart playlist" />}
         <span className="truncate">{playlist.name}</span>

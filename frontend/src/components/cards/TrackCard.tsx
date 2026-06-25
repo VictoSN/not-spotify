@@ -80,7 +80,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
         </div>
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>
+        <p className={`text-sm font-normal truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>
           <Link to={`/track/${track.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">
             {track.title}
           </Link>

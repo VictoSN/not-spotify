@@ -7,6 +7,8 @@ import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 interface MixTileProps {
   mix: DailyMix
   flush?: boolean
+  /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
+  boldTitle?: boolean
 }
 
 /**
@@ -14,7 +16,7 @@ interface MixTileProps {
  * genre-colored title band. Clicking play loads the whole mix into the queue.
  * Daily mixes are ephemeral (no dedicated page), so the tile isn't a link.
  */
-export function MixTile({ mix, flush = false }: MixTileProps) {
+export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps) {
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const startContext = usePlayContextGate()
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'mix', id: mix.id })
@@ -76,7 +78,7 @@ export function MixTile({ mix, flush = false }: MixTileProps) {
           )}
         </button>
       </div>
-      <p className="text-sm font-semibold text-primary truncate">{mix.title}</p>
+      <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} text-primary truncate`}>{mix.title}</p>
       <p className="text-xs text-secondary mt-0.5 truncate">
         {mix.tracks.slice(0, 3).map((t) => t.artist.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')}
       </p>

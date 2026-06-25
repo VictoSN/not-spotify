@@ -6,6 +6,7 @@ import {
   ChevronDoubleRightIcon,
   Bars3Icon,
   ArrowsPointingOutIcon,
+  ShareIcon,
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
@@ -29,6 +30,8 @@ import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
+import { shareLink } from '@/utils/share'
+import { notify } from '@/utils/toast'
 
 const NP_KEY = 'ns-nowplaying-width'
 const NP_DEFAULT = 320
@@ -351,6 +354,14 @@ export function NowPlayingPanel() {
 
   const isLiked = likedTrackIds.has(currentTrack.id)
   const toggleLike = () => (isLiked ? unlikeTrack(currentTrack.id) : likeTrack(currentTrack))
+  const shareCurrentTrack = async () => {
+    const result = await shareLink(`/track/${currentTrack.id}`, {
+      title: currentTrack.title,
+      text: `${currentTrack.title} · ${currentTrack.artist.name}`,
+    })
+    if (result === 'copied') notify.success('Link copied to clipboard')
+    else if (result === 'failed') notify.error("Couldn't copy link")
+  }
 
   const relatedTracks = related.filter((t) => t.id !== currentTrack.id).slice(0, 5)
   const upNext = queueIndex >= 0 ? queue.slice(queueIndex + 1) : []
@@ -794,18 +805,24 @@ export function NowPlayingPanel() {
 
         {/* Cover (skipped when an MV is shown above) + title. */}
         <div className={cn(
-          'px-4 pb-4',
+          'group/np-album px-4 pb-4',
           isNowPlayingExpanded && 'flex min-h-[calc(100vh-13rem)] flex-col items-center justify-center px-8 pb-12 pt-16',
         )}>
           {!video && (
-            <img
-              src={currentTrack.album.coverUrl}
-              alt={currentTrack.album.title}
+            <Link
+              to={`/album/${currentTrack.album.id}`}
               className={cn(
-                'aspect-square rounded-lg object-cover shadow-lg',
+                'block overflow-hidden rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent/70',
                 isNowPlayingExpanded ? 'w-[min(36rem,58vh,62vw)] max-w-full' : 'w-full',
               )}
-            />
+              aria-label={`Open ${currentTrack.album.title}`}
+            >
+              <img
+                src={currentTrack.album.coverUrl}
+                alt={currentTrack.album.title}
+                className="aspect-square w-full rounded-lg object-cover shadow-lg transition-transform duration-200 group-hover/np-album:scale-[1.015]"
+              />
+            </Link>
           )}
           <div className={cn(
             'flex items-start justify-between gap-2',
@@ -815,7 +832,10 @@ export function NowPlayingPanel() {
             <div className="min-w-0">
               <Link
                 to={`/album/${currentTrack.album.id}`}
-                className="block text-xl font-bold text-primary truncate hover:underline"
+                className={cn(
+                  'block truncate text-xl font-bold text-primary hover:underline',
+                  video && 'hover:text-primary',
+                )}
               >
                 {currentTrack.title}
               </Link>
@@ -827,6 +847,15 @@ export function NowPlayingPanel() {
               </Link>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={shareCurrentTrack}
+                className="spotify-tooltip-anchor relative mt-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/np-album:opacity-100 group-focus-within/np-album:opacity-100 active:scale-95"
+                aria-label={`Share ${currentTrack.title}`}
+              >
+                <ShareIcon className="h-5 w-5 stroke-[2.1]" />
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Share</span>
+              </button>
               <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? t('player.unlike') : t('player.like')}>
                 <AnimatedLikeIcon liked={isLiked} className="w-6 h-6" heartClassName="w-6 h-6 text-secondary hover:text-primary" />
               </button>

@@ -4,6 +4,17 @@ import { api } from './api'
 interface LoginPayload { email: string; password: string }
 interface SignupPayload { name: string; email: string; password: string }
 interface AuthTokens { accessToken: string; user: User }
+export interface ExternalAuthProviderState {
+  enabled: boolean
+  configured: boolean
+  available: boolean
+}
+
+export interface ExternalAuthProviders {
+  google: ExternalAuthProviderState
+  facebook: ExternalAuthProviderState
+  apple: ExternalAuthProviderState
+}
 
 export const authService = {
   async login(payload: LoginPayload): Promise<AuthTokens> {
@@ -44,8 +55,8 @@ export const authService = {
     await api.post('/auth/reset-password', { email, token, newPassword })
   },
 
-  async externalProviders(): Promise<{ google: boolean }> {
-    const res = await api.get<{ google: boolean }>('/auth/external/providers')
+  async externalProviders(): Promise<ExternalAuthProviders> {
+    const res = await api.get<ExternalAuthProviders>('/auth/external/providers')
     return res.data
   },
 }

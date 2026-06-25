@@ -1,4 +1,4 @@
-# Auth: Change Password, Reset Password & Google Login
+# Auth: Change Password, Reset Password & Social Login
 
 Three account-recovery / login features, all wired into the existing JWT + refresh-cookie auth. This doc covers how each works and what (if anything) you must configure.
 
@@ -63,10 +63,52 @@ dotnet user-secrets set "Authentication:Google:ClientId" "xxxx.apps.googleuserco
 dotnet user-secrets set "Authentication:Google:ClientSecret" "GOCSPX-xxxx"
 # Optional — only if your callback host differs from the request host (e.g. behind a proxy):
 dotnet user-secrets set "Authentication:Google:RedirectUri" "https://your-api-host/auth/external/google/callback"
-# Optional — where to send the user back after login (defaults to the first CORS origin, else http://localhost:5173):
+# Optional — single fallback frontend URL:
 dotnet user-secrets set "App:FrontendUrl" "http://localhost:5173"
 ```
 Restart the backend. The Google button activates automatically.
+
+### Multiple client ports
+The login buttons pass their current `window.location.origin` as `returnUrl`, and the backend only accepts it if it is allowlisted. Add every web/desktop dev origin you use to `App:FrontendUrls` or `Cors:AllowedOrigins`.
+
+Example:
+```json
+"App": {
+  "FrontendUrls": [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:1420"
+  ]
+}
+```
+
+You do **not** need a separate Google/Facebook callback for every frontend port. Provider callbacks still point to the backend, for example `https://localhost:7045/auth/external/google/callback`; the backend then posts/redirects back to the allowed client that started the login.
+
+---
+
+## 4. Facebook login (OAuth) — implemented, gated until you add credentials
+
+Facebook uses the same hosted-provider pattern as Google: the app redirects to Meta/Facebook, the user logs in on Facebook's page, and the backend callback creates or signs in the local Not Spotify user.
+
+### Setup (Meta for Developers)
+1. <https://developers.facebook.com/apps/> → create/select an app.
+2. Add **Facebook Login** for web.
+3. Add this valid OAuth redirect URI:
+   ```
+   https://localhost:7045/auth/external/facebook/callback
+   ```
+   For production, also add `https://<your-api-host>/auth/external/facebook/callback`.
+4. Request/use the `email` and `public_profile` permissions. Facebook accounts that do not expose an email cannot be auto-registered by this app.
+
+### Backend user-secrets (from `backend/src/NotSpotify.Api`)
+```powershell
+dotnet user-secrets set "Authentication:Facebook:AppId" "your-facebook-app-id"
+dotnet user-secrets set "Authentication:Facebook:AppSecret" "your-facebook-app-secret"
+# Optional — only if your callback host differs from the request host:
+dotnet user-secrets set "Authentication:Facebook:RedirectUri" "https://your-api-host/auth/external/facebook/callback"
+```
+
+Restart the backend, then enable Facebook in Admin → Dev Tools → Social login providers. The Facebook button only appears when both credentials and the admin toggle are enabled.
 
 ### Notes
 - The `state` cookie and `rt` cookie use `SameSite=None; Secure`, so OAuth works across the api↔frontend origin hop (matches the existing refresh-cookie setup). HTTPS is required (you already trust the dev cert).
@@ -79,4 +121,5 @@ Restart the backend. The Google button activates automatically.
 With these shipped, the support center can document them as **real** instead of removing them (see [`support-content-roadmap.md`](support-content-roadmap.md) §1):
 - "Reset or change your password" ✅
 - "Change your password" (from Account) ✅
-- "Log in with Google" ✅ (Facebook/Apple still honestly "not available")
+- "Log in with Google" ✅
+- "Log in with Facebook" ✅ once Meta credentials are configured

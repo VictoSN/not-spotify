@@ -1,13 +1,10 @@
-// Generates the Tauri icon set from the existing PWA icons in ../../public/icons.
-//
-// We have no image-resize tooling (ImageMagick / sharp) in this repo, so instead
-// of rasterising new sizes we reuse the PWA PNGs as-is:
-//   - icon.png  <- icon-512.png  (square master used by the bundler)
-//   - icon.ico  <- icon-192.png  wrapped in an ICO container
-//
-// The ICO format (Vista+) lets us embed a PNG directly: the directory entry just
-// points at the raw PNG bytes. 192 fits the 1-byte width/height field, so no
-// resize is needed. Re-run with `node generate-icons.mjs` if the source art changes.
+// DEPRECATED: icon generation is now done via `npx tauri icon ./app-icon.svg`
+// which regenerates all sizes in src-tauri/icons/ in one step.
+// After running tauri icon, sync the PWA icons:
+//   cp src-tauri/icons/icon.png        public/icons/icon-512.png
+//   cp src-tauri/icons/128x128.png     public/icons/icon-192.png
+//   cp src-tauri/icons/icon.png        public/icons/icon-maskable-512.png
+// The script below is kept as a fallback for ICO-only regeneration.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';

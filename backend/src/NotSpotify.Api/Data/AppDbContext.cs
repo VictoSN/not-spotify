@@ -47,6 +47,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<TourDate> TourDates => Set<TourDate>();
     public DbSet<TourDateTrack> TourDateTracks => Set<TourDateTrack>();
     public DbSet<PlanMembership> PlanMemberships => Set<PlanMembership>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -579,6 +580,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasIndex(x => x.OwnerId);
             e.HasIndex(x => x.MemberId);
             e.HasIndex(x => x.InvitedEmail);
+        });
+
+        b.Entity<AppSetting>(e =>
+        {
+            e.HasKey(x => x.Key);
+            e.Property(x => x.Key).HasMaxLength(160);
+            e.Property(x => x.Value).HasMaxLength(4000);
         });
     }
 }

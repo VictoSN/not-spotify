@@ -1,11 +1,10 @@
 import { cn } from '@/utils/cn'
 
-type Provider = 'google' | 'facebook' | 'apple'
+type Provider = 'google' | 'facebook'
 
 const providers: { id: Provider; label: string }[] = [
   { id: 'google', label: 'Continue with Google' },
   { id: 'facebook', label: 'Continue with Facebook' },
-  { id: 'apple', label: 'Continue with Apple' },
 ]
 
 function GoogleIcon() {
@@ -27,43 +26,94 @@ function FacebookIcon() {
   )
 }
 
-function AppleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 text-primary">
-      <path fill="currentColor" d="M16.37 1.43c0 1.14-.46 2.2-1.2 2.99-.8.86-2.11 1.52-3.17 1.43-.14-1.1.4-2.26 1.13-3.05.81-.88 2.22-1.54 3.24-1.37zM20.5 17.23c-.58 1.35-.86 1.95-1.6 3.14-1.04 1.58-2.5 3.55-4.31 3.57-1.61.02-2.03-1.04-4.22-1.03-2.19.01-2.65 1.06-4.26 1.04-1.81-.02-3.19-1.79-4.23-3.37C-1.02 16.1-.35 10.8 3.15 8.67c1.74-1.06 4-1.09 5.38-.37 1.38.72 2.25.72 4.03-.16 1.35-.67 3.67-.46 5.25.86-4.61 2.53-3.86 9.1.69 8.23z" />
-    </svg>
-  )
-}
-
 function ProviderIcon({ provider }: { provider: Provider }) {
   if (provider === 'google') return <GoogleIcon />
-  if (provider === 'facebook') return <FacebookIcon />
-  return <AppleIcon />
+  return <FacebookIcon />
 }
 
 export function SocialAuthButtons({
   onUnavailable,
+  onProviderSuccess,
+  showFacebook = false,
   className,
   googleHref,
+  facebookHref,
 }: {
   onUnavailable: (provider: Provider) => void
+  onProviderSuccess?: (provider: Provider) => void | Promise<void>
+  showFacebook?: boolean
   className?: string
-  /** When set, the Google button performs a real OAuth redirect to this URL. */
   googleHref?: string | null
+  facebookHref?: string | null
 }) {
+  const openOAuthPopup = (provider: Provider, href: string | null | undefined) => {
+    if (!href) {
+      onUnavailable(provider)
+      return
+    }
+
+    const width = 520
+    const height = 680
+    const left = Math.max(0, window.screenX + (window.outerWidth - width) / 2)
+    const top = Math.max(0, window.screenY + (window.outerHeight - height) / 2)
+    const features = [
+      `width=${width}`,
+      `height=${height}`,
+      `left=${Math.round(left)}`,
+      `top=${Math.round(top)}`,
+      'popup=yes',
+      'resizable=yes',
+      'scrollbars=yes',
+    ].join(',')
+
+    const popup = window.open(href, `notspotify-${provider}-oauth`, features)
+    if (!popup) {
+      window.location.assign(href)
+      return
+    }
+
+    const expectedOrigin = new URL(href, window.location.href).origin
+    let settled = false
+    let closeTimer: number | undefined
+
+    const cleanup = () => {
+      settled = true
+      window.removeEventListener('message', onMessage)
+      if (closeTimer !== undefined) window.clearInterval(closeTimer)
+    }
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== expectedOrigin) return
+      const data = event.data as { type?: string; provider?: string; status?: string } | null
+      if (data?.type !== 'notspotify:oauth' || data.provider !== provider) return
+
+      cleanup()
+      popup.close()
+      if (data.status === 'success') {
+        void onProviderSuccess?.(provider)
+      } else {
+        onUnavailable(provider)
+      }
+    }
+
+    window.addEventListener('message', onMessage)
+    closeTimer = window.setInterval(() => {
+      if (!settled && popup.closed) cleanup()
+    }, 500)
+  }
+
   return (
     <div className={cn('grid gap-2', className)}>
-      {providers.map((provider) => {
-        const enabled = provider.id === 'google' && Boolean(googleHref)
+      {providers.filter((provider) => provider.id === 'google' || showFacebook).map((provider) => {
+        const href = provider.id === 'google' ? googleHref : facebookHref
+        const enabled = Boolean(href)
         return (
           <button
             key={provider.id}
             type="button"
             onClick={() => {
               if (enabled) {
-                // Full-page navigation: the backend redirects to Google and back,
-                // setting the rt cookie so the SPA hydrates as logged-in on return.
-                window.location.assign(googleHref!)
+                openOAuthPopup(provider.id, href)
               } else {
                 onUnavailable(provider.id)
               }

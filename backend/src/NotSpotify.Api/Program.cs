@@ -741,6 +741,24 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS ""IX_PlanMemberships_InvitedEmail"" ON ""PlanMemberships""(""InvitedEmail"");
     ");
 
+    // Runtime feature flags and lightweight app settings. Auth provider toggles live here
+    // so admins can show/hide providers without a deploy.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""AppSettings"" (
+            ""Key""       character varying(160) NOT NULL,
+            ""Value""     character varying(4000) NOT NULL,
+            ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_AppSettings"" PRIMARY KEY (""Key"")
+        );
+
+        INSERT INTO ""AppSettings"" (""Key"", ""Value"", ""UpdatedAt"")
+        VALUES
+            ('auth.external.google.enabled', 'true', now()),
+            ('auth.external.facebook.enabled', 'false', now()),
+            ('auth.external.apple.enabled', 'false', now())
+        ON CONFLICT (""Key"") DO NOTHING;
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
     await RepairKnownInstrumentalLyricsAsync(db);
 

@@ -37,8 +37,14 @@ public record AuthResponse(string AccessToken, UserDto User);
 
 public record AccessTokenResponse(string AccessToken);
 
-/// <summary>Which external login providers are configured (button state on the client).</summary>
-public record ExternalProvidersResponse(bool Google);
+/// <summary>External login provider state. Available means visible/usable on the public auth pages.</summary>
+public record ExternalAuthProviderDto(bool Enabled, bool Configured, bool Available);
+
+public record ExternalProvidersResponse(
+    ExternalAuthProviderDto Google,
+    ExternalAuthProviderDto Facebook,
+    ExternalAuthProviderDto Apple
+);
 
 public record UserCapabilitiesDto(
     bool UnlimitedPlayback,

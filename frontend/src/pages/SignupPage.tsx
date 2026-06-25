@@ -11,7 +11,13 @@ import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { useTranslation } from '@/i18n/useTranslation'
 import { useEffect, useState } from 'react'
 
-const GOOGLE_AUTH_URL = `${import.meta.env.VITE_API_URL}/auth/external/google`
+const externalAuthUrl = (provider: 'google' | 'facebook') => {
+  const params = new URLSearchParams({
+    mode: 'popup',
+    returnUrl: window.location.origin,
+  })
+  return `${import.meta.env.VITE_API_URL}/auth/external/${provider}?${params.toString()}`
+}
 
 interface FormValues {
   name: string
@@ -24,12 +30,13 @@ interface FormValues {
 export function SignupPage() {
   useDocumentTitle('Sign up')
   const navigate = useNavigate()
-  const { signup, isLoading, error, isAuthenticated, clearError } = useAuthStore()
+  const { signup, hydrateFromCookie, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
+  const [facebookEnabled, setFacebookEnabled] = useState(false)
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -40,7 +47,11 @@ export function SignupPage() {
   useEffect(() => {
     let active = true
     authService.externalProviders()
-      .then((p) => { if (active) setGoogleEnabled(p.google) })
+      .then((p) => {
+        if (!active) return
+        setGoogleEnabled(p.google.available)
+        setFacebookEnabled(p.facebook.available)
+      })
       .catch(() => { /* leave disabled */ })
     return () => { active = false }
   }, [])
@@ -69,7 +80,14 @@ export function SignupPage() {
         </div>
 
         <SocialAuthButtons
-          googleHref={googleEnabled ? GOOGLE_AUTH_URL : null}
+          googleHref={googleEnabled ? externalAuthUrl('google') : null}
+          facebookHref={facebookEnabled ? externalAuthUrl('facebook') : null}
+          showFacebook={facebookEnabled}
+          onProviderSuccess={async () => {
+            clearError()
+            setSocialNotice(null)
+            await hydrateFromCookie()
+          }}
           onUnavailable={(provider) => {
             const name = `${provider[0].toUpperCase()}${provider.slice(1)}`
             setSocialNotice(t('auth.signup.socialUnavailable', { provider: name }))

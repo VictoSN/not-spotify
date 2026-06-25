@@ -145,6 +145,19 @@ export interface PendingAction {
   reviewNote: string | null
 }
 
+export interface AdminAuthProviderState {
+  enabled: boolean
+  configured: boolean
+  available: boolean
+  status: string
+}
+
+export interface AdminAuthProviders {
+  google: AdminAuthProviderState
+  facebook: AdminAuthProviderState
+  apple: AdminAuthProviderState
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const adminService = {
@@ -385,6 +398,16 @@ export const adminService = {
 
   async rejectAction(id: string, note?: string): Promise<PendingAction> {
     const res = await api.post<PendingAction>(`/admin/approvals/${id}/reject`, { note: note || null })
+    return res.data
+  },
+
+  async getAuthProviders(): Promise<AdminAuthProviders> {
+    const res = await api.get<AdminAuthProviders>('/admin/dev/auth-providers')
+    return res.data
+  },
+
+  async updateAuthProviders(payload: { google: boolean; facebook: boolean; apple: boolean }): Promise<AdminAuthProviders> {
+    const res = await api.put<AdminAuthProviders>('/admin/dev/auth-providers', payload)
     return res.data
   },
 }

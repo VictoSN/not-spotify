@@ -153,12 +153,13 @@ export function effectiveQuality(): string {
 }
 
 const clampVol = (v: number) => Math.max(0, Math.min(1, v))
-// Leave a little digital headroom so the app feels closer to Spotify's loudness
-// instead of pushing every track right up against full-scale output.
-const MASTER_OUTPUT_GAIN = 0.72
+// Use a perceptual-feeling curve with enough headroom that 20-30% volume
+// stays closer to Spotify/YT Music instead of feeling like half volume.
+const MASTER_OUTPUT_GAIN = 0.64
+const VOLUME_CURVE_EXPONENT = 2.2
 const volumeToGain = (volume: number) => {
   const clamped = clampVol(volume)
-  return clamped === 0 ? 0 : Math.pow(clamped, 1.75) * MASTER_OUTPUT_GAIN
+  return clamped === 0 ? 0 : Math.pow(clamped, VOLUME_CURVE_EXPONENT) * MASTER_OUTPUT_GAIN
 }
 
 class AudioEngine {

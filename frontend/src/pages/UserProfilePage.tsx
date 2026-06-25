@@ -54,23 +54,36 @@ export function UserProfilePage() {
   useEffect(() => {
     // Don't fetch data for own profile — the redirect below handles that case.
     if (!userId || isOwnProfile) return
+    let cancelled = false
     setLoading(true)
-    Promise.all([
-      friendService.getUserProfile(userId),
-      friendService.getUserPlaylists(userId),
-      friendService.getUserTopTracks(userId).catch(() => [] as Track[]),
-    ])
-      .then(([p, pls, tracks]) => {
+    setProfile(null)
+    setPlaylists([])
+    setTopTracks([])
+    friendService.getUserProfile(userId)
+      .then(async (p) => {
+        if (cancelled) return
         setProfile(p)
-        setPlaylists(pls)
-        setTopTracks(tracks)
         setFollowing(p.isFollowing === true)
         setFollowerCount(p.followerCount)
+        setLoading(false)
+
+        const [pls, tracks] = await Promise.all([
+          friendService.getUserPlaylists(userId).catch(() => [] as Playlist[]),
+          friendService.getUserTopTracks(userId).catch(() => [] as Track[]),
+        ])
+        if (cancelled) return
+        setPlaylists(pls)
+        setTopTracks(tracks)
       })
       .catch(() => {
-        // 404 → profile stays null → "User not found" shown below
+        if (cancelled) return
+        // 404 from the profile endpoint → profile stays null → "User not found" shown below.
+        // Secondary sections are loaded separately so private/failed playlists never hide a public profile.
+        setLoading(false)
       })
-      .finally(() => setLoading(false))
+    return () => {
+      cancelled = true
+    }
   }, [userId, isOwnProfile])
 
   const isFriend = friends.some((f) => f.userId === userId)

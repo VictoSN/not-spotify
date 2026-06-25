@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon } from '@heroicons/react/24/outline'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Button } from '@/components/ui/Button'
 import { billingService, type BillingPlan, type BillingSubscription } from '@/services/billingService'
 import { planService, type PlanOverview } from '@/services/planService'
@@ -43,14 +44,6 @@ const COMPARISON: { label: string; free: boolean | 'partial'; freeNote?: string 
   { label: 'Organize your listening queue', free: false },
 ]
 
-const PREMIUM_PERKS = [
-  'Ad-free, uninterrupted listening',
-  'Play any song in any order — no forced shuffle',
-  'Shuffle toggle and repeat modes (all / one)',
-  'Download songs, albums & playlists as ZIP files',
-  'Stripe-hosted secure checkout',
-]
-
 const FREE_PERKS = [
   'Listen to all music (shuffle only)',
   'Save playlists and albums to your library',
@@ -59,6 +52,63 @@ const FREE_PERKS = [
 ]
 
 const PAYMENT_METHODS = ['Mastercard', 'American Express', 'UnionPay', 'Visa']
+
+const PLAN_TONES: Record<BillingPlan['plan'] | 'free', { title: string; button: string }> = {
+  free: {
+    title: 'premium-plan-title-free',
+    button: 'premium-plan-button-free',
+  },
+  monthly: {
+    title: 'premium-plan-title-monthly',
+    button: 'premium-plan-button-monthly',
+  },
+  yearly: {
+    title: 'premium-plan-title-yearly',
+    button: 'premium-plan-button-yearly',
+  },
+  duo: {
+    title: 'premium-plan-title-duo',
+    button: 'premium-plan-button-duo',
+  },
+  family: {
+    title: 'premium-plan-title-family',
+    button: 'premium-plan-button-family',
+  },
+  student: {
+    title: 'premium-plan-title-student',
+    button: 'premium-plan-button-student',
+  },
+}
+
+const PLAN_FINE_PRINT: Record<BillingPlan['plan'] | 'free', string> = {
+  free: 'Start listening with ads and limited playback controls.',
+  monthly: 'Terms apply.',
+  yearly: 'Annual billing terms apply.',
+  duo: 'For two people who reside at the same address. Terms apply.',
+  family: 'For up to 6 family members residing at the same address. Terms apply.',
+  student: 'Offer available only to students at an accredited higher education institution. Terms apply.',
+}
+
+const PLAN_DISPLAY_NAME: Record<BillingPlan['plan'], string> = {
+  monthly: 'Individual',
+  yearly: 'Individual Yearly',
+  duo: 'Duo',
+  family: 'Family',
+  student: 'Student',
+}
+
+const PLAN_PERKS: Record<BillingPlan['plan'], string[]> = {
+  monthly: ['1 Premium account', 'Ad-free music listening', 'Cancel anytime'],
+  yearly: ['1 Premium account', 'Annual billing savings', 'Cancel anytime'],
+  duo: ['2 Premium accounts', 'Ad-free music listening for two people', 'Cancel anytime'],
+  family: [
+    'Up to 6 Premium accounts',
+    'Parental controls for the plan manager',
+    'Ad-free music listening for the family',
+    'Cancel anytime',
+  ],
+  student: ['1 verified Premium account', 'Discount for eligible students', 'Cancel anytime'],
+}
 
 function PaymentBadge({ method }: { method: string }) {
   if (method === 'Mastercard') {
@@ -110,7 +160,7 @@ function PaymentLogos() {
           <PaymentBadge key={method} method={method} />
         ))}
       </div>
-      <p className="mt-2 text-xs font-bold text-white/70">Secure checkout powered by Stripe</p>
+      <p className="premium-payment-note mt-2 text-xs font-bold">Secure checkout powered by Stripe</p>
     </div>
   )
 }
@@ -118,50 +168,42 @@ function PaymentLogos() {
 function PlanCard({
   eyebrow,
   name,
-  headerClass,
+  tone,
   price,
   priceSub,
   perks,
   footer,
-  badge,
+  finePrint,
 }: {
   eyebrow: string
   name: string
-  headerClass: string
+  tone: { title: string }
   price: string
   priceSub?: string
   perks: string[]
   footer: React.ReactNode
-  badge?: string | null
+  finePrint: string
 }) {
   return (
-    <section className="premium-plan-card flex flex-col overflow-hidden rounded-xl bg-surface ring-1 ring-elevated/40">
-      <div className={cn('flex items-start justify-between gap-2 px-5 py-4', headerClass)}>
-        <div>
-          <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider opacity-90">
-            <SparklesIcon className="h-4 w-4" />
-            {eyebrow}
-          </span>
-          <h3 className="mt-1 text-2xl font-black">{name}</h3>
-        </div>
-        {badge && (
-          <span className="rounded-full bg-black/25 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
-            {badge}
-          </span>
-        )}
+    <section className="premium-plan-card flex min-h-[20.5rem] flex-col rounded-lg p-4">
+      <div className="flex items-start justify-between gap-2">
+        <span className="premium-plan-eyebrow flex items-center gap-1.5 text-sm font-bold leading-none">
+          <SpotifyMark className="premium-plan-mark h-5 w-5" />
+          {eyebrow}
+        </span>
       </div>
-      <div className="flex flex-1 flex-col p-5">
-        <p className="text-2xl font-black text-primary">{price}</p>
-        {priceSub && <p className="mt-1 text-xs font-semibold text-secondary">{priceSub}</p>}
-        <ul className="mt-5 grid flex-1 gap-3 text-sm text-primary">
-          {perks.map((perk) => (
-            <li key={perk} className="flex gap-2">
-              <CheckIcon className="h-5 w-5 shrink-0 text-accent" />
-              {perk}
-            </li>
-          ))}
+      <h3 className={cn('mt-3 text-[1.75rem] font-black leading-none', tone.title)}>{name}</h3>
+      <p className="premium-plan-price mt-2 text-[0.9375rem] font-black leading-tight">{price}</p>
+      {priceSub && <p className="premium-plan-sub mt-1 text-[0.75rem] font-semibold leading-snug">{priceSub}</p>}
+      <div className="premium-plan-divider mt-4 h-px" />
+      <div className="flex flex-1 flex-col">
+        <ul className="premium-plan-perks mt-4 list-disc space-y-1.5 pl-4 text-[0.9375rem] font-bold leading-[1.18]">
+          {perks.map((perk) => <li key={perk}>{perk}</li>)}
         </ul>
-        <div className="mt-6">{footer}</div>
+        <div className="mt-auto pt-7">{footer}</div>
+        <p className="premium-plan-fine-print mx-auto mt-6 max-w-[14.5rem] text-center text-[0.6875rem] font-normal leading-tight">
+          {finePrint}
+        </p>
       </div>
     </section>
   )
@@ -230,6 +272,19 @@ export function PremiumPage() {
   const status = searchParams.get('checkout')
   const hasMissingBillingConfig = plans.some((plan) => !plan.isConfigured)
   const isPremium = subscription?.plan === 'premium' || user?.plan === 'premium'
+  const currentPlanDetails = isPremium
+    ? [
+        subscription?.status && subscription.status.toLowerCase() !== 'active' ? subscription.status : null,
+        planOverview && planOverview.isOwner && planOverview.maxMembers > 1
+          ? `${planOverview.seatsUsed}/${planOverview.seatsTotal} seats used`
+          : planOverview?.isMember && planOverview.planOwner
+            ? `shared by ${planOverview.planOwner.name}`
+            : null,
+        subscription?.cancelAtPeriodEnd ? 'cancels at period end' : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    : 'Ad-supported, shuffle-only, ~128 kbps audio.'
 
   return (
     <div className="premium-page pb-12">
@@ -240,13 +295,13 @@ export function PremiumPage() {
         <div className="relative mx-auto max-w-4xl">
           <p className="premium-reveal text-sm font-bold uppercase tracking-wider text-accent">not-spotify Premium</p>
           <h1
-            className="premium-reveal mt-3 text-4xl font-black leading-tight text-white sm:text-6xl"
+            className="premium-hero-title premium-reveal mt-3 text-4xl font-black leading-tight sm:text-6xl"
             style={{ animationDelay: '70ms' }}
           >
             Affordable plans for any situation
           </h1>
           <p
-            className="premium-reveal mx-auto mt-4 max-w-2xl text-sm font-semibold leading-relaxed text-white/80 sm:text-base"
+            className="premium-hero-copy premium-reveal mx-auto mt-4 max-w-2xl text-sm font-semibold leading-relaxed sm:text-base"
             style={{ animationDelay: '140ms' }}
           >
             Choose a Premium plan and listen ad-free with more control on your phone, speaker, and other devices.
@@ -259,7 +314,7 @@ export function PremiumPage() {
             <button
               type="button"
               onClick={scrollToPlans}
-              className="premium-cta rounded-full bg-white px-8 py-3 text-sm font-black text-black transition-all hover:scale-105 active:scale-95"
+              className="premium-cta premium-primary-cta rounded-full px-8 py-3 text-sm font-black transition-all hover:scale-105 active:scale-95"
             >
               View all plans
             </button>
@@ -267,7 +322,7 @@ export function PremiumPage() {
               <button
                 onClick={manageBilling}
                 disabled={busyPlan === 'portal'}
-                className="inline-flex items-center gap-2 rounded-full border border-white/35 px-8 py-3 text-sm font-bold text-white transition-all hover:scale-105 hover:border-white active:scale-95"
+                className="premium-hero-secondary-cta inline-flex items-center gap-2 rounded-full border px-8 py-3 text-sm font-bold transition-all hover:scale-105 active:scale-95"
               >
                 <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                 {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
@@ -326,14 +381,14 @@ export function PremiumPage() {
 
         {/* Promo banner */}
         <div className="premium-reveal mx-auto mt-10 max-w-5xl" style={{ animationDelay: '410ms' }}>
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-surface ring-1 ring-accent/40 px-5 py-4">
+          <div className="premium-promo-banner flex flex-wrap items-center justify-between gap-3 rounded-lg px-5 py-4 ring-1 ring-accent/40">
             <div className="flex items-center gap-3">
               <span className="text-2xl shrink-0">🎉</span>
               <div>
-                <p className="font-black text-primary text-sm sm:text-base">
+                <p className="premium-promo-title text-sm font-black sm:text-base">
                   5% off your first month — no strings attached.
                 </p>
-                <p className="text-xs text-secondary mt-0.5">
+                <p className="premium-promo-copy mt-0.5 text-xs">
                   Enter code{' '}
                   <strong className="font-black text-accent tracking-wide">5OFF</strong>
                   {' '}at checkout. Valid on any plan. Expires August 1st.
@@ -343,7 +398,7 @@ export function PremiumPage() {
             <button
               type="button"
               onClick={scrollToPlans}
-              className="shrink-0 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+              className="premium-promo-button shrink-0 rounded-full px-5 py-2 text-sm font-black transition-all hover:scale-105 active:scale-95"
             >
               Claim offer
             </button>
@@ -363,50 +418,43 @@ export function PremiumPage() {
             <PlanCard
               eyebrow="Free plan"
               name="Free"
-              headerClass="bg-elevated text-primary"
+              tone={PLAN_TONES.free}
               price="$0"
               priceSub="The current baseline account."
               perks={FREE_PERKS}
+              finePrint={PLAN_FINE_PRINT.free}
               footer={
-                <div className="text-sm font-bold capitalize text-secondary">
+                <div className="premium-plan-sub text-sm font-bold capitalize">
                   {(user?.plan ?? 'free') === 'free' ? 'Your current plan' : 'Included'}
                 </div>
               }
             />
 
-            {plans.map((plan, i) => (
-              <PlanCard
-                key={plan.plan}
-                eyebrow="Premium"
-                name={plan.label}
-                headerClass={cn(
-                  'text-white',
-                  i % 2 === 0 ? 'bg-gradient-to-br from-accent to-accent-dark' : 'bg-gradient-to-br from-accent-dark to-accent-dim',
-                )}
-                price={plan.displayPrice ?? 'Not configured'}
-                priceSub={
-                  plan.isConfigured
-                    ? `${plan.interval === 'yearly' ? 'Billed yearly' : 'Billed monthly'} · secure via Stripe`
-                    : (plan.missingConfiguration ?? 'Billing not configured')
-                }
-                badge={plan.maxMembers > 1 ? `Up to ${plan.maxMembers}` : plan.discountLabel}
-                perks={
-                  plan.maxMembers > 1
-                    ? [`${plan.maxMembers} accounts under one bill`, 'Each member gets full Premium', ...PREMIUM_PERKS.slice(0, 3)]
-                    : PREMIUM_PERKS
-                }
-                footer={
-                  <Button
-                    onClick={() => checkout(plan.plan)}
-                    disabled={!plan.isConfigured || busyPlan === plan.plan}
-                    className="w-full gap-2"
-                  >
-                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                    {busyPlan === plan.plan ? 'Opening…' : 'Choose plan'}
-                  </Button>
-                }
-              />
-            ))}
+            {plans.map((plan) => {
+              const tone = PLAN_TONES[plan.plan]
+              return (
+                <PlanCard
+                  key={plan.plan}
+                  eyebrow="Premium"
+                  name={PLAN_DISPLAY_NAME[plan.plan]}
+                  tone={tone}
+                  price={plan.displayPrice ?? 'Not configured'}
+                  priceSub={plan.isConfigured ? undefined : (plan.missingConfiguration ?? 'Billing not configured')}
+                  finePrint={PLAN_FINE_PRINT[plan.plan]}
+                  perks={PLAN_PERKS[plan.plan]}
+                  footer={
+                    <Button
+                      onClick={() => checkout(plan.plan)}
+                      disabled={!plan.isConfigured || busyPlan === plan.plan}
+                      className={cn('w-full gap-2 text-sm font-black', tone.button)}
+                    >
+                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                      {busyPlan === plan.plan ? 'Opening…' : `Get Premium ${PLAN_DISPLAY_NAME[plan.plan]}`}
+                    </Button>
+                  }
+                />
+              )
+            })}
           </div>
         </section>
 
@@ -426,21 +474,11 @@ export function PremiumPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-sm capitalize text-secondary">
-                  {isPremium
-                    ? [
-                        subscription?.status ?? user?.subscriptionStatus,
-                        planOverview && planOverview.isOwner && planOverview.maxMembers > 1
-                          ? `${planOverview.seatsUsed}/${planOverview.seatsTotal} seats used`
-                          : planOverview?.isMember && planOverview.planOwner
-                            ? `shared by ${planOverview.planOwner.name}`
-                            : null,
-                        subscription?.cancelAtPeriodEnd ? 'cancels at period end' : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')
-                    : 'Ad-supported, shuffle-only, ~128 kbps audio.'}
-                </p>
+                {currentPlanDetails && (
+                  <p className="mt-1 text-sm capitalize text-secondary">
+                    {currentPlanDetails}
+                  </p>
+                )}
               </div>
               {isPremium ? (
                 <button

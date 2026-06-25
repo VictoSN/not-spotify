@@ -592,11 +592,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 item.round ? 'rounded-full' : 'rounded-md',
               )}
             >
-              {item.image ? (
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-lg">{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-              )}
+              <LibraryArtwork item={item} compact={compactLibrary} />
             </Link>
           ))}
         </div>
@@ -1070,6 +1066,50 @@ function RowOverlay({
   return showPin ? <PinButton itemKey={itemKey} pinned={pinned} variant={variant} /> : null
 }
 
+function LibraryArtwork({
+  item,
+  compact,
+  grid = false,
+}: {
+  item: LibItem
+  compact: boolean
+  grid?: boolean
+}) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const imageSrc = item.image && failedSrc !== item.image ? item.image : undefined
+  const fallbackSize = grid
+    ? compact ? 'text-xl' : 'text-2xl'
+    : compact ? 'text-base' : 'text-lg'
+
+  if (imageSrc) {
+    return (
+      <img
+        src={imageSrc}
+        alt={item.name}
+        draggable={false}
+        className="h-full w-full object-cover"
+        onError={() => setFailedSrc(imageSrc)}
+      />
+    )
+  }
+
+  if (item.kind === 'artist') {
+    return (
+      <span className={cn('select-none font-black uppercase text-secondary', fallbackSize)}>
+        {libraryInitials(item.name)}
+      </span>
+    )
+  }
+
+  return <MusicalNoteIcon className={cn('text-secondary', grid ? 'h-8 w-8' : 'h-5 w-5')} />
+}
+
+function libraryInitials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase()
+  return (words[0] ?? '?').slice(0, 2).toUpperCase()
+}
+
 /**
  * Cover overlay play/pause button. Derives its icon purely from the global
  * player (no local state): pause when this surface is the active *playing*
@@ -1160,11 +1200,7 @@ function LibraryListRow({
             item.round ? 'rounded-full' : 'rounded-md',
           )}
         >
-          {item.image ? (
-            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className={compact ? 'text-base' : 'text-lg'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-          )}
+          <LibraryArtwork item={item} compact={compact} />
           <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
         <div className="min-w-0 flex-1 pr-14">
@@ -1242,11 +1278,7 @@ function LibraryGridCard({
             item.round ? 'rounded-full' : 'rounded-md',
           )}
         >
-          {item.image ? (
-            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className={compact ? 'text-xl' : 'text-2xl'}>{item.kind === 'artist' ? '🎤' : '🎵'}</span>
-          )}
+          <LibraryArtwork item={item} compact={compact} grid />
           <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
         </div>
         <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>

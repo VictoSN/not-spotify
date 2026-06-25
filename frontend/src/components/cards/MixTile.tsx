@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { DailyMix } from '@/services/trackService'
 import { usePlayerStore } from '@/stores/playerStore'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
@@ -13,8 +14,8 @@ interface MixTileProps {
 
 /**
  * A "Daily Mix" tile: a 2x2 mosaic of the mix's album covers with a
- * genre-colored title band. Clicking play loads the whole mix into the queue.
- * Daily mixes are ephemeral (no dedicated page), so the tile isn't a link.
+ * genre-colored title band. Clicking the tile opens the mix detail page;
+ * the play button loads the whole mix into the queue.
  */
 export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps) {
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
@@ -29,7 +30,9 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
     if (covers.length === 4) break
   }
 
-  const handlePlay = () => {
+  const handlePlay = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (isActiveContext) togglePlayPause()
     else if (mix.tracks.length > 0) startContext({ type: 'mix', id: mix.id }, mix.tracks)
   }
@@ -37,7 +40,8 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
   const accent = mix.color ?? '#1db954'
 
   return (
-    <div
+    <Link
+      to={`/mix/${mix.id}`}
       className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -73,6 +77,6 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
       <p className="text-xs text-secondary mt-0.5 truncate">
         {mix.tracks.slice(0, 3).map((t) => t.artist.name).filter((v, i, a) => a.indexOf(v) === i).join(', ')}
       </p>
-    </div>
+    </Link>
   )
 }

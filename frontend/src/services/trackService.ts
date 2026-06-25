@@ -95,6 +95,11 @@ export const trackService = {
     return res.data
   },
 
+  async getDailyMix(slug: string, size = 25): Promise<DailyMix> {
+    const res = await api.get<DailyMix>(`/tracks/daily-mixes/${slug}`, { params: { size } })
+    return res.data
+  },
+
   async getMostLiked(limit = 10): Promise<Track[]> {
     const res = await api.get<Track[]>('/tracks/most-liked', { params: { limit } })
     return res.data

@@ -20,6 +20,7 @@ import { MessagesPage } from '@/pages/MessagesPage'
 import { PremiumPage } from '@/pages/PremiumPage'
 import { PlaylistDetailPage } from '@/pages/PlaylistDetailPage'
 import { AlbumDetailPage } from '@/pages/AlbumDetailPage'
+import { MixDetailPage } from '@/pages/MixDetailPage'
 import { ArtistProfilePage } from '@/pages/ArtistProfilePage'
 import { ArtistEventsPage } from '@/pages/ArtistEventsPage'
 import { ArtistEventDetailPage } from '@/pages/ArtistEventDetailPage'
@@ -91,6 +92,7 @@ export const router = createBrowserRouter([
           { path: 'library', element: <LibraryPage /> },
           { path: 'playlist/:id', element: <PlaylistDetailPage /> },
           { path: 'album/:id', element: <AlbumDetailPage /> },
+          { path: 'mix/:id', element: <MixDetailPage /> },
           { path: 'artist/:id', element: <ArtistProfilePage /> },
           { path: 'artist/:id/events', element: <ArtistEventsPage /> },
           { path: 'artist/:id/events/:eventId', element: <ArtistEventDetailPage /> },

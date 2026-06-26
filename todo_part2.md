@@ -17,38 +17,44 @@ are also two dedicated **testing phases** for cross-cutting regression work.
 ## Buckets → phases
 | Bucket | Phases |
 |---|---|
-| **Bugs** | 1 (MV playback #3,#6), 2 (MV/podcast interactions #5,#8), 3 (recents #4), 4 (recommendations #1,#2), 5 (ads #7,#9), 8 (detail headers #10) |
+| **Bugs** | 1 (MV playback #3,#6), 2 (MV/podcast interactions #5,#8), 3 (recents #4), 4 (recommendations #1,#2), 5 (ads #7,#9), 8 (detail headers #10), 10 (lyrics close) |
 | **Settings / account "coming soon"** | 6 |
 | **Admin: advertisement for free tier** | 7 |
 | **Search results page redesign** | 9 |
-| **Testing** | 10 (unit hardening), 11 (manual QA) |
+| **Testing** | 11 (unit hardening), 12 (manual QA) |
 
-## Recommended Opus 4.8 effort per phase
-Suggested reasoning effort to spend per session. Tune to taste — bump up a level if a
-phase fights back, drop one if it's going smoothly.
+## Recommended reasoning effort per phase
+Suggested effort to spend per session, for both **Opus 4.8** (med / high / max / ultra)
+and **Codex** (medium / high / xhigh — "extra high"). Tune to taste — bump up a level if
+a phase fights back, drop one if it's going smoothly.
 
+Opus 4.8:
 - **med** — small, isolated, reuses an existing pattern, low blast radius.
 - **high** — moderate scope, several files, but well understood.
 - **max** — complex or correctness-critical logic spanning multiple files.
-- **ultra** — the hardest: subtle timing / race / state-machine bugs or large redesigns; spend the deepest reasoning (and consider splitting the session).
+- **ultra** — the hardest: subtle timing / race / state-machine bugs or large redesigns.
 
-| Phase | Effort | Why |
-|---|---|---|
-| 1 — MV first-class playback | **max** | player state machine, panel selection, no double-play |
-| 2 — MV/podcast interactions | **high** | repeat drag/menu patterns across card types |
-| 3 — Recents context menu | **med** | small, reuse `openMenuAtPointer` |
-| 4 — Recommendations correctness | **max** | genre assignment + "Show all" routing, FE + BE |
-| 5 — Ads reliability | **ultra** | timing/race; 2nd-ad state leak + simultaneous playback |
-| 6 — Settings "coming soon" | **high** | product judgement + varied controls |
-| 7 — Admin ads | **high** | new page + CRUD wiring to existing API |
-| 8 — Detail header consistency | **med** | UI diff & reconcile two pages |
-| 9 — Search results redesign | **max** | large UI rework, shared row component, maybe BE |
-| 10 — Test hardening | **high** | cross-cutting suites + green run |
-| 11 — Manual QA | **med** | mostly human verification, little reasoning |
+Codex has 3 tiers, so the mapping collapses the top two Opus levels:
+- **medium** ↔ Opus med · **high** ↔ Opus high · **xhigh** ↔ Opus max / ultra (anything complex or correctness-critical).
+
+| Phase | Opus 4.8 | Codex | Why |
+|---|---|---|---|
+| 1 — MV first-class playback | **max** | **xhigh** | player state machine, panel selection, no double-play |
+| 2 — MV/podcast interactions | **high** | **high** | repeat drag/menu patterns across card types |
+| 3 — Recents context menu | **med** | **medium** | small, reuse `openMenuAtPointer` |
+| 4 — Recommendations correctness | **max** | **xhigh** | genre assignment + "Show all" routing, FE + BE |
+| 5 — Ads reliability | **ultra** | **xhigh** | timing/race; 2nd-ad state leak + simultaneous playback |
+| 6 — Settings "coming soon" | **high** | **high** | product judgement + varied controls |
+| 7 — Admin ads | **high** | **high** | new page + CRUD wiring to existing API |
+| 8 — Detail header consistency | **med** | **medium** | UI diff & reconcile two pages |
+| 9 — Search results redesign | **max** | **xhigh** | large UI rework, shared row component, maybe BE |
+| 10 — Lyrics close on nav | **med** | **medium** | small, clear root cause (close-on-same-route) |
+| 11 — Test hardening | **high** | **high** | cross-cutting suites + green run |
+| 12 — Manual QA | **med** | **medium** | mostly human verification, little reasoning |
 
 ---
 
-## Phase 1 — Music videos as first-class playable items · Effort: max
+## Phase 1 — Music videos as first-class playable items · Opus: max · Codex: xhigh
 Covers bugs **#3** (MV not registered in the sidebar) and **#6** (an MV played on its
 own should get its own now-playing sidebar, like a live-event "track").
 
@@ -75,7 +81,7 @@ Tests (this session):
 
 ---
 
-## Phase 2 — MV/podcast discovery & home interactions · Effort: high
+## Phase 2 — MV/podcast discovery & home interactions · Opus: high · Codex: high
 Covers bugs **#5** (MVs & podcasts not draggable / right-clickable on All/Home) and
 **#8** (Home top panel has no Music Video category).
 
@@ -100,7 +106,7 @@ Tests (this session):
 
 ---
 
-## Phase 3 — Recents context menu (bug #4) · Effort: med
+## Phase 3 — Recents context menu (bug #4) · Opus: med · Codex: medium
 Goal: right-clicking a song on the Recents page opens the track dropdown menu like
 other lists.
 
@@ -119,7 +125,7 @@ Tests (this session):
 
 ---
 
-## Phase 4 — Recommendations correctness (bugs #1, #2) · Effort: max
+## Phase 4 — Recommendations correctness (bugs #1, #2) · Opus: max · Codex: xhigh
 Goal: Daily Mix assigns the right genre, and a discover/showcase "Show all" opens the
 underlying songs instead of running a text search.
 
@@ -142,7 +148,7 @@ Tests (this session):
 
 ---
 
-## Phase 5 — Ads reliability (bugs #7, #9) · Effort: ultra
+## Phase 5 — Ads reliability (bugs #7, #9) · Opus: ultra · Codex: xhigh
 Goal: the ad countdown is correct, and the **2nd+** ad plays cleanly (no double audio,
 no glitchy timer). The 1st ad is currently OK; subsequent ones are buggy.
 
@@ -163,7 +169,7 @@ Tests (this session):
 
 ---
 
-## Phase 6 — Settings / account "coming soon" features · Effort: high
+## Phase 6 — Settings / account "coming soon" features · Opus: high · Codex: high
 Goal: implement (or properly gate) the greyed-out / "coming soon" items in
 Settings/Account so they're either functional or clearly, intentionally disabled.
 
@@ -181,7 +187,7 @@ Tests (this session):
 
 ---
 
-## Phase 7 — Admin: advertisement management for free tier · Effort: high
+## Phase 7 — Admin: advertisement management for free tier · Opus: high · Codex: high
 Goal: an admin can create/manage advertisements that are served to free-tier users.
 (Backend ad models/controllers exist; a frontend **admin ads** page appears to be
 missing and must be added + wired.)
@@ -202,7 +208,7 @@ Tests (this session):
 
 ---
 
-## Phase 8 — Detail page header consistency (bug #10) · Effort: med
+## Phase 8 — Detail page header consistency (bug #10) · Opus: med · Codex: medium
 Goal: the **Album** and **Track** detail page headers look/behave the same (currently
 "somewhat different").
 
@@ -217,7 +223,7 @@ Tests (this session):
 
 ---
 
-## Phase 9 — Search results page redesign (Spotify-style) · Effort: max
+## Phase 9 — Search results page redesign (Spotify-style) · Opus: max · Codex: xhigh
 Reworks the `/search` results view from the current minimal sectioned layout
 (screenshot **before**) to Spotify's richer results page (screenshot **after**).
 
@@ -252,7 +258,32 @@ Tests (this session):
 
 ---
 
-## Phase 10 — Cross-cutting test hardening (dedicated) · Effort: high
+## Phase 10 — Lyrics view: close on top-left navigation (small bug) · Opus: med · Codex: medium
+Goal: opening lyrics (the karaoke view) should also close when the user clicks the
+top-left **home** button or **logo**, like Spotify — today it only closes via the lyrics
+icon.
+
+Root cause: `AppShell` closes the lyrics overlay on a *route change*
+(`useEffect(() => setKaraokeOpen(false), [location.pathname])`), but the top-left home
+button and logo navigate to `/`; when you're already on `/`, the pathname doesn't change,
+so the effect never fires and the lyrics stay open. Only `toggleKaraoke` (the lyrics
+`MicVocal` icon in `BottomPlayerBar`) closes it.
+
+- [ ] Clicking the top-left **home** button and the **logo** closes the lyrics/karaoke view, even when already on that route.
+- [ ] Keep the existing close-on-route-change behaviour for all other navigation.
+- [ ] (Optional, Spotify-parity) any primary navigation click closes the lyrics view.
+
+Likely files: `frontend/src/components/layout/AppShell.tsx` (`setKaraokeOpen`, the
+route-change effect), `frontend/src/components/layout/TopBar.tsx` (home button + logo
+`onClick`/`Link`), `frontend/src/stores/playerStore.ts` (`isKaraokeOpen`,
+`setKaraokeOpen`, `toggleKaraoke`), `frontend/src/components/player/KaraokeView.tsx`.
+
+Tests (this session):
+- [ ] Clicking home/logo while already on the same route calls `setKaraokeOpen(false)`.
+
+---
+
+## Phase 11 — Cross-cutting test hardening (dedicated) · Opus: high · Codex: high
 A focused pass after the feature phases to lock in behaviour and catch regressions.
 
 - [ ] Player state machine: audio ↔ MV ↔ ad transitions (no overlap, correct `playbackMode`, correct now-playing panel). Consolidates Phases 1, 4, 5.
@@ -263,7 +294,7 @@ A focused pass after the feature phases to lock in behaviour and catch regressio
 
 ---
 
-## Phase 11 — Manual QA checklist (dedicated) · Effort: med
+## Phase 12 — Manual QA checklist (dedicated) · Opus: med · Codex: medium
 End-to-end verification the unit tests can't cover (needs the running app + backend).
 
 - [ ] Play an MV standalone → it shows the MV now-playing panel and appears in the sidebar/library.
@@ -275,3 +306,4 @@ End-to-end verification the unit tests can't cover (needs the running app + back
 - [ ] Album and Track headers look identical in structure.
 - [ ] Settings "coming soon" items are either functional or cleanly disabled.
 - [ ] Search results page shows a Top result card + interleaved rows with type badges and inline add/follow/save; Podcasts/Profiles/Music-video filters work.
+- [ ] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home).

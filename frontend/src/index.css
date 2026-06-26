@@ -162,6 +162,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:where(
+  a[href],
+  button,
+  summary,
+  select,
+  label[for],
+  input[type="button"],
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="reset"],
+  input[type="submit"],
+  [role="button"],
+  [role="link"],
+  [role="menuitem"],
+  [role="option"],
+  [tabindex]:not([tabindex="-1"]):not(input):not(textarea):not([contenteditable="true"])
+) {
+  cursor: pointer;
+}
+
+:where(:disabled, [disabled], [aria-disabled="true"], [data-disabled]) {
+  cursor: not-allowed;
+}
+
 /* Spotify-style tighter tracking on bold display text */
 h1,
 h2,

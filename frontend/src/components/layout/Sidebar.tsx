@@ -181,6 +181,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     libAnimTimer.current = window.setTimeout(() => setIsLibraryAnimating(false), 320)
     setLibraryExpanded(!libraryExpanded)
   }
+  const collapseLibrarySidebar = () => {
+    if (libraryExpanded) setLibraryExpanded(false)
+    setWidth(RAIL)
+  }
   useEffect(() => () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
   }, [])
@@ -561,21 +565,25 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         >
           <div className="relative flex min-w-0 items-center">
             <button
-              onClick={() => setWidth(RAIL)}
+              onClick={collapseLibrarySidebar}
               className="spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/sidebar:visible group-hover/sidebar:opacity-100"
               aria-label={t('sidebar.collapse')}
             >
               <CollapseIcon className="h-6 w-6 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
-            <span
+            <button
+              type="button"
+              onClick={collapseLibrarySidebar}
               className={cn(
-                'truncate pl-0 font-black leading-5 text-primary transition-all duration-200 group-hover/sidebar:pl-9',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-black leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
                 compactLibraryHeader ? 'text-sm' : 'text-base',
               )}
+              aria-label={t('sidebar.collapse')}
+              title={t('sidebar.collapse')}
             >
               {t('sidebar.title')}
-            </span>
+            </button>
           </div>
           <button
             onClick={handleCreate}
@@ -706,7 +714,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div className="relative flex min-w-0 items-center">
             {!libraryExpanded && (
               <button
-                onClick={() => setWidth(RAIL)}
+                onClick={collapseLibrarySidebar}
                 className={cn(
                   'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
                   // Reveal on hover only once the resize has settled, so it never flashes in mid-minimize.
@@ -718,15 +726,19 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
               </button>
             )}
-            <span
+            <button
+              type="button"
+              onClick={collapseLibrarySidebar}
               className={cn(
-                'truncate pl-0 font-black leading-5 text-primary transition-all duration-200',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-black leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
                 compactLibraryHeader ? 'text-sm' : 'text-base',
                 !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
+              aria-label={t('sidebar.collapse')}
+              title={t('sidebar.collapse')}
             >
               {t('sidebar.title')}
-            </span>
+            </button>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <div className="relative">

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { OverlayScrollbar } from './OverlayScrollbar'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
@@ -106,10 +107,12 @@ export function AppShell() {
     <div className="flex h-full flex-col bg-base text-primary">
       <TopBar />
 
-      {/* Middle row: floating cards on the base gutter */}
+      {/* Middle row: floating rounded cards on the black base gutter. Equal padding on
+          all four sides (incl. the top, below the header) keeps every panel's rounded
+          top edge clearly separated from the header and aligned with its neighbours. */}
       <div
         className={cn(
-          'flex flex-1 px-2 pb-2 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
+          'flex flex-1 px-2 pb-2 pt-2 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
           nowPlayingExpandedVisible ? 'gap-0' : 'gap-2',
         )}
       >
@@ -120,20 +123,25 @@ export function AppShell() {
             into it (and reclaim it on minimize) — unmounting here would jump the layout. */}
         <main
           className={cn(
-            'min-w-0 rounded-lg bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+            'relative min-w-0 rounded-xl bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
             nowPlayingExpandedVisible || libraryExpanded
               ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
               : 'flex-1 basis-0 translate-x-0 opacity-100',
           )}
         >
-          {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible */}
+          {/* Karaoke covers the main card (page stays mounted underneath); rail + bar stay visible.
+              The native scrollbar is hidden (`scrollbar-hide`) so content fills the full width and
+              the home rows run to the very edge; the floating <OverlayScrollbar/> thumb is painted
+              on top of that edge instead. `overflow-x-clip` keeps the rows' right bleed from
+              producing a horizontal page scrollbar. */}
           <div
             ref={mainScrollRef}
             onScroll={handleMainScroll}
-            className={`flex-1 min-h-0 overflow-y-auto ${karaokeVisible ? 'hidden' : ''}`}
+            className={`scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-clip ${karaokeVisible ? 'hidden' : ''}`}
           >
             <Outlet />
           </div>
+          {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} />}
           {karaokeVisible && (
             <div className="flex-1 min-h-0">
               <KaraokeView />

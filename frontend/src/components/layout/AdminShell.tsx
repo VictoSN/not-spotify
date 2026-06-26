@@ -194,7 +194,7 @@ export function AdminShell() {
           </button>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-page">
+        <main className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-page">
           <Outlet />
         </main>
       </div>
@@ -227,7 +227,7 @@ function AdminBrand() {
 
 function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
+    <nav className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Admin navigation">
       {navSections.map((section) => (
         <div key={section.label} className="mb-5 last:mb-0">
           <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{section.label}</p>

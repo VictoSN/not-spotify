@@ -302,7 +302,7 @@ export function NowPlayingPanel() {
     else el.pause()
   }, [isPlaying, video])
   const panelClass = cn(
-    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-visible rounded-lg bg-surface lg:flex',
+    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-visible rounded-xl bg-surface lg:flex',
     isNowPlayingExpanded ? 'min-w-0' : 'shrink-0',
     !dragging && 'transition-[width,flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
   )
@@ -313,7 +313,7 @@ export function NowPlayingPanel() {
   // Collapsed → thin sliver with an expand control (does not fully close).
   if (isNowPlayingCollapsed) {
     return (
-      <aside className="group/now-playing-rail relative hidden w-4 shrink-0 overflow-hidden rounded-lg bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
+      <aside className="group/now-playing-rail relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
@@ -336,7 +336,10 @@ export function NowPlayingPanel() {
   if (!currentTrack) {
     return (
       <aside ref={panelRef} style={panelStyle} className={panelClass}>
-        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between bg-surface/80 p-4 backdrop-blur">
+        {/* rounded-t-xl so this header's background follows the panel's rounded
+            top corners instead of painting a square over them (the panel can't
+            use overflow-hidden — the drag handle sits outside its left edge). */}
+        <div className="sticky top-0 z-20 flex shrink-0 items-center justify-between rounded-t-xl bg-surface/80 p-4 backdrop-blur">
           <h2 className="text-base font-bold text-primary">{t('np.title')}</h2>
           <div className="flex items-center gap-1">
             <button
@@ -423,7 +426,7 @@ export function NowPlayingPanel() {
         )}
         <div
           onScroll={(event) => setExpandedScroll(event.currentTarget.scrollTop)}
-          className="relative flex-1 overflow-y-auto overflow-x-hidden bg-[#121212] [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]"
+          className="spotify-scrollbar ns-bleed-scroll relative flex-1 overflow-y-auto bg-[#121212]"
         >
           <div
             aria-hidden
@@ -797,7 +800,7 @@ export function NowPlayingPanel() {
       </div>
       <div
         onScroll={(event) => setPanelBodyScrolled(event.currentTarget.scrollTop > 8)}
-        className="relative min-h-0 flex-1 overflow-y-auto"
+        className="spotify-scrollbar ns-bleed-scroll relative min-h-0 flex-1 overflow-y-auto"
       >
         {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
         {video && (

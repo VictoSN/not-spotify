@@ -74,6 +74,21 @@ export function heroGradient(color: string | null | undefined): string | undefin
   return `linear-gradient(to bottom, color-mix(in srgb, ${color} var(--artwork-hero-strength), var(--c-page)) 0%, color-mix(in srgb, ${color} var(--artwork-hero-strength), var(--c-page)) 46%, color-mix(in srgb, ${color} var(--artwork-fade-strength), transparent) 72%, color-mix(in srgb, ${color} 10%, transparent) 90%, transparent 100%)`
 }
 
+/**
+ * Solid background for a sticky filter/header bar that should read as the *same*
+ * hue as the page's hero wash. The hero is the extracted colour painted at ~60%
+ * (`opacity-60`) over `--c-page`, so we mirror that exact ratio here (a touch
+ * higher, 64%, only so the bar stays opaque/legible while content scrolls under
+ * it). Pass the SAME colour the hero uses (the top hue, not a darker bottom
+ * stop) so the scrolled header stays within ~5% of the hero instead of looking
+ * like a separate browner strip. Returns the plain page colour when no hue is
+ * known. Shared by every hue-driven sticky header (Home + future pages).
+ */
+export function hueHeaderBackground(color: string | null | undefined): string {
+  if (!color) return 'var(--c-page)'
+  return `color-mix(in srgb, ${color} 64%, var(--c-page))`
+}
+
 /** A lighter, airier tint for profile headers that adapts to the active theme. */
 export function profileGradient(color: string | null | undefined): string {
   const tint = color ?? 'var(--c-accent-dim)'

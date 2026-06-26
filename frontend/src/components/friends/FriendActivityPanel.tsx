@@ -127,7 +127,7 @@ export function FriendActivityPanel() {
     })
 
   return (
-    <aside className="relative hidden w-80 shrink-0 flex-col overflow-hidden rounded-lg bg-surface lg:flex">
+    <aside className="relative hidden w-80 shrink-0 flex-col overflow-hidden rounded-xl bg-surface lg:flex">
       <div className="flex items-center justify-between p-4 pb-2">
         <h2 className="text-base font-bold text-primary">Friend Activity</h2>
         <button
@@ -140,7 +140,7 @@ export function FriendActivityPanel() {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+      <div className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto pb-4">
         {withTrack.length > 0 ? (
           <ul>
             {withTrack.map((f) => (
@@ -200,7 +200,7 @@ export function FriendActivityContent() {
     })
 
   return (
-    <div className="h-full overflow-y-auto pb-4">
+    <div className="spotify-scrollbar h-full overflow-y-auto pb-4">
       {withTrack.length > 0 ? (
         <ul>
           {withTrack.map((f) => (

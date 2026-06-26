@@ -234,20 +234,108 @@ body,
     border-color 0.2s ease;
 }
 
-/* Scrollbar styling (theme-neutral translucent thumb) */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Default scrollbar: keep it quiet everywhere — transparent track, faint thumb.
+   The richer Spotify-style scrollbar below is opt-in via `.spotify-scrollbar`.
+   NOTE: we deliberately set NEITHER `scrollbar-width` NOR `scrollbar-color` on
+   elements here. Modern Chromium lets either standard property override the
+   `::-webkit-scrollbar` pseudo-elements entirely — declaring them (even as
+   `thin`/`auto`) makes the custom WebKit widths/thumbs below have no effect and
+   forces a fatter default bar. Chromium is therefore themed purely through the
+   WebKit pseudo-elements; Firefox (which can't use them) is themed via the
+   Firefox-only @supports blocks. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
-::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
   background: transparent;
 }
-::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.5);
-  border-radius: 3px;
+*::-webkit-scrollbar-thumb {
+  min-height: 44px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-color: rgba(179, 179, 179, 0.18);
+  background-clip: content-box;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(128, 128, 128, 0.8);
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(179, 179, 179, 0.5);
+}
+
+/* ── Spotify-style overlay scrollbar ──────────────────────────────────────
+   Shared utility for every app scroll container (main view, sidebars, panels).
+   Fully transparent track + a translucent gray "floating" pill thumb (a
+   transparent border + background-clip insets the pill so it reads as floating
+   above the content). The thumb stays faint at rest and brightens on
+   hover/scroll, like Spotify.
+
+   NOTE: `scrollbar-width: auto` is deliberate. Modern Chromium honours the
+   standard `scrollbar-width` property, and a value of `thin`/`none` makes it
+   *ignore* the `::-webkit-scrollbar` pseudo-elements (so the custom width/thumb
+   below would have no effect). `auto` keeps the WebKit styling active. Firefox,
+   which can't use the pseudo-elements, gets a slim themed bar via the
+   Firefox-only @supports block at the end.
+
+   The scrollbar still reserves ~12px of layout in Chromium (there is no reliable
+   pure-CSS overlay scrollbar on Windows). To make it *behave* like Spotify's
+   overlay — content running underneath the bar instead of beside a reserved
+   column — pair this class with `.ns-bleed-scroll` (below), which widens the
+   scroll content by the scrollbar width so the transparent-track thumb floats
+   on top of the content's right edge.
+
+   No `scrollbar-width` is declared here on purpose (see the `*` note above) so
+   the `::-webkit-scrollbar` rules actually take effect in Chromium. */
+.spotify-scrollbar::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+.spotify-scrollbar::-webkit-scrollbar-track,
+.spotify-scrollbar::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.spotify-scrollbar::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 1px solid transparent; /* ~12px visible thumb, slightly inset */
+  /* Near-square edges like Spotify (not a fully rounded pill). */
+  border-radius: 2px;
+  /* Neutral gray (not white) so the thumb stays visible in BOTH the dark and
+     the near-white light theme. */
+  background-color: rgba(150, 150, 150, 0.4);
+  background-clip: content-box;
+}
+.spotify-scrollbar:hover::-webkit-scrollbar-thumb,
+.spotify-scrollbar:focus::-webkit-scrollbar-thumb,
+.spotify-scrollbar:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(150, 150, 150, 0.6);
+}
+.spotify-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(150, 150, 150, 0.82);
+}
+
+/* Overlay bleed: widen the scroll content by the scrollbar width and clip the
+   horizontal overflow, so the content fills the full width and the floating
+   thumb sits ON TOP of its right edge rather than reserving a separate column.
+   The `14px` here must match the ::-webkit-scrollbar width above. Interactive
+   row controls in the sidebar/panels are inset well beyond 14px, so they never
+   land underneath the thumb. */
+.ns-bleed-scroll {
+  overflow-x: clip;
+}
+.ns-bleed-scroll > * {
+  width: calc(100% + 14px);
+}
+/* Firefox only — it ignores ::-webkit-* and needs the standard properties.
+   Scoped via -moz-appearance so it never disables the WebKit styling above in
+   Chromium (which doesn't support -moz-appearance). */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(179, 179, 179, 0.18) transparent;
+  }
+  .spotify-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(150, 150, 150, 0.5) transparent;
+  }
 }
 
 /* Hide scrollbar for horizontal rails (used by HorizontalScroller) */

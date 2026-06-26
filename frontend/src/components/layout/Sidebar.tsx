@@ -196,7 +196,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   const collapsed = width <= RAIL
   const grid = libraryExpanded || viewMode === 'grid'
-  const compactCreateButton = !libraryExpanded && width < 292
+  const compactLibraryHeader = !libraryExpanded && width < 340
+  const compactCreateButton = compactLibraryHeader
   const handleLibraryBodyScroll = (event: UIEvent<HTMLDivElement>) => {
     const next = event.currentTarget.scrollTop > 8
     setLibraryBodyScrolled((current) => (current === next ? current : next))
@@ -523,7 +524,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-lg bg-sidebar select-none',
+    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
     !dragging &&
@@ -554,7 +555,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       <aside style={frameStyle} className={frameClass}>
         <div
           className={cn(
-            'group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3 transition-[background-color,box-shadow] duration-200',
+            'group/library-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 rounded-t-xl bg-sidebar px-4 pb-3 pt-3 transition-[background-color,box-shadow] duration-200',
             libraryBodyScrolled ? 'shadow-[0_8px_20px_rgba(0,0,0,0.22)]' : 'shadow-none',
           )}
         >
@@ -567,7 +568,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               <CollapseIcon className="h-6 w-6 -scale-x-100" />
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
             </button>
-            <span className="truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200 group-hover/sidebar:pl-9">
+            <span
+              className={cn(
+                'truncate pl-0 font-black leading-5 text-primary transition-all duration-200 group-hover/sidebar:pl-9',
+                compactLibraryHeader ? 'text-sm' : 'text-base',
+              )}
+            >
               {t('sidebar.title')}
             </span>
           </div>
@@ -587,7 +593,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
         </div>
 
-        <div onScroll={handleLibraryBodyScroll} className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        <div onScroll={handleLibraryBodyScroll} className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <div className="flex flex-col gap-3">
             <section className="rounded-lg bg-elevated p-4">
               <h2 className="text-sm font-bold text-primary">{t('sidebar.auth.createTitle')}</h2>
@@ -665,7 +671,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         {libraryDrop.isOver && (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-30 rounded-lg border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
+            className="pointer-events-none absolute inset-0 z-30 rounded-xl border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
             style={{ borderColor: DROP_GREEN }}
           />
         )}
@@ -689,12 +695,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     >
       <div
         className={cn(
-          'sticky top-0 z-20 shrink-0 rounded-t-lg bg-sidebar transition-[background-color,box-shadow,backdrop-filter] duration-200',
+          'sticky top-0 z-20 shrink-0 rounded-t-xl bg-sidebar transition-[background-color,box-shadow,backdrop-filter] duration-200',
           libraryBodyScrolled ? 'shadow-[0_8px_20px_rgba(0,0,0,0.22)] backdrop-blur-md' : 'shadow-none backdrop-blur-0',
         )}
       >
-        {/* Header */}
-        <div className="group/library-header flex items-center justify-between gap-2 bg-sidebar px-4 pb-3 pt-3">
+        {/* Header — no own background: it would paint square over the wrapper's
+            rounded-t-xl top corners. The rounded `bg-sidebar` wrapper supplies the
+            background, so the top corners stay rounded. */}
+        <div className="group/library-header flex items-center justify-between gap-2 px-4 pb-3 pt-3">
           <div className="relative flex min-w-0 items-center">
             {!libraryExpanded && (
               <button
@@ -712,7 +720,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             )}
             <span
               className={cn(
-                'truncate pl-0 text-base font-black leading-5 text-primary transition-all duration-200',
+                'truncate pl-0 font-black leading-5 text-primary transition-all duration-200',
+                compactLibraryHeader ? 'text-sm' : 'text-base',
                 !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
             >
@@ -898,7 +907,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         className={cn(
           // Mounts fresh at opacity-0 each toggle so the list↔grid reflow happens unseen while
           // the panel resizes, then fades in once the width settles (isLibraryAnimating clears).
-          'min-h-0 flex-1 overflow-y-auto px-2 pb-2 transition-opacity duration-300 ease-out motion-reduce:transition-none',
+          'spotify-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-2 transition-opacity duration-300 ease-out motion-reduce:transition-none',
           isLibraryAnimating ? 'opacity-0' : 'opacity-100',
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
@@ -1059,7 +1068,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       {libraryDrop.isOver && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-30 rounded-lg border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
+          className="pointer-events-none absolute inset-0 z-30 rounded-xl border-2 shadow-[0_0_0_1px_rgba(30,215,96,0.22)]"
           style={{ borderColor: DROP_GREEN }}
         />
       )}

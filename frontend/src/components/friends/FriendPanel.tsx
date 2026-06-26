@@ -328,8 +328,8 @@ export function FriendPanel({ onClose = () => {}, embedded = false }: FriendPane
 
   return (
     <div className={embedded
-      ? 'h-full overflow-y-auto py-2'
-      : 'absolute right-0 top-full z-50 mt-2 max-h-[520px] w-80 overflow-y-auto rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl'
+      ? 'spotify-scrollbar h-full overflow-y-auto py-2'
+      : 'spotify-scrollbar absolute right-0 top-full z-50 mt-2 max-h-[520px] w-80 overflow-y-auto rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl'
     }>
       <FriendSearch onClose={onClose} />
       <PendingRequests />

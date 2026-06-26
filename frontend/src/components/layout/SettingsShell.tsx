@@ -59,7 +59,7 @@ export function SettingsShell() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto">
+      <main className="spotify-scrollbar flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[780px] px-4 py-8">
           <Outlet />
         </div>

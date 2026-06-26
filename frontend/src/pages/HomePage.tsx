@@ -21,7 +21,7 @@ import { SparklesIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useHueStore } from '@/stores/hueStore'
-import { useDominantColor, getDominantColor } from '@/hooks/useDominantColor'
+import { useDominantColor, getDominantColor, hueHeaderBackground } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
@@ -148,7 +148,12 @@ export function HomePage() {
   }
 
   const quickPicks = savedPlaylists.slice(0, 6)
-  const homeHeaderBackground = headerScrolled ? (baseColor ?? 'var(--c-base)') : 'transparent'
+  // At the top the bar is transparent so it blends seamlessly into the hero hue
+  // gradient (no separate brown strip). Once scrolled it becomes a solid header
+  // that mirrors the hero hue at the SAME ratio (via hueHeaderBackground), driven
+  // by the SAME colour the hero uses (`heroColor`, incl. the hovered-card tint),
+  // so it reads as the same hue rather than a separate browner strip.
+  const homeHeaderBackground = headerScrolled ? hueHeaderBackground(heroColor) : 'transparent'
 
   // ISO alpha-2 → display name (e.g. "US" → "United States"); falls back to the code.
   const countryCode = (user?.country || 'US').toUpperCase()
@@ -175,12 +180,17 @@ export function HomePage() {
       {/* Home filter bar — a Home-page-only sticky header (All / Music / Podcasts).
           It locks to the top of the content scroll area and adopts the page hue once
           scrolled. This is intentionally separate from the global app header, which
-          must stay visually independent. */}
+          must stay visually independent. The scroll container bleeds content the full
+          width (see `.ns-bleed-scroll`), so this bar already spans edge-to-edge under
+          the overlay scrollbar — no gutter-covering hack needed. */}
       <div
-        className="sticky top-0 z-20 transition-colors duration-300 ease-out motion-reduce:transition-none"
+        className="sticky top-0 z-30 transition-colors duration-300 ease-out motion-reduce:transition-none"
         style={{
           backgroundColor: homeHeaderBackground,
-          boxShadow: headerScrolled ? `32px 0 0 ${homeHeaderBackground}` : 'none',
+          // Blur only once scrolled — at the top a blurred transparent bar would
+          // smear the gradient into a faint visible strip.
+          backdropFilter: headerScrolled ? 'blur(18px)' : 'none',
+          WebkitBackdropFilter: headerScrolled ? 'blur(18px)' : 'none',
         }}
       >
         <div className="flex items-center gap-2 px-4 py-3">

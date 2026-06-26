@@ -600,8 +600,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               type="button"
               onClick={collapseLibrarySidebar}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-normal leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
-                compactLibraryHeader ? 'text-sm' : 'text-base',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
+                'text-base',
               )}
               aria-label={t('sidebar.collapse')}
               title={t('sidebar.collapse')}
@@ -754,8 +754,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               type="button"
               onClick={collapseLibrarySidebar}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-normal leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
-                compactLibraryHeader ? 'text-sm' : 'text-base',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                'text-base',
                 !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
               aria-label={t('sidebar.collapse')}

@@ -46,19 +46,27 @@ Acceptance:
 - [x] Keep existing functional settings wired.
 - [x] Add desktop zoom controls.
 - [x] Add app/about/storage rows.
-- [x] Add disabled notification/privacy/download rows for unsupported settings.
+- [x] Replace disabled "coming soon" rows with real implementations or remove them.
 - [x] Persist local app settings where appropriate.
 - [x] Avoid fake settings that visually toggle but do nothing.
 - [x] Keep settings accessible from the existing profile menu.
 - [x] Make settings responsive and desktop-app friendly.
 - [x] Match existing NotSpotify menu/card styling.
 
+Phase 2.1 - Greyed-out row pass:
+- [x] Privacy → Private listening: skips POST /me/plays in the player, so no PlayHistory rows or LastSeenAt bumps. (frontend/src/stores/playerStore.ts)
+- [x] Storage and cache → Media cache: live navigator.storage.estimate() readout + working "Clear cache" wipes all Cache Storage entries.
+- [x] Display → Open at login (Tauri-only): tauri-plugin-autostart wired into the Rust crate, capability granted, frontend hook lazy-imports the JS plugin and hides the row in the browser build.
+- [x] Notifications → Allow notifications: requests Notification.requestPermission(), persists the master switch only when permission === 'granted'.
+- [x] Notifications → New release alerts: backend artist follow endpoints (POST/DELETE /artists/{id}/follow, GET /artists/following) feed the existing NotifyArtistFollowersOfReleaseAsync pipeline; libraryStore syncs both ways. Frontend polls /notifications every 60s and fires a clickable desktop notification for unseen "new_release" rows.
+- [x] Notifications → Friend activity (master + sub-toggles): new_follower / chat_message / playlist_saved / jam_invite. Backend NotifyAsync calls added to ChatController.Send and MeController.SavePlaylist; the others were already wired (UsersController.Follow, FriendsController.SendJamInvite).
+
 Acceptance:
-- [ ] Settings page opens correctly.
-- [ ] Functional settings update real state.
+- [x] Settings page opens correctly.
+- [x] Functional settings update real state.
 - [x] Settings persist after refresh/restart where expected.
-- [x] Disabled settings are clearly muted.
-- [ ] UI feels consistent with NotSpotify branding.
+- [x] Disabled rows removed; every visible toggle does something real.
+- [x] UI feels consistent with NotSpotify branding.
 
 ## Phase 3 - Artist Upload: Podcast Episodes
 

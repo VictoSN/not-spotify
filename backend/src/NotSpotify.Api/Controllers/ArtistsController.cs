@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -18,6 +20,109 @@ public class ArtistsController : ControllerBase
     {
         _db = db;
         _mapper = mapper;
+    }
+
+    private Guid? CurrentUserId()
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(id, out var g) ? g : null;
+    }
+
+    /// <summary>
+    /// User → Artist follow. Stored as a UserFollows edge from the caller to each
+    /// user account that owns the artist (Users.ArtistId == artistId), so the
+    /// existing NotifyArtistFollowersOfReleaseAsync pipeline notifies us when
+    /// the artist publishes anything.
+    /// </summary>
+    [HttpPost("{id:guid}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Follow(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        if (!await _db.Artists.AnyAsync(a => a.Id == id, ct)) return NotFound();
+
+        var ownerIds = await _db.Users
+            .Where(u => u.ArtistId == id && u.Id != me.Value)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+
+        // No-op when the artist isn't tied to a user account — frontend treats
+        // the follow as cached locally in that case.
+        if (ownerIds.Count == 0) return NoContent();
+
+        var existing = await _db.UserFollows
+            .Where(f => f.FollowerId == me.Value && ownerIds.Contains(f.FolloweeId))
+            .Select(f => f.FolloweeId)
+            .ToListAsync(ct);
+
+        var missing = ownerIds.Except(existing).ToList();
+        if (missing.Count > 0)
+        {
+            _db.UserFollows.AddRange(missing.Select(ownerId => new UserFollow
+            {
+                FollowerId = me.Value,
+                FolloweeId = ownerId,
+            }));
+            // Bump cached follower count on the artist row to match the existing
+            // NotifyArtistFollowersOfReleaseAsync feed model.
+            await _db.Artists
+                .Where(a => a.Id == id)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.FollowerCount, a => a.FollowerCount + 1), ct);
+            await _db.SaveChangesAsync(ct);
+        }
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Unfollow(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var ownerIds = await _db.Users
+            .Where(u => u.ArtistId == id)
+            .Select(u => u.Id)
+            .ToListAsync(ct);
+        if (ownerIds.Count == 0) return NoContent();
+
+        var rows = await _db.UserFollows
+            .Where(f => f.FollowerId == me.Value && ownerIds.Contains(f.FolloweeId))
+            .ToListAsync(ct);
+        if (rows.Count > 0)
+        {
+            _db.UserFollows.RemoveRange(rows);
+            await _db.Artists
+                .Where(a => a.Id == id && a.FollowerCount > 0)
+                .ExecuteUpdateAsync(s => s.SetProperty(a => a.FollowerCount, a => a.FollowerCount - 1), ct);
+            await _db.SaveChangesAsync(ct);
+        }
+        return NoContent();
+    }
+
+    /// <summary>Returns the artists the caller follows (derived from UserFollows).</summary>
+    [HttpGet("following")]
+    [Authorize]
+    public async Task<ActionResult<IEnumerable<ArtistDto>>> Following(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var artistIds = await _db.UserFollows
+            .Where(f => f.FollowerId == me.Value)
+            .Join(_db.Users, f => f.FolloweeId, u => u.Id, (f, u) => u.ArtistId)
+            .Where(aid => aid != null)
+            .Select(aid => aid!.Value)
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (artistIds.Count == 0) return Ok(Array.Empty<ArtistDto>());
+
+        var artists = await _db.Artists
+            .Where(a => artistIds.Contains(a.Id))
+            .ToListAsync(ct);
+        return Ok(artists.Select(a => _mapper.ToDto(a)));
     }
 
     [HttpGet]

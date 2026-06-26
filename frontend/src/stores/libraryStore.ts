@@ -77,10 +77,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
       let followedArtists: Artist[] = []
       try {
-        const stored = localStorage.getItem('ns-followed-artists')
-        if (stored) followedArtists = JSON.parse(stored)
+        // Backend is the source of truth (so notifications fire); fall back to
+        // the localStorage cache if the call fails (e.g. offline / older API).
+        followedArtists = await artistService.getFollowing()
+      } catch {
+        try {
+          const stored = localStorage.getItem('ns-followed-artists')
+          if (stored) followedArtists = JSON.parse(stored)
+        } catch { /* ignore */ }
+        followedArtists = await refreshFollowedArtists(followedArtists)
+      }
+      try {
+        localStorage.setItem('ns-followed-artists', JSON.stringify(followedArtists))
       } catch { /* ignore */ }
-      followedArtists = await refreshFollowedArtists(followedArtists)
       const followedIds = new Set(followedArtists.map((a) => a.id))
 
       // Saved videos + podcasts are client-side only (no backend save endpoints
@@ -144,26 +153,34 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   followArtist: async (artist) => {
     const prev = get().followedArtists
     const prevIds = get().followedArtistIds
+    if (prevIds.has(artist.id)) return
     const newArtists = [artist, ...prev]
     const newIds = new Set([...prevIds, artist.id])
-    set({
-      followedArtists: newArtists,
-      followedArtistIds: newIds,
-    })
+    set({ followedArtists: newArtists, followedArtistIds: newIds })
     localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    try {
+      await artistService.follow(artist.id)
+    } catch {
+      set({ followedArtists: prev, followedArtistIds: prevIds })
+      localStorage.setItem('ns-followed-artists', JSON.stringify(prev))
+    }
   },
 
   unfollowArtist: async (artistId) => {
     const prev = get().followedArtists
     const prevIds = get().followedArtistIds
+    if (!prevIds.has(artistId)) return
     const newIds = new Set(prevIds)
     newIds.delete(artistId)
     const newArtists = prev.filter((a) => a.id !== artistId)
-    set({
-      followedArtists: newArtists,
-      followedArtistIds: newIds,
-    })
+    set({ followedArtists: newArtists, followedArtistIds: newIds })
     localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    try {
+      await artistService.unfollow(artistId)
+    } catch {
+      set({ followedArtists: prev, followedArtistIds: prevIds })
+      localStorage.setItem('ns-followed-artists', JSON.stringify(prev))
+    }
   },
 
   saveAlbum: async (album) => {

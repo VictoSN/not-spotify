@@ -43,4 +43,17 @@ export const artistService = {
     const res = await api.get<Artist[]>('/artists/popular', { params: { limit } })
     return res.data
   },
+
+  async getFollowing(): Promise<Artist[]> {
+    const res = await api.get<Artist[]>('/artists/following')
+    return res.data
+  },
+
+  async follow(artistId: string): Promise<void> {
+    await api.post(`/artists/${artistId}/follow`)
+  },
+
+  async unfollow(artistId: string): Promise<void> {
+    await api.delete(`/artists/${artistId}/follow`)
+  },
 }

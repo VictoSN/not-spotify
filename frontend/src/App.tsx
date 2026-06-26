@@ -8,6 +8,7 @@ import { InstallPrompt } from '@/components/common/InstallPrompt'
 import { AppToaster } from '@/components/ui/AppToaster'
 import { ConfirmProvider } from '@/components/common/ConfirmDialog'
 import { useAppZoomShortcuts } from '@/hooks/useAppZoom'
+import { startNotificationLoop } from '@/services/notifications'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -17,6 +18,10 @@ export default function App() {
   useEffect(() => {
     hydrateFromCookie()
   }, [hydrateFromCookie])
+
+  useEffect(() => {
+    startNotificationLoop()
+  }, [])
 
   // Spotify-style: suppress the browser's native right-click menu app-wide so
   // right-click is reserved for our own context menus. Still allow the native

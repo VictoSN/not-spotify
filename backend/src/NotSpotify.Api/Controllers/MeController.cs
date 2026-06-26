@@ -29,6 +29,7 @@ public class MeController : ControllerBase
     private readonly LyricsService _lyrics;
     private readonly ILogger<MeController> _logger;
     private readonly AudioWaveformService _waveforms;
+    private readonly NotificationService _notifications;
 
     public MeController(
         AppDbContext db,
@@ -37,7 +38,8 @@ public class MeController : ControllerBase
         IStorageService storage,
         LyricsService lyrics,
         ILogger<MeController> logger,
-        AudioWaveformService waveforms)
+        AudioWaveformService waveforms,
+        NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
@@ -46,6 +48,7 @@ public class MeController : ControllerBase
         _lyrics = lyrics;
         _logger = logger;
         _waveforms = waveforms;
+        _notifications = notifications;
     }
 
     private Guid? CurrentUserId()
@@ -497,6 +500,19 @@ public class MeController : ControllerBase
             SavedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+
+        // Tell the playlist's owner someone saved it (only if they have a chat-able relationship).
+        var saver = await _db.Users.FindAsync(new object[] { me.Value }, ct);
+        if (saver is not null)
+            await _notifications.NotifyAsync(
+                playlist.OwnerId,
+                "playlist_saved",
+                $"{saver.Name} saved your playlist",
+                body: playlist.Name,
+                linkUrl: $"/playlist/{id}",
+                imageUrl: _mapper.ToRef(saver).AvatarUrl,
+                ct: ct);
+
         return NoContent();
     }
 

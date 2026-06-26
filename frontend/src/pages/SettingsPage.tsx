@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useThemeStore } from '@/stores/themeStore'
@@ -12,6 +12,13 @@ import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
 import { Slider } from '@/components/ui/Slider'
 import { useAppZoomPreference } from '@/hooks/useAppZoom'
+import { useAutostart } from '@/hooks/useAutostart'
+import {
+  checkNotificationsNow,
+  isNotificationSupported,
+  notificationPermission,
+  requestNotificationPermission,
+} from '@/services/notifications'
 import { cn } from '@/utils/cn'
 
 /** Tiny localStorage-backed preference (no effects → lint-clean). */
@@ -140,12 +147,44 @@ function Row({
   )
 }
 
-function ComingSoonBadge() {
-  return (
-    <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary">
-      Coming soon
-    </span>
-  )
+function formatBytes(bytes: number): string {
+  if (!bytes) return '0 MB'
+  const mb = bytes / (1024 * 1024)
+  if (mb < 1) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  if (mb < 1024) return `${mb.toFixed(mb < 10 ? 1 : 0)} MB`
+  return `${(mb / 1024).toFixed(2)} GB`
+}
+
+function useMediaCacheUsage() {
+  const [bytes, setBytes] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const refresh = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.storage?.estimate) {
+      setBytes(0)
+      return
+    }
+    try {
+      const est = await navigator.storage.estimate()
+      setBytes(est.usage ?? 0)
+    } catch {
+      setBytes(0)
+    }
+  }, [])
+  useEffect(() => {
+    void refresh()
+  }, [refresh])
+  const clear = useCallback(async () => {
+    if (typeof caches === 'undefined') return
+    setBusy(true)
+    try {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+      await refresh()
+    } finally {
+      setBusy(false)
+    }
+  }, [refresh])
+  return { bytes, busy, clear, supported: typeof caches !== 'undefined' }
 }
 
 export function SettingsPage() {
@@ -156,6 +195,37 @@ export function SettingsPage() {
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const toggleNowPlaying = usePlayerStore((s) => s.toggleNowPlaying)
   const appZoom = useAppZoomPreference()
+  const mediaCache = useMediaCacheUsage()
+  const autostart = useAutostart()
+  const notifSupported = isNotificationSupported()
+  const [notifMaster, setNotifMaster] = usePref('ns-notif-enabled', false)
+  const [releaseAlerts, setReleaseAlerts] = usePref('ns-notif-release-alerts', false)
+  const [friendActivityAlerts, setFriendActivityAlerts] = usePref('ns-notif-friend-activity', false)
+  const [friendFollow, setFriendFollow] = usePref('ns-notif-friend-follow', true)
+  const [friendChat, setFriendChat] = usePref('ns-notif-friend-chat', true)
+  const [friendPlaylistSave, setFriendPlaylistSave] = usePref('ns-notif-friend-playlist-save', true)
+  const [friendJam, setFriendJam] = usePref('ns-notif-friend-jam', true)
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission>(() => notificationPermission())
+  const masterEnabled = notifMaster && notifPerm === 'granted'
+
+  const handleMasterToggle = async (next: boolean) => {
+    if (next) {
+      const perm = await requestNotificationPermission()
+      setNotifPerm(perm)
+      if (perm !== 'granted') return
+    }
+    setNotifMaster(next)
+  }
+
+  const handleReleaseToggle = (next: boolean) => {
+    setReleaseAlerts(next)
+    if (next) void checkNotificationsNow()
+  }
+
+  const handleFriendActivityToggle = (next: boolean) => {
+    setFriendActivityAlerts(next)
+    if (next) void checkNotificationsNow()
+  }
 
   // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
@@ -168,6 +238,9 @@ export function SettingsPage() {
   // Back-compat: the old toggle stored a boolean.
   const [crossfadeRaw, setCrossfadeRaw] = usePref<number | boolean>('ns-pref-crossfade', 0)
   const crossfade = typeof crossfadeRaw === 'boolean' ? (crossfadeRaw ? 6 : 0) : crossfadeRaw
+  // Private listening: when on, the player skips POST /me/plays — no play history,
+  // no LastSeenAt bump, so friends can't see what (or when) you're listening.
+  const [privateListening, setPrivateListening] = usePref('ns-pref-private-listening', false)
   // Streaming quality is live: read by the two-deck audioEngine, which rolls off
   // the highs at lower tiers (and caps adaptive/HLS levels where present).
   const [streamingQuality, setStreamingQuality] = usePref('ns-pref-quality', 'auto')
@@ -324,12 +397,20 @@ export function SettingsPage() {
             />
           }
         />
-        <Row
-          label="Open at login"
-          sub="Start NotSpotify automatically when you sign in."
-          control={<ComingSoonBadge />}
-          disabled
-        />
+        {autostart.supported && (
+          <Row
+            label="Open at login"
+            sub="Start NotSpotify automatically when you sign in to your computer."
+            control={
+              <Switch
+                label="Open at login"
+                checked={autostart.enabled}
+                disabled={autostart.busy}
+                onChange={(v) => void autostart.toggle(v)}
+              />
+            }
+          />
+        )}
       </Section>
 
       <Section title={t('settings.playback')}>
@@ -359,38 +440,114 @@ export function SettingsPage() {
 
       <OfflineDownloads />
 
-      <Section title="Notifications">
-        <Row
-          label="Release alerts"
-          sub="Notify when followed artists publish new content."
-          control={<ComingSoonBadge />}
-          disabled
-        />
-        <Row
-          label="Friend activity"
-          sub="Manage social listening alerts."
-          control={<ComingSoonBadge />}
-          disabled
-        />
-      </Section>
+      {notifSupported && (
+        <Section title="Notifications">
+          <Row
+            label="Allow notifications"
+            sub={
+              notifPerm === 'denied'
+                ? 'Blocked in your browser settings — re-enable site notifications to turn this on.'
+                : masterEnabled
+                  ? 'On — NotSpotify can show desktop notifications.'
+                  : 'Ask your browser for permission to show notifications from NotSpotify.'
+            }
+            control={
+              <Switch
+                label="Allow notifications"
+                checked={masterEnabled}
+                disabled={notifPerm === 'denied'}
+                onChange={(v) => void handleMasterToggle(v)}
+              />
+            }
+          />
+          <Row
+            label="New release alerts"
+            sub="Get a desktop alert when artists you follow publish new music. Powered by the server-side notification feed and checked every minute while NotSpotify is open."
+            control={
+              <Switch
+                label="New release alerts"
+                checked={masterEnabled && releaseAlerts}
+                disabled={!masterEnabled}
+                onChange={handleReleaseToggle}
+              />
+            }
+          />
+          <Row
+            label="Friend activity"
+            sub="Manage social listening alerts."
+            control={
+              <Switch
+                label="Friend activity"
+                checked={masterEnabled && friendActivityAlerts}
+                disabled={!masterEnabled}
+                onChange={handleFriendActivityToggle}
+              />
+            }
+          />
+          {masterEnabled && friendActivityAlerts && (
+            <div className="ml-4 border-l border-elevated/30 pl-4">
+              <p className="pb-2 pt-3 text-xs font-semibold uppercase tracking-wide text-secondary">Notify me when</p>
+              <Row
+                label="A friend follows me"
+                control={<Switch label="A friend follows me" checked={friendFollow} onChange={setFriendFollow} />}
+              />
+              <Row
+                label="A friend replies in chat"
+                control={<Switch label="A friend replies in chat" checked={friendChat} onChange={setFriendChat} />}
+              />
+              <Row
+                label="A friend saves my playlist"
+                control={<Switch label="A friend saves my playlist" checked={friendPlaylistSave} onChange={setFriendPlaylistSave} />}
+              />
+              <Row
+                label="A friend invites me to a Jam"
+                control={<Switch label="A friend invites me to a Jam" checked={friendJam} onChange={setFriendJam} />}
+              />
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section title="Privacy">
         <Row
           label="Private listening"
-          sub="Hide listening activity from friends."
-          control={<ComingSoonBadge />}
-          disabled
+          sub={
+            privateListening
+              ? 'On — plays are not recorded and your last-active time is not updated.'
+              : 'Stop the app from sending your plays to the server (no history, no online status).'
+          }
+          control={
+            <Switch
+              label="Private listening"
+              checked={privateListening}
+              onChange={setPrivateListening}
+            />
+          }
         />
       </Section>
 
-      <Section title="Storage and cache">
-        <Row
-          label="Media cache"
-          sub="Offline downloads are listed above when supported by this browser."
-          control={<ComingSoonBadge />}
-          disabled
-        />
-      </Section>
+      {mediaCache.supported && (
+        <Section title="Storage and cache">
+          <Row
+            label="Media cache"
+            sub={
+              mediaCache.bytes == null
+                ? 'Measuring browser storage used by NotSpotify…'
+                : `Approximately ${formatBytes(mediaCache.bytes)} used by cached pages, artwork, and audio segments.`
+            }
+            control={
+              <button
+                type="button"
+                onClick={() => void mediaCache.clear()}
+                disabled={mediaCache.busy}
+                className="rounded-full border border-secondary/50 px-4 py-1.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {mediaCache.busy ? 'Clearing…' : 'Clear cache'}
+              </button>
+            }
+          />
+        </Section>
+      )}
 
       <Section title="About">
         <Row

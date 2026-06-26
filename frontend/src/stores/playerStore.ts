@@ -12,8 +12,19 @@ import { useAuthStore } from './authStore'
 const RECENT_PLAY_DEDUPE_MS = 5000
 const lastRecordedAt = new Map<string, number>()
 
+function isPrivateListening(): boolean {
+  try {
+    return window.localStorage.getItem('ns-pref-private-listening') === 'true'
+  } catch {
+    return false
+  }
+}
+
 function recordPlay(trackId: string) {
   if (!useAuthStore.getState().isAuthenticated) return
+  // Private listening: skip server-side play history + LastSeenAt bump
+  // so other users can't see what or when you're listening.
+  if (isPrivateListening()) return
   const now = Date.now()
   if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
   lastRecordedAt.set(trackId, now)

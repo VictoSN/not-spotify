@@ -34,12 +34,14 @@ public class ChatController : ControllerBase
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
     private readonly IHubContext<PresenceHub> _hub;
+    private readonly NotificationService _notifications;
 
-    public ChatController(AppDbContext db, MediaMapper mapper, IHubContext<PresenceHub> hub)
+    public ChatController(AppDbContext db, MediaMapper mapper, IHubContext<PresenceHub> hub, NotificationService notifications)
     {
         _db = db;
         _mapper = mapper;
         _hub = hub;
+        _notifications = notifications;
     }
 
     private Guid CurrentUserId()
@@ -190,6 +192,22 @@ public class ChatController : ControllerBase
             _hub.Clients.Group($"user-{userId}").SendAsync("ChatMessage", payload, ct),
             _hub.Clients.Group($"user-{me}").SendAsync("ChatMessage", payload, ct)
         );
+
+        // Persist a Notifications row so opt-in desktop alerts can fire from the
+        // /notifications poll. Preview is body-truncated to keep it bell-sized.
+        var sender = await _db.Users.FindAsync(new object[] { me }, ct);
+        if (sender is not null)
+        {
+            var preview = body.Length > 80 ? body[..77] + "…" : body;
+            await _notifications.NotifyAsync(
+                userId,
+                "chat_message",
+                $"{sender.Name} sent you a message",
+                body: preview,
+                linkUrl: $"/messages/{me}",
+                imageUrl: _mapper.ToRef(sender).AvatarUrl,
+                ct: ct);
+        }
 
         return Ok(payload);
     }

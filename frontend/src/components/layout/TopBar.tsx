@@ -25,6 +25,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+import { WindowControls } from './WindowControls'
 import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
 import { useDebounce } from '@/hooks/useDebounce'
 import { cn } from '@/utils/cn'
@@ -384,7 +385,7 @@ export function TopBar() {
 
   if (!isAuthenticated) {
     return (
-      <header className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-16">
+      <header data-tauri-drag-region className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-16">
         <Link to="/" className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
@@ -463,13 +464,14 @@ export function TopBar() {
           >
             {t('topbar.logIn')}
           </Link>
+          <WindowControls />
         </div>
       </header>
     )
   }
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
+    <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
@@ -686,6 +688,7 @@ export function TopBar() {
         )}
       </div>
 
+      <WindowControls />
     </header>
   )
 }

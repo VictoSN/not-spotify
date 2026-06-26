@@ -166,7 +166,7 @@ export function HomePage() {
     )
   }
 
-  const quickPicks = savedPlaylists.slice(0, 6)
+  const quickPicks = savedPlaylists.slice(0, 8)
   // At the top the bar is transparent so it blends seamlessly into the hero hue
   // gradient (no separate brown strip). Once scrolled it becomes a solid header
   // that mirrors the hero hue at the SAME ratio (via hueHeaderBackground), driven
@@ -297,7 +297,7 @@ export function HomePage() {
 
         {/* Quick access — the same library shown in the sidebar */}
         {showMusic && isAuthenticated && quickPicks.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
             {quickPicks.map((p) => {
               const tracks = p.tracks?.map((pt) => pt.track) ?? []
               return (

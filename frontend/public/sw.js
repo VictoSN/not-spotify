@@ -18,6 +18,14 @@
  * Bump CACHE_VERSION whenever the precache list or strategy changes.
  * OFFLINE_CACHE is intentionally NOT versioned so saved tracks survive updates.
  */
+// In dev (Vite HMR) we register this SW with `?mode=dev` so we can still wire
+// push + notificationclick handlers, but skip the caching `fetch` handler that
+// would otherwise intercept Vite's module URLs and break hot reload.
+const IS_DEV = (() => {
+  try { return new URL(self.location.href).searchParams.get('mode') === 'dev' }
+  catch { return false }
+})()
+
 const CACHE_VERSION = 'v1'
 const SHELL_CACHE = `ns-shell-${CACHE_VERSION}`
 const ASSET_CACHE = `ns-assets-${CACHE_VERSION}`
@@ -36,6 +44,10 @@ const SHELL_URLS = [
 ]
 
 self.addEventListener('install', (event) => {
+  if (IS_DEV) {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
@@ -195,7 +207,9 @@ async function serveOfflineAudio(url, request) {
   })
 }
 
-self.addEventListener('fetch', (event) => {
+// Dev mode: no fetch handler at all, so Vite HMR module URLs pass straight
+// through to the network. Push + notificationclick above still work.
+if (!IS_DEV) self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
 

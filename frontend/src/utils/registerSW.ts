@@ -1,45 +1,45 @@
-// Registers the PWA service worker. Kept tiny and side-effect-isolated so it can
-// be called once from main.tsx. The SW itself (public/sw.js) handles caching;
-// here we only register it and surface updates without forcing a reload loop.
+// Registers the PWA service worker. In production it runs the full caching
+// strategy. In dev it registers `?mode=dev`, which makes sw.js skip its fetch
+// handler — Vite HMR stays untouched, but the push + notificationclick
+// handlers are still installed so Web Push works during development.
+//
+// Kept tiny and side-effect-isolated so it can be called once from main.tsx.
 export function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return
-  // Never run the caching SW in dev — it would cache Vite HMR modules and break
-  // hot reload. Only register for the built (production) app.
-  if (!import.meta.env.PROD) {
-    // Defensive cleanup: a SW left over from a prior `npm run preview` keeps
-    // intercepting localhost and serving stale cached bytes for module URLs
-    // (e.g. a cached image returned for `/src/.../*.tsx`, which the browser
-    // rejects as a bad MIME type) → a blank white screen. Unregister any
-    // leftover SW + drop its caches so `dev` runs clean after `preview`.
-    //
-    // Crucially, `unregister()`/`caches.delete()` do NOT stop the SW that is
-    // already CONTROLLING the current page — it keeps intercepting for this
-    // whole load. So when we detect a controller in dev, we clean up and then
-    // force a single reload (guarded against a loop) to come back uncontrolled.
-    const hadController = !!navigator.serviceWorker.controller
-    Promise.allSettled([
-      navigator.serviceWorker.getRegistrations?.()
-        .then((regs) => Promise.all(regs.map((r) => r.unregister()))) ??
-        Promise.resolve(),
-      window.caches?.keys?.()
-        .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
-        Promise.resolve(),
-    ]).finally(() => {
+
+  const isDev = !import.meta.env.PROD
+  const swUrl = isDev ? '/sw.js?mode=dev' : '/sw.js'
+
+  // One-time cleanup: an older non-dev-aware SW left over from a prior
+  // `npm run preview` would still intercept module URLs and white-screen
+  // the page even after this code runs, because that SW is *already
+  // controlling* the page on this load. Detect a controller registered
+  // against the old URL (no ?mode=dev) and force a single reload so we
+  // come back uncontrolled and pick up the right SW.
+  if (isDev && navigator.serviceWorker.controller) {
+    const ctrlUrl = navigator.serviceWorker.controller.scriptURL
+    if (!ctrlUrl.includes('mode=dev')) {
       const RELOAD_FLAG = 'ns-sw-dev-reloaded'
-      if (hadController && !sessionStorage.getItem(RELOAD_FLAG)) {
+      if (!sessionStorage.getItem(RELOAD_FLAG)) {
         sessionStorage.setItem(RELOAD_FLAG, '1')
-        window.location.reload()
-      } else if (!hadController) {
-        // Clean load — clear the guard so a future stale SW can self-heal again.
-        sessionStorage.removeItem(RELOAD_FLAG)
+        void Promise.allSettled([
+          navigator.serviceWorker.getRegistrations?.()
+            .then((regs) => Promise.all(regs.map((r) => r.unregister()))) ??
+            Promise.resolve(),
+          window.caches?.keys?.()
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
+            Promise.resolve(),
+        ]).finally(() => window.location.reload())
+        return
       }
-    })
-    return
+    } else {
+      sessionStorage.removeItem('ns-sw-dev-reloaded')
+    }
   }
 
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
+      .register(swUrl, { scope: '/' })
       .then((registration) => {
         // When a new SW is found, let it activate; it claims clients on the next
         // navigation. We deliberately don't auto-reload to avoid disrupting
@@ -52,7 +52,6 @@ export function registerServiceWorker() {
               installing.state === 'installed' &&
               navigator.serviceWorker.controller
             ) {
-              // A fresh version is ready; it takes over on the next load.
               installing.postMessage?.('SKIP_WAITING')
             }
           })

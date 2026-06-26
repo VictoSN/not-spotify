@@ -914,7 +914,7 @@ function SearchSuggestionRow({
   subtitle,
   onOpen,
   onPlay,
-  isActive = false,
+  isActive: _isActive = false,
   isPlaying = false,
   action,
 }: {

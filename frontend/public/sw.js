@@ -62,6 +62,41 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+// Web Push: render an OS notification when the server sends one through.
+// The payload format is set by backend Services/WebPushService.cs:
+//   { title, body, url, icon, tag }
+self.addEventListener('push', (event) => {
+  let data = {}
+  try { data = event.data ? event.data.json() : {} } catch { data = {} }
+  const title = data.title || 'NotSpotify'
+  const options = {
+    body: data.body || '',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    tag: data.tag || 'ns-notification',
+    data: { url: data.url || '/' },
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+// Clicking the OS notification focuses an existing tab (or opens one) on the
+// notification's link.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    for (const client of all) {
+      if ('focus' in client) {
+        client.focus()
+        if ('navigate' in client) { try { await client.navigate(target) } catch { /* cross-origin */ } }
+        return
+      }
+    }
+    if (self.clients.openWindow) await self.clients.openWindow(target)
+  })())
+})
+
 // Let the page trigger an immediate activation after an update.
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()

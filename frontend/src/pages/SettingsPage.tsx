@@ -19,6 +19,13 @@ import {
   notificationPermission,
   requestNotificationPermission,
 } from '@/services/notifications'
+import {
+  isPushSupported,
+  isPushSubscribed,
+  sendPushTest,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from '@/services/webPush'
 import { cn } from '@/utils/cn'
 
 /** Tiny localStorage-backed preference (no effects → lint-clean). */
@@ -206,6 +213,32 @@ export function SettingsPage() {
   const [friendPlaylistSave, setFriendPlaylistSave] = usePref('ns-notif-friend-playlist-save', true)
   const [friendJam, setFriendJam] = usePref('ns-notif-friend-jam', true)
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(() => notificationPermission())
+  const pushSupported = isPushSupported()
+  const [pushSubscribed, setPushSubscribed] = useState(false)
+  const [pushBusy, setPushBusy] = useState(false)
+  useEffect(() => {
+    if (!pushSupported) return
+    void isPushSubscribed().then(setPushSubscribed)
+  }, [pushSupported])
+  const handlePushToggle = async (next: boolean) => {
+    setPushBusy(true)
+    try {
+      if (next) {
+        const ok = await subscribeToPush()
+        setPushSubscribed(ok)
+        setNotifPerm(notificationPermission())
+      } else {
+        await unsubscribeFromPush()
+        setPushSubscribed(false)
+      }
+    } finally {
+      setPushBusy(false)
+    }
+  }
+  const handlePushTest = async () => {
+    setPushBusy(true)
+    try { await sendPushTest() } finally { setPushBusy(false) }
+  }
   const masterEnabled = notifMaster && notifPerm === 'granted'
 
   const handleMasterToggle = async (next: boolean) => {
@@ -460,6 +493,36 @@ export function SettingsPage() {
               />
             }
           />
+          {pushSupported && (
+            <Row
+              label="Push notifications"
+              sub={
+                pushSubscribed
+                  ? 'On — your browser/OS will receive alerts from NotSpotify even when the tab is closed.'
+                  : 'Receive desktop/mobile alerts via Web Push, delivered by the server even when NotSpotify is closed.'
+              }
+              control={
+                <div className="flex items-center gap-2">
+                  {pushSubscribed && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePushTest()}
+                      disabled={pushBusy}
+                      className="rounded-full border border-secondary/40 px-3 py-1 text-xs font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Send test
+                    </button>
+                  )}
+                  <Switch
+                    label="Push notifications"
+                    checked={pushSubscribed}
+                    disabled={pushBusy || notifPerm === 'denied'}
+                    onChange={(v) => void handlePushToggle(v)}
+                  />
+                </div>
+              }
+            />
+          )}
           <Row
             label="New release alerts"
             sub="Get a desktop alert when artists you follow publish new music. Powered by the server-side notification feed and checked every minute while NotSpotify is open."

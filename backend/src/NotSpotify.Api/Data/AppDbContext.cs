@@ -35,6 +35,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<SiteVisit> SiteVisits => Set<SiteVisit>();
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<PushSubscriptionRow> PushSubscriptions => Set<PushSubscriptionRow>();
     public DbSet<TrackComment> TrackComments => Set<TrackComment>();
     public DbSet<MusicVideoComment> MusicVideoComments => Set<MusicVideoComment>();
     public DbSet<Repost> Reposts => Set<Repost>();
@@ -373,6 +374,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             // "Who follows X" (follower count/list) and "who X follows" (following list).
             e.HasIndex(x => x.FolloweeId);
             e.HasIndex(x => x.FollowerId);
+        });
+
+        b.Entity<PushSubscriptionRow>(e =>
+        {
+            e.ToTable("PushSubscriptions");
+            e.HasIndex(x => x.Endpoint).IsUnique();
+            e.HasIndex(x => x.UserId);
         });
 
         b.Entity<ChatMessage>(e =>

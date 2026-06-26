@@ -17,12 +17,14 @@ public class NotificationService
     private readonly AppDbContext _db;
     private readonly IHubContext<PresenceHub> _hub;
     private readonly ILogger<NotificationService> _logger;
+    private readonly WebPushService _push;
 
-    public NotificationService(AppDbContext db, IHubContext<PresenceHub> hub, ILogger<NotificationService> logger)
+    public NotificationService(AppDbContext db, IHubContext<PresenceHub> hub, ILogger<NotificationService> logger, WebPushService push)
     {
         _db = db;
         _hub = hub;
         _logger = logger;
+        _push = push;
     }
 
     public async Task NotifyAsync(
@@ -49,6 +51,10 @@ public class NotificationService
 
             // Live nudge — the client refetches the list/badge on this event.
             await _hub.Clients.Group($"user-{userId}").SendAsync("NotificationReceived", ct);
+
+            // Real OS-level push (fires even when the tab/app is closed). The
+            // payload format mirrors what /public/sw.js expects to render.
+            await _push.SendToUserAsync(userId, title, body ?? string.Empty, linkUrl, imageUrl, tag: type, ct: ct);
         }
         catch (Exception ex)
         {
@@ -96,7 +102,10 @@ public class NotificationService
             await _db.SaveChangesAsync(ct);
 
             foreach (var fid in followerIds)
+            {
                 await _hub.Clients.Group($"user-{fid}").SendAsync("NotificationReceived", ct);
+                await _push.SendToUserAsync(fid, $"{user.Name} reposted {description}", "", link, user.AvatarUrl, tag: "repost", ct: ct);
+            }
         }
         catch (Exception ex)
         {
@@ -154,7 +163,10 @@ public class NotificationService
             await _db.SaveChangesAsync(ct);
 
             foreach (var userId in followerIds)
+            {
                 await _hub.Clients.Group($"user-{userId}").SendAsync("NotificationReceived", ct);
+                await _push.SendToUserAsync(userId, title, body, linkUrl, imageUrl, tag: "new_release", ct: ct);
+            }
         }
         catch (Exception ex)
         {

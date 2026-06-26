@@ -17,12 +17,15 @@ namespace NotSpotify.Api.Services;
 ///
 /// Run from <c>backend/src/NotSpotify.Api</c>:
 /// <code>
-///   dotnet run -- ingest-media               # upload + insert (idempotent)
-///   dotnet run -- ingest-media --dry-run     # preview, writes nothing
+///   dotnet run -- ingest-media                       # upload + insert + thumbnails (idempotent)
+///   dotnet run -- ingest-media --dry-run             # preview, writes nothing
+///   dotnet run -- ingest-media --thumbnails          # only (re)generate missing thumbnails
+///   dotnet run -- ingest-media --remove-placeholders # delete the seeded demo videos/podcasts
 /// </code>
-/// Durations are read with <c>ffprobe</c> (resolved on PATH or the WinGet Links
-/// folder). Idempotent: a video with the same title, or an episode with the same
-/// show + number, is skipped on re-run.
+/// Durations are read with <c>ffprobe</c> and thumbnails grabbed with <c>ffmpeg</c>
+/// (resolved on PATH or the WinGet Links folder). Idempotent: a video with the same
+/// title, or an episode with the same show + number, is skipped on re-run; a row
+/// that already has a thumbnail is left alone.
 /// </summary>
 public static class MediaIngest
 {
@@ -48,22 +51,74 @@ public static class MediaIngest
         var videosDir = Path.Combine(repoRoot, "Music Videos");
         var podcastDir = Path.Combine(repoRoot, "Podcast");
 
-        var ffprobe = ResolveFfprobe();
+        var ffprobe = ResolveTool("ffprobe");
+        var ffmpeg = ResolveTool("ffmpeg");
         Console.WriteLine($"[Ingest] repo root: {repoRoot}");
         Console.WriteLine($"[Ingest] ffprobe:   {ffprobe ?? "NOT FOUND (durations will be 0)"}");
+        Console.WriteLine($"[Ingest] ffmpeg:    {ffmpeg ?? "NOT FOUND (thumbnails skipped)"}");
         Console.WriteLine($"[Ingest] bucket:    {sec["BucketName"]}{(dryRun ? "   (DRY RUN)" : "")}");
         Console.WriteLine();
 
-        await IngestMusicVideosAsync(db, storage, videosDir, ffprobe, dryRun);
-        await IngestPodcastAsync(db, storage, podcastDir, ffprobe, dryRun);
+        if (args.Contains("--remove-placeholders"))
+        {
+            await RemovePlaceholdersAsync(db, dryRun);
+            Console.WriteLine("\n[Ingest] Done.");
+            return;
+        }
+
+        if (!args.Contains("--thumbnails"))
+        {
+            await IngestMusicVideosAsync(db, storage, videosDir, ffprobe, ffmpeg, dryRun);
+            await IngestPodcastAsync(db, storage, podcastDir, ffprobe, ffmpeg, dryRun);
+        }
+
+        await BackfillThumbnailsAsync(db, storage, ffmpeg, videosDir, podcastDir, dryRun);
 
         Console.WriteLine("\n[Ingest] Done.");
+    }
+
+    // ---- Placeholder removal -----------------------------------------------
+
+    // Exact titles of the seeded demo music videos the user asked to remove
+    // (Arctic Monkeys "Brianstorm"/"Teddy Picker" + Vaundy "踊り子"/"怪獣の花唄").
+    // They point at external sample footage, so there is no S3 object of their own.
+    private static readonly string[] PlaceholderVideoTitles =
+    {
+        "Brianstorm (Official Video)",
+        "Teddy Picker (Official Video)",
+        "踊り子 (Official Video)",
+        "怪獣の花唄 (Official Video)",
+    };
+
+    private static async Task RemovePlaceholdersAsync(AppDbContext db, bool dryRun)
+    {
+        var videos = await db.MusicVideos.Where(v => PlaceholderVideoTitles.Contains(v.Title))
+            .Select(v => v.Title).ToListAsync();
+        Console.WriteLine($"[Clean] {videos.Count} placeholder music videos:");
+        foreach (var t in videos) Console.WriteLine($"[Clean]   - {t}");
+
+        // Seeded demo podcasts by "NS Studios"; their episodes reuse real tracks'
+        // audio keys, so we only delete the DB rows (never the shared S3 objects).
+        var pods = await db.Podcasts
+            .Where(p => p.Author == "NS Studios" &&
+                        (p.Title == "The Not Spotify Show" || p.Title == "Indie Spotlight"))
+            .Select(p => new { p.Id, p.Title }).ToListAsync();
+        Console.WriteLine($"[Clean] {pods.Count} placeholder podcasts:");
+        foreach (var p in pods) Console.WriteLine($"[Clean]   - {p.Title}");
+
+        if (dryRun) { Console.WriteLine("[Clean] (dry run — nothing deleted)"); return; }
+
+        var podIds = pods.Select(p => p.Id).ToList();
+        var eps = await db.Episodes.Where(e => podIds.Contains(e.PodcastId)).ExecuteDeleteAsync();
+        var podDel = await db.Podcasts.Where(p => podIds.Contains(p.Id)).ExecuteDeleteAsync();
+        var vidDel = await db.MusicVideos.Where(v => PlaceholderVideoTitles.Contains(v.Title)).ExecuteDeleteAsync();
+        Console.WriteLine($"[Clean] Deleted {vidDel} music videos, {podDel} podcasts, {eps} episodes.");
     }
 
     // ---- Music videos -------------------------------------------------------
 
     private static async Task IngestMusicVideosAsync(
-        AppDbContext db, IStorageService storage, string dir, string? ffprobe, bool dryRun)
+        AppDbContext db, IStorageService storage, string dir, string? ffprobe, string? ffmpeg, bool dryRun)
     {
         if (!Directory.Exists(dir)) { Console.WriteLine($"[Videos] folder not found: {dir} — skipping."); return; }
 
@@ -96,7 +151,6 @@ public static class MediaIngest
             var durationMs = ProbeDurationMs(ffprobe, file);
             var key = $"videos/{Guid.NewGuid():N}.mp4";
 
-            // Best-effort: link to the catalogue track this video accompanies.
             var core = CoreTitle(title, artistName);
             var track = await db.Tracks.FirstOrDefaultAsync(
                 t => t.ArtistId == artist.Id && t.Title.ToLower() == core.ToLower());
@@ -104,6 +158,8 @@ public static class MediaIngest
             Console.WriteLine($"[Videos] {(dryRun ? "would upload" : "uploading")} {Path.GetFileName(file)} -> {key} "
                 + $"({new FileInfo(file).Length:N0} bytes, {durationMs} ms)"
                 + (track is not null ? $"  [linked track {track.Id}]" : ""));
+
+            var thumbKey = await EnsureThumbAsync(storage, ffmpeg, file, 15, dryRun);
 
             if (!dryRun)
             {
@@ -118,6 +174,7 @@ public static class MediaIngest
                     TrackId = track?.Id,
                     VideoUrl = string.Empty,
                     VideoKey = key,
+                    ThumbnailKey = thumbKey,
                     DurationMs = durationMs,
                     CreatedAt = DateTime.UtcNow,
                 });
@@ -129,7 +186,7 @@ public static class MediaIngest
     // ---- Podcast ------------------------------------------------------------
 
     private static async Task IngestPodcastAsync(
-        AppDbContext db, IStorageService storage, string dir, string? ffprobe, bool dryRun)
+        AppDbContext db, IStorageService storage, string dir, string? ffprobe, string? ffmpeg, bool dryRun)
     {
         if (!Directory.Exists(dir)) { Console.WriteLine($"[Podcast] folder not found: {dir} — skipping."); return; }
 
@@ -149,6 +206,7 @@ public static class MediaIngest
                 Author = "Conan O'Brien",
                 Category = "Comedy",
                 Description = $"{showTitle} — full episodes.",
+                ImageKey = await EnsurePodcastImageAsync(storage, ffmpeg, files[0], showTitle, "Conan O'Brien", dryRun),
                 CreatedAt = DateTime.UtcNow,
             };
             Console.WriteLine($"[Podcast] show '{showTitle}' not found — creating {podcast.Id}.");
@@ -199,6 +257,189 @@ public static class MediaIngest
         }
     }
 
+    // ---- Thumbnail backfill (for rows ingested before thumbnails existed) ----
+
+    private static async Task BackfillThumbnailsAsync(
+        AppDbContext db, IStorageService storage, string? ffmpeg, string videosDir, string podcastDir, bool dryRun)
+    {
+        Console.WriteLine("\n[Thumbs] backfilling missing thumbnails…");
+
+        // Music videos: match each thumbless row to its source file by cleaned title.
+        var fileByTitle = Directory.Exists(videosDir)
+            ? Directory.GetFiles(videosDir, "*.mp4").ToDictionary(f => CleanVideoTitle(Path.GetFileNameWithoutExtension(f), "Nirvana"))
+            : new Dictionary<string, string>();
+
+        var artist = await db.Artists.FirstOrDefaultAsync(a => a.Name == "Nirvana");
+        if (artist is not null)
+        {
+            var rows = await db.MusicVideos
+                .Where(v => v.ArtistId == artist.Id && v.ThumbnailKey == null)
+                .ToListAsync();
+            foreach (var v in rows)
+            {
+                if (!fileByTitle.TryGetValue(v.Title, out var src))
+                {
+                    Console.WriteLine($"[Thumbs] no source file for '{v.Title}' — skipping.");
+                    continue;
+                }
+                var key = await EnsureThumbAsync(storage, ffmpeg, src, 15, dryRun);
+                Console.WriteLine($"[Thumbs] video '{v.Title}' -> {key ?? "(none)"}");
+                if (!dryRun && key is not null) { v.ThumbnailKey = key; await db.SaveChangesAsync(); }
+            }
+        }
+
+        // Podcast: one show image from the first episode file.
+        if (Directory.Exists(podcastDir))
+        {
+            var firstWebm = Directory.GetFiles(podcastDir, "*.webm").OrderBy(NaturalKey).FirstOrDefault();
+            if (firstWebm is not null)
+            {
+                var showTitle = ShowTitleFromFile(Path.GetFileNameWithoutExtension(firstWebm));
+                var pod = await db.Podcasts.FirstOrDefaultAsync(p => p.Title == showTitle && p.ImageKey == null);
+                if (pod is not null)
+                {
+                    var key = await EnsurePodcastImageAsync(storage, ffmpeg, firstWebm, pod.Title, pod.Author, dryRun);
+                    Console.WriteLine($"[Thumbs] podcast '{pod.Title}' -> {key ?? "(none)"}");
+                    if (!dryRun && key is not null) { pod.ImageKey = key; await db.SaveChangesAsync(); }
+                }
+            }
+        }
+    }
+
+    /// <summary>Grab a single frame at <paramref name="atSeconds"/>, upload it to
+    /// <c>covers/{guid}.jpg</c>, and return the key (null if ffmpeg is missing/fails).</summary>
+    private static async Task<string?> EnsureThumbAsync(
+        IStorageService storage, string? ffmpeg, string sourceFile, int atSeconds, bool dryRun)
+    {
+        if (ffmpeg is null) return null;
+        var key = $"covers/{Guid.NewGuid():N}.jpg";
+        if (dryRun) return key;
+
+        var tmp = Path.Combine(Path.GetTempPath(), $"ns-thumb-{Guid.NewGuid():N}.jpg");
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = ffmpeg,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            foreach (var a in new[] { "-y", "-ss", atSeconds.ToString(), "-i", sourceFile,
+                                      "-frames:v", "1", "-vf", "scale=640:-2", "-q:v", "3", tmp })
+                psi.ArgumentList.Add(a);
+
+            using (var p = Process.Start(psi)!)
+            {
+                p.StandardError.ReadToEnd();
+                p.WaitForExit();
+            }
+
+            if (!File.Exists(tmp) || new FileInfo(tmp).Length == 0) return null;
+            await using (var fs = File.OpenRead(tmp))
+                await storage.UploadAsync(key, fs, "image/jpeg");
+            return key;
+        }
+        catch { return null; }
+        finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch { } }
+    }
+
+    /// <summary>Podcast cover: try a real video frame first; if the file is
+    /// audio-only (no frame), generate a branded title card instead.</summary>
+    private static async Task<string?> EnsurePodcastImageAsync(
+        IStorageService storage, string? ffmpeg, string sourceFile, string title, string author, bool dryRun)
+    {
+        var frame = await EnsureThumbAsync(storage, ffmpeg, sourceFile, 120, dryRun);
+        if (frame is not null) return frame;
+        return await GenerateTitleCardAsync(storage, ffmpeg, title, author, dryRun);
+    }
+
+    /// <summary>Render a 640×640 title-card cover with ffmpeg (lavfi color + drawtext).</summary>
+    private static async Task<string?> GenerateTitleCardAsync(
+        IStorageService storage, string? ffmpeg, string title, string author, bool dryRun)
+    {
+        if (ffmpeg is null) return null;
+        var key = $"covers/{Guid.NewGuid():N}.jpg";
+        if (dryRun) return key;
+
+        var fontBold = FindFont("seguisb.ttf", "segoeuib.ttf", "arialbd.ttf");
+        var fontReg = FindFont("segoeui.ttf", "arial.ttf");
+        if (fontBold is null || fontReg is null) return null;
+
+        var titleFile = Path.Combine(Path.GetTempPath(), $"ns-title-{Guid.NewGuid():N}.txt");
+        var authorFile = Path.Combine(Path.GetTempPath(), $"ns-auth-{Guid.NewGuid():N}.txt");
+        var outFile = Path.Combine(Path.GetTempPath(), $"ns-card-{Guid.NewGuid():N}.jpg");
+        await File.WriteAllTextAsync(titleFile, Wrap(title, 16), new System.Text.UTF8Encoding(false));
+        await File.WriteAllTextAsync(authorFile, author.ToUpperInvariant(), new System.Text.UTF8Encoding(false));
+
+        try
+        {
+            var vf =
+                $"drawtext=fontfile='{Esc(fontBold)}':textfile='{Esc(titleFile)}':fontcolor=white:" +
+                "fontsize=52:line_spacing=12:x=(w-text_w)/2:y=(h-text_h)/2-20," +
+                $"drawtext=fontfile='{Esc(fontReg)}':textfile='{Esc(authorFile)}':fontcolor=0x1DB954:" +
+                "fontsize=26:x=(w-text_w)/2:y=h-110";
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = ffmpeg,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            foreach (var a in new[] { "-y", "-f", "lavfi", "-i", "color=c=0x191427:s=640x640",
+                                      "-vf", vf, "-frames:v", "1", "-q:v", "3", outFile })
+                psi.ArgumentList.Add(a);
+
+            using (var p = Process.Start(psi)!)
+            {
+                var err = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode != 0) { Console.WriteLine($"[Thumbs] title-card ffmpeg failed: {err.Split('\n').LastOrDefault(l => l.Trim().Length > 0)}"); return null; }
+            }
+
+            if (!File.Exists(outFile) || new FileInfo(outFile).Length == 0) return null;
+            await using (var fs = File.OpenRead(outFile))
+                await storage.UploadAsync(key, fs, "image/jpeg");
+            return key;
+        }
+        catch (Exception ex) { Console.WriteLine($"[Thumbs] title-card error: {ex.Message}"); return null; }
+        finally
+        {
+            foreach (var f in new[] { titleFile, authorFile, outFile })
+                try { if (File.Exists(f)) File.Delete(f); } catch { }
+        }
+    }
+
+    // Greedy word-wrap to keep drawtext lines within ~maxChars.
+    private static string Wrap(string text, int maxChars)
+    {
+        var words = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var lines = new List<string>();
+        var cur = "";
+        foreach (var w in words)
+        {
+            if (cur.Length == 0) cur = w;
+            else if ((cur.Length + 1 + w.Length) <= maxChars) cur += " " + w;
+            else { lines.Add(cur); cur = w; }
+        }
+        if (cur.Length > 0) lines.Add(cur);
+        return string.Join("\n", lines);
+    }
+
+    private static string Esc(string path) => path.Replace('\\', '/').Replace(":", "\\:");
+
+    private static string? FindFont(params string[] names)
+    {
+        var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Fonts");
+        foreach (var n in names)
+        {
+            var p = Path.Combine(dir, n);
+            if (File.Exists(p)) return p;
+        }
+        return null;
+    }
+
     // ---- Filename / title parsing ------------------------------------------
 
     // Strip trailing " [youtubeId]", normalise the fullwidth slash, collapse spaces.
@@ -247,7 +488,7 @@ public static class MediaIngest
         return m.Success ? m.Groups[1].Value.PadLeft(6, '0') : name;
     }
 
-    // ---- ffprobe ------------------------------------------------------------
+    // ---- ffprobe / ffmpeg ---------------------------------------------------
 
     private static long ProbeDurationMs(string? ffprobe, string file)
     {
@@ -274,12 +515,12 @@ public static class MediaIngest
         catch { return 0; }
     }
 
-    private static string? ResolveFfprobe()
+    private static string? ResolveTool(string name)
     {
-        var candidates = new List<string> { "ffprobe", "ffprobe.exe" };
+        var candidates = new List<string> { name, name + ".exe" };
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (!string.IsNullOrEmpty(local))
-            candidates.Add(Path.Combine(local, "Microsoft", "WinGet", "Links", "ffprobe.exe"));
+            candidates.Add(Path.Combine(local, "Microsoft", "WinGet", "Links", name + ".exe"));
 
         foreach (var c in candidates)
         {

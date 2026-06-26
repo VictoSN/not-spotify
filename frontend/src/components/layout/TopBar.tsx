@@ -646,19 +646,19 @@ export function TopBar() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-5 text-sm font-bold text-secondary">
+        <div className="flex min-w-0 items-center justify-end gap-3 text-sm font-bold text-secondary lg:gap-5">
           <div className="hidden items-center gap-5 2xl:flex">
-            <Link to="/premium" className="transition-colors hover:text-primary">{t('topbar.premium')}</Link>
-            <InstallAppButton className="transition-colors hover:text-primary" />
-            <Link to="/support" className="transition-colors hover:text-primary">{t('topbar.support')}</Link>
+            <Link to="/premium" className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.premium')}</Link>
+            <InstallAppButton className="whitespace-nowrap transition-colors hover:text-primary" />
+            <Link to="/support" className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.support')}</Link>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
-          <Link to="/signup" className="hidden md:block transition-colors hover:text-primary">
+          <Link to="/signup" className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-primary md:block">
             {t('topbar.signUp')}
           </Link>
           <Link
             to="/login"
-            className="rounded-full bg-primary px-4 md:px-6 py-2 md:py-3 text-xs md:text-sm font-bold text-page transition-transform hover:scale-105 active:scale-95"
+            className="shrink-0 whitespace-nowrap rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95 md:px-6 md:py-3 md:text-sm"
           >
             {t('topbar.logIn')}
           </Link>

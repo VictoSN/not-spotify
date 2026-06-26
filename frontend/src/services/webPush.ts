@@ -6,9 +6,26 @@
  */
 
 import { api } from './api'
+import { ensureServiceWorkerRegistration } from '@/utils/registerSW'
 
 const VAPID_CACHE_KEY = 'ns-push-vapid-public'
 const SUB_CACHE_KEY = 'ns-push-subscribed'
+export const PUSH_ENABLED_KEY = 'ns-push-enabled'
+
+export type PushSendFailure = {
+  subscriptionId: string
+  endpoint: string
+  reason: string
+}
+
+export type PushSendReport = {
+  configured: boolean
+  subscriptions: number
+  delivered: number
+  staleRemoved: number
+  failures: PushSendFailure[]
+  failed: number
+}
 
 export function isPushSupported(): boolean {
   return typeof window !== 'undefined'
@@ -53,6 +70,7 @@ function arrayBufferToBase64(buf: ArrayBuffer | null): string {
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
   try {
+    await ensureServiceWorkerRegistration()
     return await navigator.serviceWorker.ready
   } catch {
     return null
@@ -76,7 +94,7 @@ export async function subscribeToPush(): Promise<boolean> {
   if (Notification.permission !== 'granted') return false
 
   const reg = await getRegistration()
-  if (!reg) throw new Error('No service-worker registration. Reload the page once so the dev SW takes over.')
+  if (!reg) throw new Error('No service-worker registration. Reload the page and check that /sw.js?mode=dev loads in DevTools.')
   if (!('pushManager' in reg)) throw new Error('Service worker has no PushManager. Check sw.js scope.')
 
   const vapid = await getVapidPublicKey()
@@ -95,13 +113,30 @@ export async function subscribeToPush(): Promise<boolean> {
         applicationServerKey: keyBytes,
       })
     } catch (e: unknown) {
-      // Brave disables Google's push service by default. The subscribe call
-      // either rejects outright or returns a token that never delivers.
-      // Detect the engine and tell the user where to flip the setting.
-      const isBrave = typeof (navigator as { brave?: { isBrave?: () => Promise<boolean> } }).brave?.isBrave === 'function'
+      // Browser-specific subscribe failures need targeted guidance because the
+      // raw DOMException message ("Registration failed - push service error")
+      // tells you nothing actionable. Detect the engine and translate.
+      const ua = navigator.userAgent
+      const braveApi = (navigator as { brave?: { isBrave?: () => Promise<boolean> } }).brave
+      const isBrave = braveApi?.isBrave ? await braveApi.isBrave().catch(() => false) : false
+      const isOpera = / OPR\//.test(ua) || / OPRGX\//.test(ua)
+      const isFirefox = / Firefox\//.test(ua)
       if (isBrave) {
         throw new Error(
           'Brave blocks push by default. Enable "Use Google services for push messaging" in brave://settings/privacy, then try again.',
+          { cause: e },
+        )
+      }
+      if (isOpera) {
+        throw new Error(
+          'Opera blocks push when its built-in VPN or tracker/ad blocker is on. Turn the VPN OFF in the address bar and shut tracker blocking off for localhost, then try again.',
+          { cause: e },
+        )
+      }
+      if (isFirefox) {
+        throw new Error(
+          'Firefox: check that "Block pop-up windows" and Enhanced Tracking Protection aren\'t blocking push.services.mozilla.com, then try again.',
+          { cause: e },
         )
       }
       throw e
@@ -118,6 +153,29 @@ export async function subscribeToPush(): Promise<boolean> {
   return true
 }
 
+export async function syncPushSubscriptionWithSettings(): Promise<boolean> {
+  if (!isPushSupported()) return false
+  const enabled = (() => {
+    try {
+      return localStorage.getItem(PUSH_ENABLED_KEY) !== 'false'
+    } catch {
+      return true
+    }
+  })()
+  if (!enabled) {
+    if (import.meta.env.DEV) console.info('[push] disabled by Settings; unsubscribing')
+    await unsubscribeFromPush()
+    return false
+  }
+  if (Notification.permission !== 'granted') {
+    if (import.meta.env.DEV) console.info('[push] waiting for browser notification permission', Notification.permission)
+    return false
+  }
+  const subscribed = await subscribeToPush()
+  if (import.meta.env.DEV) console.info('[push] subscription sync', subscribed ? 'ok' : 'not subscribed')
+  return subscribed
+}
+
 export async function unsubscribeFromPush(): Promise<void> {
   if (!isPushSupported()) return
   const reg = await getRegistration()
@@ -132,6 +190,23 @@ export async function unsubscribeFromPush(): Promise<void> {
 }
 
 /** POST /push/test — fires a real Web Push from the server to confirm the loop. */
-export async function sendPushTest(): Promise<void> {
-  await api.post('/push/test')
+export async function sendPushTest(): Promise<PushSendReport> {
+  let res
+  try {
+    res = await api.post<PushSendReport>('/push/test')
+  } catch (e: unknown) {
+    // The server answers non-2xx with a structured reason (503 not configured,
+    // 409 no subscriptions, 502 push service rejected). Surface it verbatim so
+    // the toast tells us *why* instead of a generic "failed".
+    const ax = e as { response?: { data?: { message?: string; report?: PushSendReport } } }
+    const data = ax.response?.data
+    const reason = data?.report?.failures?.[0]?.reason
+    const msg = data?.message ?? (e instanceof Error ? e.message : 'Server push test failed.')
+    throw new Error(reason ? `${msg} — ${reason}` : msg)
+  }
+  if (res.data.delivered === 0) {
+    const reason = res.data.failures[0]?.reason
+    throw new Error(reason ? `Push service rejected the test: ${reason}` : 'Server push test did not deliver to any subscription.')
+  }
+  return res.data
 }

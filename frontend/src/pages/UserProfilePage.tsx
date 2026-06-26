@@ -26,7 +26,10 @@ export function UserProfilePage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const friends = useFriendStore((s) => s.friends)
+  const requests = useFriendStore((s) => s.requests)
   const sendRequest = useFriendStore((s) => s.sendRequest)
+  const acceptRequest = useFriendStore((s) => s.acceptRequest)
+  const fetchRequests = useFriendStore((s) => s.fetchRequests)
   const unfriend = useFriendStore((s) => s.unfriend)
 
   const [profile, setProfile] = useState<PublicUserProfile | null>(null)
@@ -87,6 +90,15 @@ export function UserProfilePage() {
   }, [userId, isOwnProfile])
 
   const isFriend = friends.some((f) => f.userId === userId)
+  // A pending request this user sent ME — lets the profile offer "Accept" directly
+  // (the friend-request notification deep-links here).
+  const incomingRequest = userId ? requests.find((r) => r.fromUser.id === userId) : undefined
+
+  // Make sure pending requests are loaded so "Accept" can show even on a cold
+  // open straight from the notification.
+  useEffect(() => {
+    if (isAuthenticated) void fetchRequests()
+  }, [isAuthenticated, fetchRequests])
 
   useEffect(() => {
     if (!profile || !userId || !isFriend || jamRole !== 'off' || searchParams.get('joinJam') !== '1') return
@@ -108,6 +120,8 @@ export function UserProfilePage() {
     try {
       if (isFriend) {
         await unfriend(userId)
+      } else if (incomingRequest) {
+        await acceptRequest(incomingRequest.id)
       } else {
         await sendRequest(userId)
         setRequestSent(true)
@@ -231,6 +245,11 @@ export function UserProfilePage() {
             <>
               <UserMinusIcon className="w-4 h-4" />
               Unfriend
+            </>
+          ) : incomingRequest ? (
+            <>
+              <CheckIcon className="w-4 h-4" />
+              Accept request
             </>
           ) : requestSent ? (
             <>

@@ -12,6 +12,9 @@
     "core:window:allow-start-dragging",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled"
+    "autostart:allow-is-enabled",
+    "notification:default",
+    { "identifier": "fs:allow-write-file", "allow": [{ "path": "$APPCACHE/**" }] },
+    { "identifier": "fs:allow-mkdir", "allow": [{ "path": "$APPCACHE/**" }] }
   ]
 }

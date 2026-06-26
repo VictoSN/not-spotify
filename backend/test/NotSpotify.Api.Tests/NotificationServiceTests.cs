@@ -17,7 +17,11 @@ public class NotificationServiceTests
     private static (NotificationService svc, Mock<IClientProxy> proxy) NewService(NotSpotify.Api.Data.AppDbContext db)
     {
         var (hub, proxy) = TestHelpers.NewHub();
-        return (new NotificationService(db, hub, NullLogger<NotificationService>.Instance), proxy);
+        var push = new WebPushService(
+            db,
+            Microsoft.Extensions.Options.Options.Create(new WebPushOptions()),
+            NullLogger<WebPushService>.Instance);
+        return (new NotificationService(db, hub, NullLogger<NotificationService>.Instance, push), proxy);
     }
 
     [Fact]

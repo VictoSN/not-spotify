@@ -196,18 +196,17 @@ public class ChatController : ControllerBase
         // Persist a Notifications row so opt-in desktop alerts can fire from the
         // /notifications poll. Preview is body-truncated to keep it bell-sized.
         var sender = await _db.Users.FindAsync(new object[] { me }, ct);
-        if (sender is not null)
-        {
+        var senderName = sender?.Name ?? "Someone";
+        var senderAvatar = sender is null ? null : _mapper.ToRef(sender).AvatarUrl;
             var preview = body.Length > 80 ? body[..77] + "…" : body;
             await _notifications.NotifyAsync(
                 userId,
                 "chat_message",
-                $"{sender.Name} sent you a message",
+                $"{senderName} sent you a message",
                 body: preview,
-                linkUrl: $"/messages/{me}",
-                imageUrl: _mapper.ToRef(sender).AvatarUrl,
+                linkUrl: $"/messages?u={me}",
+                imageUrl: senderAvatar,
                 ct: ct);
-        }
 
         return Ok(payload);
     }

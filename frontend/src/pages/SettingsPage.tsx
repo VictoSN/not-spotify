@@ -15,14 +15,17 @@ import { useAppZoomPreference } from '@/hooks/useAppZoom'
 import { useAutostart } from '@/hooks/useAutostart'
 import {
   checkNotificationsNow,
+  fireNotification,
   isNotificationSupported,
   notificationPermission,
+  refreshNotificationPermission,
   requestNotificationPermission,
 } from '@/services/notifications'
 import { toast } from 'sonner'
 import {
   isPushSupported,
   isPushSubscribed,
+  PUSH_ENABLED_KEY,
   sendPushTest,
   subscribeToPush,
   unsubscribeFromPush,
@@ -179,7 +182,8 @@ function useMediaCacheUsage() {
     }
   }, [])
   useEffect(() => {
-    void refresh()
+    const id = window.setTimeout(() => void refresh(), 0)
+    return () => window.clearTimeout(id)
   }, [refresh])
   const clear = useCallback(async () => {
     if (typeof caches === 'undefined') return
@@ -206,7 +210,7 @@ export function SettingsPage() {
   const mediaCache = useMediaCacheUsage()
   const autostart = useAutostart()
   const notifSupported = isNotificationSupported()
-  const [notifMaster, setNotifMaster] = usePref('ns-notif-enabled', false)
+  const [notifMaster, setNotifMaster] = usePref('ns-notif-enabled', true)
   const [releaseAlerts, setReleaseAlerts] = usePref('ns-notif-release-alerts', false)
   const [friendActivityAlerts, setFriendActivityAlerts] = usePref('ns-notif-friend-activity', false)
   const [friendFollow, setFriendFollow] = usePref('ns-notif-friend-follow', true)
@@ -214,7 +218,14 @@ export function SettingsPage() {
   const [friendPlaylistSave, setFriendPlaylistSave] = usePref('ns-notif-friend-playlist-save', true)
   const [friendJam, setFriendJam] = usePref('ns-notif-friend-jam', true)
   const [notifPerm, setNotifPerm] = useState<NotificationPermission>(() => notificationPermission())
-  const pushSupported = isPushSupported()
+  // Desktop (Tauri) uses native OS notifications; Web Push (service worker) is a
+  // browser-only path, so hide that row and sync permission from the plugin.
+  const isDesktopApp = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+  useEffect(() => {
+    void refreshNotificationPermission().then(setNotifPerm)
+  }, [])
+  const pushSupported = isPushSupported() && !isDesktopApp
+  const [pushEnabled, setPushEnabled] = usePref(PUSH_ENABLED_KEY, true)
   const [pushSubscribed, setPushSubscribed] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
   useEffect(() => {
@@ -225,10 +236,12 @@ export function SettingsPage() {
     setPushBusy(true)
     try {
       if (next) {
+        setPushEnabled(true)
         const ok = await subscribeToPush()
         setPushSubscribed(ok)
         setNotifPerm(notificationPermission())
         if (!ok) {
+          setPushEnabled(false)
           toast.error(
             notificationPermission() === 'denied'
               ? 'Notifications are blocked in your browser settings.'
@@ -238,6 +251,7 @@ export function SettingsPage() {
           toast.success('Push notifications enabled.')
         }
       } else {
+        setPushEnabled(false)
         await unsubscribeFromPush()
         setPushSubscribed(false)
         toast.success('Push notifications disabled.')
@@ -260,12 +274,12 @@ export function SettingsPage() {
       try {
         // Unique tag per click — Windows collapses fixed-tag re-fires into a
         // silent Action Center update instead of a new bottom-right banner.
-        const local = new Notification('NotSpotify (local test)', {
-          body: 'If you see this bottom-right toast, OS notifications work in this browser.',
-          icon: '/icons/icon-192.png',
-          tag: `ns-local-test-${Date.now()}`,
-        })
-        local.onclick = () => window.focus()
+        await fireNotification(
+          'NotSpotify (local test)',
+          'If you see this bottom-right toast, OS notifications work in this browser.',
+          '/icons/icon-192.png',
+          '/settings',
+        )
       } catch (e) {
         console.warn('[push] local Notification failed', e)
       }
@@ -277,7 +291,8 @@ export function SettingsPage() {
         await sendPushTest()
         toast.success('Server push sent. Watch for the bottom-right toast.')
       } catch (e) {
-        toast.error('Server push failed — check backend logs.')
+        const msg = e instanceof Error ? e.message : 'Server push failed — check backend logs.'
+        toast.error(msg.length > 180 ? `${msg.slice(0, 177)}…` : msg)
         console.error('[push] server test failed', e)
       }
     } finally {
@@ -285,6 +300,19 @@ export function SettingsPage() {
     }
   }
   const masterEnabled = notifMaster && notifPerm === 'granted'
+
+  // Desktop-only: fire a native toast directly, bypassing the chat/SignalR chain
+  // so we can tell whether native delivery works at all.
+  const handleNativeTest = async () => {
+    const perm = await requestNotificationPermission()
+    setNotifPerm(perm)
+    if (perm !== 'granted') {
+      toast.error('Allow notifications first (Windows may have blocked it).')
+      return
+    }
+    await fireNotification('NotSpotify', 'Native notifications are working 🎉', '/icons/icon-192.png', '/')
+    toast.success('Test sent — watch for a Windows toast (Action Center if not on screen).')
+  }
 
   const handleMasterToggle = async (next: boolean) => {
     if (next) {
@@ -530,19 +558,30 @@ export function SettingsPage() {
                   : 'Ask your browser for permission to show notifications from NotSpotify.'
             }
             control={
-              <Switch
-                label="Allow notifications"
-                checked={masterEnabled}
-                disabled={notifPerm === 'denied'}
-                onChange={(v) => void handleMasterToggle(v)}
-              />
+              <div className="flex items-center gap-2">
+                {isDesktopApp && (
+                  <button
+                    type="button"
+                    onClick={() => void handleNativeTest()}
+                    className="rounded-full border border-secondary/40 px-3 py-1 text-xs font-bold text-primary transition-colors hover:border-primary"
+                  >
+                    Send test
+                  </button>
+                )}
+                <Switch
+                  label="Allow notifications"
+                  checked={masterEnabled}
+                  disabled={notifPerm === 'denied'}
+                  onChange={(v) => void handleMasterToggle(v)}
+                />
+              </div>
             }
           />
           {pushSupported && (
             <Row
               label="Push notifications"
               sub={
-                pushSubscribed
+                pushEnabled && pushSubscribed
                   ? 'On — your browser/OS will receive alerts from NotSpotify even when the tab is closed.'
                   : 'Receive desktop/mobile alerts via Web Push, delivered by the server even when NotSpotify is closed.'
               }
@@ -559,7 +598,7 @@ export function SettingsPage() {
                   </button>
                   <Switch
                     label="Push notifications"
-                    checked={pushSubscribed}
+                    checked={pushEnabled && pushSubscribed}
                     disabled={pushBusy || notifPerm === 'denied'}
                     onChange={(v) => void handlePushToggle(v)}
                   />

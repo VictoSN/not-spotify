@@ -11,6 +11,7 @@
 
 import { notificationService } from './notificationService'
 import { useAuthStore } from '@/stores/authStore'
+import type { AppNotification } from '@/types/notification'
 
 export const NOTIF_MASTER_KEY = 'ns-notif-enabled'
 export const NOTIF_RELEASE_KEY = 'ns-notif-release-alerts'
@@ -31,22 +32,141 @@ type FriendActivityKey = keyof typeof FRIEND_ACTIVITY_TYPES
 
 const POLL_INTERVAL_MS = 60 * 1000 // 60s — backend creates notifications in real time; this is the catch-up gap.
 
+type ShowNotificationOptions = NotificationOptions & {
+  renotify?: boolean
+}
+
+// Inside the Tauri desktop shell the browser Notification/Service-Worker/Push
+// APIs don't work (WebView2 never grants Notification.requestPermission and has
+// no service worker), so we route through the native notification plugin
+// instead — same isTauri pattern as useAutostart.
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+// The plugin's permission check is async; cache it so the synchronous
+// notificationPermission() callers (Settings init, masterEnabled) keep working.
+let tauriPermCache: NotificationPermission = 'default'
+
 export function isNotificationSupported(): boolean {
-  return typeof window !== 'undefined' && 'Notification' in window
+  return isTauri || (typeof window !== 'undefined' && 'Notification' in window)
 }
 
 export function notificationPermission(): NotificationPermission {
-  if (!isNotificationSupported()) return 'denied'
+  if (isTauri) return tauriPermCache
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'denied'
   return Notification.permission
 }
 
+/**
+ * Refresh the cached desktop permission from the native plugin. No-op (returns
+ * the live browser value) outside Tauri. Call on mount so the UI reflects the
+ * real state. `isPermissionGranted()` is boolean, so a non-granted result maps
+ * to 'default' — the user can then request it.
+ */
+export async function refreshNotificationPermission(): Promise<NotificationPermission> {
+  if (!isTauri) return notificationPermission()
+  try {
+    const { isPermissionGranted } = await import('@tauri-apps/plugin-notification')
+    tauriPermCache = (await isPermissionGranted()) ? 'granted' : 'default'
+  } catch {
+    /* plugin unavailable — leave cache as-is */
+  }
+  return tauriPermCache
+}
+
 export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (isTauri) {
+    try {
+      const { isPermissionGranted, requestPermission } = await import('@tauri-apps/plugin-notification')
+      let granted = await isPermissionGranted()
+      if (!granted) granted = (await requestPermission()) === 'granted'
+      tauriPermCache = granted ? 'granted' : 'denied'
+    } catch {
+      tauriPermCache = 'denied'
+    }
+    return tauriPermCache
+  }
   if (!isNotificationSupported()) return 'denied'
   if (Notification.permission !== 'default') return Notification.permission
   try {
     return await Notification.requestPermission()
   } catch {
     return Notification.permission
+  }
+}
+
+// Windows toasts can't load a remote avatar URL (the OS renders them, not the
+// webview) — like WhatsApp, we cache the image to a local file and point the
+// toast at that path. Keyed by URL so each avatar is fetched/written only once.
+const tauriIconCache = new Map<string, string>()
+
+function hashUrl(url: string): string {
+  let h = 0
+  for (let i = 0; i < url.length; i++) h = (Math.imul(31, h) + url.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
+
+/**
+ * Download an avatar URL, normalise it to a small PNG via canvas (dodges webp /
+ * unknown-format issues), write it under AppCache, and return the absolute path
+ * the toast can read. Returns undefined on any failure so the toast still fires
+ * text-only.
+ */
+async function cacheIconForTauri(url: string | null | undefined): Promise<string | undefined> {
+  if (!url || !/^https?:\/\//i.test(url)) return undefined
+  const cached = tauriIconCache.get(url)
+  if (cached) return cached
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return undefined
+    const bitmap = await createImageBitmap(await res.blob())
+    const size = 128
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return undefined
+    ctx.drawImage(bitmap, 0, 0, size, size)
+    const pngBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!pngBlob) return undefined
+    const bytes = new Uint8Array(await pngBlob.arrayBuffer())
+
+    const { writeFile, mkdir, BaseDirectory } = await import('@tauri-apps/plugin-fs')
+    const { appCacheDir, join } = await import('@tauri-apps/api/path')
+    // The app cache dir may not exist yet on a fresh install, and writeFile
+    // won't create it — make the subdir first (recursive, ignore "already exists").
+    const dir = 'notif-icons'
+    await mkdir(dir, { baseDir: BaseDirectory.AppCache, recursive: true }).catch(() => {})
+    const fileName = `notif-avatar-${hashUrl(url)}.png`
+    await writeFile(`${dir}/${fileName}`, bytes, { baseDir: BaseDirectory.AppCache })
+    const abs = await join(await appCacheDir(), dir, fileName)
+    tauriIconCache.set(url, abs)
+    return abs
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[notifications] avatar cache failed', e)
+    return undefined
+  }
+}
+
+/** Fire a native OS notification through the Tauri plugin (desktop build only). */
+async function fireTauriNotification(title: string, body: string, iconUrl?: string | null) {
+  try {
+    const { isPermissionGranted, requestPermission, sendNotification } = await import('@tauri-apps/plugin-notification')
+    let granted = await isPermissionGranted()
+    if (!granted) granted = (await requestPermission()) === 'granted'
+    tauriPermCache = granted ? 'granted' : 'denied'
+    if (!granted) return
+    const icon = await cacheIconForTauri(iconUrl)
+    // Windows: use our native command so the sender's avatar actually renders —
+    // the notification plugin can't show images on Windows. Fall back to the
+    // plugin (text-only) on other platforms or if the command errors.
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('notify_native', { title, body: body || '', icon: icon ?? null })
+    } catch {
+      sendNotification({ title, body: body || undefined })
+    }
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[notifications] tauri sendNotification failed', e)
   }
 }
 
@@ -58,10 +178,40 @@ function readBool(key: string): boolean {
   }
 }
 
-function fireNotification(title: string, body: string, icon?: string | null, link?: string | null) {
-  if (!isNotificationSupported() || Notification.permission !== 'granted') return
+async function showServiceWorkerNotification(title: string, body: string, icon?: string | null, link?: string | null) {
+  if (!('serviceWorker' in navigator)) return false
   try {
-    const n = new Notification(title, { body, icon: icon ?? undefined })
+    const reg = await navigator.serviceWorker.ready
+    const options: ShowNotificationOptions = {
+      body,
+      icon: icon ?? '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      tag: `ns-local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      renotify: true,
+      data: { url: link ?? '/' },
+    }
+    await reg.showNotification(title, options)
+    return true
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[notifications] service-worker showNotification failed', e)
+    return false
+  }
+}
+
+export async function fireNotification(title: string, body: string, icon?: string | null, link?: string | null) {
+  // Desktop shell: go straight to the native plugin (no SW / web Notification).
+  if (isTauri) {
+    void fireTauriNotification(title, body, icon)
+    return
+  }
+  if (!isNotificationSupported() || Notification.permission !== 'granted') return
+  if (await showServiceWorkerNotification(title, body, icon, link)) return
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: icon ?? undefined,
+      tag: `ns-local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    })
     if (link) {
       n.onclick = () => {
         window.focus()
@@ -71,6 +221,27 @@ function fireNotification(title: string, body: string, icon?: string | null, lin
   } catch {
     /* gesture / quota — ignore */
   }
+}
+
+export function fireOsNotification(item: AppNotification) {
+  const enabled = (() => {
+    try {
+      const masterOn = window.localStorage.getItem(NOTIF_MASTER_KEY) !== 'false'
+      // 'ns-push-enabled' is the browser-only Web Push toggle. In the Tauri
+      // desktop app there's no push, and a failed push-subscribe can leave that
+      // flag 'false' — which must NOT suppress native notifications. So only let
+      // it gate the realtime OS banner in the browser build.
+      const pushOn = isTauri || window.localStorage.getItem('ns-push-enabled') !== 'false'
+      return masterOn && pushOn
+    } catch {
+      return true
+    }
+  })()
+  if (!enabled) return
+  if (import.meta.env.DEV) {
+    console.info('[notifications] realtime OS notification', item.type, item.title)
+  }
+  void fireNotification(item.title, item.body ?? '', item.imageUrl, item.linkUrl)
 }
 
 async function pollNewReleases() {
@@ -103,7 +274,7 @@ async function pollNewReleases() {
       if (item.id === lastSeen) seenLast = true
       continue
     }
-    fireNotification(item.title, item.body ?? '', item.imageUrl, item.linkUrl)
+    void fireNotification(item.title, item.body ?? '', item.imageUrl, item.linkUrl)
     newestId = item.id
   }
 
@@ -154,7 +325,7 @@ async function pollFriendActivity() {
       if (item.id === lastSeen) seenLast = true
       continue
     }
-    fireNotification(item.title, item.body ?? '', item.imageUrl, item.linkUrl)
+    void fireNotification(item.title, item.body ?? '', item.imageUrl, item.linkUrl)
     newestId = item.id
   }
 
@@ -171,6 +342,7 @@ let timer: ReturnType<typeof setInterval> | null = null
 /** Kick off the polling loop. Idempotent — safe to call from App init. */
 export function startNotificationLoop() {
   if (typeof window === 'undefined' || timer != null) return
+  void refreshNotificationPermission()
   setTimeout(() => { void pollNewReleases(); void pollFriendActivity() }, 3000)
   timer = setInterval(() => { void pollNewReleases(); void pollFriendActivity() }, POLL_INTERVAL_MS)
 }

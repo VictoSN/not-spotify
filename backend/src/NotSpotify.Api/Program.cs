@@ -222,8 +222,14 @@ builder.Services.AddHttpClient<TicketmasterService>();
 builder.Services.AddScoped<TourSyncService>();
 builder.Services.AddHostedService<TourSyncBackgroundService>();
 
-var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? new[] { "http://localhost:5173" };
+var corsOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?? new[] { "http://localhost:5173" })
+    // The packaged Tauri desktop app serves from a custom origin (not localhost:5173),
+    // so it must be allowed explicitly or its API + SignalR calls are CORS-blocked.
+    // Windows uses http(s)://tauri.localhost; macOS/Linux use tauri://localhost.
+    .Concat(new[] { "http://tauri.localhost", "https://tauri.localhost", "tauri://localhost" })
+    .Distinct()
+    .ToArray();
 
 builder.Services.AddCors(opt =>
 {

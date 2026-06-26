@@ -110,7 +110,11 @@ internal static class TestHelpers
     public static NotificationService NewNotifications(AppDbContext db)
     {
         var (hub, _) = NewHub();
-        return new NotificationService(db, hub, NullLogger<NotificationService>.Instance);
+        var push = new WebPushService(
+            db,
+            Microsoft.Extensions.Options.Options.Create(new WebPushOptions()),
+            NullLogger<WebPushService>.Instance);
+        return new NotificationService(db, hub, NullLogger<NotificationService>.Instance, push);
     }
 
     /// <summary>Attaches a ClaimsPrincipal carrying the given user id (and optional roles) to a controller.</summary>

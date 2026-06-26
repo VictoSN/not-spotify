@@ -4,11 +4,18 @@
 // handlers are still installed so Web Push works during development.
 //
 // Kept tiny and side-effect-isolated so it can be called once from main.tsx.
-export function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return
+let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null
+
+export function serviceWorkerUrl() {
+  return import.meta.env.PROD ? '/sw.js' : '/sw.js?mode=dev'
+}
+
+export function ensureServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return Promise.resolve(null)
+  if (registrationPromise) return registrationPromise
 
   const isDev = !import.meta.env.PROD
-  const swUrl = isDev ? '/sw.js?mode=dev' : '/sw.js'
+  const swUrl = serviceWorkerUrl()
 
   // One-time cleanup: an older non-dev-aware SW left over from a prior
   // `npm run preview` would still intercept module URLs and white-screen
@@ -30,17 +37,16 @@ export function registerServiceWorker() {
             .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
             Promise.resolve(),
         ]).finally(() => window.location.reload())
-        return
+        return Promise.resolve(null)
       }
     } else {
       sessionStorage.removeItem('ns-sw-dev-reloaded')
     }
   }
 
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register(swUrl, { scope: '/' })
-      .then((registration) => {
+  registrationPromise = navigator.serviceWorker
+    .register(swUrl, { scope: '/' })
+    .then((registration) => {
         // When a new SW is found, let it activate; it claims clients on the next
         // navigation. We deliberately don't auto-reload to avoid disrupting
         // playback mid-session.
@@ -56,9 +62,18 @@ export function registerServiceWorker() {
             }
           })
         })
-      })
-      .catch(() => {
+      return registration
+    })
+    .catch(() => {
         // Registration failures are non-fatal — the app still works online.
-      })
+      return null
+    })
+
+  return registrationPromise
+}
+
+export function registerServiceWorker() {
+  window.addEventListener('load', () => {
+    void ensureServiceWorkerRegistration()
   })
 }

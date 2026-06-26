@@ -14,6 +14,18 @@ public class WebPushOptions
     public string VapidSubject { get; set; } = "mailto:admin@notspotify.local";
 }
 
+public record WebPushSendFailure(Guid SubscriptionId, string Endpoint, string Reason);
+
+public record WebPushSendReport(
+    bool Configured,
+    int Subscriptions,
+    int Delivered,
+    int StaleRemoved,
+    IReadOnlyList<WebPushSendFailure> Failures)
+{
+    public int Failed => Failures.Count;
+}
+
 /// <summary>
 /// Sends Web Push messages to every PushSubscription a user has registered.
 /// Best-effort: a failed delivery (e.g. browser unsubscribed) deletes the
@@ -40,7 +52,7 @@ public class WebPushService
 
     public string? PublicKey => _opts.VapidPublic;
 
-    public async Task SendToUserAsync(
+    public async Task<WebPushSendReport> SendToUserAsync(
         Guid userId,
         string title,
         string body,
@@ -49,12 +61,14 @@ public class WebPushService
         string? tag = null,
         CancellationToken ct = default)
     {
-        if (!IsConfigured) return;
+        if (!IsConfigured)
+            return new WebPushSendReport(false, 0, 0, 0, Array.Empty<WebPushSendFailure>());
 
         var subs = await _db.PushSubscriptions
             .Where(s => s.UserId == userId)
             .ToListAsync(ct);
-        if (subs.Count == 0) return;
+        if (subs.Count == 0)
+            return new WebPushSendReport(true, 0, 0, 0, Array.Empty<WebPushSendFailure>());
 
         var payload = JsonSerializer.Serialize(new
         {
@@ -67,6 +81,8 @@ public class WebPushService
 
         var vapid = new VapidDetails(_opts.VapidSubject, _opts.VapidPublic, _opts.VapidPrivate);
         var stale = new List<Guid>();
+        var failures = new List<WebPushSendFailure>();
+        var delivered = 0;
 
         foreach (var s in subs)
         {
@@ -74,6 +90,7 @@ public class WebPushService
             {
                 var ps = new WebPush.PushSubscription(s.Endpoint, s.P256dh, s.AuthSecret);
                 await _client.SendNotificationAsync(ps, payload, vapid);
+                delivered++;
             }
             catch (WebPushException ex) when (
                 ex.StatusCode == System.Net.HttpStatusCode.NotFound ||
@@ -81,8 +98,15 @@ public class WebPushService
             {
                 stale.Add(s.Id);
             }
+            catch (WebPushException ex)
+            {
+                var reason = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+                failures.Add(new WebPushSendFailure(s.Id, s.Endpoint, reason));
+                _logger.LogWarning(ex, "Web push send failed for {SubId}", s.Id);
+            }
             catch (Exception ex)
             {
+                failures.Add(new WebPushSendFailure(s.Id, s.Endpoint, ex.Message));
                 _logger.LogWarning(ex, "Web push send failed for {SubId}", s.Id);
             }
         }
@@ -93,5 +117,7 @@ public class WebPushService
                 .Where(s => stale.Contains(s.Id))
                 .ExecuteDeleteAsync(ct);
         }
+
+        return new WebPushSendReport(true, subs.Count, delivered, stale.Count, failures);
     }
 }

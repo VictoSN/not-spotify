@@ -22,6 +22,15 @@ public class PresenceHub : Hub
     // If you scale to multiple server instances, replace with Redis or similar.
     private static readonly ConcurrentDictionary<Guid, int> _connectionCounts = new();
 
+    /// <summary>
+    /// True when the user has at least one live SignalR connection (any tab).
+    /// Used to avoid double notifications: when a user is online the realtime
+    /// "NotificationReceived" event already shows the OS banner, so the server
+    /// skips the redundant Web Push (whose purpose is closed-app delivery).
+    /// </summary>
+    public static bool IsUserOnline(Guid userId) =>
+        _connectionCounts.TryGetValue(userId, out var count) && count > 0;
+
     private readonly AppDbContext _db;
 
     public PresenceHub(AppDbContext db) => _db = db;

@@ -4,7 +4,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { fireOsNotification } from '@/services/notifications'
 import type { ChatMessage } from '@/types/chat'
+import type { AppNotification } from '@/types/notification'
 
 /**
  * Opens a SignalR WebSocket connection to /hubs/presence.
@@ -78,7 +80,14 @@ export function usePresenceSocket() {
     })
 
     // A new in-app notification arrived — refresh the bell list/badge.
-    connection.on('NotificationReceived', () => {
+    connection.on('NotificationReceived', (notification?: AppNotification) => {
+      if (notification) {
+        if (import.meta.env.DEV) {
+          console.info('[Presence] NotificationReceived', notification.type, notification.title)
+        }
+        useNotificationStore.getState().receive(notification)
+        fireOsNotification(notification)
+      }
       void useNotificationStore.getState().fetch()
     })
 

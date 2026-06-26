@@ -15,7 +15,7 @@ public class ChatControllerTests
         await using var db = TestHelpers.NewDb();
         var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
         var action = await controller.Send(me, new SendChatMessageDto("hello"));
 
@@ -32,7 +32,7 @@ public class ChatControllerTests
         var friend = Guid.NewGuid();
         db.AddFriendship(me, friend);
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
         var action = await controller.Send(friend, new SendChatMessageDto("   "));
 
@@ -47,7 +47,7 @@ public class ChatControllerTests
         var (hub, proxy) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
         var stranger = Guid.NewGuid();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
         var action = await controller.Send(stranger, new SendChatMessageDto("hi"));
 
@@ -67,7 +67,7 @@ public class ChatControllerTests
         var friend = Guid.NewGuid();
         db.AddFriendship(me, friend);
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
         var action = await controller.Send(friend, new SendChatMessageDto("  hey there  "));
 
@@ -80,6 +80,13 @@ public class ChatControllerTests
         var stored = Assert.Single(db.ChatMessages);
         Assert.Equal("hey there", stored.Body);
         Assert.Null(stored.ReadAt);
+
+        var notification = Assert.Single(db.Notifications);
+        Assert.Equal(friend, notification.UserId);
+        Assert.Equal("chat_message", notification.Type);
+        Assert.Equal("Someone sent you a message", notification.Title);
+        Assert.Equal("hey there", notification.Body);
+        Assert.Equal($"/messages/{me}", notification.LinkUrl);
 
         // A "ChatMessage" push went to both the recipient and the sender's own group.
         proxy.Verify(
@@ -94,7 +101,7 @@ public class ChatControllerTests
         var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
         var stranger = Guid.NewGuid();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
         var action = await controller.GetThread(stranger);
 

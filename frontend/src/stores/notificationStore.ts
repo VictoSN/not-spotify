@@ -7,6 +7,7 @@ interface NotificationState {
   items: AppNotification[]
   unreadCount: number
   fetch: () => Promise<void>
+  receive: (notification: AppNotification) => void
   markRead: (id: string) => Promise<void>
   markAllRead: () => Promise<void>
   clearAll: () => Promise<void>
@@ -23,6 +24,19 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     } catch {
       /* ignore — network blip / not logged in */
     }
+  },
+
+  receive: (notification) => {
+    set((s) => {
+      const existed = s.items.some((n) => n.id === notification.id)
+      const items = existed
+        ? s.items.map((n) => (n.id === notification.id ? notification : n))
+        : [notification, ...s.items].slice(0, 50)
+      return {
+        items,
+        unreadCount: existed || notification.isRead ? s.unreadCount : s.unreadCount + 1,
+      }
+    })
   },
 
   markRead: async (id) => {

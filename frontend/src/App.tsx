@@ -9,6 +9,7 @@ import { AppToaster } from '@/components/ui/AppToaster'
 import { ConfirmProvider } from '@/components/common/ConfirmDialog'
 import { useAppZoomShortcuts } from '@/hooks/useAppZoom'
 import { startNotificationLoop } from '@/services/notifications'
+import { syncPushSubscriptionWithSettings } from '@/services/webPush'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -21,6 +22,24 @@ export default function App() {
 
   useEffect(() => {
     startNotificationLoop()
+  }, [])
+
+  useEffect(() => {
+    const sync = () => {
+      if (useAuthStore.getState().isAuthenticated) {
+        void syncPushSubscriptionWithSettings()
+      }
+    }
+    sync()
+    const unsubAuth = useAuthStore.subscribe((state, prev) => {
+      if (state.isAuthenticated && state.user?.id !== prev.user?.id) sync()
+      if (!state.isAuthenticated && prev.isAuthenticated) sync()
+    })
+    window.addEventListener('ns-pref-change', sync)
+    return () => {
+      unsubAuth()
+      window.removeEventListener('ns-pref-change', sync)
+    }
   }, [])
 
   // Spotify-style: suppress the browser's native right-click menu app-wide so

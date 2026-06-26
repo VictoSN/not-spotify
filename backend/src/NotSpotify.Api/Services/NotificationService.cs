@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
+using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
 
@@ -27,6 +28,16 @@ public class NotificationService
         _push = push;
     }
 
+    private static NotificationDto ToDto(Notification notification) => new(
+        notification.Id.ToString(),
+        notification.Type,
+        notification.Title,
+        notification.Body,
+        notification.LinkUrl,
+        notification.ImageUrl,
+        notification.IsRead,
+        notification.CreatedAt);
+
     public async Task NotifyAsync(
         Guid userId,
         string type,
@@ -38,7 +49,7 @@ public class NotificationService
     {
         try
         {
-            _db.Notifications.Add(new Notification
+            var notification = new Notification
             {
                 UserId = userId,
                 Type = type,
@@ -46,15 +57,44 @@ public class NotificationService
                 Body = body,
                 LinkUrl = linkUrl,
                 ImageUrl = imageUrl,
-            });
+            };
+            _db.Notifications.Add(notification);
             await _db.SaveChangesAsync(ct);
 
             // Live nudge — the client refetches the list/badge on this event.
-            await _hub.Clients.Group($"user-{userId}").SendAsync("NotificationReceived", ct);
+            await _hub.Clients.Group($"user-{userId}").SendAsync(
+                "NotificationReceived",
+                ToDto(notification),
+                ct);
 
-            // Real OS-level push (fires even when the tab/app is closed). The
-            // payload format mirrors what /public/sw.js expects to render.
-            await _push.SendToUserAsync(userId, title, body ?? string.Empty, linkUrl, imageUrl, tag: type, ct: ct);
+            // Real OS-level push (fires even when the tab/app is closed). Skip it
+            // when the user is online — the realtime "NotificationReceived" event
+            // above already shows the OS banner, so pushing too would double it.
+            // The payload format mirrors what /public/sw.js expects to render.
+            if (PresenceHub.IsUserOnline(userId))
+            {
+                _logger.LogDebug("Web push skipped for {Type} to {UserId}: user online (realtime handles it)", type, userId);
+                return;
+            }
+
+            var report = await _push.SendToUserAsync(userId, title, body ?? string.Empty, linkUrl, imageUrl, tag: type, ct: ct);
+            if (!report.Configured)
+            {
+                _logger.LogDebug("Web push skipped for {Type} to {UserId}: not configured", type, userId);
+            }
+            else if (report.Subscriptions == 0)
+            {
+                _logger.LogInformation("Web push skipped for {Type} to {UserId}: no subscriptions", type, userId);
+            }
+            else if (report.Delivered == 0)
+            {
+                _logger.LogWarning(
+                    "Web push did not deliver for {Type} to {UserId}: {Failed} failed, {Stale} stale removed",
+                    type,
+                    userId,
+                    report.Failed,
+                    report.StaleRemoved);
+            }
         }
         catch (Exception ex)
         {
@@ -90,21 +130,24 @@ public class NotificationService
                 : repost.PlaylistId is not null ? $"/playlist/{repost.PlaylistId}"
                 : null;
 
-            _db.Notifications.AddRange(followerIds.Select(fid => new Notification
+            var notifications = followerIds.Select(fid => new Notification
             {
                 UserId = fid,
                 Type = "repost",
                 Title = $"{user.Name} reposted {description}",
                 LinkUrl = link,
                 ImageUrl = user.AvatarUrl,
-            }));
+            }).ToList();
+            _db.Notifications.AddRange(notifications);
 
             await _db.SaveChangesAsync(ct);
 
-            foreach (var fid in followerIds)
+            foreach (var notification in notifications)
             {
-                await _hub.Clients.Group($"user-{fid}").SendAsync("NotificationReceived", ct);
-                await _push.SendToUserAsync(fid, $"{user.Name} reposted {description}", "", link, user.AvatarUrl, tag: "repost", ct: ct);
+                await _hub.Clients.Group($"user-{notification.UserId}").SendAsync("NotificationReceived", ToDto(notification), ct);
+                // Only push to followers who are offline — online ones get the realtime banner.
+                if (!PresenceHub.IsUserOnline(notification.UserId))
+                    await _push.SendToUserAsync(notification.UserId, $"{user.Name} reposted {description}", "", link, user.AvatarUrl, tag: "repost", ct: ct);
             }
         }
         catch (Exception ex)
@@ -150,7 +193,7 @@ public class NotificationService
                 ? "New track from an artist you follow."
                 : "New release from an artist you follow.";
 
-            _db.Notifications.AddRange(followerIds.Select(userId => new Notification
+            var notifications = followerIds.Select(userId => new Notification
             {
                 UserId = userId,
                 Type = "new_release",
@@ -158,14 +201,17 @@ public class NotificationService
                 Body = body,
                 LinkUrl = linkUrl,
                 ImageUrl = imageUrl,
-            }));
+            }).ToList();
+            _db.Notifications.AddRange(notifications);
 
             await _db.SaveChangesAsync(ct);
 
-            foreach (var userId in followerIds)
+            foreach (var notification in notifications)
             {
-                await _hub.Clients.Group($"user-{userId}").SendAsync("NotificationReceived", ct);
-                await _push.SendToUserAsync(userId, title, body, linkUrl, imageUrl, tag: "new_release", ct: ct);
+                await _hub.Clients.Group($"user-{notification.UserId}").SendAsync("NotificationReceived", ToDto(notification), ct);
+                // Only push to followers who are offline — online ones get the realtime banner.
+                if (!PresenceHub.IsUserOnline(notification.UserId))
+                    await _push.SendToUserAsync(notification.UserId, title, body, linkUrl, imageUrl, tag: "new_release", ct: ct);
             }
         }
         catch (Exception ex)

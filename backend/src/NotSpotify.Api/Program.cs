@@ -35,6 +35,15 @@ if (args.Contains("migrate-storage"))
     return;
 }
 
+// One-off bulk ingest (`dotnet run -- ingest-media [--dry-run]`): uploads the
+// repo-root "Music Videos/" and "Podcast/" folders to S3 and inserts the matching
+// MusicVideo / Podcast + Episode rows. Short-circuits before the web host.
+if (args.Contains("ingest-media"))
+{
+    await MediaIngest.RunAsync(builder.Configuration, args);
+    return;
+}
+
 // One-time S3 CORS setup (`dotnet run -- ensure-s3-cors`): lets the browser read
 // bucket objects cross-origin so client-side dominant-colour extraction (the page
 // gradient hues) works. Needs s3:PutBucketCors on the bucket. Idempotent.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon } from '@heroicons/react/24/solid'
@@ -30,6 +30,9 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { TrackTile } from '@/components/cards/TrackTile'
 import { MixTile } from '@/components/cards/MixTile'
+import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
+import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
+import { openMenuAtPointer } from '@/utils/contextMenu'
 import { Spinner } from '@/components/ui/Spinner'
 import type { DailyMix } from '@/services/trackService'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -446,21 +449,7 @@ export function HomePage() {
             <SectionHeader title={t('home.section.podcasts')} href="/podcasts" variant="home" />
             <HorizontalScroller>
               {podcasts.map((p) => (
-                <Link
-                  key={p.id}
-                  to={`/podcasts/${p.id}`}
-                  className="group w-40 shrink-0 rounded-lg transition-colors"
-                >
-                  <div className="mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <MicrophoneIcon className="h-10 w-10 text-secondary/60" />
-                    )}
-                  </div>
-                  <div className="truncate font-normal text-primary">{p.title}</div>
-                  <div className="truncate text-sm text-secondary">{p.author}</div>
-                </Link>
+                <HomePodcastTile key={p.id} podcast={p} />
               ))}
             </HorizontalScroller>
           </section>
@@ -472,24 +461,72 @@ export function HomePage() {
             <SectionHeader title={t('home.section.musicVideos')} href="/videos" variant="home" />
             <HorizontalScroller>
               {musicVideos.map((v) => (
-                <Link key={v.id} to={`/videos/${v.id}`} className="group w-64 shrink-0 rounded-lg transition-colors">
-                  <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
-                    {v.thumbnailUrl
-                      ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />
-                      : <FilmIcon className="h-8 w-8 text-secondary/60" />}
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-page">
-                        <PlayIcon className="h-5 w-5 translate-x-[1px]" />
-                      </span>
-                    </div>
-                  </div>
-                  <div className="truncate px-1 font-normal text-primary">{v.title}</div>
-                  <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
-                </Link>
+                <HomeVideoTile key={v.id} video={v} queue={musicVideos} />
               ))}
             </HorizontalScroller>
           </section>
         )}
+      </div>
+    </div>
+  )
+}
+
+function HomePodcastTile({ podcast: p }: { podcast: PodcastSummary }) {
+  const menuRef = useRef<PodcastMenuHandle>(null)
+  return (
+    <div
+      className="group relative w-40 shrink-0"
+      onContextMenu={(e) => openMenuAtPointer(e, menuRef)}
+    >
+      <Link to={`/podcasts/${p.id}`} className="block rounded-lg transition-colors">
+        <div className="mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated">
+          {p.imageUrl ? (
+            <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
+          ) : (
+            <MicrophoneIcon className="h-10 w-10 text-secondary/60" />
+          )}
+        </div>
+        <div className="truncate font-normal text-primary">{p.title}</div>
+        <div className="truncate text-sm text-secondary">{p.author}</div>
+      </Link>
+      <div className="absolute right-2 top-2">
+        <PodcastMenu
+          ref={menuRef}
+          podcast={p}
+          triggerClassName="rounded-full bg-black/60 p-1.5 backdrop-blur-sm"
+        />
+      </div>
+    </div>
+  )
+}
+
+function HomeVideoTile({ video: v, queue }: { video: MusicVideo; queue: MusicVideo[] }) {
+  const menuRef = useRef<VideoMenuHandle>(null)
+  return (
+    <div
+      className="group relative w-64 shrink-0"
+      onContextMenu={(e) => openMenuAtPointer(e, menuRef)}
+    >
+      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} className="block rounded-lg transition-colors">
+        <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
+          {v.thumbnailUrl
+            ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />
+            : <FilmIcon className="h-8 w-8 text-secondary/60" />}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-page">
+              <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+            </span>
+          </div>
+        </div>
+        <div className="truncate px-1 font-normal text-primary">{v.title}</div>
+        <div className="truncate px-1 text-sm text-secondary">{v.artist.name}</div>
+      </Link>
+      <div className="absolute right-2 top-2">
+        <VideoMenu
+          ref={menuRef}
+          video={v}
+          triggerClassName="rounded-full bg-black/60 p-1.5 backdrop-blur-sm"
+        />
       </div>
     </div>
   )

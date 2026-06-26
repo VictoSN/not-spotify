@@ -109,12 +109,13 @@ export function AppShell() {
     <div className="flex h-full flex-col bg-base text-primary">
       <TopBar />
 
-      {/* Middle row: floating rounded cards on the black base gutter. Equal padding on
-          all four sides (incl. the top, below the header) keeps every panel's rounded
-          top edge clearly separated from the header and aligned with its neighbours. */}
+      {/* Middle row: floating rounded cards on the black base gutter. The top gutter is
+          kept minimal (pt-0.5) so the dark band above the cards is essentially just the
+          header — otherwise an 8px base-coloured strip below the header reads as part of
+          it and makes the centered search bar look like it floats too high. */}
       <div
         className={cn(
-          'flex flex-1 px-2 pb-2 pt-2 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
+          'flex flex-1 px-2 pb-2 pt-0.5 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
           nowPlayingExpandedVisible ? 'gap-0' : 'gap-2',
         )}
       >

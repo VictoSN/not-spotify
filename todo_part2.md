@@ -173,17 +173,25 @@ Tests (this session):
 Goal: implement (or properly gate) the greyed-out / "coming soon" items in
 Settings/Account so they're either functional or clearly, intentionally disabled.
 
-- [ ] Inventory every "coming soon"/greyed-out control in Settings & Account and decide per item: implement vs. keep-disabled-with-reason.
-- [ ] Implement the agreed subset; for the rest, make the disabled state consistent and accessible (tooltip/aria-disabled), not just visually faded.
+- [x] Inventory every "coming soon"/greyed-out control in Settings & Account and decide per item: implement vs. keep-disabled-with-reason.
+- [x] Implement the agreed subset; for the rest, make the disabled state consistent and accessible (tooltip/aria-disabled), not just visually faded.
+
+Decisions per row (commit `22f0809d`):
+- [x] **Private listening** (Privacy) — implemented. `ns-pref-private-listening` gates `POST /me/plays` in `playerStore.recordPlay`, so no PlayHistory rows or LastSeenAt bumps while on.
+- [x] **Media cache** (Storage and cache) — implemented. Live `navigator.storage.estimate()` readout + working **Clear cache** button via the Cache Storage API.
+- [x] **Open at login** (Display, Tauri-only) — implemented. `tauri-plugin-autostart` added to Cargo + capabilities; `useAutostart` hook lazy-imports `@tauri-apps/plugin-autostart` and hides the row in the browser build (no fake control surface).
+- [x] **Allow notifications** (Notifications master) — implemented. Calls `Notification.requestPermission()` and only enables the master when granted; persists in `ns-notif-enabled`.
+- [x] **New release alerts** — implemented end-to-end. New artist follow API (`POST/DELETE /artists/{id}/follow`, `GET /artists/following`) writes `UserFollows` rows, feeding the existing `NotifyArtistFollowersOfReleaseAsync` pipeline. `libraryStore` syncs both ways; `services/notifications.ts` polls `/notifications` every 60s and fires desktop alerts for unseen `new_release` rows.
+- [x] **Friend activity** (master + 4 sub-toggles) — implemented end-to-end. Backend `NotifyAsync` calls added to `ChatController.Send` (`chat_message`) and `MeController.SavePlaylist` (`playlist_saved`); `new_follower` and `jam_invite` were already wired. Poller filters by enabled sub-toggles.
+- [x] **Friend activity (image's other 3 rows)** — removed: "send me a song" / "likes my playlist" / "starts listening live" have no backend endpoint to hook into, and the closest equivalent ("joins my session") is exposed as the existing `jam_invite`.
 
 Likely files: `frontend/src/pages/SettingsPage.tsx`, `frontend/src/pages/AccountSettingsPage.tsx`,
 `frontend/src/i18n/translations.ts` (the "coming soon" strings).
-
-> Needs a product decision on *which* items to build this session — split into multiple
-> sessions if the list is long. Keep the deferred-features roadmap in sync.
+Touched in this phase: also `frontend/src/services/notifications.ts` (new), `frontend/src/hooks/useAutostart.ts` (new), `frontend/src/stores/playerStore.ts`, `frontend/src/stores/libraryStore.ts`, `frontend/src/services/artistService.ts`, `frontend/src/App.tsx`, `frontend/src-tauri/*`, `backend/src/NotSpotify.Api/Controllers/ArtistsController.cs`, `backend/src/NotSpotify.Api/Controllers/ChatController.cs`, `backend/src/NotSpotify.Api/Controllers/MeController.cs`.
 
 Tests (this session):
 - [ ] For each newly-implemented setting: a test that the control persists/applies its value.
+- Live-verified end-to-end via curl: follow→`new_release` (Justin Bieber), follow→`new_follower`, chat→`chat_message`, save→`playlist_saved` all landed in the recipient's `/notifications` feed.
 
 ---
 
@@ -304,6 +312,6 @@ End-to-end verification the unit tests can't cover (needs the running app + back
 - [ ] Watch 3+ ads in a row on a free account: countdown correct, no double audio, clean resume.
 - [ ] Admin can create an ad and it serves to a free-tier session.
 - [ ] Album and Track headers look identical in structure.
-- [ ] Settings "coming soon" items are either functional or cleanly disabled.
+- [x] Settings "coming soon" items are either functional or cleanly disabled. (Phase 6 — commit `22f0809d`; live-verified via curl, manual QA still pending in the running UI.)
 - [ ] Search results page shows a Top result card + interleaved rows with type badges and inline add/follow/save; Podcasts/Profiles/Music-video filters work.
 - [ ] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home).

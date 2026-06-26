@@ -66,6 +66,13 @@ public static class MediaIngest
             return;
         }
 
+        if (args.Contains("--team-coco"))
+        {
+            await SetupTeamCocoAsync(db, storage, args, dryRun);
+            Console.WriteLine("\n[Ingest] Done.");
+            return;
+        }
+
         if (!args.Contains("--thumbnails"))
         {
             await IngestMusicVideosAsync(db, storage, videosDir, ffprobe, ffmpeg, dryRun);
@@ -113,6 +120,89 @@ public static class MediaIngest
         var podDel = await db.Podcasts.Where(p => podIds.Contains(p.Id)).ExecuteDeleteAsync();
         var vidDel = await db.MusicVideos.Where(v => PlaceholderVideoTitles.Contains(v.Title)).ExecuteDeleteAsync();
         Console.WriteLine($"[Clean] Deleted {vidDel} music videos, {podDel} podcasts, {eps} episodes.");
+    }
+
+    // ---- Team Coco account --------------------------------------------------
+
+    /// <summary>Create/refresh the "Team Coco" artist account (bio + web-sourced
+    /// profile/header art) and point the Conan podcast's Author at it, swapping its
+    /// placeholder cover for the real show artwork. Asset paths come from
+    /// <c>--profile</c>/<c>--header</c>/<c>--cover</c>.</summary>
+    private static async Task SetupTeamCocoAsync(AppDbContext db, IStorageService storage, string[] args, bool dryRun)
+    {
+        const string name = "Team Coco";
+        var profile = ArgValue(args, "--profile");
+        var header = ArgValue(args, "--header");
+        var cover = ArgValue(args, "--cover");
+
+        var artist = await db.Artists.FirstOrDefaultAsync(a => a.Name == name);
+        if (artist is null)
+        {
+            artist = new Artist { Id = Guid.NewGuid(), Name = name };
+            Console.WriteLine($"[TeamCoco] creating artist account {artist.Id}.");
+            if (!dryRun) db.Artists.Add(artist);
+        }
+        else
+        {
+            Console.WriteLine($"[TeamCoco] using existing artist account {artist.Id}.");
+        }
+
+        artist.Bio = "Team Coco is the digital media company and podcast network founded by " +
+                     "Conan O'Brien — home to Conan O'Brien Needs A Friend and a roster of " +
+                     "comedy and conversation shows.";
+        artist.Country = "US";
+        artist.Verified = true;
+        artist.Website = "https://teamcoco.com";
+        artist.Instagram = "teamcoco";
+        artist.Twitter = "TeamCoco";
+
+        if (profile is not null && File.Exists(profile))
+        {
+            var key = $"images/artists/{Guid.NewGuid()}.jpg";
+            if (!dryRun) { await using var fs = File.OpenRead(profile); await storage.UploadAsync(key, fs, "image/jpeg"); }
+            artist.ImageKey = key; artist.ImageUrl = null;
+            Console.WriteLine($"[TeamCoco] profile image -> {key}");
+        }
+        if (header is not null && File.Exists(header))
+        {
+            var key = $"headers/{Guid.NewGuid()}.jpg";
+            if (!dryRun) { await using var fs = File.OpenRead(header); await storage.UploadAsync(key, fs, "image/jpeg"); }
+            artist.HeaderImageKey = key; artist.HeaderImageUrl = null;
+            Console.WriteLine($"[TeamCoco] header image -> {key}");
+        }
+        if (!dryRun) await db.SaveChangesAsync();
+
+        var pod = await db.Podcasts.FirstOrDefaultAsync(p => p.Title == "Conan O'Brien Needs A Friend");
+        if (pod is null) { Console.WriteLine("[TeamCoco] podcast not found — skipping author/cover."); return; }
+
+        pod.Author = name;
+        Console.WriteLine($"[TeamCoco] podcast author set to '{name}'.");
+
+        if (cover is not null && File.Exists(cover))
+        {
+            var oldKey = pod.ImageKey;
+            var key = $"covers/{Guid.NewGuid():N}.jpg";
+            if (!dryRun)
+            {
+                await using (var fs = File.OpenRead(cover)) await storage.UploadAsync(key, fs, "image/jpeg");
+                pod.ImageKey = key;
+                await db.SaveChangesAsync();
+                if (!string.IsNullOrWhiteSpace(oldKey) && oldKey != key)
+                    try { await storage.DeleteAsync(oldKey); Console.WriteLine($"[TeamCoco] removed placeholder cover {oldKey}."); }
+                    catch (Exception ex) { Console.WriteLine($"[TeamCoco] couldn't delete old cover: {ex.Message}"); }
+            }
+            Console.WriteLine($"[TeamCoco] podcast cover -> {key}");
+        }
+        else if (!dryRun)
+        {
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private static string? ArgValue(string[] args, string name)
+    {
+        var i = Array.IndexOf(args, name);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
     // ---- Music videos -------------------------------------------------------

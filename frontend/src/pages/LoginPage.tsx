@@ -1,14 +1,14 @@
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { MusicalNoteIcon, ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
-import { useAuthStore } from '@/stores/authStore'
-import { authService } from '@/services/authService'
-import { Button } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
+import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
+import { Spinner } from '@/components/ui/Spinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useTranslation } from '@/i18n/useTranslation'
-import { useEffect, useState } from 'react'
+import { authService } from '@/services/authService'
+import { useAuthStore } from '@/stores/authStore'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
   const params = new URLSearchParams({
@@ -22,6 +22,11 @@ interface FormValues {
   email: string
   password: string
 }
+
+const inputClass = 'h-12 w-full rounded border border-[#727272] bg-[#121212] px-3 text-sm font-semibold text-primary placeholder:text-[#a7a7a7] outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+const labelClass = 'mb-2 block text-sm font-bold text-primary'
+const primaryButtonClass = 'mt-2 flex h-12 w-full items-center justify-center rounded-full bg-[#1ed760] px-8 text-sm font-bold text-black transition-transform hover:scale-[1.02] hover:bg-[#3be477] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70'
+const showDevShortcuts = import.meta.env.DEV && import.meta.env.VITE_SHOW_DEV_SHORTCUTS === 'true'
 
 export function LoginPage() {
   const { t } = useTranslation()
@@ -39,7 +44,6 @@ export function LoginPage() {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
 
-  // Only light up the Google button if the backend has OAuth credentials configured.
   useEffect(() => {
     let active = true
     authService.externalProviders()
@@ -52,7 +56,6 @@ export function LoginPage() {
     return () => { active = false }
   }, [])
 
-  // Surface the outcome of a Google OAuth round-trip (the callback redirects here).
   useEffect(() => {
     const oauth = params.get('oauth')
     if (oauth === 'error') setSocialNotice(t('auth.login.socialUnavailable', { provider: 'Google' }))
@@ -78,19 +81,112 @@ export function LoginPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-base px-4 py-8 text-primary">
-      <Link to="/" className="inline-flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary transition-colors">
+    <div className="relative min-h-screen bg-[#121212] px-6 py-8 text-primary">
+      <Link to="/" className="absolute left-6 top-8 inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
         <ArrowLeftIcon className="h-4 w-4" />
         {t('auth.backHome')}
       </Link>
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
-          <h1 className="text-5xl font-black leading-tight text-primary">{t('auth.login.title')}</h1>
-          <p className="mt-3 text-sm font-medium text-secondary">{t('auth.login.subtitle')}</p>
+
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[348px] flex-col items-center pt-[10vh] sm:pt-[9vh]">
+        <div className="flex flex-col items-center text-center">
+          <SpotifyMark className="mb-7 h-9 w-9 text-primary" />
+          <h1 className="text-center text-[2.65rem] font-black leading-[1.05] text-primary sm:text-[2.85rem]">
+            {t('auth.login.title')}
+          </h1>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="mt-8 flex w-full flex-col gap-4">
+          <div>
+            <label className={labelClass}>{t('auth.email')}</label>
+            <input
+              type="email"
+              {...register('email', { required: t('auth.err.emailRequired') })}
+              className={inputClass}
+              placeholder={t('auth.emailPlaceholder')}
+            />
+            {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email.message}</p>}
+          </div>
+
+          <div>
+            <label className={labelClass}>{t('auth.password')}</label>
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                {...register('password', { required: t('auth.err.passwordRequired'), minLength: { value: 6, message: t('auth.err.passwordMin6') } })}
+                className={`${inputClass} pr-11`}
+                placeholder={t('auth.passwordPlaceholder')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-primary"
+                tabIndex={-1}
+                aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
+              >
+                {showPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
+            </div>
+            {errors.password && <p className="mt-1 text-xs text-red-400">{errors.password.message}</p>}
+            <Link
+              to="/forgot-password"
+              className="mt-3 inline-flex text-xs font-bold text-primary underline transition-colors hover:text-accent"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+
+          {error && (
+            <div className="rounded border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
+          {socialNotice && (
+            <div className="rounded border border-accent/30 bg-accent-dim/30 px-4 py-3">
+              <p className="text-sm font-medium text-primary">{socialNotice}</p>
+            </div>
+          )}
+
+          <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+            {isLoading ? <Spinner size="sm" /> : t('auth.login.submit')}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => devLogin('alex@example.com', 'Password123!')}
+            disabled={isLoading}
+            className="h-12 w-full rounded-full border border-[#727272] bg-transparent px-8 text-sm font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {t('auth.login.admin')}
+          </button>
+        </form>
+
+        {showDevShortcuts && (
+          <div className="mt-6 w-full rounded-md border border-dashed border-elevated/60 p-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">{t('auth.devShortcuts')}</p>
+            <div className="flex flex-wrap gap-2">
+              {DEV_ACCOUNTS.map(({ label, email, password }) => (
+                <button
+                  key={email}
+                  type="button"
+                  onClick={() => devLogin(email, password)}
+                  disabled={isLoading}
+                  className="rounded border border-elevated/60 bg-elevated px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-elevated/80 hover:text-primary"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="my-6 flex w-full items-center gap-4">
+          <div className="h-px flex-1 bg-[#292929]" />
+          <span className="text-sm font-bold text-primary">{t('auth.or')}</span>
+          <div className="h-px flex-1 bg-[#292929]" />
         </div>
 
         <SocialAuthButtons
+          className="w-full"
           googleHref={googleEnabled ? externalAuthUrl('google') : null}
           facebookHref={facebookEnabled ? externalAuthUrl('facebook') : null}
           showFacebook={facebookEnabled}
@@ -106,95 +202,17 @@ export function LoginPage() {
           }}
         />
 
-        <div className="my-6 flex items-center gap-4">
-          <div className="h-px flex-1 bg-elevated" />
-          <span className="text-sm font-bold text-primary">{t('auth.or')}</span>
-          <div className="h-px flex-1 bg-elevated" />
-        </div>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.email')}</label>
-            <input
-              type="email"
-              {...register('email', { required: t('auth.err.emailRequired') })}
-              className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 text-sm focus:outline-none transition-colors"
-              placeholder={t('auth.emailPlaceholder')}
-            />
-            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-primary mb-1">{t('auth.password')}</label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                {...register('password', { required: t('auth.err.passwordRequired'), minLength: { value: 6, message: t('auth.err.passwordMin6') } })}
-                className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md px-4 py-3 pr-11 text-sm focus:outline-none transition-colors"
-                placeholder={t('auth.passwordPlaceholder')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-secondary transition-colors"
-                tabIndex={-1}
-                aria-label={showPw ? t('auth.hidePassword') : t('auth.showPassword')}
-              >
-                {showPw ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-              </button>
-            </div>
-            {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
-            <Link
-              to="/forgot-password"
-              className="mt-2 inline-flex text-xs font-semibold text-secondary transition-colors hover:text-primary hover:underline"
-            >
-              Forgot your password?
-            </Link>
-          </div>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
-              <p className="text-red-400 text-sm">{error}</p>
-            </div>
-          )}
-          {socialNotice && (
-            <div className="rounded-md border border-accent/30 bg-accent-dim/30 px-4 py-3">
-              <p className="text-sm font-medium text-primary">{socialNotice}</p>
-            </div>
-          )}
-
-          <Button type="submit" size="lg" className="mt-2 w-full" disabled={isLoading}>
-            {isLoading ? <Spinner size="sm" /> : t('auth.login.submit')}
-          </Button>
-        </form>
-
-        {/* ── Dev-only quick login ── */}
-        {import.meta.env.DEV && (
-          <div className="mt-6 rounded-md border border-dashed border-elevated/60 p-3">
-            <p className="text-xs font-bold text-muted uppercase tracking-wider mb-2">🔧 {t('auth.devShortcuts')}</p>
-            <div className="flex flex-wrap gap-2">
-              {DEV_ACCOUNTS.map(({ label, email, password }) => (
-                <button
-                  key={email}
-                  type="button"
-                  onClick={() => devLogin(email, password)}
-                  disabled={isLoading}
-                  className="px-3 py-1.5 rounded text-xs font-semibold bg-elevated hover:bg-elevated/80 text-secondary hover:text-primary border border-elevated/60 transition-colors"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-8 text-center">
-          <p className="text-secondary text-sm">{t('auth.login.noAccount')}</p>
-          <Link to="/signup" className="mt-2 inline-flex text-base font-black text-primary transition-colors hover:text-accent">
+        <div className="mt-14 text-center">
+          <p className="text-sm text-secondary">{t('auth.login.noAccount')}</p>
+          <Link to="/signup" className="mt-3 inline-flex text-sm font-black text-primary underline transition-colors hover:text-accent">
             {t('auth.login.signupLink')}
           </Link>
         </div>
-      </div>
+
+        <p className="mt-auto max-w-[300px] pt-16 text-center text-[0.68rem] font-semibold leading-relaxed text-muted">
+          {t('auth.legalCaptcha')}
+        </p>
+      </main>
     </div>
   )
 }

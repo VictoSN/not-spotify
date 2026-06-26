@@ -2,9 +2,9 @@ import { cn } from '@/utils/cn'
 
 type Provider = 'google' | 'facebook'
 
-const providers: { id: Provider; label: string }[] = [
-  { id: 'google', label: 'Continue with Google' },
-  { id: 'facebook', label: 'Continue with Facebook' },
+const providers: { id: Provider; name: string }[] = [
+  { id: 'google', name: 'Google' },
+  { id: 'facebook', name: 'Facebook' },
 ]
 
 function GoogleIcon() {
@@ -35,6 +35,7 @@ export function SocialAuthButtons({
   onUnavailable,
   onProviderSuccess,
   showFacebook = false,
+  actionLabel = 'Continue with',
   className,
   googleHref,
   facebookHref,
@@ -42,6 +43,7 @@ export function SocialAuthButtons({
   onUnavailable: (provider: Provider) => void
   onProviderSuccess?: (provider: Provider) => void | Promise<void>
   showFacebook?: boolean
+  actionLabel?: string
   className?: string
   googleHref?: string | null
   facebookHref?: string | null
@@ -118,12 +120,12 @@ export function SocialAuthButtons({
                 onUnavailable(provider.id)
               }
             }}
-            className="relative flex h-12 w-full items-center justify-center rounded-full border border-secondary/50 bg-transparent px-4 text-sm font-bold text-primary transition-all hover:border-primary hover:bg-elevated/60 active:scale-[0.99]"
+            className="relative flex h-12 w-full items-center justify-center rounded-full border border-[#727272] bg-transparent px-12 text-sm font-bold text-primary transition-all hover:border-primary active:scale-[0.99]"
           >
             <span className="absolute left-6">
               <ProviderIcon provider={provider.id} />
             </span>
-            {provider.label}
+            {actionLabel} {provider.name}
           </button>
         )
       })}

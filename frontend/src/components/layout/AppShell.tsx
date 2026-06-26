@@ -115,7 +115,7 @@ export function AppShell() {
           it and makes the centered search bar look like it floats too high. */}
       <div
         className={cn(
-          'flex flex-1 px-2 pb-2 pt-0.5 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
+          'flex flex-1 px-2 pb-2 pt-0 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
           nowPlayingExpandedVisible ? 'gap-0' : 'gap-2',
         )}
       >

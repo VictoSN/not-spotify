@@ -35,22 +35,33 @@ function rgbToHsl({ r, g, b }: { r: number; g: number; b: number }) {
   return { h: h * 60, s, l }
 }
 
-function normalizeHue(hex: string | null): string | null {
-  if (!hex) return null
-  const rgb = hexToRgb(hex)
-  if (!rgb) return hex
-
-  const { h, s, l } = rgbToHsl(rgb)
-
+/**
+ * Clamp a raw HSL reading (h in degrees, s/l in 0–1) into the readable tint range
+ * the gradients expect, returning an `hsl(...)` string. Shared by both extraction
+ * paths so the pixel histogram and the node-vibrant fallback normalise identically.
+ */
+function clampHslToCss(h: number, s: number, l: number): string {
   // Keep enough of the artwork's brightness and saturation for the tint to feel
   // related to the image. Theme-aware gradients below blend this colour with the
   // page surface, so it no longer needs to be pre-darkened almost to black.
   if (l > 0.82 && s < 0.2) return 'hsl(210 8% 58%)'
   if (s < 0.14) return `hsl(210 7% ${Math.round(Math.min(Math.max(l * 78, 36), 58))}%)`
 
-  const saturation = Math.min(Math.max(s * 105, 34), 72)
-  const lightness = Math.min(Math.max(l * 78, 38), 56)
+  // Lower floors than before: a darker floor keeps deep covers (Fábula's purple)
+  // from being lifted into pastel, and a gentler saturation boost stops washed-out
+  // covers (Lover's pink sky) reading as neon — both move closer to Spotify's tone.
+  const saturation = Math.min(Math.max(s * 90, 26), 72)
+  const lightness = Math.min(Math.max(l * 74, 30), 56)
   return `hsl(${Math.round(h)} ${saturation.toFixed(0)}% ${lightness.toFixed(0)}%)`
+}
+
+function normalizeHue(hex: string | null): string | null {
+  if (!hex) return null
+  const rgb = hexToRgb(hex)
+  if (!rgb) return hex
+
+  const { h, s, l } = rgbToHsl(rgb)
+  return clampHslToCss(h, s, l)
 }
 
 /**
@@ -140,6 +151,114 @@ function pickSwatchHex(palette: Record<string, { hex: string; population: number
   return bestHex
 }
 
+// ── Area-based dominant-hue histogram (primary path) ────────────────────────
+// node-vibrant only exposes 6 quantised swatches whose `population` doesn't track
+// true on-screen area, so a large muted field (a purple wall) can lose to a small
+// vivid accent (an orange fan) and tint the page the wrong colour. Reading the
+// actual pixels and bucketing them by hue lets the colour that *fills the frame*
+// win. Knobs below are intentionally easy to tune.
+const SAMPLE_SIZE = 64 // cover is drawn this many px square before sampling
+const HUE_BINS = 24 // 15° per bin
+const NEUTRAL_SAT = 0.15 // below this a pixel carries no usable hue (treated as grey)
+const DARK_CUTOFF = 0.08 // ignore near-black shadows
+const LIGHT_CUTOFF = 0.95 // ignore blown-out highlights
+
+/**
+ * Pure pixel analyser (no DOM) — exported for unit testing. Buckets chromatic
+ * pixels into hue bins scored by area × saturation and returns the winning bin's
+ * representative { h (deg), s, l } (s/l in 0–1). Greyscale/flat covers fall back to
+ * a neutral reading; returns null only when there's nothing readable at all.
+ */
+export function dominantHslFromPixels(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+): { h: number; s: number; l: number } | null {
+  const bins = Array.from({ length: HUE_BINS }, () => ({
+    weight: 0,
+    sumSin: 0,
+    sumCos: 0,
+    sumS: 0,
+    sumL: 0,
+    count: 0,
+  }))
+  let neutralCount = 0
+  let neutralSumL = 0
+  const total = width * height
+  const binWidth = 360 / HUE_BINS
+
+  for (let i = 0; i < total; i++) {
+    const o = i * 4
+    if (data[o + 3] < 128) continue // near-transparent
+    const { h, s, l } = rgbToHsl({ r: data[o], g: data[o + 1], b: data[o + 2] })
+    if (l < DARK_CUTOFF || l > LIGHT_CUTOFF) continue // near-black / blown-out
+    if (s < NEUTRAL_SAT) {
+      neutralCount++
+      neutralSumL += l
+      continue
+    }
+    const bin = bins[Math.min(HUE_BINS - 1, Math.floor(h / binWidth))]
+    const rad = (h * Math.PI) / 180
+    // Weight by saturation² so a vivid hue (a bright green stripe) can beat a larger
+    // field of a duller colour (denim/shadow blue) — matching how Spotify favours the
+    // most colourful tone — while a tiny accent still loses to a big mid-saturated field.
+    const w = s * s
+    bin.weight += w
+    bin.sumSin += Math.sin(rad) * w
+    bin.sumCos += Math.cos(rad) * w
+    bin.sumS += s
+    bin.sumL += l
+    bin.count++
+  }
+
+  let best = bins[0]
+  for (const bin of bins) if (bin.weight > best.weight) best = bin
+
+  if (best.count > 0) {
+    // Circular mean handles the red wrap-around (e.g. 350° + 10° → 0°, not 180°).
+    let h = (Math.atan2(best.sumSin, best.sumCos) * 180) / Math.PI
+    if (h < 0) h += 360
+    return { h, s: best.sumS / best.count, l: best.sumL / best.count }
+  }
+
+  // No chromatic pixels — mirror the old grey branch so a flat/greyscale cover
+  // still yields a neutral tint rather than nothing.
+  if (neutralCount > 0) return { h: 210, s: 0.07, l: neutralSumL / neutralCount }
+  return null
+}
+
+/**
+ * Decode the fetched cover blob into a tiny canvas and run the histogram. Drawing
+ * from a same-origin blob keeps the canvas untainted (see the CORS note below), so
+ * getImageData succeeds. Returns null on any failure so the caller can fall back to
+ * node-vibrant.
+ */
+async function dominantColorFromBlob(blob: Blob): Promise<string | null> {
+  if (typeof createImageBitmap !== 'function') return null
+  let bitmap: ImageBitmap | null = null
+  try {
+    bitmap = await createImageBitmap(blob)
+    let ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null
+    if (typeof OffscreenCanvas === 'function') {
+      ctx = new OffscreenCanvas(SAMPLE_SIZE, SAMPLE_SIZE).getContext('2d', { willReadFrequently: true })
+    } else {
+      const canvas = document.createElement('canvas')
+      canvas.width = SAMPLE_SIZE
+      canvas.height = SAMPLE_SIZE
+      ctx = canvas.getContext('2d', { willReadFrequently: true })
+    }
+    if (!ctx) return null
+    ctx.drawImage(bitmap, 0, 0, SAMPLE_SIZE, SAMPLE_SIZE)
+    const { data } = ctx.getImageData(0, 0, SAMPLE_SIZE, SAMPLE_SIZE)
+    const hsl = dominantHslFromPixels(data, SAMPLE_SIZE, SAMPLE_SIZE)
+    return hsl ? clampHslToCss(hsl.h, hsl.s, hsl.l) : null
+  } catch {
+    return null
+  } finally {
+    bitmap?.close()
+  }
+}
+
 export async function getDominantColor(url: string): Promise<string | null> {
   const cached = cache.get(url)
   if (cached) return cached
@@ -164,9 +283,15 @@ export async function getDominantColor(url: string): Promise<string | null> {
       // The resolved colour is memoised below, so this network read runs once per URL.
       const res = await fetch(url, { mode: 'cors', cache: 'reload' })
       if (!res.ok) return null
-      objectUrl = URL.createObjectURL(await res.blob())
-      const palette = await new Vibrant(objectUrl).getPalette()
-      const color = normalizeHue(pickSwatchHex(palette))
+      const blob = await res.blob()
+      // Primary: area-based pixel histogram — picks the hue that fills the frame.
+      let color = await dominantColorFromBlob(blob)
+      // Fallback: node-vibrant's swatch palette, only when the canvas read can't run
+      // (no createImageBitmap, or a tainted/zero-size canvas).
+      if (!color) {
+        objectUrl = URL.createObjectURL(blob)
+        color = normalizeHue(pickSwatchHex(await new Vibrant(objectUrl).getPalette()))
+      }
       if (color) cache.set(url, color)
       return color
     } catch {

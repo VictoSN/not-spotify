@@ -8,7 +8,6 @@ import {
   ExclamationTriangleIcon,
   NoSymbolIcon,
   RadioIcon,
-  ShareIcon,
   UserMinusIcon,
   UserPlusIcon,
 } from '@heroicons/react/24/outline'
@@ -23,6 +22,7 @@ import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
+import { ShareIcon } from '@/components/common/ShareIcon'
 
 interface ArtistMenuProps {
   artist: Artist

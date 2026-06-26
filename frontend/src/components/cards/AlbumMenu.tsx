@@ -8,7 +8,6 @@ import {
   MusicalNoteIcon,
   QueueListIcon,
   RadioIcon,
-  ShareIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon, PlusCircleIcon } from '@heroicons/react/24/solid'
@@ -24,6 +23,7 @@ import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
+import { ShareIcon } from '@/components/common/ShareIcon'
 
 interface AlbumMenuProps {
   album: Album

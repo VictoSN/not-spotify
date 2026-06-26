@@ -6,7 +6,6 @@ import {
   ClockIcon,
   MapPinIcon,
   PlusIcon,
-  ShareIcon,
 } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Artist, TourDate } from '@/types/artist'
@@ -16,6 +15,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { shareLink } from '@/utils/share'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
+import { ShareIcon } from '@/components/common/ShareIcon'
 
 const savedEventKey = 'not-spotify:saved-events'
 

@@ -15,7 +15,6 @@ import {
   LockOpenIcon,
   UserPlusIcon,
   NoSymbolIcon,
-  ShareIcon,
   ChevronRightIcon,
   CheckIcon,
 } from '@heroicons/react/24/outline'
@@ -35,6 +34,7 @@ import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
+import { ShareIcon } from '@/components/common/ShareIcon'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 
 interface PlaylistRowMenuProps {

@@ -8,7 +8,6 @@ import {
   MicrophoneIcon,
   PlayIcon,
   QueueListIcon,
-  ShareIcon,
 } from '@heroicons/react/24/outline'
 import { ArrowPathIcon } from '@heroicons/react/24/solid'
 import type { Episode } from '@/types/podcast'
@@ -18,6 +17,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
+import { ShareIcon } from '@/components/common/ShareIcon'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { MediaMenuShell, MediaMenuItem, MediaMenuDivider } from './MediaMenuShell'
 

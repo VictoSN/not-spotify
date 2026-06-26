@@ -17,7 +17,6 @@ import {
   UserPlusIcon,
   ArrowDownTrayIcon,
   ArrowUpTrayIcon,
-  ShareIcon,
   SparklesIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
@@ -45,6 +44,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
+import { ShareIcon } from '@/components/common/ShareIcon'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'

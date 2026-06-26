@@ -1,4 +1,3 @@
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { PlusCircleIcon } from '@heroicons/react/24/outline'
 import { cn } from '@/utils/cn'
 
@@ -21,7 +20,17 @@ export function AnimatedLikeIcon({ liked, className, heartClassName }: AnimatedL
         <span className="liked-heart-particle liked-heart-particle-4" />
         <span className="liked-heart-particle liked-heart-particle-5" />
         <span className="liked-heart-particle liked-heart-particle-6" />
-        <CheckCircleIcon className="h-full w-full" />
+        <svg viewBox="0 0 24 24" className="h-full w-full" aria-hidden="true">
+          <circle cx="12" cy="12" r="9.75" fill="currentColor" />
+          <path
+            d="m8.1 12.15 2.45 2.45 5.35-5.35"
+            fill="none"
+            stroke="#000"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.25"
+          />
+        </svg>
       </span>
     )
   }

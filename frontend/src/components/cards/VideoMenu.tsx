@@ -5,7 +5,6 @@ import {
   FilmIcon,
   MusicalNoteIcon,
   PlayIcon,
-  ShareIcon,
   UserIcon,
 } from '@heroicons/react/24/outline'
 import { CheckCircleIcon, PlusCircleIcon } from '@heroicons/react/24/solid'
@@ -15,6 +14,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
+import { ShareIcon } from '@/components/common/ShareIcon'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { MediaMenuShell, MediaMenuDivider, MediaMenuItem } from './MediaMenuShell'
 

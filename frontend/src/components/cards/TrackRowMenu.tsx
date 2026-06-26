@@ -12,7 +12,6 @@ import {
   UserIcon,
   MusicalNoteIcon,
   RadioIcon,
-  ShareIcon,
   ChatBubbleLeftRightIcon,
   ChevronRightIcon,
   MagnifyingGlassIcon,
@@ -36,6 +35,7 @@ import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { repostService } from '@/services/repostService'
 import { notify } from '@/utils/toast'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
+import { ShareIcon } from '@/components/common/ShareIcon'
 
 interface TrackRowMenuProps {
   track: Track

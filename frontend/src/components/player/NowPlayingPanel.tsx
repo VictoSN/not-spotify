@@ -10,11 +10,11 @@ import {
   PhotoIcon,
   FilmIcon,
   UserCircleIcon,
-  ShareIcon,
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
+import { ShareIcon } from '@/components/common/ShareIcon'
 import type { Artist, TourDate } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
@@ -884,18 +884,22 @@ export function NowPlayingPanel() {
                 {currentTrack.artist.name}
               </Link>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex shrink-0 items-center -space-x-1">
               <button
                 type="button"
                 onClick={shareCurrentTrack}
-                className="spotify-tooltip-anchor invisible relative mt-1 rounded-full p-1 text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100 active:scale-95"
+                className="spotify-tooltip-anchor invisible relative mt-1 flex h-7 w-7 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100 active:scale-95"
                 aria-label={`Share ${currentTrack.title}`}
               >
-                <ShareIcon className="h-5 w-5 stroke-[2.1]" />
+                <ShareIcon className="h-4 w-4" />
                 <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Share</span>
               </button>
-              <button onClick={toggleLike} className="mt-1" aria-label={isLiked ? t('player.unlike') : t('player.like')}>
-                <AnimatedLikeIcon liked={isLiked} className="w-6 h-6" heartClassName="w-6 h-6 text-secondary hover:text-primary" />
+              <button
+                onClick={toggleLike}
+                className="mt-1 flex h-7 w-7 items-center justify-center rounded-full"
+                aria-label={isLiked ? t('player.unlike') : t('player.like')}
+              >
+                <AnimatedLikeIcon liked={isLiked} className="h-4 w-4" heartClassName="h-4 w-4 text-secondary hover:text-primary" />
               </button>
             </div>
           </div>

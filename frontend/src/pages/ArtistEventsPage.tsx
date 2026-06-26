@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { MapPinIcon, ShareIcon } from '@heroicons/react/24/outline'
+import { MapPinIcon } from '@heroicons/react/24/outline'
 import type { Artist, TourDate } from '@/types/artist'
 import { artistService } from '@/services/artistService'
 import { useAuthStore } from '@/stores/authStore'
@@ -9,6 +9,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { shareLink } from '@/utils/share'
 import { Spinner } from '@/components/ui/Spinner'
 import { Avatar } from '@/components/ui/Avatar'
+import { ShareIcon } from '@/components/common/ShareIcon'
 
 function regionName(country: string) {
   try {

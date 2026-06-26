@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import {
@@ -12,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline'
 import {
   CheckBadgeIcon,
+  PauseIcon,
+  PlayIcon,
   UserGroupIcon as UserGroupSolid,
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
@@ -19,17 +21,28 @@ import { useThemeStore } from '@/stores/themeStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useChatStore } from '@/stores/chatStore'
+import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { searchService, type SearchResults } from '@/services/searchService'
+import { artistService } from '@/services/artistService'
+import { trackService } from '@/services/trackService'
 import { Avatar } from '@/components/ui/Avatar'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { WindowControls } from './WindowControls'
 import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
 import { useDebounce } from '@/hooks/useDebounce'
+import { usePlaybackGate, usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { cn } from '@/utils/cn'
 import { useTranslation } from '@/i18n/useTranslation'
+import type { Track } from '@/types/track'
+import type { Album } from '@/types/album'
+import type { Artist } from '@/types/artist'
+import type { MusicVideo } from '@/types/musicVideo'
 
 const SEARCH_SKELETON_ROWS = [
   ['w-[84%]', 'w-[45%]'],
@@ -47,6 +60,32 @@ export function TopBar() {
   const { t } = useTranslation()
   const { user, isAuthenticated, logout } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
+  const startTrack = usePlaybackGate()
+  const startContext = usePlayContextGate()
+  const playVideo = usePlayerStore((s) => s.playVideo)
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const isPlaying = usePlayerStore((s) => s.isPlaying)
+  const currentContextType = usePlayerStore((s) => s.currentContextType)
+  const currentContextId = usePlayerStore((s) => s.currentContextId)
+  const playbackMode = usePlayerStore((s) => s.playbackMode)
+  const currentVideo = usePlayerStore((s) => s.currentVideo)
+  const isVideoPlaying = usePlayerStore((s) => s.isVideoPlaying)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
+  const {
+    likedTrackIds,
+    likeTrack,
+    unlikeTrack,
+    savedAlbumIds,
+    saveAlbum,
+    unsaveAlbum,
+    followedArtistIds,
+    followArtist,
+    unfollowArtist,
+    savedVideoIds,
+    saveVideo,
+    unsaveVideo,
+  } = useLibraryStore()
 
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
@@ -98,7 +137,8 @@ export function TopBar() {
     (suggestionTracks.length > 0 ||
       activeSuggestions.artists.length > 0 ||
       activeSuggestions.albums.length > 0 ||
-      activeSuggestions.playlists.length > 0)
+      activeSuggestions.playlists.length > 0 ||
+      (activeSuggestions.musicVideos?.length ?? 0) > 0)
   const shouldShowSearchPanel = showSearchPanel && (trimmedSearchValue.length > 0 || matchingRecents.length > 0)
 
   // Keep the input in sync when the URL query changes (e.g. recent-search click)
@@ -205,6 +245,105 @@ export function TopBar() {
     navigate(path)
   }
 
+  const isTrackActive = (track: Track) => currentTrack?.id === track.id
+  const isAlbumActive = (album: Album) =>
+    currentContextType !== 'artist' &&
+    currentContextType !== 'mix' &&
+    currentTrack?.album.id === album.id
+  const isArtistActive = (artist: Artist) => currentContextType === 'artist' && currentContextId === artist.id
+  const isVideoActive = (video: MusicVideo) => playbackMode === 'video' && currentVideo?.id === video.id
+
+  const playSuggestionTrack = (event: React.MouseEvent, track: Track) => {
+    event.stopPropagation()
+    if (isTrackActive(track)) {
+      togglePlayPause()
+      return
+    }
+    if (startTrack(track, [track])) setShowSearchPanel(false)
+  }
+
+  const playSuggestionAlbum = async (event: React.MouseEvent, album: Album) => {
+    event.stopPropagation()
+    if (isAlbumActive(album)) {
+      togglePlayPause()
+      return
+    }
+    try {
+      const tracks = await trackService.getByAlbum(album.id)
+      if (startContext({ type: 'album', id: album.id }, tracks, 0)) setShowSearchPanel(false)
+    } catch {
+      // Album playback is best-effort from quick search; detail navigation still works.
+    }
+  }
+
+  const playSuggestionArtist = async (event: React.MouseEvent, artist: Artist) => {
+    event.stopPropagation()
+    if (isArtistActive(artist)) {
+      togglePlayPause()
+      return
+    }
+    try {
+      const tracks = await artistService.getTopTracks(artist.id, 10)
+      if (startContext({ type: 'artist', id: artist.id }, tracks, 0)) setShowSearchPanel(false)
+    } catch {
+      // Artist rows still navigate even if top-track playback cannot be loaded.
+    }
+  }
+
+  const playSuggestionVideo = (event: React.MouseEvent, video: MusicVideo) => {
+    event.stopPropagation()
+    if (isVideoActive(video)) {
+      togglePlayPause()
+      return
+    }
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Start watching with a free account', imageUrl: video.thumbnailUrl })
+      return
+    }
+    playVideo(video, [video])
+    setShowSearchPanel(false)
+  }
+
+  const toggleSuggestionTrackLike = (event: React.MouseEvent, track: Track) => {
+    event.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: t('detail.saveMusicPrompt'), imageUrl: track.album.coverUrl })
+      return
+    }
+    if (likedTrackIds.has(track.id)) unlikeTrack(track.id)
+    else likeTrack(track)
+  }
+
+  const toggleSuggestionAlbumSave = (event: React.MouseEvent, album: Album) => {
+    event.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: t('detail.saveMusicPrompt'), imageUrl: album.coverUrl })
+      return
+    }
+    if (savedAlbumIds.has(album.id)) unsaveAlbum(album.id)
+    else saveAlbum(album)
+  }
+
+  const toggleSuggestionArtistFollow = (event: React.MouseEvent, artist: Artist) => {
+    event.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
+      return
+    }
+    if (followedArtistIds.has(artist.id)) unfollowArtist(artist.id)
+    else followArtist(artist)
+  }
+
+  const toggleSuggestionVideoSave = (event: React.MouseEvent, video: MusicVideo) => {
+    event.stopPropagation()
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: 'Save videos with a free account', imageUrl: video.thumbnailUrl })
+      return
+    }
+    if (savedVideoIds.has(video.id)) unsaveVideo(video.id)
+    else saveVideo(video)
+  }
+
   // Spotify-style account menu: text-only rows, with a trailing external-link
   // arrow on the items that conceptually leave the app (Account/Premium/Install).
   const userMenuItemClass =
@@ -223,7 +362,7 @@ export function TopBar() {
         <SearchSuggestionsSkeleton />
       ) : (
         <>
-          <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-muted">
+          <div className="mb-1 flex items-center justify-between px-4 py-1 text-[11px] font-normal uppercase tracking-wide text-muted">
             <span>{trimmedSearchValue ? t('topbar.searchSuggestions') : t('topbar.recentSearches')}</span>
             {trimmedSearchValue && (
               <span className="flex items-center gap-2 normal-case tracking-normal text-secondary">
@@ -242,7 +381,7 @@ export function TopBar() {
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-secondary">
                 <MagnifyingGlassIcon className="h-5 w-5" />
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">
+              <span className="min-w-0 flex-1 truncate text-sm font-normal text-primary">
                 {t('topbar.searchFor', { query: trimmedSearchValue })}
               </span>
             </button>
@@ -261,7 +400,7 @@ export function TopBar() {
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-secondary">
                   <MagnifyingGlassIcon className="h-5 w-5" />
                 </span>
-                <span className="min-w-0 flex-1 truncate text-sm font-bold text-primary">{recent.term}</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-normal text-primary">{recent.term}</span>
               </button>
               <button
                 type="button"
@@ -278,64 +417,125 @@ export function TopBar() {
           {trimmedSearchValue && activeSuggestions && (
             <>
           {suggestionTracks.slice(0, 3).map((track) => (
-            <button
+            <SearchSuggestionRow
               key={`track-${track.id}`}
-              type="button"
-              onClick={() => openSuggestion(`/track/${track.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
-            >
-              <img src={track.album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-primary">{track.title}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">
+              imageUrl={track.album.coverUrl}
+              title={track.title}
+              subtitle={(
+                <>
                   {track.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-black text-[#282828]">E</span>}
                   {t('topbar.result.songBy', { artist: track.artist.name })}
-                </span>
-              </span>
-            </button>
+                </>
+              )}
+              onOpen={() => openSuggestion(`/track/${track.id}`)}
+              onPlay={(event) => playSuggestionTrack(event, track)}
+              isActive={isTrackActive(track)}
+              isPlaying={isTrackActive(track) && isPlaying}
+              action={(
+                <button
+                  type="button"
+                  onClick={(event) => toggleSuggestionTrackLike(event, track)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:text-primary"
+                  aria-label={likedTrackIds.has(track.id) ? t('player.unlike') : t('player.like')}
+                >
+                  <AnimatedLikeIcon
+                    liked={likedTrackIds.has(track.id)}
+                    className="h-5 w-5"
+                    heartClassName="h-5 w-5"
+                  />
+                </button>
+              )}
+            />
           ))}
 
           {activeSuggestions.artists.slice(0, 3).map((artist) => (
-            <button
+            <SearchSuggestionRow
               key={`artist-${artist.id}`}
-              type="button"
-              onClick={() => openSuggestion(`/artist/${artist.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
-            >
-              {artist.imageUrl ? (
-                <img src={artist.imageUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
-              ) : (
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-secondary">
-                  {artist.name.slice(0, 1).toUpperCase()}
-                </span>
-              )}
-              <span className="min-w-0 flex-1">
-                <span className="flex min-w-0 items-center gap-1 text-sm font-bold text-primary">
+              imageUrl={artist.imageUrl}
+              fallbackText={artist.name.slice(0, 1).toUpperCase()}
+              imageRounded="rounded-full"
+              title={(
+                <span className="flex min-w-0 items-center gap-1">
                   <span className="truncate">{artist.name}</span>
                   {artist.verified && (
                     <CheckBadgeIcon className="h-4 w-4 shrink-0 text-accent" aria-label={t('artist.verified')} />
                   )}
                 </span>
-                <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.artist')}</span>
-              </span>
-            </button>
+              )}
+              subtitle={t('topbar.result.artist')}
+              onOpen={() => openSuggestion(`/artist/${artist.id}`)}
+              onPlay={(event) => playSuggestionArtist(event, artist)}
+              isActive={isArtistActive(artist)}
+              isPlaying={isArtistActive(artist) && isPlaying}
+              action={(
+                <button
+                  type="button"
+                  onClick={(event) => toggleSuggestionArtistFollow(event, artist)}
+                  className={cn(
+                    'shrink-0 rounded-full border px-4 py-1.5 text-sm font-normal transition-all hover:scale-[1.02] active:scale-95',
+                    followedArtistIds.has(artist.id)
+                      ? 'border-primary bg-primary text-page'
+                      : 'border-secondary/60 text-primary hover:border-primary',
+                  )}
+                >
+                  {followedArtistIds.has(artist.id) ? t('common.following') : t('common.follow')}
+                </button>
+              )}
+            />
           ))}
 
           {activeSuggestions.albums.slice(0, 1).map((album) => (
-            <button
+            <SearchSuggestionRow
               key={`album-${album.id}`}
-              type="button"
-              onClick={() => openSuggestion(`/album/${album.id}`)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-primary/10"
-            >
-              <img src={album.coverUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-primary">{album.title}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">
-                  {t('topbar.result.albumBy', { artist: album.artist.name })}
-                </span>
-              </span>
-            </button>
+              imageUrl={album.coverUrl}
+              title={album.title}
+              subtitle={`${album.type === 'single' ? 'Single' : 'Album'} - ${album.artist.name}`}
+              onOpen={() => openSuggestion(`/album/${album.id}`)}
+              onPlay={(event) => playSuggestionAlbum(event, album)}
+              isActive={isAlbumActive(album)}
+              isPlaying={isAlbumActive(album) && isPlaying}
+              action={(
+                <button
+                  type="button"
+                  onClick={(event) => toggleSuggestionAlbumSave(event, album)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:text-primary"
+                  aria-label={savedAlbumIds.has(album.id) ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
+                >
+                  <AnimatedLikeIcon
+                    liked={savedAlbumIds.has(album.id)}
+                    className="h-5 w-5"
+                    heartClassName="h-5 w-5"
+                  />
+                </button>
+              )}
+            />
+          ))}
+
+          {(activeSuggestions.musicVideos ?? []).slice(0, 2).map((video) => (
+            <SearchSuggestionRow
+              key={`video-${video.id}`}
+              imageUrl={video.thumbnailUrl}
+              title={video.title}
+              subtitle={`Music video - ${video.artist.name}`}
+              onOpen={() => openSuggestion(`/videos/${video.id}`)}
+              onPlay={(event) => playSuggestionVideo(event, video)}
+              isActive={isVideoActive(video)}
+              isPlaying={isVideoActive(video) && isVideoPlaying}
+              action={(
+                <button
+                  type="button"
+                  onClick={(event) => toggleSuggestionVideoSave(event, video)}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:text-primary"
+                  aria-label={savedVideoIds.has(video.id) ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
+                >
+                  <AnimatedLikeIcon
+                    liked={savedVideoIds.has(video.id)}
+                    className="h-5 w-5"
+                    heartClassName="h-5 w-5"
+                  />
+                </button>
+              )}
+            />
           ))}
 
           {activeSuggestions.playlists.slice(0, 1).map((playlist) => (
@@ -353,8 +553,8 @@ export function TopBar() {
                 </span>
               )}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-primary">{playlist.name}</span>
-                <span className="block truncate text-xs font-semibold text-secondary">{t('topbar.result.playlist')}</span>
+                <span className="block truncate text-sm font-normal text-primary">{playlist.name}</span>
+                <span className="block truncate text-xs font-normal text-secondary">{t('topbar.result.playlist')}</span>
               </span>
             </button>
           ))}
@@ -362,7 +562,7 @@ export function TopBar() {
           )}
 
           {trimmedSearchValue && activeSuggestions && !hasSuggestionResults && (
-            <div className="px-4 py-4 text-sm font-semibold text-secondary">
+            <div className="px-4 py-4 text-sm font-normal text-secondary">
               {t('topbar.noQuickMatches')}
             </div>
           )}
@@ -372,7 +572,7 @@ export function TopBar() {
               <button
                 type="button"
                 onClick={handleClearRecentSearches}
-                className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-black text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-primary/10 active:scale-95"
+                className="rounded-full border border-secondary/60 px-4 py-1.5 text-xs font-normal text-primary transition-all duration-200 hover:scale-[1.02] hover:border-primary hover:bg-primary/10 active:scale-95"
               >
                 {t('topbar.clearRecentSearches')}
               </button>
@@ -709,6 +909,87 @@ function SearchSuggestionsSkeleton() {
         </div>
       ))}
       <span className="sr-only">{label}</span>
+    </div>
+  )
+}
+
+function SearchSuggestionRow({
+  imageUrl,
+  fallbackText,
+  imageRounded = 'rounded',
+  title,
+  subtitle,
+  onOpen,
+  onPlay,
+  isActive = false,
+  isPlaying = false,
+  action,
+}: {
+  imageUrl?: string | null
+  fallbackText?: string
+  imageRounded?: string
+  title: ReactNode
+  subtitle: ReactNode
+  onOpen: () => void
+  onPlay?: (event: React.MouseEvent) => void
+  isActive?: boolean
+  isPlaying?: boolean
+  action?: ReactNode
+}) {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    if (event.target !== event.currentTarget) return
+    event.preventDefault()
+    onOpen()
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={handleKeyDown}
+      className="group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
+    >
+      <div className={cn('relative h-12 w-12 shrink-0 overflow-hidden bg-primary/10', imageRounded)}>
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover transition duration-150 group-hover:brightness-50"
+          />
+        ) : (
+          <span className="flex h-full w-full items-center justify-center text-sm font-normal text-secondary transition-colors group-hover:text-primary">
+            {fallbackText ?? <MusicalNoteIcon className="h-5 w-5" />}
+          </span>
+        )}
+        {onPlay && (
+          <button
+            type="button"
+            onClick={onPlay}
+            className={cn(
+              'absolute inset-0 flex items-center justify-center bg-black/45 transition-opacity focus:opacity-100',
+              isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+            )}
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+          >
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-page shadow-lg transition-transform hover:scale-105">
+              {isPlaying ? (
+                <PauseIcon className="h-4 w-4" />
+              ) : (
+                <PlayIcon className="ml-0.5 h-4 w-4" />
+              )}
+            </span>
+          </button>
+        )}
+      </div>
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-normal text-primary">{title}</span>
+        <span className="block truncate text-xs font-normal text-secondary">{subtitle}</span>
+      </span>
+
+      {action}
     </div>
   )
 }

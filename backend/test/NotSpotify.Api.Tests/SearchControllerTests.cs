@@ -32,6 +32,7 @@ public class SearchControllerTests
         Assert.Empty(dto.Albums);
         Assert.Empty(dto.Playlists);
         Assert.Empty(dto.TracksByLyrics);
+        Assert.Empty(dto.MusicVideos);
     }
 
     [Fact]
@@ -44,5 +45,6 @@ public class SearchControllerTests
         var dto = Assert.IsType<SearchResultsDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Empty(dto.Tracks);
         Assert.Empty(dto.TracksByLyrics);
+        Assert.Empty(dto.MusicVideos);
     }
 }

@@ -28,7 +28,8 @@ public class SearchController : ControllerBase
                 Array.Empty<ArtistDto>(),
                 Array.Empty<AlbumDto>(),
                 Array.Empty<PlaylistSummaryDto>(),
-                Array.Empty<TrackDto>()));
+                Array.Empty<TrackDto>(),
+                Array.Empty<MusicVideoDto>()));
 
         var like = $"%{q}%";
         var wantAll = string.IsNullOrEmpty(type);
@@ -97,6 +98,23 @@ public class SearchController : ControllerBase
             playlists = rows.Select(p => _mapper.ToSummary(p));
         }
 
-        return Ok(new SearchResultsDto(tracks, artists, albums, playlists, tracksByLyrics));
+        IEnumerable<MusicVideoDto> musicVideos = Array.Empty<MusicVideoDto>();
+        if (wantAll || type == "musicVideo")
+        {
+            var rows = await _db.MusicVideos
+                .Where(v => EF.Functions.ILike(v.Title, like)
+                    || EF.Functions.ILike(v.Artist.Name, like))
+                .Include(v => v.Artist)
+                .Take(10)
+                .ToListAsync(ct);
+            var videoDtos = new List<MusicVideoDto>(rows.Count);
+            foreach (var row in rows)
+            {
+                videoDtos.Add(await _mapper.ToDtoAsync(row, ct));
+            }
+            musicVideos = videoDtos;
+        }
+
+        return Ok(new SearchResultsDto(tracks, artists, albums, playlists, tracksByLyrics, musicVideos));
     }
 }

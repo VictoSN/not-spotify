@@ -376,5 +376,6 @@ public record SearchResultsDto(
     IEnumerable<AlbumDto> Albums,
     IEnumerable<PlaylistSummaryDto> Playlists,
     // Tracks whose lyrics (not title) matched the query.
-    IEnumerable<TrackDto> TracksByLyrics
+    IEnumerable<TrackDto> TracksByLyrics,
+    IEnumerable<MusicVideoDto> MusicVideos
 );

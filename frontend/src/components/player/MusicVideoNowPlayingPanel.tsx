@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { PlayIcon } from '@heroicons/react/24/solid'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
+import { VideoPlaybackSurface } from './VideoPlaybackSurface'
 import type { MusicVideo } from '@/types/musicVideo'
 import { videoService } from '@/services/videoService'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -39,6 +40,7 @@ function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEve
 
 export function MusicVideoNowPlayingPanel() {
   const navigate = useNavigate()
+  const location = useLocation()
   const currentVideo = usePlayerStore((s) => s.currentVideo)
   const playVideo = usePlayerStore((s) => s.playVideo)
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
@@ -155,6 +157,7 @@ export function MusicVideoNowPlayingPanel() {
     playVideo(video, queue)
     navigate(`/videos/${video.id}`, { state: { videoQueue: queue } })
   }
+  const isCurrentWatchPage = location.pathname === `/videos/${currentVideo.id}`
 
   return (
     <aside style={panelStyle} className={panelClass}>
@@ -172,18 +175,29 @@ export function MusicVideoNowPlayingPanel() {
 
       <div className="spotify-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-5">
         <div className="group/current-video relative" onContextMenu={(event) => openMenuAtPointer(event, currentVideoMenuRef)}>
-          <Link to={`/videos/${currentVideo.id}`} className="group block overflow-hidden rounded-lg bg-black">
-            {currentVideo.thumbnailUrl ? (
-              <img
-                src={currentVideo.thumbnailUrl}
-                alt={currentVideo.title}
-                className="aspect-video w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+          {isCurrentWatchPage ? (
+            <Link to={`/videos/${currentVideo.id}`} className="group block overflow-hidden rounded-lg bg-black">
+              {currentVideo.thumbnailUrl ? (
+                <img
+                  src={currentVideo.thumbnailUrl}
+                  alt={currentVideo.title}
+                  className="aspect-video w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center bg-elevated text-lg font-black text-secondary">MV</div>
+              )}
+            </Link>
+          ) : (
+            <div className="relative overflow-hidden rounded-lg bg-black">
+              <VideoPlaybackSurface video={currentVideo} />
+              <Link
+                to={`/videos/${currentVideo.id}`}
+                aria-label={`Open ${currentVideo.title}`}
+                className="absolute inset-0 z-10"
               />
-            ) : (
-              <div className="flex aspect-video w-full items-center justify-center bg-elevated text-lg font-black text-secondary">MV</div>
-            )}
-          </Link>
-          <div className="absolute right-2 top-2 opacity-0 transition-opacity group-hover/current-video:opacity-100">
+            </div>
+          )}
+          <div className="absolute right-2 top-2 z-20 opacity-0 transition-opacity group-hover/current-video:opacity-100">
             <VideoMenu ref={currentVideoMenuRef} video={currentVideo} triggerClassName="rounded-full bg-black/60 p-1.5 backdrop-blur-sm" />
           </div>
         </div>

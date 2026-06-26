@@ -18,6 +18,10 @@ public class Episode
     public string AudioUrl { get; set; } = string.Empty;
     public string? AudioKey { get; set; }
 
+    public string? ImageUrl { get; set; }
+    public string? ImageKey { get; set; }
+    public bool Explicit { get; set; }
+
     public long DurationMs { get; set; }
     public int EpisodeNumber { get; set; }
 

@@ -18,6 +18,9 @@ public class Podcast
     public string? ImageUrl { get; set; }
     public string? ImageKey { get; set; }
 
+    public Guid? ArtistId { get; set; }
+    public Artist? Artist { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Episode> Episodes { get; set; } = new List<Episode>();

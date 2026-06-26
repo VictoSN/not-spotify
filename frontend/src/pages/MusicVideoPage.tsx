@@ -72,6 +72,9 @@ export function MusicVideoPage() {
             </>
           )}
         </div>
+        {video.description && (
+          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-secondary">{video.description}</p>
+        )}
       </div>
     </div>
   )

@@ -450,11 +450,15 @@ using (var scope = app.Services.CreateScope())
             ""Category""    text NULL,
             ""ImageUrl""    text NULL,
             ""ImageKey""    text NULL,
+            ""ArtistId""    uuid NULL,
             ""CreatedAt""   timestamp with time zone NOT NULL DEFAULT now(),
-            CONSTRAINT ""PK_Podcasts"" PRIMARY KEY (""Id"")
+            CONSTRAINT ""PK_Podcasts"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_Podcasts_Artists_ArtistId""
+                FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE SET NULL
         );
         CREATE INDEX IF NOT EXISTS ""IX_Podcasts_Title"" ON ""Podcasts""(""Title"");
         CREATE INDEX IF NOT EXISTS ""IX_Podcasts_CreatedAt"" ON ""Podcasts""(""CreatedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_Podcasts_ArtistId"" ON ""Podcasts""(""ArtistId"");
 
         CREATE TABLE IF NOT EXISTS ""Episodes"" (
             ""Id""            uuid NOT NULL,
@@ -463,6 +467,9 @@ using (var scope = app.Services.CreateScope())
             ""Description""   text NULL,
             ""AudioUrl""      text NOT NULL DEFAULT '',
             ""AudioKey""      text NULL,
+            ""ImageUrl""      text NULL,
+            ""ImageKey""      text NULL,
+            ""Explicit""      boolean NOT NULL DEFAULT false,
             ""DurationMs""    bigint NOT NULL DEFAULT 0,
             ""EpisodeNumber"" integer NOT NULL DEFAULT 0,
             ""PublishedAt""   timestamp with time zone NOT NULL DEFAULT now(),
@@ -473,6 +480,26 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS ""IX_Episodes_PodcastId_PublishedAt""
             ON ""Episodes""(""PodcastId"", ""PublishedAt"");
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Podcasts' AND column_name = 'ArtistId') THEN
+                ALTER TABLE ""Podcasts"" ADD COLUMN ""ArtistId"" uuid NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Podcasts_Artists_ArtistId') THEN
+                ALTER TABLE ""Podcasts"" ADD CONSTRAINT ""FK_Podcasts_Artists_ArtistId""
+                    FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE SET NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'ImageUrl') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""ImageUrl"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'ImageKey') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""ImageKey"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'Explicit') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""Explicit"" boolean NOT NULL DEFAULT false;
+            END IF;
+        END $$;
 
         DO $$
         DECLARE p1 uuid; p2 uuid;
@@ -615,6 +642,7 @@ using (var scope = app.Services.CreateScope())
             ""Title""        text NOT NULL,
             ""ArtistId""     uuid NOT NULL,
             ""TrackId""      uuid NULL,
+            ""Description""  text NULL,
             ""VideoUrl""     text NOT NULL DEFAULT '',
             ""VideoKey""     text NULL,
             ""ThumbnailUrl"" text NULL,
@@ -629,6 +657,13 @@ using (var scope = app.Services.CreateScope())
                 FOREIGN KEY (""TrackId"") REFERENCES ""Tracks""(""Id"") ON DELETE SET NULL
         );
         CREATE INDEX IF NOT EXISTS ""IX_MusicVideos_CreatedAt"" ON ""MusicVideos""(""CreatedAt"");
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'MusicVideos' AND column_name = 'Description') THEN
+                ALTER TABLE ""MusicVideos"" ADD COLUMN ""Description"" text NULL;
+            END IF;
+        END $$;
 
         INSERT INTO ""MusicVideos""
             (""Id"",""Title"",""ArtistId"",""TrackId"",""VideoUrl"",""ThumbnailUrl"",""DurationMs"",""ViewCount"",""CreatedAt"")

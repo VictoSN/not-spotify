@@ -11,6 +11,7 @@ export interface Episode {
   episodeNumber: number
   imageUrl: string | null
   publishedAt: string
+  explicit?: boolean
 }
 
 export interface PodcastSummary {
@@ -53,7 +54,7 @@ export function episodeToTrack(ep: Episode, podcast?: { title: string; author: s
     podcastId: ep.podcastId,
     trackNumber: ep.episodeNumber,
     discNumber: 1,
-    explicit: false,
+    explicit: ep.explicit ?? false,
     playCount: 0,
     ratingCount: 0,
     averageRating: 0,

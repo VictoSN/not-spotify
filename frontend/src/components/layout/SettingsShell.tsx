@@ -17,7 +17,7 @@ export function SettingsShell() {
   const isMobile = useIsMobile()
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#121212] text-white">
+    <div className="flex h-full flex-col bg-[#121212] text-white">
       {/* Black top header matching Spotify account page */}
       <header className="sticky top-0 z-20 h-16 shrink-0 bg-black">
         <div className="mx-auto flex h-full max-w-[960px] items-center px-6">

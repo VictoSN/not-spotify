@@ -112,7 +112,7 @@ export function AdminShell() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-base text-primary">
+    <div className="flex h-full overflow-hidden bg-base text-primary">
       <AdminSidebar onLogout={handleLogout} />
 
       {mobileMenuOpen && (

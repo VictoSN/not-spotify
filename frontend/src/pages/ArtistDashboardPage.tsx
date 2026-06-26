@@ -21,7 +21,9 @@ import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
+import { ArtistPodcastManager } from '@/components/artist/ArtistPodcastManager'
 import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
+import { ArtistVideoManager } from '@/components/artist/ArtistVideoManager'
 import { ImageCropModal } from '@/components/common/ImageCropModal'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
@@ -1696,6 +1698,14 @@ export function ArtistDashboardPage() {
         </div>
       )}
       </div>
+
+      {/* Creator media */}
+      {!loading && (
+        <>
+          <ArtistPodcastManager disabled={isRevoked} />
+          <ArtistVideoManager disabled={isRevoked} tracks={allTracks} />
+        </>
+      )}
 
       {/* ── Tours & concerts ──────────────────────────────────────────────── */}
       {!loading && (

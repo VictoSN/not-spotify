@@ -35,4 +35,6 @@ public class Artist
 
     public ICollection<Album> Albums { get; set; } = new List<Album>();
     public ICollection<Track> Tracks { get; set; } = new List<Track>();
+    public ICollection<Podcast> Podcasts { get; set; } = new List<Podcast>();
+    public ICollection<MusicVideo> MusicVideos { get; set; } = new List<MusicVideo>();
 }

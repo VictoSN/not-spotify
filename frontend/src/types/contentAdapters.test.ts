@@ -23,6 +23,7 @@ describe('episodeToTrack', () => {
     expect(t.audioUrl).toBe('https://cdn/ep1.mp3')
     expect(t.durationMs).toBe(60000)
     expect(t.trackNumber).toBe(3) // episode number stands in for track number
+    expect(t.explicit).toBe(false)
     expect(t.previewUrl).toBeNull()
     expect(t.createdAt).toBe('2026-06-21T10:00:00.000Z')
     expect(t.album.releaseDate).toBe('2026-06-21') // date-only slice
@@ -48,6 +49,11 @@ describe('episodeToTrack', () => {
     expect(t.artist.name).toBe('Fallback Show')
     expect(t.album.coverUrl).toBe('') // no cover anywhere
     expect(t.artist.imageUrl).toBeNull()
+  })
+
+  it('preserves the explicit flag for the player metadata', () => {
+    const t = episodeToTrack({ ...episode, explicit: true })
+    expect(t.explicit).toBe(true)
   })
 })
 

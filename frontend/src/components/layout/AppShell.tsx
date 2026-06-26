@@ -103,7 +103,7 @@ export function AppShell() {
   }, [currentTrackId, isAuthenticated, isPlaying])
 
   return (
-    <div className="flex flex-col h-screen bg-base text-primary">
+    <div className="flex h-full flex-col bg-base text-primary">
       <TopBar />
 
       {/* Middle row: floating cards on the base gutter */}

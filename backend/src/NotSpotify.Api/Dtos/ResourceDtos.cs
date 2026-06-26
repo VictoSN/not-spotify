@@ -237,7 +237,8 @@ public record EpisodeDto(
     long DurationMs,
     int EpisodeNumber,
     string? ImageUrl,
-    DateTime PublishedAt
+    DateTime PublishedAt,
+    bool Explicit = false
 );
 
 public record PodcastSummaryDto(
@@ -316,7 +317,8 @@ public record MusicVideoDto(
     string? ThumbnailUrl,
     long DurationMs,
     long ViewCount,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string? Description = null
 );
 
 public record UserUploadDto(

@@ -498,8 +498,13 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         b.Entity<Podcast>(e =>
         {
             e.Property(x => x.Title).IsRequired();
+            e.HasOne(x => x.Artist)
+                .WithMany(a => a.Podcasts)
+                .HasForeignKey(x => x.ArtistId)
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.Title);
             e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.ArtistId);
         });
 
         b.Entity<Episode>(e =>
@@ -546,7 +551,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
         b.Entity<MusicVideo>(e =>
         {
             e.HasOne(x => x.Artist)
-                .WithMany()
+                .WithMany(a => a.MusicVideos)
                 .HasForeignKey(x => x.ArtistId)
                 .OnDelete(DeleteBehavior.Cascade);
 

@@ -6,9 +6,12 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { useAuthStore } from '@/stores/authStore'
 import { QUALITY_KBPS, FREE_MAX_QUALITY } from '@/services/audioEngine'
+import { APP_ZOOM_MAX, APP_ZOOM_MIN } from '@/services/appZoom'
 import { useTranslation } from '@/i18n/useTranslation'
 import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
+import { Slider } from '@/components/ui/Slider'
+import { useAppZoomPreference } from '@/hooks/useAppZoom'
 import { cn } from '@/utils/cn'
 
 /** Tiny localStorage-backed preference (no effects → lint-clean). */
@@ -115,14 +118,16 @@ function Row({
   sub,
   control,
   badge,
+  disabled,
 }: {
   label: string
   sub?: string
   control: React.ReactNode
   badge?: React.ReactNode
+  disabled?: boolean
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-3.5">
+    <div className={cn('flex items-center justify-between gap-6 py-3.5', disabled && 'opacity-55')}>
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium text-primary">{label}</p>
@@ -135,6 +140,14 @@ function Row({
   )
 }
 
+function ComingSoonBadge() {
+  return (
+    <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-secondary">
+      Coming soon
+    </span>
+  )
+}
+
 export function SettingsPage() {
   const { t } = useTranslation()
   const { theme, setTheme } = useThemeStore()
@@ -142,6 +155,7 @@ export function SettingsPage() {
   const setLanguage = useLocaleStore((s) => s.setLanguage)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const toggleNowPlaying = usePlayerStore((s) => s.toggleNowPlaying)
+  const appZoom = useAppZoomPreference()
 
   // Live, wired preferences.
   const [compactLibrary, setCompactLibrary] = usePref('ns-pref-compact', false)
@@ -201,6 +215,30 @@ export function SettingsPage() {
                 { value: 'light', label: t('theme.light') },
               ]}
             />
+          }
+        />
+        <Row
+          label="App zoom"
+          sub={`${appZoom.percent}%`}
+          control={
+            <div className="flex w-56 items-center gap-3">
+              <Slider
+                aria-label="App zoom"
+                value={appZoom.zoom}
+                min={APP_ZOOM_MIN}
+                max={APP_ZOOM_MAX}
+                step={0.05}
+                onValueChange={appZoom.setZoom}
+              />
+              <button
+                type="button"
+                onClick={appZoom.resetZoom}
+                disabled={appZoom.isDefault}
+                className="rounded-full border border-secondary/40 px-3 py-1 text-xs font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Reset
+              </button>
+            </div>
           }
         />
       </Section>
@@ -286,6 +324,12 @@ export function SettingsPage() {
             />
           }
         />
+        <Row
+          label="Open at login"
+          sub="Start NotSpotify automatically when you sign in."
+          control={<ComingSoonBadge />}
+          disabled
+        />
       </Section>
 
       <Section title={t('settings.playback')}>
@@ -314,6 +358,47 @@ export function SettingsPage() {
       </Section>
 
       <OfflineDownloads />
+
+      <Section title="Notifications">
+        <Row
+          label="Release alerts"
+          sub="Notify when followed artists publish new content."
+          control={<ComingSoonBadge />}
+          disabled
+        />
+        <Row
+          label="Friend activity"
+          sub="Manage social listening alerts."
+          control={<ComingSoonBadge />}
+          disabled
+        />
+      </Section>
+
+      <Section title="Privacy">
+        <Row
+          label="Private listening"
+          sub="Hide listening activity from friends."
+          control={<ComingSoonBadge />}
+          disabled
+        />
+      </Section>
+
+      <Section title="Storage and cache">
+        <Row
+          label="Media cache"
+          sub="Offline downloads are listed above when supported by this browser."
+          control={<ComingSoonBadge />}
+          disabled
+        />
+      </Section>
+
+      <Section title="About">
+        <Row
+          label="NotSpotify"
+          sub="React, ASP.NET Core, and Tauri desktop shell."
+          control={<span className="text-sm font-semibold text-secondary">0.1.0</span>}
+        />
+      </Section>
     </div>
   )
 }

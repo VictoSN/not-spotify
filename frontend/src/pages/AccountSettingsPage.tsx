@@ -219,6 +219,7 @@ export function AccountSettingsPage() {
   if (!user) return null
 
   const isPremium = (subscription?.plan ?? user.plan) === 'premium'
+  const billingInterval = subscription?.interval ?? user.subscriptionInterval
   const renews = subscription?.currentPeriodEnd ?? user.subscriptionCurrentPeriodEnd
 
   return (
@@ -245,7 +246,7 @@ export function AccountSettingsPage() {
             </span>
           </div>
           <h2 className="mt-1 text-[30px] font-black leading-tight text-white">
-            {isPremium ? (user.subscriptionPlan === 'family' ? 'Family' : 'Premium') : 'Free'}
+            {isPremium ? 'Premium' : 'Free'}
           </h2>
           <p className="mt-2 text-[13px] text-[#b3b3b3]">
             {isPremium ? (
@@ -258,7 +259,7 @@ export function AccountSettingsPage() {
           </p>
           {isPremium && (
             <p className="mt-1 text-[13px] text-[#b3b3b3]">
-              {subscription?.interval === 'month' ? 'Monthly billing' : subscription?.interval === 'year' ? 'Annual billing' : null}
+              {billingInterval === 'monthly' ? 'Monthly billing' : billingInterval === 'yearly' ? 'Annual billing' : null}
             </p>
           )}
           {!isPremium && (

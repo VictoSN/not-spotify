@@ -164,7 +164,8 @@ public class MediaMapper
             ResolveImage(v.ThumbnailKey, v.ThumbnailUrl),
             v.DurationMs,
             v.ViewCount,
-            v.CreatedAt
+            v.CreatedAt,
+            v.Description
         );
     }
 
@@ -215,8 +216,9 @@ public class MediaMapper
             audioUrl,
             ep.DurationMs,
             ep.EpisodeNumber,
-            ResolveImage(ep.Podcast?.ImageKey, ep.Podcast?.ImageUrl),
-            ep.PublishedAt
+            ResolveImage(ep.ImageKey, ep.ImageUrl) ?? ResolveImage(ep.Podcast?.ImageKey, ep.Podcast?.ImageUrl),
+            ep.PublishedAt,
+            ep.Explicit
         );
     }
 

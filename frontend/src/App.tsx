@@ -7,10 +7,13 @@ import { Spinner } from '@/components/ui/Spinner'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
 import { AppToaster } from '@/components/ui/AppToaster'
 import { ConfirmProvider } from '@/components/common/ConfirmDialog'
+import { DesktopTitleBar } from '@/components/layout/DesktopTitleBar'
+import { useAppZoomShortcuts } from '@/hooks/useAppZoom'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
   const isInitializing = useAuthStore((s) => s.isInitializing)
+  useAppZoomShortcuts()
 
   useEffect(() => {
     hydrateFromCookie()
@@ -38,16 +41,24 @@ export default function App() {
   // refresh never flashes the logged-out chrome (and protected routes don't bounce).
   if (isInitializing) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-6 bg-base">
-        <MusicalNoteIcon className="h-12 w-12 text-accent" />
-        <Spinner size="lg" />
+      <div className="flex h-screen flex-col bg-base">
+        <DesktopTitleBar />
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6">
+          <MusicalNoteIcon className="h-12 w-12 text-accent" />
+          <Spinner size="lg" />
+        </div>
       </div>
     )
   }
 
   return (
     <ConfirmProvider>
-      <RouterProvider router={router} />
+      <div className="flex h-screen flex-col bg-base text-primary">
+        <DesktopTitleBar />
+        <div className="min-h-0 flex-1">
+          <RouterProvider router={router} />
+        </div>
+      </div>
       <InstallPrompt />
       <AppToaster />
     </ConfirmProvider>

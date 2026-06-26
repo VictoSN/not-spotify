@@ -6,7 +6,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 ## 📊 Project Status & Features
 
-**The remaining-work checklist and roadmap live in [todo.md](todo.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
+**The remaining-work checklist and roadmap live in [TODO.md](TODO.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
 
 **What works today (highlights):**
 - **Playback:** full player, queue + premium drag-reorder, **crossfade + gapless**, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
@@ -20,7 +20,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 - **Desktop:** optional **Tauri** wrapper (`frontend/src-tauri`) that loads the same frontend in a native window — see [Desktop app (Tauri)](#desktop-app-tauri-optional).
 
-**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[todo.md](todo.md)** for the full checklist.
+**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[TODO.md](TODO.md)** for the full checklist.
 
 ### Run everything at once (quickest start)
 

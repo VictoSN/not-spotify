@@ -140,6 +140,49 @@ public class SearchTextBuilderTests
         Assert.Equal("nihaobuhao", SearchTextBuilder.Concat("ni hao bu hao"));
     }
 
+    // ── Automatic per-character pinyin (no curated alias entry needed) ─────────────
+    [Theory]
+    [InlineData("學不會")]
+    [InlineData("xue bu hui")]
+    [InlineData("xuebuhui")]
+    [InlineData("xbh")]
+    public void Track_AutoPinyin_XueBuHui_NeedsNoCuratedAlias(string query)
+    {
+        // JJ Lin album/track 學不會 — not in SearchAliases, romanized automatically.
+        var blob = SearchTextBuilder.ForTrack("學不會", "JJ Lin", "學不會");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Theory]
+    [InlineData("小幸運")]
+    [InlineData("xiao xing yun")]
+    [InlineData("xiaoxingyun")]
+    [InlineData("xxy")]
+    public void Track_AutoPinyin_XiaoXingYun(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("小幸運", "田馥甄", "小幸運");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Theory]
+    [InlineData("美麗的神話")]
+    [InlineData("mei li de shen hua")]
+    [InlineData("meilideshenhua")]
+    public void Track_AutoPinyin_MeiLiDeShenHua(string query)
+    {
+        var blob = SearchTextBuilder.ForTrack("美麗的神話", "Jackie Chan & Kim Hee-sun", "美麗的神話");
+        Assert.True(Matches(blob, query), $"'{query}' should match blob: {blob}");
+    }
+
+    [Fact]
+    public void AutoPinyin_LeavesEnglishTitlesUntouched()
+    {
+        var blob = SearchTextBuilder.ForTrack("Cinderella", "JJ Lin", "學不會");
+        Assert.True(Matches(blob, "cinderella"));
+        // The English title contributes no spurious pinyin of its own.
+        Assert.False(Matches(blob, "xiaoxingyun"));
+    }
+
     [Fact]
     public void UnknownTitle_StillCarriesItsOwnTextButNoAliases()
     {

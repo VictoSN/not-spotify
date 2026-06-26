@@ -79,6 +79,9 @@ public static class SearchTextBuilder
         yield return value;
         if (dict.TryGetValue(Concat(value), out var entry))
             foreach (var v in entry.Expand()) yield return v;
+        // Automatic per-character Hanzi→pinyin — additive to (and independent of) the
+        // curated aliases, so any Chinese title is pinyin-searchable without an entry.
+        foreach (var v in PinyinRomanizer.Romanize(value)) yield return v;
     }
 
     // Normalize each part into a spaced phrase AND a concat token, de-dup at the
@@ -146,7 +149,7 @@ public static class SearchAliases
 {
     // Bump when aliases change. Startup uses this to recompute existing SearchText
     // rows once, so imported songs get new search terms without a manual command.
-    public const string Version = "2026-06-25-japanese-eve-7oops-ao-no-waltz";
+    public const string Version = "2026-06-27-auto-pinyin-romanizer";
 
     private static IReadOnlyDictionary<string, AliasEntry> Index(Dictionary<string, AliasEntry> raw)
     {

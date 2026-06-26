@@ -21,6 +21,7 @@ are also two dedicated **testing phases** for cross-cutting regression work.
 | **Settings / account "coming soon"** | 6 |
 | **Admin: advertisement for free tier** | 7 |
 | **Search results page redesign** | 9 |
+| **Navigation / UI polish** | 15 (home/library clickability + empty-space create menu), 16 (playlist add-track hover affordance) |
 | **Testing** | 11 (unit hardening), 12 (manual QA) |
 
 ## Recommended reasoning effort per phase
@@ -53,6 +54,8 @@ Codex has 3 tiers, so the mapping collapses the top two Opus levels:
 | 12 — Manual QA | **med** | **medium** | mostly human verification, little reasoning |
 | 13 — Follow/unfollow regression | **high** | **high** | auth + optimistic state + FE/BE follow endpoints can disagree |
 | 14 — Library MV/podcast navigation | **med** | **medium** | likely sidebar row/link wiring, low blast radius |
+| 15 — Home/library clickability + empty-space create menu | **high** | **high** | pointer-event routing across cards, blank areas, menus, and drag/drop without conflicts |
+| 16 — Playlist add-track hover affordance | **med** | **medium** | mostly UI placement; reuse existing hover/action pattern with low-to-medium blast radius |
 
 ---
 
@@ -300,6 +303,8 @@ A focused pass after the feature phases to lock in behaviour and catch regressio
 - [ ] Player state machine: audio ↔ MV ↔ ad transitions (no overlap, correct `playbackMode`, correct now-playing panel). Consolidates Phases 1, 4, 5.
 - [ ] Library/recents registration across media types (track, MV, podcast). Consolidates Phases 1, 2.
 - [ ] Recommendation/genre + "Show all" routing. Consolidates Phase 4.
+- [ ] Clickability/context-menu regressions: Home playlist/mix rows navigate correctly; empty-space right-click opens create actions without stealing media right-clicks. Consolidates Phase 15.
+- [ ] Playlist add-track hover affordance: the in-cover plus action works with mouse, keyboard, and existing add-song flows. Consolidates Phase 16.
 - [ ] Run full suites green: `cd frontend && npm test` and `cd backend && dotnet test`.
 - [ ] `npx tsc --noEmit` clean.
 
@@ -320,6 +325,9 @@ End-to-end verification the unit tests can't cover (needs the running app + back
 - [ ] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home).
 - [ ] Follow and unfollow work from every artist/profile surface and persist after reload.
 - [ ] Saved podcasts and MVs in the left library sidebar navigate to their detail pages.
+- [ ] Home playlist cards, Daily Mix cards, mix tracks, and playlist rows are clickable and open the correct destination instead of feeling like dead UI.
+- [ ] Right-clicking blank/free space in the sidebar/library area opens the clean create menu (**Create playlist** / **Create folder**) while right-clicking media still opens the correct media menu.
+- [ ] When adding songs to a playlist, the plus button appears inside/on the track cover on hover, close to the artwork, instead of far away on the row.
 
 ---
 
@@ -366,3 +374,78 @@ Likely files: `frontend/src/components/layout/Sidebar.tsx`,
 Tests (this session):
 - [ ] Sidebar render/navigation test: saved podcast and saved MV rows call the expected routes.
 - [ ] Interaction test: menu trigger/right-click still opens the menu without also navigating.
+
+---
+
+## Phase 15 — Home/library clickability + empty-space create menu · Opus: high · Codex: high
+Bug / polish: some Home-page items feel dead or inconsistent — for example playlist cards,
+Daily Mix/mix track surfaces, or rows that visually look clickable but do not navigate.
+Also, right-clicking a clean empty area should feel professional by opening a simple
+creation menu, like the screenshot: **Create playlist** and **Create folder**.
+
+Goal: make the Home and library surfaces feel consistently interactive, while adding a
+safe empty-space context menu that does **not** conflict with album/artist/track/card
+menus, buttons, drag/drop, text inputs, or existing playlist actions.
+
+- [ ] Audit Home-page cards/rows: playlists, Daily Mix tiles, mix tracks, recent items, and any tile that visually looks clickable.
+- [ ] Make each clickable surface navigate to the correct destination:
+  - playlist → playlist detail
+  - Daily Mix / generated mix → mix detail or generated-track list
+  - track → track detail or play/open row, matching the existing app pattern
+  - album/artist/MV/podcast → their existing detail pages
+- [ ] Preserve hover-play behaviour, drag/drop, and right-click media menus; do not let navigation fire when clicking menu buttons, play buttons, drag handles, or inline actions.
+- [ ] Add an empty-space right-click handler for the library/sidebar/content area that opens a compact create menu with:
+  - **Create playlist**
+  - **Create folder**
+- [ ] Only show the empty-space create menu when the event target is genuinely blank/non-interactive space.
+- [ ] Do not override existing context menus for tracks, albums, artists, playlists, podcasts, MVs, inputs, modals, or browser text selection.
+- [ ] Keep the create actions wired to the same logic used by the current **Create** dropdown, so there is no duplicate creation path.
+
+Likely files: `frontend/src/pages/HomePage.tsx`, `frontend/src/components/layout/Sidebar.tsx`,
+`frontend/src/components/layout/AppShell.tsx`, `frontend/src/components/cards/MixTile.tsx`,
+`frontend/src/components/cards/TrackTile.tsx`, `frontend/src/components/cards/PlaylistRowMenu.tsx`,
+`frontend/src/components/cards/TrackRow.tsx`, `frontend/src/stores/libraryStore.ts`,
+`frontend/src/router/index.tsx`, `frontend/src/utils/contextMenu.ts`.
+
+Recommended intelligence / effort:
+- **Opus 4.8: high** — the code is not algorithmically hard, but it touches several interaction layers. The main risk is pointer-event conflict: blank-space right-click must not steal media context menus, and click navigation must not fire when pressing play/menu/drag controls.
+- **Codex: high** — use high because it needs careful regression checks across Home, sidebar, library rows, and playlist/mix cards.
+
+Tests (this session):
+- [ ] Home interaction test: clicking playlist/mix/card surfaces navigates to the expected route.
+- [ ] Interaction test: clicking nested buttons/menu/play controls does **not** trigger row navigation.
+- [ ] Context-menu test: right-click blank sidebar/library space opens the create menu.
+- [ ] Context-menu test: right-click on media opens the media menu, not the blank-space create menu.
+- [ ] Creation test: **Create playlist** and **Create folder** call the existing creation handlers/store actions.
+
+---
+
+## Phase 16 — Playlist add-track hover affordance · Opus: med · Codex: medium
+Polish: when adding songs inside a playlist, the current **+** button is too far from
+the track cover/artwork. It should feel closer to Spotify / Your Library behaviour:
+hover near the cover and the action appears directly inside or over the artwork area.
+
+Goal: move the add-song affordance into the track-cover hover zone, while keeping the
+row clean, readable, and usable for mouse + keyboard users.
+
+- [ ] In playlist add/search/recommendation rows, place the **+** action inside/on top of the track cover area on hover/focus.
+- [ ] Reuse the existing Your Library hover mechanics where possible, so the cover hover, play overlay, and action animation feel consistent.
+- [ ] Make the in-cover **+** add the song to the current playlist using the same handler as the existing far-right plus button.
+- [ ] After adding, show a clear saved/added state (`✓`, disabled plus, or existing app pattern) and prevent duplicate adds.
+- [ ] Keep row click, hover-play, right-click menu, drag/drop, and mobile/touch behaviour from breaking.
+- [ ] Ensure the button remains keyboard-accessible: focus should reveal the action even without mouse hover.
+
+Likely files: `frontend/src/pages/PlaylistDetailPage.tsx`,
+`frontend/src/components/cards/TrackRow.tsx`, `frontend/src/components/cards/TrackTile.tsx`,
+`frontend/src/components/cards/TrackRowMenu.tsx`, `frontend/src/components/player/PlaylistAddSongs.tsx`,
+`frontend/src/stores/playlistStore.ts`, `frontend/src/stores/libraryStore.ts`.
+
+Recommended intelligence / effort:
+- **Opus 4.8: med** — mostly a UI placement and event-handling polish task if the existing hover/action pattern can be reused.
+- **Codex: medium** — enough to implement cleanly with tests; bump to **high** only if the add-song UI is duplicated across several components or tied to playlist persistence bugs.
+
+Tests (this session):
+- [ ] Render test: add-song rows show the **+** action inside/on the cover when hovered or focused.
+- [ ] Interaction test: clicking the in-cover **+** adds the track to the current playlist exactly once.
+- [ ] Regression test: row navigation/menu/play/drag actions still work and do not accidentally trigger add.
+

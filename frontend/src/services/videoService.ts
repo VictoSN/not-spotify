@@ -1,4 +1,5 @@
 import type { MusicVideo } from '@/types/musicVideo'
+import type { TrackComment } from '@/types/track'
 import { api } from './api'
 
 // Cached index of all videos by trackId, lazily built. The catalogue is small
@@ -49,5 +50,28 @@ export const videoService = {
         return null
       }
     }
+  },
+
+  async getComments(videoId: string, limit = 50): Promise<TrackComment[]> {
+    const res = await api.get<TrackComment[]>(`/videos/${videoId}/comments`, { params: { limit } })
+    return res.data
+  },
+
+  async getCommentReplies(videoId: string, commentId: string): Promise<TrackComment[]> {
+    const res = await api.get<TrackComment[]>(`/videos/${videoId}/comments/${commentId}/replies`)
+    return res.data
+  },
+
+  async postComment(videoId: string, body: string, parentId?: string, timestampMs?: number): Promise<TrackComment> {
+    const res = await api.post<TrackComment>(`/videos/${videoId}/comments`, {
+      body,
+      parentId: parentId ?? null,
+      timestampMs: timestampMs ?? null,
+    })
+    return res.data
+  },
+
+  async deleteComment(videoId: string, commentId: string): Promise<void> {
+    await api.delete(`/videos/${videoId}/comments/${commentId}`)
   },
 }

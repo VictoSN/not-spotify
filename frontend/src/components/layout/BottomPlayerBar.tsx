@@ -26,7 +26,20 @@ function PipIcon({ className }: { className?: string }) {
 
 export function BottomPlayerBar() {
   const { t } = useTranslation()
-  const { toggleNowPlaying, currentTrack, isPlaying, pause, resume, isKaraokeOpen, toggleKaraoke } = usePlayerStore()
+  const {
+    playbackMode,
+    toggleNowPlaying,
+    currentTrack,
+    currentVideo,
+    isPlaying,
+    isVideoPlaying,
+    pause,
+    resume,
+    pauseVideo,
+    resumeVideo,
+    isKaraokeOpen,
+    toggleKaraoke,
+  } = usePlayerStore()
   const jamRole = useJamStore((s) => s.role)
   const startHosting = useJamStore((s) => s.startHosting)
   const stopJam = useJamStore((s) => s.stopJam)
@@ -45,10 +58,17 @@ export function BottomPlayerBar() {
     }
   }
   const [moreOpen, setMoreOpen] = useState(false)
+  const isVideoMode = playbackMode === 'video'
+  const hasMedia = isVideoMode ? !!currentVideo : !!currentTrack
+  const activePlaying = isVideoMode ? isVideoPlaying : isPlaying
+  const activeTitle = isVideoMode ? currentVideo?.title : currentTrack?.title
+  const activeCreator = isVideoMode ? currentVideo?.artist.name : currentTrack?.artist.name
+  const activeImage = isVideoMode ? currentVideo?.thumbnailUrl : currentTrack?.album.coverUrl
+  const activeImageAlt = isVideoMode ? currentVideo?.title : currentTrack?.album.title
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
-    if (!currentTrack) return null
+    if (!hasMedia) return null
     return (
       <div className="shrink-0 bg-base border-t border-elevated/20">
         {/* Thin progress bar strip at the top */}
@@ -62,26 +82,35 @@ export function BottomPlayerBar() {
           role="button"
           aria-label={t('player.openNowPlaying')}
         >
-          <img
-            src={currentTrack.album.coverUrl}
-            alt={currentTrack.album.title}
-            className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-lg"
-          />
+          {activeImage ? (
+            <img
+              src={activeImage}
+              alt={activeImageAlt ?? ''}
+              className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-lg"
+            />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-elevated text-[11px] font-black text-secondary shadow-lg">
+              MV
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-primary truncate leading-tight">{currentTrack.title}</p>
-            <p className="text-xs text-secondary truncate leading-tight">{currentTrack.artist.name}</p>
+            <p className="text-sm font-semibold text-primary truncate leading-tight">{activeTitle}</p>
+            <p className="text-xs text-secondary truncate leading-tight">{activeCreator}</p>
           </div>
           {/* Play/pause only â€” stop propagation so the row tap doesn't also toggle play */}
           <button
             onClick={(e) => {
               e.stopPropagation()
-              if (isPlaying) pause()
+              if (isVideoMode) {
+                if (isVideoPlaying) pauseVideo()
+                else resumeVideo()
+              } else if (isPlaying) pause()
               else resume()
             }}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-primary text-page hover:scale-105 active:scale-95 transition-all shrink-0"
-            aria-label={isPlaying ? t('player.pause') : t('player.play')}
+            aria-label={activePlaying ? t('player.pause') : t('player.play')}
           >
-            {isPlaying
+            {activePlaying
               ? <PauseIcon className="w-5 h-5" />
               : <PlayIcon className="w-5 h-5 translate-x-0.5" />
             }
@@ -107,7 +136,7 @@ export function BottomPlayerBar() {
 
       {/* Right: primary actions stay visible; secondary tools live in More. */}
       <div className="flex items-center gap-3 justify-self-end">
-        {currentTrack && (
+        {currentTrack && !isVideoMode && (
           <button
             onClick={toggleKaraoke}
             className={`transition-all hover:scale-110 active:scale-90 ${isKaraokeOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
@@ -118,7 +147,7 @@ export function BottomPlayerBar() {
             <MicVocal className="h-5 w-5" strokeWidth={1.8} />
           </button>
         )}
-        {currentTrack && (
+        {currentTrack && !isVideoMode && (
           <button
             type="button"
             onClick={toggleQueue}
@@ -131,7 +160,7 @@ export function BottomPlayerBar() {
           </button>
         )}
         <VolumeControl />
-        {currentTrack && (
+        {currentTrack && !isVideoMode && (
           <button
             onClick={enterPip}
             className="hidden text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 sm:block"
@@ -141,7 +170,7 @@ export function BottomPlayerBar() {
             <PipIcon className="h-5 w-5" />
           </button>
         )}
-        {currentTrack && (
+        {hasMedia && !isVideoMode && (
           <div className="relative">
             <button
               onClick={() => setMoreOpen((open) => !open)}
@@ -164,13 +193,13 @@ export function BottomPlayerBar() {
                   aria-label="Close more player controls"
                 />
                 <div className="absolute bottom-full right-0 z-50 mb-3 w-72 rounded-lg border border-secondary/10 bg-elevated p-2 shadow-2xl">
-                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">Playback speed</p>
                       <p className="text-xs text-secondary">Change how fast the track plays</p>
                     </div>
                     <PlaybackSpeedButton />
-                  </div>
+                  </div>}
                   <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">{t('player.sleep')}</p>
@@ -178,14 +207,14 @@ export function BottomPlayerBar() {
                     </div>
                     <SleepTimerButton />
                   </div>
-                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">{t('player.equalizer')}</p>
                       <p className="text-xs text-secondary">Adjust the sound profile</p>
                     </div>
                     <EqualizerButton />
-                  </div>
-                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
+                  </div>}
+                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">
                         {jamRole === 'host' ? t('player.jam.end') : 'Jam'}
@@ -208,7 +237,7 @@ export function BottomPlayerBar() {
                     >
                       <UserGroupIcon className="h-5 w-5" />
                     </button>
-                  </div>
+                  </div>}
                 </div>
               </>
             )}
@@ -221,8 +250,10 @@ export function BottomPlayerBar() {
 
 /** Thin accent-coloured progress strip for the mobile mini-player. */
 function ProgressBarStrip() {
-  const { currentTime, duration } = usePlayerStore()
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0
+  const { playbackMode, currentTime, duration, videoCurrentTime, videoDuration } = usePlayerStore()
+  const activeTime = playbackMode === 'video' ? videoCurrentTime : currentTime
+  const activeDuration = playbackMode === 'video' ? videoDuration : duration
+  const pct = activeDuration > 0 ? (activeTime / activeDuration) * 100 : 0
   return (
     <div
       className="h-full bg-primary transition-[width] duration-500"

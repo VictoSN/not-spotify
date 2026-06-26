@@ -19,6 +19,17 @@ interface Props {
   durationMs: number
   waveform?: number[] | null
   onSeek: (seconds: number) => void
+  commentsApi?: CommentApi
+  canPinAtCurrentTime?: boolean
+  currentTimeSeconds?: number
+  waveformLabel?: string
+}
+
+interface CommentApi {
+  getComments: (mediaId: string, limit?: number) => Promise<TrackComment[]>
+  getCommentReplies: (mediaId: string, commentId: string) => Promise<TrackComment[]>
+  postComment: (mediaId: string, body: string, parentId?: string, timestampMs?: number) => Promise<TrackComment>
+  deleteComment: (mediaId: string, commentId: string) => Promise<void>
 }
 
 function CommentRow({
@@ -28,6 +39,7 @@ function CommentRow({
   onDelete,
   onReply,
   onSeek,
+  commentsApi = trackService,
 }: {
   comment: TrackComment
   trackId: string
@@ -35,6 +47,7 @@ function CommentRow({
   onDelete: (id: string) => void
   onReply: (parent: TrackComment) => void
   onSeek: (seconds: number) => void
+  commentsApi?: CommentApi
 }) {
   const [replies, setReplies] = useState<TrackComment[]>([])
   const [repliesOpen, setRepliesOpen] = useState(false)
@@ -50,14 +63,14 @@ function CommentRow({
     if (replies.length > 0) return
     setLoadingReplies(true)
     try {
-      const r = await trackService.getCommentReplies(trackId, comment.id)
+      const r = await commentsApi.getCommentReplies(trackId, comment.id)
       setReplies(r)
     } catch {
       // silently fail
     } finally {
       setLoadingReplies(false)
     }
-  }, [trackId, comment.id, repliesOpen, replies.length])
+  }, [trackId, comment.id, commentsApi, repliesOpen, replies.length])
 
   return (
     <div className="group">
@@ -168,7 +181,17 @@ function CommentRow({
   )
 }
 
-export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSeek }: Props) {
+export function CommentSection({
+  trackId,
+  trackTitle,
+  durationMs,
+  waveform,
+  onSeek,
+  commentsApi = trackService,
+  canPinAtCurrentTime,
+  currentTimeSeconds,
+  waveformLabel = 'Click the waveform to pin a comment to that moment.',
+}: Props) {
   const [comments, setComments] = useState<TrackComment[]>([])
   const [loading, setLoading] = useState(true)
   const [body, setBody] = useState('')
@@ -185,14 +208,14 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
   const fetchComments = useCallback(async () => {
     setLoading(true)
     try {
-      const c = await trackService.getComments(trackId)
+      const c = await commentsApi.getComments(trackId)
       setComments(c)
     } catch {
       // silently fail — comments are non-critical
     } finally {
       setLoading(false)
     }
-  }, [trackId])
+  }, [trackId, commentsApi])
 
   useEffect(() => {
     fetchComments()
@@ -206,7 +229,7 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
     }
     setPosting(true)
     try {
-      const newComment = await trackService.postComment(
+      const newComment = await commentsApi.postComment(
         trackId,
         body.trim(),
         replyingTo?.id,
@@ -230,7 +253,7 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
 
   const handleDelete = async (commentId: string) => {
     try {
-      await trackService.deleteComment(trackId, commentId)
+      await commentsApi.deleteComment(trackId, commentId)
       setComments((prev) => prev.filter((c) => c.id !== commentId))
       notify.success(t('track.commentDeleted'))
     } catch (err: any) {
@@ -255,7 +278,7 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
 
       {waveform && waveform.length > 0 && (
         <div className="mb-6">
-          <p className="mb-2 text-xs text-secondary">Click the waveform to pin a comment to that moment.</p>
+          <p className="mb-2 text-xs text-secondary">{waveformLabel}</p>
           <div
             className="relative flex h-24 cursor-crosshair items-center gap-px overflow-hidden rounded-lg bg-elevated px-2"
             onClick={(event) => {
@@ -340,13 +363,13 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
             <div className="flex items-center justify-between mt-2">
               <div className="flex items-center gap-2 text-xs text-secondary">
                 <span>{body.length}/1000</span>
-                {!replyingTo && currentTrack?.id === trackId && (
+                {!replyingTo && (canPinAtCurrentTime ?? currentTrack?.id === trackId) && (
                   <button
                     type="button"
-                    onClick={() => setTimestampMs(Math.round(currentTime * 1000))}
+                    onClick={() => setTimestampMs(Math.round((currentTimeSeconds ?? currentTime) * 1000))}
                     className="text-accent hover:underline"
                   >
-                    Pin at {formatSeconds(currentTime)}
+                    Pin at {formatSeconds(currentTimeSeconds ?? currentTime)}
                   </button>
                 )}
                 {timestampMs != null && (
@@ -383,6 +406,7 @@ export function CommentSection({ trackId, trackTitle, durationMs, waveform, onSe
               key={c.id}
               comment={c}
               trackId={trackId}
+              commentsApi={commentsApi}
               isOwner={user?.id === c.user.id}
               onDelete={handleDelete}
               onReply={handleReply}

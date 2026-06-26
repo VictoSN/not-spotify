@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Track } from '@/types/track'
 import type { Ad } from '@/types/ad'
+import type { MusicVideo } from '@/types/musicVideo'
 import { trackService } from '@/services/trackService'
 import { adService } from '@/services/adService'
 import { useAuthStore } from './authStore'
@@ -86,6 +87,7 @@ function advanceWithAdGate(next: Track, nextIndex: number) {
 }
 
 export type RepeatMode = 'off' | 'one' | 'all'
+export type PlaybackMode = 'audio' | 'video'
 
 /** What kind of surface seeded the current queue (album page, playlist, etc.). */
 export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked' | 'mix'
@@ -159,10 +161,17 @@ function fillStandaloneQueue(track: Track, newQueue: Track[]) {
 }
 
 interface PlayerState {
+  playbackMode: PlaybackMode
   currentTrack: Track | null
   isPlaying: boolean
   currentTime: number
   duration: number
+  currentVideo: MusicVideo | null
+  isVideoPlaying: boolean
+  videoCurrentTime: number
+  videoDuration: number
+  videoQueue: MusicVideo[]
+  videoQueueIndex: number
   queue: Track[]
   queueIndex: number
   /** The album/playlist/artist/liked surface that seeded the current queue, so
@@ -190,16 +199,21 @@ interface PlayerState {
   currentAd: Ad | null
 
   play: (track: Track, queue?: Track[]) => void
+  playVideo: (video: MusicVideo, queue?: MusicVideo[]) => void
   /** Start a queue from a known context (album/playlist/artist/liked) so the
    *  matching play buttons reflect the playing state. */
   playContext: (context: PlayContext, tracks: Track[], startIndex?: number) => void
   endAd: () => void
   pause: () => void
   resume: () => void
+  pauseVideo: () => void
+  resumeVideo: () => void
   togglePlayPause: () => void
   skipNext: () => void
   skipPrevious: () => void
   seek: (seconds: number) => void
+  videoTick: (currentTime: number, duration: number) => void
+  stopVideo: () => void
   setVolume: (volume: number) => void
   toggleMute: () => void
   toggleShuffle: () => void
@@ -220,10 +234,17 @@ interface PlayerState {
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
+  playbackMode: 'audio',
   currentTrack: null,
   isPlaying: false,
   currentTime: 0,
   duration: 0,
+  currentVideo: null,
+  isVideoPlaying: false,
+  videoCurrentTime: 0,
+  videoDuration: 0,
+  videoQueue: [],
+  videoQueueIndex: -1,
   queue: [],
   queueIndex: -1,
   currentContextType: null,
@@ -260,6 +281,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { currentTrack, history } = get()
     const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
     set({
+      playbackMode: 'audio',
+      currentVideo: null,
+      isVideoPlaying: false,
+      videoCurrentTime: 0,
+      videoDuration: 0,
       currentTrack: track,
       queue: newQueue,
       queueIndex: index,
@@ -276,6 +302,32 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     fillStandaloneQueue(track, newQueue)
   },
 
+  playVideo: (video, queue) => {
+    pendingAfterAd = null
+    standaloneFillToken++
+    const newQueue = queue && queue.length > 0 ? queue : [video]
+    const index = Math.max(0, newQueue.findIndex((item) => item.id === video.id))
+    set({
+      playbackMode: 'video',
+      currentTrack: null,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      queue: [],
+      queueIndex: -1,
+      currentContextType: null,
+      currentContextId: null,
+      recommendedIds: new Set(),
+      currentAd: null,
+      currentVideo: video,
+      videoQueue: newQueue,
+      videoQueueIndex: index,
+      isVideoPlaying: true,
+      videoCurrentTime: 0,
+      videoDuration: video.durationMs > 0 ? video.durationMs / 1000 : 0,
+    })
+  },
+
   playContext: (context, tracks, startIndex = 0) => {
     const track = tracks[startIndex]
     if (!track) return
@@ -286,6 +338,11 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const { currentTrack, history } = get()
     const newHistory = currentTrack ? [...history, currentTrack].slice(-50) : history
     set({
+      playbackMode: 'audio',
+      currentVideo: null,
+      isVideoPlaying: false,
+      videoCurrentTime: 0,
+      videoDuration: 0,
       currentTrack: track,
       queue: tracks,
       queueIndex: startIndex,
@@ -301,14 +358,39 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   pause: () => set({ isPlaying: false }),
   resume: () => { if (!get().currentAd) set({ isPlaying: true }) },
+  pauseVideo: () => set({ isVideoPlaying: false }),
+  resumeVideo: () => { if (get().currentVideo) set({ playbackMode: 'video', isVideoPlaying: true, isPlaying: false }) },
 
   togglePlayPause: () => {
-    const { isPlaying, currentTrack, currentAd } = get()
+    const { playbackMode, isPlaying, currentTrack, currentAd, currentVideo, isVideoPlaying } = get()
+    if (playbackMode === 'video') {
+      if (!currentVideo) return
+      set({ isVideoPlaying: !isVideoPlaying, isPlaying: false })
+      return
+    }
     if (currentAd || !currentTrack) return // transport is locked while an ad plays
     set({ isPlaying: !isPlaying })
   },
 
   skipNext: () => {
+    if (get().playbackMode === 'video') {
+      const { videoQueue, videoQueueIndex } = get()
+      if (!videoQueue.length) return
+      const nextIndex = videoQueueIndex + 1
+      if (nextIndex >= videoQueue.length) {
+        set({ isVideoPlaying: false })
+        return
+      }
+      const next = videoQueue[nextIndex]
+      set({
+        currentVideo: next,
+        videoQueueIndex: nextIndex,
+        videoCurrentTime: 0,
+        videoDuration: next.durationMs > 0 ? next.durationMs / 1000 : 0,
+        isVideoPlaying: true,
+      })
+      return
+    }
     if (get().currentAd) return // ads are non-skippable
     const { queue, queueIndex, repeatMode, shuffleEnabled, currentTrack } = get()
     if (repeatMode === 'one') {
@@ -353,6 +435,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 
   skipPrevious: () => {
+    if (get().playbackMode === 'video') {
+      const { videoCurrentTime, videoQueueIndex, videoQueue } = get()
+      if (videoCurrentTime > 3) {
+        set({ videoCurrentTime: 0 })
+        return
+      }
+      if (videoQueueIndex > 0) {
+        const prev = videoQueue[videoQueueIndex - 1]
+        set({
+          currentVideo: prev,
+          videoQueueIndex: videoQueueIndex - 1,
+          videoCurrentTime: 0,
+          videoDuration: prev.durationMs > 0 ? prev.durationMs / 1000 : 0,
+          isVideoPlaying: true,
+        })
+      }
+      return
+    }
     if (get().currentAd) return // ads are non-skippable
     const { currentTime, queueIndex, queue, history } = get()
     if (currentTime > 3) {
@@ -373,7 +473,22 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
-  seek: (seconds) => set({ currentTime: seconds }),
+  seek: (seconds) => {
+    if (get().playbackMode === 'video') set({ videoCurrentTime: seconds })
+    else set({ currentTime: seconds })
+  },
+
+  videoTick: (currentTime, duration) => set({ videoCurrentTime: currentTime, videoDuration: duration }),
+
+  stopVideo: () => set({
+    playbackMode: get().currentTrack ? 'audio' : 'audio',
+    currentVideo: null,
+    isVideoPlaying: false,
+    videoCurrentTime: 0,
+    videoDuration: 0,
+    videoQueue: [],
+    videoQueueIndex: -1,
+  }),
 
   setVolume: (volume) => set({ volume: Math.max(0, Math.min(1, volume)), isMuted: false }),
 
@@ -395,7 +510,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!track) return
     // An explicit queue (playlist/album) cancels any pending standalone rec fill.
     standaloneFillToken++
-    set({ queue: tracks, queueIndex: startIndex, currentTrack: track, currentContextType: null, currentContextId: null, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
+    set({ playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, videoCurrentTime: 0, videoDuration: 0, queue: tracks, queueIndex: startIndex, currentTrack: track, currentContextType: null, currentContextId: null, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
     recordPlay(track.id)
   },
 
@@ -406,7 +521,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // Nothing playing — just start it.
       if (!s.currentTrack) {
         recordPlay(track.id)
-        return { currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0 }
+        return { playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0 }
       }
       const newQueue = [...s.queue]
       newQueue.splice(s.queueIndex + 1, 0, track)
@@ -479,10 +594,17 @@ useAuthStore.subscribe((state) => {
     pendingAfterAd = null
     tracksSinceAd = 0
     usePlayerStore.setState({
+      playbackMode: 'audio',
       currentTrack: null,
       isPlaying: false,
       currentTime: 0,
       duration: 0,
+      currentVideo: null,
+      isVideoPlaying: false,
+      videoCurrentTime: 0,
+      videoDuration: 0,
+      videoQueue: [],
+      videoQueueIndex: -1,
       queue: [],
       queueIndex: -1,
       currentContextType: null,

@@ -687,6 +687,31 @@ using (var scope = app.Services.CreateScope())
         WHERE t.rn <= 4 AND NOT EXISTS (SELECT 1 FROM ""MusicVideos"");
     ");
 
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""MusicVideoComments"" (
+            ""Id""           uuid NOT NULL,
+            ""MusicVideoId"" uuid NOT NULL,
+            ""UserId""       uuid NOT NULL,
+            ""Body""         character varying(1000) NOT NULL,
+            ""ParentId""     uuid NULL,
+            ""TimestampMs""  bigint NULL,
+            ""CreatedAt""    timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_MusicVideoComments"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_MusicVideoComments_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_MusicVideoComments_MusicVideos_MusicVideoId""
+                FOREIGN KEY (""MusicVideoId"") REFERENCES ""MusicVideos""(""Id"") ON DELETE CASCADE,
+            CONSTRAINT ""FK_MusicVideoComments_MusicVideoComments_ParentId""
+                FOREIGN KEY (""ParentId"") REFERENCES ""MusicVideoComments""(""Id"") ON DELETE SET NULL
+        );
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideoComments_MusicVideoId_CreatedAt""
+            ON ""MusicVideoComments""(""MusicVideoId"", ""CreatedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideoComments_ParentId""
+            ON ""MusicVideoComments""(""ParentId"");
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideoComments_UserId""
+            ON ""MusicVideoComments""(""UserId"");
+    ");
+
     // Concert/tour info. Artist-authored rows (Source='artist') are the source of
     // truth + fallback; rows with Source='ticketmaster' are cached from the live
     // Discovery API and refreshed in the background by TourSyncService. No fake

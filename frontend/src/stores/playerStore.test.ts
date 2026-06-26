@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { Track } from '@/types/track'
+import type { MusicVideo } from '@/types/musicVideo'
 
 // The store records plays and fetches ads as side effects; mock those services so
 // tests stay offline and synchronous-ish. trackService.getRadio is dynamically
@@ -41,6 +42,19 @@ const track = (id: string): Track =>
     createdAt: '2020-01-01',
   }) as unknown as Track
 
+const video = (id: string): MusicVideo => ({
+  id,
+  title: `Video ${id}`,
+  description: null,
+  artist: { id: `artist-${id}`, name: 'Artist', imageUrl: null },
+  trackId: null,
+  videoUrl: `video/${id}.mp4`,
+  thumbnailUrl: null,
+  durationMs: 120_000,
+  viewCount: 10,
+  createdAt: '2020-01-01',
+})
+
 const setPremium = () =>
   useAuthStore.setState({ isAuthenticated: true, user: { capabilities: { unlimitedPlayback: true } } as never })
 const setFree = () =>
@@ -56,10 +70,17 @@ beforeEach(() => {
   // module-scoped ad counters (tracksSinceAd / pendingAfterAd) between tests.
   useAuthStore.setState({ isAuthenticated: false, user: null })
   usePlayerStore.setState({
+    playbackMode: 'audio',
     currentTrack: null,
     isPlaying: false,
     currentTime: 0,
     duration: 0,
+    currentVideo: null,
+    isVideoPlaying: false,
+    videoCurrentTime: 0,
+    videoDuration: 0,
+    videoQueue: [],
+    videoQueueIndex: -1,
     queue: [],
     queueIndex: -1,
     currentContextType: null,
@@ -424,5 +445,45 @@ describe('playerStore — playback context', () => {
     setPremium()
     usePlayerStore.getState().playContext({ type: 'album', id: 'al1' }, [], 0)
     expect(usePlayerStore.getState().currentContextType).toBeNull()
+  })
+})
+
+describe('playerStore - music videos', () => {
+  it('playVideo switches to video mode and clears audio playback', () => {
+    setPremium()
+    usePlayerStore.getState().play(track('song'))
+    usePlayerStore.getState().playVideo(video('mv1'), [video('mv1'), video('mv2')])
+    const s = usePlayerStore.getState()
+    expect(s.playbackMode).toBe('video')
+    expect(s.currentTrack).toBeNull()
+    expect(s.isPlaying).toBe(false)
+    expect(s.currentVideo?.id).toBe('mv1')
+    expect(s.isVideoPlaying).toBe(true)
+    expect(s.videoQueue.map((v) => v.id)).toEqual(['mv1', 'mv2'])
+    expect(s.videoQueueIndex).toBe(0)
+  })
+
+  it('video transport uses the video queue, not the audio queue', () => {
+    setPremium()
+    usePlayerStore.setState({ queue: [track('a'), track('b')], queueIndex: 0 })
+    usePlayerStore.getState().playVideo(video('mv1'), [video('mv1'), video('mv2')])
+    usePlayerStore.getState().skipNext()
+    const s = usePlayerStore.getState()
+    expect(s.currentVideo?.id).toBe('mv2')
+    expect(s.videoQueueIndex).toBe(1)
+    expect(s.queue).toEqual([])
+    expect(s.currentTrack).toBeNull()
+  })
+
+  it('playing audio exits video mode', () => {
+    setPremium()
+    usePlayerStore.getState().playVideo(video('mv1'))
+    usePlayerStore.getState().play(track('song'))
+    const s = usePlayerStore.getState()
+    expect(s.playbackMode).toBe('audio')
+    expect(s.currentVideo).toBeNull()
+    expect(s.isVideoPlaying).toBe(false)
+    expect(s.currentTrack?.id).toBe('song')
+    expect(s.isPlaying).toBe(true)
   })
 })

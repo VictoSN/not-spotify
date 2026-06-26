@@ -36,6 +36,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<ActivePlaybackSession> ActivePlaybackSessions => Set<ActivePlaybackSession>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<TrackComment> TrackComments => Set<TrackComment>();
+    public DbSet<MusicVideoComment> MusicVideoComments => Set<MusicVideoComment>();
     public DbSet<Repost> Reposts => Set<Repost>();
     public DbSet<Podcast> Podcasts => Set<Podcast>();
     public DbSet<Episode> Episodes => Set<Episode>();
@@ -462,6 +463,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
 
             // "Comments for track X, newest first" — the primary read query.
             e.HasIndex(x => new { x.TrackId, x.CreatedAt });
+        });
+
+        b.Entity<MusicVideoComment>(e =>
+        {
+            e.HasOne(x => x.MusicVideo)
+                .WithMany()
+                .HasForeignKey(x => x.MusicVideoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasOne(x => x.Parent)
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            e.Property(x => x.Body).HasMaxLength(1000).IsRequired();
+
+            e.HasIndex(x => new { x.MusicVideoId, x.CreatedAt });
         });
 
         b.Entity<Repost>(e =>

@@ -34,7 +34,7 @@ export function MusicVideosPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {videos.map((v) => (
-            <VideoCard key={v.id} video={v} />
+            <VideoCard key={v.id} video={v} queue={videos} />
           ))}
         </div>
       )}
@@ -42,11 +42,11 @@ export function MusicVideosPage() {
   )
 }
 
-function VideoCard({ video: v }: { video: MusicVideo }) {
+function VideoCard({ video: v, queue }: { video: MusicVideo; queue: MusicVideo[] }) {
   const menuRef = useRef<VideoMenuHandle>(null)
   return (
     <div className="group relative" onContextMenu={(e) => openMenuAtPointer(e, menuRef)}>
-      <Link to={`/videos/${v.id}`} className="block rounded-lg bg-surface p-2 transition-colors hover:bg-elevated">
+      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} className="block rounded-lg bg-surface p-2 transition-colors hover:bg-elevated">
         <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
           {v.thumbnailUrl
             ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />

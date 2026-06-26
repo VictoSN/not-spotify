@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
@@ -57,4 +59,112 @@ public class MusicVideosController : ControllerBase
         if (video is null) return NotFound();
         return Ok(await _mapper.ToDtoAsync(video, ct));
     }
+
+    [HttpGet("{id:guid}/comments")]
+    public async Task<ActionResult<IEnumerable<MusicVideoCommentDto>>> GetComments(Guid id, [FromQuery] int limit = 50, CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 200);
+
+        var exists = await _db.MusicVideos.AnyAsync(v => v.Id == id, ct);
+        if (!exists) return NotFound();
+
+        var comments = await _db.MusicVideoComments
+            .Where(c => c.MusicVideoId == id && c.ParentId == null)
+            .Include(c => c.User)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(limit)
+            .ToListAsync(ct);
+
+        return Ok(comments.Select(ToDto));
+    }
+
+    [HttpGet("{id:guid}/comments/{commentId:guid}/replies")]
+    public async Task<ActionResult<IEnumerable<MusicVideoCommentDto>>> GetCommentReplies(Guid id, Guid commentId, CancellationToken ct = default)
+    {
+        var exists = await _db.MusicVideos.AnyAsync(v => v.Id == id, ct);
+        if (!exists) return NotFound();
+
+        var replies = await _db.MusicVideoComments
+            .Where(c => c.MusicVideoId == id && c.ParentId == commentId)
+            .Include(c => c.User)
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync(ct);
+
+        return Ok(replies.Select(ToDto));
+    }
+
+    [HttpPost("{id:guid}/comments")]
+    [Authorize]
+    public async Task<ActionResult<MusicVideoCommentDto>> PostComment(Guid id, [FromBody] CreateCommentRequest req, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(req.Body) || req.Body.Length > 1000)
+            return BadRequest(new { message = "Comment body must be 1-1000 characters." });
+
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        var video = await _db.MusicVideos
+            .Where(v => v.Id == id)
+            .Select(v => new { v.DurationMs })
+            .FirstOrDefaultAsync(ct);
+        if (video is null) return NotFound();
+
+        if (req.ParentId is { } parentId)
+        {
+            var parentExists = await _db.MusicVideoComments.AnyAsync(c => c.Id == parentId && c.MusicVideoId == id, ct);
+            if (!parentExists) return BadRequest(new { message = "Parent comment not found on this music video." });
+        }
+        if (req.ParentId is not null && req.TimestampMs is not null)
+            return BadRequest(new { message = "Replies cannot be pinned to the timeline." });
+        if (req.TimestampMs is < 0 || req.TimestampMs > video.DurationMs)
+            return BadRequest(new { message = "Comment timestamp must be within the video duration." });
+
+        var comment = new Models.MusicVideoComment
+        {
+            MusicVideoId = id,
+            UserId = userId,
+            Body = req.Body.Trim(),
+            ParentId = req.ParentId,
+            TimestampMs = req.TimestampMs,
+            CreatedAt = DateTime.UtcNow,
+        };
+
+        _db.MusicVideoComments.Add(comment);
+        await _db.SaveChangesAsync(ct);
+
+        await _db.Entry(comment).Reference(c => c.User).LoadAsync(ct);
+
+        return CreatedAtAction(nameof(GetComments), new { id }, ToDto(comment));
+    }
+
+    [HttpDelete("{id:guid}/comments/{commentId:guid}")]
+    [Authorize]
+    public async Task<IActionResult> DeleteComment(Guid id, Guid commentId, CancellationToken ct = default)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
+        if (!Guid.TryParse(userIdValue, out var userId)) return Unauthorized();
+
+        var comment = await _db.MusicVideoComments
+            .FirstOrDefaultAsync(c => c.Id == commentId && c.MusicVideoId == id, ct);
+
+        if (comment is null) return NotFound();
+
+        var isAdmin = User.IsInRole("Admin");
+        if (comment.UserId != userId && !isAdmin)
+            return StatusCode(403, new { message = "You can only delete your own comments." });
+
+        var replies = await _db.MusicVideoComments
+            .Where(c => c.ParentId == commentId)
+            .ToListAsync(ct);
+        _db.MusicVideoComments.RemoveRange(replies);
+        _db.MusicVideoComments.Remove(comment);
+        await _db.SaveChangesAsync(ct);
+
+        return NoContent();
+    }
+
+    private MusicVideoCommentDto ToDto(Models.MusicVideoComment c) =>
+        new(c.Id, c.MusicVideoId, _mapper.ToRef(c.User), c.Body, c.ParentId, c.TimestampMs, c.CreatedAt);
 }

@@ -4,12 +4,14 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { formatSeconds } from '@/utils/formatTime'
 
 export function ProgressBar() {
-  const { currentTime, duration, seek } = usePlayerStore()
+  const { playbackMode, currentTime, duration, videoCurrentTime, videoDuration, seek } = usePlayerStore()
   const [dragging, setDragging] = useState(false)
   const [dragValue, setDragValue] = useState(0)
 
-  const display = dragging ? dragValue : currentTime
-  const max = duration > 0 ? duration : 1
+  const activeTime = playbackMode === 'video' ? videoCurrentTime : currentTime
+  const activeDuration = playbackMode === 'video' ? videoDuration : duration
+  const display = dragging ? dragValue : activeTime
+  const max = activeDuration > 0 ? activeDuration : 1
 
   return (
     <div className="flex items-center gap-2 w-full">
@@ -24,7 +26,7 @@ export function ProgressBar() {
         className="flex-1"
         aria-label="Playback progress"
       />
-      <span className="text-xs text-secondary w-8 tabular-nums">{formatSeconds(duration)}</span>
+      <span className="text-xs text-secondary w-8 tabular-nums">{formatSeconds(activeDuration)}</span>
     </div>
   )
 }

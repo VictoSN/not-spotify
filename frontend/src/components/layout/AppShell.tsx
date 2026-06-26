@@ -6,6 +6,7 @@ import { OverlayScrollbar } from './OverlayScrollbar'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
+import { MusicVideoNowPlayingPanel } from '@/components/player/MusicVideoNowPlayingPanel'
 import { SocialPanel } from '@/components/friends/SocialPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
@@ -34,6 +35,7 @@ export function AppShell() {
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const playbackMode = usePlayerStore((s) => s.playbackMode)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
@@ -151,7 +153,9 @@ export function AppShell() {
 
         {/* Right rail on desktop, responsive overlay on smaller screens. */}
         {isAuthenticated && (
-          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && <NowPlayingPanel />
+          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && (
+            playbackMode === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
+          )
         )}
       </div>
 
@@ -160,7 +164,7 @@ export function AppShell() {
       {isAuthenticated && <BottomPlayerBar />}
       {isMobile && <MobileNav />}
       {isMobile && isAuthenticated && <MobileNowPlayingSheet />}
-      {isAuthenticated && <PictureInPicturePlayer />}
+      {isAuthenticated && playbackMode !== 'video' && <PictureInPicturePlayer />}
       <AuthPromptModal />
       <KeyboardShortcutsHelp />
     </div>

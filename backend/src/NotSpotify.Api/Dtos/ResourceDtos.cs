@@ -211,6 +211,16 @@ public record TrackCommentDto(
     DateTime CreatedAt
 );
 
+public record MusicVideoCommentDto(
+    Guid Id,
+    Guid VideoId,
+    UserRefDto User,
+    string Body,
+    Guid? ParentId,
+    long? TimestampMs,
+    DateTime CreatedAt
+);
+
 public record CreateCommentRequest(string Body, Guid? ParentId = null, long? TimestampMs = null);
 
 public record RepostDto(

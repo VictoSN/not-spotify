@@ -7,8 +7,44 @@ import { StarRating } from './StarRating'
 
 export function NowPlayingInfo() {
   const { t } = useTranslation()
+  const playbackMode = usePlayerStore((s) => s.playbackMode)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const currentVideo = usePlayerStore((s) => s.currentVideo)
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
+
+  if (playbackMode === 'video') {
+    if (!currentVideo) return <div className="w-56" />
+    return (
+      <div className="flex items-center gap-3 w-56">
+        <Link to={`/videos/${currentVideo.id}`} className="w-14 h-14 rounded bg-elevated flex-shrink-0 overflow-hidden">
+          {currentVideo.thumbnailUrl ? (
+            <img
+              src={currentVideo.thumbnailUrl}
+              alt={currentVideo.title}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs font-bold text-secondary">MV</div>
+          )}
+        </Link>
+        <div className="min-w-0 flex-1">
+          <Link
+            to={`/videos/${currentVideo.id}`}
+            className="text-sm font-medium text-primary hover:underline truncate block leading-tight"
+          >
+            {currentVideo.title}
+          </Link>
+          <Link
+            to={`/artist/${currentVideo.artist.id}`}
+            className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight"
+          >
+            {currentVideo.artist.name}
+          </Link>
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-secondary">Music video</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!currentTrack) return <div className="w-56" />
 

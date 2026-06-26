@@ -19,6 +19,7 @@ import {
   notificationPermission,
   requestNotificationPermission,
 } from '@/services/notifications'
+import { toast } from 'sonner'
 import {
   isPushSupported,
   isPushSubscribed,
@@ -227,17 +228,58 @@ export function SettingsPage() {
         const ok = await subscribeToPush()
         setPushSubscribed(ok)
         setNotifPerm(notificationPermission())
+        if (!ok) {
+          toast.error(
+            notificationPermission() === 'denied'
+              ? 'Notifications are blocked in your browser settings.'
+              : 'Could not subscribe to push — check the console and that the dev SW is active.',
+          )
+        } else {
+          toast.success('Push notifications enabled.')
+        }
       } else {
         await unsubscribeFromPush()
         setPushSubscribed(false)
+        toast.success('Push notifications disabled.')
       }
+    } catch (e) {
+      toast.error('Push subscription failed.')
+      console.error('[push] subscribe failed', e)
     } finally {
       setPushBusy(false)
     }
   }
+
   const handlePushTest = async () => {
     setPushBusy(true)
-    try { await sendPushTest() } finally { setPushBusy(false) }
+    try {
+      // 1) Fire an in-page Notification immediately so the user sees a real
+      //    OS toast right now even if the server-side push round-trip is
+      //    broken (FCM unreachable, sub stale, dev SW not yet active, etc).
+      try {
+        const local = new Notification('NotSpotify (local test)', {
+          body: 'If you see this bottom-right toast, OS notifications work in this browser.',
+          icon: '/icons/icon-192.png',
+          tag: 'ns-local-test',
+        })
+        local.onclick = () => window.focus()
+      } catch (e) {
+        console.warn('[push] local Notification failed', e)
+      }
+
+      // 2) Ask the server to deliver a real Web Push to every subscription
+      //    on file — this is what verifies the SW push handler + signed
+      //    delivery end-to-end. Surfaces the result via toast.
+      try {
+        await sendPushTest()
+        toast.success('Server push sent. Watch for the bottom-right toast.')
+      } catch (e) {
+        toast.error('Server push failed — check backend logs.')
+        console.error('[push] server test failed', e)
+      }
+    } finally {
+      setPushBusy(false)
+    }
   }
   const masterEnabled = notifMaster && notifPerm === 'granted'
 
@@ -503,16 +545,15 @@ export function SettingsPage() {
               }
               control={
                 <div className="flex items-center gap-2">
-                  {pushSubscribed && (
-                    <button
-                      type="button"
-                      onClick={() => void handlePushTest()}
-                      disabled={pushBusy}
-                      className="rounded-full border border-secondary/40 px-3 py-1 text-xs font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Send test
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handlePushTest()}
+                    disabled={pushBusy || notifPerm !== 'granted'}
+                    title={notifPerm === 'granted' ? 'Fire a local + server notification.' : 'Allow notifications first.'}
+                    className="rounded-full border border-secondary/40 px-3 py-1 text-xs font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Send test
+                  </button>
                   <Switch
                     label="Push notifications"
                     checked={pushSubscribed}

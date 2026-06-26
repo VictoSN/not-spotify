@@ -23,9 +23,32 @@ are also two dedicated **testing phases** for cross-cutting regression work.
 | **Search results page redesign** | 9 |
 | **Testing** | 10 (unit hardening), 11 (manual QA) |
 
+## Recommended Opus 4.8 effort per phase
+Suggested reasoning effort to spend per session. Tune to taste — bump up a level if a
+phase fights back, drop one if it's going smoothly.
+
+- **med** — small, isolated, reuses an existing pattern, low blast radius.
+- **high** — moderate scope, several files, but well understood.
+- **max** — complex or correctness-critical logic spanning multiple files.
+- **ultra** — the hardest: subtle timing / race / state-machine bugs or large redesigns; spend the deepest reasoning (and consider splitting the session).
+
+| Phase | Effort | Why |
+|---|---|---|
+| 1 — MV first-class playback | **max** | player state machine, panel selection, no double-play |
+| 2 — MV/podcast interactions | **high** | repeat drag/menu patterns across card types |
+| 3 — Recents context menu | **med** | small, reuse `openMenuAtPointer` |
+| 4 — Recommendations correctness | **max** | genre assignment + "Show all" routing, FE + BE |
+| 5 — Ads reliability | **ultra** | timing/race; 2nd-ad state leak + simultaneous playback |
+| 6 — Settings "coming soon" | **high** | product judgement + varied controls |
+| 7 — Admin ads | **high** | new page + CRUD wiring to existing API |
+| 8 — Detail header consistency | **med** | UI diff & reconcile two pages |
+| 9 — Search results redesign | **max** | large UI rework, shared row component, maybe BE |
+| 10 — Test hardening | **high** | cross-cutting suites + green run |
+| 11 — Manual QA | **med** | mostly human verification, little reasoning |
+
 ---
 
-## Phase 1 — Music videos as first-class playable items
+## Phase 1 — Music videos as first-class playable items · Effort: max
 Covers bugs **#3** (MV not registered in the sidebar) and **#6** (an MV played on its
 own should get its own now-playing sidebar, like a live-event "track").
 
@@ -52,7 +75,7 @@ Tests (this session):
 
 ---
 
-## Phase 2 — MV/podcast discovery & home interactions
+## Phase 2 — MV/podcast discovery & home interactions · Effort: high
 Covers bugs **#5** (MVs & podcasts not draggable / right-clickable on All/Home) and
 **#8** (Home top panel has no Music Video category).
 
@@ -77,7 +100,7 @@ Tests (this session):
 
 ---
 
-## Phase 3 — Recents context menu (bug #4)
+## Phase 3 — Recents context menu (bug #4) · Effort: med
 Goal: right-clicking a song on the Recents page opens the track dropdown menu like
 other lists.
 
@@ -96,7 +119,7 @@ Tests (this session):
 
 ---
 
-## Phase 4 — Recommendations correctness (bugs #1, #2)
+## Phase 4 — Recommendations correctness (bugs #1, #2) · Effort: max
 Goal: Daily Mix assigns the right genre, and a discover/showcase "Show all" opens the
 underlying songs instead of running a text search.
 
@@ -119,7 +142,7 @@ Tests (this session):
 
 ---
 
-## Phase 5 — Ads reliability (bugs #7, #9)
+## Phase 5 — Ads reliability (bugs #7, #9) · Effort: ultra
 Goal: the ad countdown is correct, and the **2nd+** ad plays cleanly (no double audio,
 no glitchy timer). The 1st ad is currently OK; subsequent ones are buggy.
 
@@ -140,7 +163,7 @@ Tests (this session):
 
 ---
 
-## Phase 6 — Settings / account "coming soon" features
+## Phase 6 — Settings / account "coming soon" features · Effort: high
 Goal: implement (or properly gate) the greyed-out / "coming soon" items in
 Settings/Account so they're either functional or clearly, intentionally disabled.
 
@@ -158,7 +181,7 @@ Tests (this session):
 
 ---
 
-## Phase 7 — Admin: advertisement management for free tier
+## Phase 7 — Admin: advertisement management for free tier · Effort: high
 Goal: an admin can create/manage advertisements that are served to free-tier users.
 (Backend ad models/controllers exist; a frontend **admin ads** page appears to be
 missing and must be added + wired.)
@@ -179,7 +202,7 @@ Tests (this session):
 
 ---
 
-## Phase 8 — Detail page header consistency (bug #10)
+## Phase 8 — Detail page header consistency (bug #10) · Effort: med
 Goal: the **Album** and **Track** detail page headers look/behave the same (currently
 "somewhat different").
 
@@ -194,7 +217,7 @@ Tests (this session):
 
 ---
 
-## Phase 9 — Search results page redesign (Spotify-style)
+## Phase 9 — Search results page redesign (Spotify-style) · Effort: max
 Reworks the `/search` results view from the current minimal sectioned layout
 (screenshot **before**) to Spotify's richer results page (screenshot **after**).
 
@@ -229,7 +252,7 @@ Tests (this session):
 
 ---
 
-## Phase 10 — Cross-cutting test hardening (dedicated)
+## Phase 10 — Cross-cutting test hardening (dedicated) · Effort: high
 A focused pass after the feature phases to lock in behaviour and catch regressions.
 
 - [ ] Player state machine: audio ↔ MV ↔ ad transitions (no overlap, correct `playbackMode`, correct now-playing panel). Consolidates Phases 1, 4, 5.
@@ -240,7 +263,7 @@ A focused pass after the feature phases to lock in behaviour and catch regressio
 
 ---
 
-## Phase 11 — Manual QA checklist (dedicated)
+## Phase 11 — Manual QA checklist (dedicated) · Effort: med
 End-to-end verification the unit tests can't cover (needs the running app + backend).
 
 - [ ] Play an MV standalone → it shows the MV now-playing panel and appears in the sidebar/library.

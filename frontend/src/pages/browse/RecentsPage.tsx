@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { PlayIcon } from '@heroicons/react/24/outline'
 import { meService, type PlayHistoryItem } from '@/services/meService'
 import { useAuthStore } from '@/stores/authStore'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Spinner } from '@/components/ui/Spinner'
-import { formatMs } from '@/utils/formatTime'
+import { TrackRow } from '@/components/cards/TrackRow'
 
 export function RecentsPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const playWithGate = usePlaybackGate()
+  const isMobile = useIsMobile()
   const [history, setHistory] = useState<PlayHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -36,47 +35,29 @@ export function RecentsPage() {
         <p className="text-secondary">No recent plays yet. Hit play on something!</p>
       ) : (
         <div className="rounded-lg bg-surface p-2">
+          {/* Column header — mirrors the album/playlist track tables. */}
+          <div
+            className="grid items-center gap-4 px-4 pb-2 text-xs uppercase tracking-wide text-secondary border-b border-elevated/40"
+            style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 4fr 3fr var(--track-actions-width)' }}
+          >
+            <span className="text-center">#</span>
+            <span>Title</span>
+            {!isMobile && <span>Album</span>}
+            {!isMobile && <span>Played</span>}
+            <span />
+          </div>
           {history.map((row, index) => (
-            <HistoryRow
+            <TrackRow
               key={`${row.track.id}-${row.playedAt}-${index}`}
-              item={row}
+              track={row.track}
               index={index}
-              onPlay={() => playWithGate(row.track, tracks)}
+              queue={tracks}
+              showAlbum
+              addedAt={row.playedAt}
             />
           ))}
         </div>
       )}
     </div>
-  )
-}
-
-function HistoryRow({
-  item,
-  index,
-  onPlay,
-}: {
-  item: PlayHistoryItem
-  index: number
-  onPlay: () => void
-}) {
-  return (
-    <button
-      onClick={onPlay}
-      className="group grid w-full grid-cols-[28px_minmax(0,1fr)_70px] items-center gap-4 rounded-md px-4 py-2 text-left transition-colors hover:bg-elevated/60 sm:grid-cols-[28px_minmax(0,1fr)_160px_70px]"
-    >
-      <span className="flex h-7 w-7 items-center justify-center text-sm text-secondary">
-        <span className="hidden md:inline md:group-hover:hidden">{index + 1}</span>
-        <PlayIcon className="block md:hidden md:group-hover:block h-4 w-4 text-primary" />
-      </span>
-      <span className="flex min-w-0 items-center gap-3">
-        <img src={item.track.album.coverUrl} alt={item.track.album.title} className="h-10 w-10 rounded object-cover" />
-        <span className="min-w-0">
-          <span className="block truncate text-sm font-semibold text-primary">{item.track.title}</span>
-          <span className="block truncate text-xs text-secondary">{item.track.artist.name}</span>
-        </span>
-      </span>
-      <span className="hidden text-sm text-secondary sm:block">{new Date(item.playedAt).toLocaleString()}</span>
-      <span className="text-right text-sm text-secondary">{formatMs(item.track.durationMs)}</span>
-    </button>
   )
 }

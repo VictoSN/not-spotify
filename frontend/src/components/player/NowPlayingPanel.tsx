@@ -6,6 +6,10 @@ import {
   ChevronDoubleRightIcon,
   Bars3Icon,
   ArrowsPointingOutIcon,
+  ArrowsPointingInIcon,
+  PhotoIcon,
+  FilmIcon,
+  UserCircleIcon,
   ShareIcon,
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
@@ -125,6 +129,9 @@ export function NowPlayingPanel() {
   const [tourData, setTourData] = useState<TourData | null>(null)
   const [artistBioOpen, setArtistBioOpen] = useState(false)
   const [videoHover, setVideoHover] = useState(false)
+  // Fullscreen (expanded) hero source: album artwork, the looping MV "canvas", or
+  // the artist image — toggled from the top-right control cluster, Spotify-style.
+  const [heroView, setHeroView] = useState<'artwork' | 'canvas' | 'artist'>('artwork')
   const [expandedScroll, setExpandedScroll] = useState(0)
   const [panelBodyScrolled, setPanelBodyScrolled] = useState(false)
   const panelRef = useRef<HTMLElement | null>(null)
@@ -237,6 +244,7 @@ export function NowPlayingPanel() {
   const trackId = currentTrack?.id
   useEffect(() => {
     setPanelBodyScrolled(false)
+    setHeroView('artwork')
   }, [trackId])
 
   useEffect(() => {
@@ -390,6 +398,15 @@ export function NowPlayingPanel() {
   if (isNowPlayingExpanded) {
     const heroProgress = Math.min(expandedScroll / 420, 1)
     const heroOpacity = Math.max(0, 1 - heroProgress * 1.35)
+    // Shared style for the compact top-right control buttons (subtle circular
+    // gray hover, gray→white on hover — Spotify fullscreen).
+    const npFsControlClass = 'flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95'
+    const artistHeroImage = artist?.headerImageUrl ?? artist?.imageUrl ?? artistAvatarUrl ?? null
+    // Fall back to artwork if the selected hero source isn't available for this track.
+    const effectiveHeroView =
+      heroView === 'canvas' && !video ? 'artwork'
+      : heroView === 'artist' && !artistHeroImage ? 'artwork'
+      : heroView
     const expandedVideos = artistVideos.filter((item) => item.id !== video?.id).slice(0, 8)
     const fallbackMediaTracks = expandedVideos.length === 0 ? relatedTracks.slice(0, 8) : []
     // A soft radial glow at the top centred behind the artwork, layered over a
@@ -425,36 +442,63 @@ export function NowPlayingPanel() {
               {currentTrack.album.title}
             </Link>
 
-            <div className="invisible flex shrink-0 items-center gap-3 text-secondary opacity-0 transition-opacity duration-200 group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100">
-              <Link
-                to={`/artist/${currentTrack.artist.id}`}
-                className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 hover:text-primary active:scale-95"
-                aria-label={currentTrack.artist.name}
+            {/* Compact Spotify-style control cluster: artwork / canvas / artist
+                toggles · divider · shared three-dot menu · exit fullscreen. */}
+            <div className="flex shrink-0 items-center gap-1 text-secondary">
+              <button
+                onClick={() => setHeroView('artwork')}
+                aria-label={t('np.showArtwork')}
+                aria-pressed={heroView === 'artwork'}
+                title={t('np.showArtwork')}
+                className={cn(npFsControlClass, heroView === 'artwork' && 'bg-white/10 text-primary')}
               >
-                {artistAvatarUrl ? (
-                  <img src={artistAvatarUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
-                ) : (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-elevated text-[10px] font-bold text-primary">
-                    {currentTrack.artist.name.charAt(0).toUpperCase()}
-                  </span>
+                <PhotoIcon className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                onClick={() => video && setHeroView('canvas')}
+                disabled={!video}
+                aria-label={t('np.showClip')}
+                aria-pressed={heroView === 'canvas'}
+                title={video ? t('np.showClip') : t('np.noClip')}
+                className={cn(
+                  npFsControlClass,
+                  heroView === 'canvas' && 'bg-white/10 text-primary',
+                  !video && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
                 )}
-                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{currentTrack.artist.name}</span>
-              </Link>
-              <span className="h-5 w-px bg-secondary/25" aria-hidden="true" />
+              >
+                <FilmIcon className="h-[18px] w-[18px]" />
+              </button>
+              <button
+                onClick={() => artistHeroImage && setHeroView('artist')}
+                disabled={!artistHeroImage}
+                aria-label={t('np.showArtist')}
+                aria-pressed={heroView === 'artist'}
+                title={t('np.showArtist')}
+                className={cn(
+                  npFsControlClass,
+                  heroView === 'artist' && 'bg-white/10 text-primary',
+                  !artistHeroImage && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
+                )}
+              >
+                <UserCircleIcon className="h-[18px] w-[18px]" />
+              </button>
+
+              <span className="mx-1 h-5 w-px bg-secondary/25" aria-hidden="true" />
+
               <TrackRowMenu
                 track={currentTrack}
                 alwaysVisible
                 onViewCredits={scrollToCredits}
-                triggerClassName="flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95"
-                triggerIconClassName="h-6 w-6 stroke-[2.8] text-secondary hover:text-primary"
+                triggerClassName={npFsControlClass}
+                triggerIconClassName="h-[18px] w-[18px] stroke-[2.4] text-secondary"
               />
               <button
                 onClick={toggleWide}
-                className="rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95"
+                className={npFsControlClass}
                 aria-label={t('np.shrinkPanel')}
                 title={t('np.shrinkPanel')}
               >
-                <DiagonalCollapseIcon />
+                <ArrowsPointingInIcon className="h-[18px] w-[18px]" />
               </button>
             </div>
           </div>
@@ -474,11 +518,30 @@ export function NowPlayingPanel() {
                 transform: `translateY(${-heroProgress * 110}px) scale(${1 - heroProgress * 0.08})`,
               }}
             >
-              <img
-                src={currentTrack.album.coverUrl}
-                alt={currentTrack.album.title}
-                className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
-              />
+              {effectiveHeroView === 'canvas' && video ? (
+                <video
+                  key={video.id}
+                  src={video.videoUrl}
+                  poster={video.thumbnailUrl ?? currentTrack.album.coverUrl}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  className="aspect-square w-full rounded-lg bg-black object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+                />
+              ) : effectiveHeroView === 'artist' && artistHeroImage ? (
+                <img
+                  src={artistHeroImage}
+                  alt={currentTrack.artist.name}
+                  className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+                />
+              ) : (
+                <img
+                  src={currentTrack.album.coverUrl}
+                  alt={currentTrack.album.title}
+                  className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+                />
+              )}
             </div>
           </section>
 

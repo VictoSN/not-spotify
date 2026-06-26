@@ -20,6 +20,10 @@ export interface Track {
   genres: string[]
   createdAt: string
   isSaved?: boolean
+  /** Set when this Track is actually a podcast episode (via {@link episodeToTrack}).
+   *  Lets the player/menus route the "creator" link to the show page instead of a
+   *  non-existent /artist/{id} (podcast authors aren't artist entities). */
+  podcastId?: string
   status?: 'approved' | 'pending' | 'rejected'
   reviewNote?: string | null
   lyrics?: string | null

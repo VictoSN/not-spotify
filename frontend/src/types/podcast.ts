@@ -50,6 +50,7 @@ export function episodeToTrack(ep: Episode, podcast?: { title: string; author: s
     durationMs: ep.durationMs,
     audioUrl: ep.audioUrl,
     previewUrl: null,
+    podcastId: ep.podcastId,
     trackNumber: ep.episodeNumber,
     discNumber: 1,
     explicit: false,

@@ -14,6 +14,12 @@ export function NowPlayingInfo() {
 
   const isLiked = likedTrackIds.has(currentTrack.id)
 
+  // Podcast episodes adapt to the Track shape but their "artist"/"album" ids are
+  // the show id — route both to the show page instead of a non-existent artist.
+  const isEpisode = !!currentTrack.podcastId
+  const titleTo = isEpisode ? `/podcasts/${currentTrack.podcastId}` : `/album/${currentTrack.album.id}`
+  const creatorTo = isEpisode ? `/podcasts/${currentTrack.podcastId}` : `/artist/${currentTrack.artist.id}`
+
   const toggleLike = () => {
     if (isLiked) unlikeTrack(currentTrack.id)
     else likeTrack(currentTrack)
@@ -28,13 +34,13 @@ export function NowPlayingInfo() {
       />
       <div className="min-w-0 flex-1">
         <Link
-          to={`/album/${currentTrack.album.id}`}
+          to={titleTo}
           className="text-sm font-medium text-primary hover:underline truncate block leading-tight"
         >
           {currentTrack.title}
         </Link>
         <Link
-          to={`/artist/${currentTrack.artist.id}`}
+          to={creatorTo}
           className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight"
         >
           {currentTrack.artist.name}

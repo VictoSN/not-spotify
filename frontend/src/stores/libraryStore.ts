@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
+import type { MusicVideo } from '@/types/musicVideo'
+import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist, PlaylistTrack, PlaylistVisibility, SmartPlaylistRules } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { trackService } from '@/services/trackService'
@@ -15,9 +17,13 @@ interface LibraryState {
   likedAtMap: Record<string, string>
   followedArtists: Artist[]
   savedAlbums: Album[]
+  savedVideos: MusicVideo[]
+  savedPodcasts: PodcastSummary[]
   likedTrackIds: Set<string>
   followedArtistIds: Set<string>
   savedAlbumIds: Set<string>
+  savedVideoIds: Set<string>
+  savedPodcastIds: Set<string>
   isLoading: boolean
 
   fetchLibrary: () => Promise<void>
@@ -27,6 +33,10 @@ interface LibraryState {
   unfollowArtist: (artistId: string) => Promise<void>
   saveAlbum: (album: Album) => Promise<void>
   unsaveAlbum: (albumId: string) => Promise<void>
+  saveVideo: (video: MusicVideo) => void
+  unsaveVideo: (videoId: string) => void
+  savePodcast: (podcast: PodcastSummary) => void
+  unsavePodcast: (podcastId: string) => void
   createPlaylist: (name: string, description?: string, isPublic?: boolean, smartRules?: SmartPlaylistRules) => Promise<Playlist>
   syncPlaylistTracks: (playlistId: string, tracks: PlaylistTrack[]) => void
   addTrackToPlaylist: (playlistId: string, track: Track) => Promise<void>
@@ -43,9 +53,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   likedAtMap: {},
   followedArtists: [],
   savedAlbums: [],
+  savedVideos: [],
+  savedPodcasts: [],
   likedTrackIds: new Set(),
   followedArtistIds: new Set(),
   savedAlbumIds: new Set(),
+  savedVideoIds: new Set(),
+  savedPodcastIds: new Set(),
   isLoading: false,
 
   fetchLibrary: async () => {
@@ -69,6 +83,11 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       followedArtists = await refreshFollowedArtists(followedArtists)
       const followedIds = new Set(followedArtists.map((a) => a.id))
 
+      // Saved videos + podcasts are client-side only (no backend save endpoints
+      // yet) — same localStorage approach as followed artists.
+      const savedVideos = readStored<MusicVideo>('ns-saved-videos')
+      const savedPodcasts = readStored<PodcastSummary>('ns-saved-podcasts')
+
       set({
         savedPlaylists: playlists,
         likedSongs: likedTracks,
@@ -78,6 +97,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         savedAlbumIds: new Set(savedAlbums.map((a) => a.id)),
         followedArtists,
         followedArtistIds: followedIds,
+        savedVideos,
+        savedVideoIds: new Set(savedVideos.map((v) => v.id)),
+        savedPodcasts,
+        savedPodcastIds: new Set(savedPodcasts.map((p) => p.id)),
         isLoading: false,
       })
     } catch {
@@ -173,6 +196,38 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
+  saveVideo: (video) => {
+    const prevIds = get().savedVideoIds
+    if (prevIds.has(video.id)) return
+    const savedVideos = [video, ...get().savedVideos]
+    set({ savedVideos, savedVideoIds: new Set([...prevIds, video.id]) })
+    writeStored('ns-saved-videos', savedVideos)
+  },
+
+  unsaveVideo: (videoId) => {
+    const savedVideos = get().savedVideos.filter((v) => v.id !== videoId)
+    const newIds = new Set(get().savedVideoIds)
+    newIds.delete(videoId)
+    set({ savedVideos, savedVideoIds: newIds })
+    writeStored('ns-saved-videos', savedVideos)
+  },
+
+  savePodcast: (podcast) => {
+    const prevIds = get().savedPodcastIds
+    if (prevIds.has(podcast.id)) return
+    const savedPodcasts = [podcast, ...get().savedPodcasts]
+    set({ savedPodcasts, savedPodcastIds: new Set([...prevIds, podcast.id]) })
+    writeStored('ns-saved-podcasts', savedPodcasts)
+  },
+
+  unsavePodcast: (podcastId) => {
+    const savedPodcasts = get().savedPodcasts.filter((p) => p.id !== podcastId)
+    const newIds = new Set(get().savedPodcastIds)
+    newIds.delete(podcastId)
+    set({ savedPodcasts, savedPodcastIds: newIds })
+    writeStored('ns-saved-podcasts', savedPodcasts)
+  },
+
   createPlaylist: async (name, description, isPublic = true, smartRules) => {
     const playlist = await playlistService.create(name, description, isPublic, smartRules)
     set((s) => ({ savedPlaylists: [playlist, ...s.savedPlaylists] }))
@@ -251,6 +306,26 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 }))
 
+/** Read a JSON array from localStorage, tolerating missing/corrupt values. */
+function readStored<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as T[]) : []
+  } catch {
+    return []
+  }
+}
+
+function writeStored<T>(key: string, value: T[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* ignore quota / serialization errors */
+  }
+}
+
 async function refreshFollowedArtists(artists: Artist[]) {
   if (artists.length === 0) return artists
   const refreshed = await Promise.all(
@@ -290,9 +365,13 @@ useAuthStore.subscribe((state, prev) => {
     likedAtMap: {},
     followedArtists: [],
     savedAlbums: [],
+    savedVideos: [],
+    savedPodcasts: [],
     likedTrackIds: new Set(),
     followedArtistIds: new Set(),
     savedAlbumIds: new Set(),
+    savedVideoIds: new Set(),
+    savedPodcastIds: new Set(),
     isLoading: false,
   })
 })

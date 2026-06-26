@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { useLibraryStore } from '@/stores/libraryStore'
-import { usePlayerStore } from '@/stores/playerStore'
+import { usePlayerStore, type PlayContextType } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
@@ -74,10 +74,12 @@ const SORT_OPTIONS: { key: Sort; tKey: string }[] = [
   { key: 'custom', tKey: 'sort.custom' },
 ]
 
+type LibKind = 'playlist' | 'album' | 'artist' | 'video' | 'podcast'
+
 interface LibItem {
   key: string
   id: string
-  kind: 'playlist' | 'album' | 'artist'
+  kind: LibKind
   name: string
   subtitle: string
   image: string | null
@@ -85,6 +87,8 @@ interface LibItem {
   to: string
   /** True for playlists the user owns — the only library rows a track can be dropped onto. */
   acceptsTracks: boolean
+  /** Whether this row exposes an inline play button (videos/podcasts are navigate-only). */
+  playable: boolean
 }
 
 interface SidebarProps {
@@ -120,6 +124,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     savedPlaylists,
     savedAlbums,
     savedAlbumIds,
+    savedVideos,
+    savedPodcasts,
     followedArtists,
     followedArtistIds,
     likedSongs,
@@ -351,6 +357,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       round: false,
       to: `/playlist/${p.id}`,
       acceptsTracks: !!p.isOwner,
+      playable: true,
     }))
     const albums: LibItem[] = savedAlbums.map((a) => ({
       key: `al-${a.id}`,
@@ -362,6 +369,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       round: false,
       to: `/album/${a.id}`,
       acceptsTracks: false,
+      playable: true,
     }))
     const artists: LibItem[] = followedArtists.map((a) => ({
       key: `ar-${a.id}`,
@@ -373,6 +381,34 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       round: true,
       to: `/artist/${a.id}`,
       acceptsTracks: false,
+      playable: true,
+    }))
+    // Videos + podcasts are saved client-side and surface in the default ("all")
+    // view only. They're navigate-only — opening the row goes to the page where
+    // playback lives, so they carry no inline play button or play context.
+    const videos: LibItem[] = savedVideos.map((v) => ({
+      key: `vid-${v.id}`,
+      id: v.id,
+      kind: 'video',
+      name: v.title,
+      subtitle: `Music video • ${v.artist.name}`,
+      image: v.thumbnailUrl,
+      round: false,
+      to: `/videos/${v.id}`,
+      acceptsTracks: false,
+      playable: false,
+    }))
+    const podcasts: LibItem[] = savedPodcasts.map((p) => ({
+      key: `pod-${p.id}`,
+      id: p.id,
+      kind: 'podcast',
+      name: p.title,
+      subtitle: `Podcast • ${p.author}`,
+      image: p.imageUrl,
+      round: false,
+      to: `/podcasts/${p.id}`,
+      acceptsTracks: false,
+      playable: false,
     }))
 
     let list =
@@ -382,7 +418,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           ? albums
           : filter === 'artists'
             ? artists
-            : [...playlists, ...albums, ...artists]
+            : [...playlists, ...albums, ...artists, ...podcasts, ...videos]
 
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
@@ -393,7 +429,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       list = [...list.filter((i) => pinned.has(i.key)), ...list.filter((i) => !pinned.has(i.key))]
     }
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, filter, query, sort, pinned, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, pinned, t])
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
@@ -1256,7 +1292,9 @@ function LibraryListRow({
           )}
         >
           <LibraryArtwork item={item} compact={compact} />
-          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
+          {item.playable && (
+            <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
+          )}
         </div>
         <div className="min-w-0 flex-1 pr-14">
           <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
@@ -1334,7 +1372,9 @@ function LibraryGridCard({
           )}
         >
           <LibraryArtwork item={item} compact={compact} grid />
-          <LibraryPlayButton label={item.name} context={{ type: item.kind, id: item.id }} onStart={onPlay} />
+          {item.playable && (
+            <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
+          )}
         </div>
         <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}

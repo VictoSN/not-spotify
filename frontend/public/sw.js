@@ -86,6 +86,9 @@ self.addEventListener('push', (event) => {
     icon: data.icon || '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
     tag: data.tag || 'ns-notification',
+    // Without this, Windows replaces a same-tag toast silently in Action
+    // Center; with it, the bottom-right banner is shown again each time.
+    renotify: true,
     data: { url: data.url || '/' },
   }
   event.waitUntil(self.registration.showNotification(title, options))

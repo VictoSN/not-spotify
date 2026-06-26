@@ -242,8 +242,9 @@ export function SettingsPage() {
         setPushSubscribed(false)
         toast.success('Push notifications disabled.')
       }
-    } catch (e) {
-      toast.error('Push subscription failed.')
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      toast.error(`Push subscription failed: ${msg.slice(0, 140)}`)
       console.error('[push] subscribe failed', e)
     } finally {
       setPushBusy(false)
@@ -257,10 +258,12 @@ export function SettingsPage() {
       //    OS toast right now even if the server-side push round-trip is
       //    broken (FCM unreachable, sub stale, dev SW not yet active, etc).
       try {
+        // Unique tag per click — Windows collapses fixed-tag re-fires into a
+        // silent Action Center update instead of a new bottom-right banner.
         const local = new Notification('NotSpotify (local test)', {
           body: 'If you see this bottom-right toast, OS notifications work in this browser.',
           icon: '/icons/icon-192.png',
-          tag: 'ns-local-test',
+          tag: `ns-local-test-${Date.now()}`,
         })
         local.onclick = () => window.focus()
       } catch (e) {

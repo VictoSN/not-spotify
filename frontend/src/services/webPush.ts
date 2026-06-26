@@ -68,7 +68,7 @@ export async function isPushSubscribed(): Promise<boolean> {
 }
 
 export async function subscribeToPush(): Promise<boolean> {
-  if (!isPushSupported()) return false
+  if (!isPushSupported()) throw new Error('Web Push not supported by this browser.')
   if (Notification.permission === 'default') {
     const perm = await Notification.requestPermission()
     if (perm !== 'granted') return false
@@ -76,20 +76,36 @@ export async function subscribeToPush(): Promise<boolean> {
   if (Notification.permission !== 'granted') return false
 
   const reg = await getRegistration()
-  if (!reg) return false
+  if (!reg) throw new Error('No service-worker registration. Reload the page once so the dev SW takes over.')
+  if (!('pushManager' in reg)) throw new Error('Service worker has no PushManager. Check sw.js scope.')
 
   const vapid = await getVapidPublicKey()
-  if (!vapid) return false
+  if (!vapid) throw new Error('Server did not return a VAPID public key — check that Push:VapidPublic is configured.')
 
   let sub = await reg.pushManager.getSubscription()
   if (!sub) {
-    // PushManager.subscribe wants BufferSource<ArrayBuffer> — Uint8Array<ArrayBufferLike>
-    // from Uint8Array() trips strict TS even though it's correct at runtime.
-    const keyBytes = urlBase64ToUint8Array(vapid)
-    sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: keyBytes.buffer as ArrayBuffer,
-    })
+    // Browsers accept either a Uint8Array or an ArrayBuffer here; the
+    // Uint8Array path is the safest (the `.buffer` route can return a
+    // SharedArrayBuffer on some runtimes, which subscribe() rejects).
+    // Cast is just to silence strict-TS narrowing of ArrayBufferLike.
+    const keyBytes = urlBase64ToUint8Array(vapid) as unknown as BufferSource
+    try {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: keyBytes,
+      })
+    } catch (e: unknown) {
+      // Brave disables Google's push service by default. The subscribe call
+      // either rejects outright or returns a token that never delivers.
+      // Detect the engine and tell the user where to flip the setting.
+      const isBrave = typeof (navigator as { brave?: { isBrave?: () => Promise<boolean> } }).brave?.isBrave === 'function'
+      if (isBrave) {
+        throw new Error(
+          'Brave blocks push by default. Enable "Use Google services for push messaging" in brave://settings/privacy, then try again.',
+        )
+      }
+      throw e
+    }
   }
 
   const payload = {

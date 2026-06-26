@@ -96,11 +96,14 @@ public class PushController : ControllerBase
     {
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
+        // Unique tag per call so Windows doesn't collapse repeat tests into a
+        // silent Action Center update — every Send-test click should pop a
+        // fresh bottom-right banner.
         await _push.SendToUserAsync(me.Value,
             "NotSpotify push works",
-            "If you see this, Web Push is wired up end-to-end.",
+            $"If you see this, Web Push is wired up end-to-end. ({DateTime.UtcNow:HH:mm:ss})",
             linkUrl: "/settings",
-            tag: "push_test",
+            tag: $"push_test_{Guid.NewGuid():N}",
             ct: ct);
         return NoContent();
     }

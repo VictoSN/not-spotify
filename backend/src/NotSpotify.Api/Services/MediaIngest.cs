@@ -73,6 +73,13 @@ public static class MediaIngest
             return;
         }
 
+        if (args.Contains("--ads"))
+        {
+            await IngestAdsAsync(db, storage, Path.Combine(repoRoot, "Advertisement"), ffprobe, dryRun);
+            Console.WriteLine("\n[Ingest] Done.");
+            return;
+        }
+
         if (!args.Contains("--thumbnails"))
         {
             await IngestMusicVideosAsync(db, storage, videosDir, ffprobe, ffmpeg, dryRun);
@@ -120,6 +127,80 @@ public static class MediaIngest
         var podDel = await db.Podcasts.Where(p => podIds.Contains(p.Id)).ExecuteDeleteAsync();
         var vidDel = await db.MusicVideos.Where(v => PlaceholderVideoTitles.Contains(v.Title)).ExecuteDeleteAsync();
         Console.WriteLine($"[Clean] Deleted {vidDel} music videos, {podDel} podcasts, {eps} episodes.");
+    }
+
+    // ---- Advertisements -----------------------------------------------------
+
+    /// <summary>One creative per file in the Advertisement/ folder. Uploads the
+    /// audio to S3, inserts an active <see cref="Advertisement"/>, and points each
+    /// at a landing page by filename keyword. Then deactivates the seeded
+    /// "Go Premium" house placeholders so the free tier serves only these.</summary>
+    private static async Task IngestAdsAsync(
+        AppDbContext db, IStorageService storage, string dir, string? ffprobe, bool dryRun)
+    {
+        if (!Directory.Exists(dir)) { Console.WriteLine($"[Ads] folder not found: {dir} — skipping."); return; }
+
+        var files = Directory.GetFiles(dir, "*.wav").OrderBy(f => f, StringComparer.Ordinal).ToList();
+        Console.WriteLine($"[Ads] {files.Count} .wav files.");
+
+        foreach (var file in files)
+        {
+            var fname = Path.GetFileNameWithoutExtension(file);
+            var lower = fname.ToLowerInvariant();
+
+            // Map each creative to a title/advertiser/landing page.
+            (string title, string advertiser, string click) meta =
+                lower.Contains("game") ? ("Play Now — Free Online Games", "Poki", "https://poki.com")
+              : lower.Contains("jello") ? ("There's Always Room for Jell-O", "Jell-O", "https://www.kraftheinz.com/jell-o")
+              : (fname, "Not Spotify", "");
+
+            if (await db.Advertisements.AnyAsync(a => a.Title == meta.title))
+            {
+                Console.WriteLine($"[Ads] SKIP (exists): {meta.title}");
+                continue;
+            }
+
+            var durationMs = ProbeDurationMs(ffprobe, file);
+            var key = $"audio/{Guid.NewGuid():N}.wav";
+
+            Console.WriteLine($"[Ads] {(dryRun ? "would upload" : "uploading")} {Path.GetFileName(file)} -> {key} "
+                + $"({new FileInfo(file).Length:N0} bytes, {durationMs} ms)  click={meta.click}");
+
+            if (!dryRun)
+            {
+                await using (var fs = File.OpenRead(file))
+                    await storage.UploadAsync(key, fs, "audio/wav");
+
+                db.Advertisements.Add(new Advertisement
+                {
+                    Id = Guid.NewGuid(),
+                    Title = meta.title,
+                    Advertiser = meta.advertiser,
+                    AudioUrl = string.Empty,
+                    AudioKey = key,
+                    ClickUrl = string.IsNullOrEmpty(meta.click) ? null : meta.click,
+                    DurationMs = durationMs,
+                    Weight = 1,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        // Stop the seeded house placeholders so the free tier only hears the real ads.
+        var placeholders = db.Advertisements.Where(a =>
+            a.Advertiser == "Not Spotify" && a.Title == "Go Premium — listen ad-free" && a.IsActive);
+        if (dryRun)
+        {
+            var n = await placeholders.CountAsync();
+            Console.WriteLine($"[Ads] would deactivate {n} placeholder 'Go Premium' ad(s).");
+        }
+        else
+        {
+            var n = await placeholders.ExecuteUpdateAsync(s => s.SetProperty(a => a.IsActive, false));
+            Console.WriteLine($"[Ads] deactivated {n} placeholder 'Go Premium' ad(s).");
+        }
     }
 
     // ---- Team Coco account --------------------------------------------------

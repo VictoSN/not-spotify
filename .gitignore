@@ -9,6 +9,7 @@ Thumbs.db
 # not stored in git — these folders are hundreds of MB of mp4/webm)
 /Music Videos/
 /Podcast/
+/Advertisement/
 
 # Environment files (never commit secrets)
 .env

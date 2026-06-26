@@ -17,7 +17,7 @@ are also two dedicated **testing phases** for cross-cutting regression work.
 ## Buckets → phases
 | Bucket | Phases |
 |---|---|
-| **Bugs** | 1 (MV playback #3,#6), 2 (MV/podcast interactions #5,#8), 3 (recents #4), 4 (recommendations #1,#2), 5 (ads #7,#9), 8 (detail headers #10), 10 (lyrics close) |
+| **Bugs** | 1 (MV playback #3,#6), 2 (MV/podcast interactions #5,#8), 3 (recents #4), 4 (recommendations #1,#2), 5 (ads #7,#9), 8 (detail headers #10), 10 (lyrics close), 13 (follow/unfollow), 14 (library MV/podcast navigation) |
 | **Settings / account "coming soon"** | 6 |
 | **Admin: advertisement for free tier** | 7 |
 | **Search results page redesign** | 9 |
@@ -51,6 +51,8 @@ Codex has 3 tiers, so the mapping collapses the top two Opus levels:
 | 10 — Lyrics close on nav | **med** | **medium** | small, clear root cause (close-on-same-route) |
 | 11 — Test hardening | **high** | **high** | cross-cutting suites + green run |
 | 12 — Manual QA | **med** | **medium** | mostly human verification, little reasoning |
+| 13 — Follow/unfollow regression | **high** | **high** | auth + optimistic state + FE/BE follow endpoints can disagree |
+| 14 — Library MV/podcast navigation | **med** | **medium** | likely sidebar row/link wiring, low blast radius |
 
 ---
 
@@ -88,10 +90,10 @@ Covers bugs **#5** (MVs & podcasts not draggable / right-clickable on All/Home) 
 Goal: MVs and podcasts behave like other media cards on Home — context menu + drag —
 and there's a Music Video category chip on the Home top panel.
 
-- [ ] MV and podcast cards on Home/All support right-click → context menu (reuse `VideoMenu` / `PodcastMenu`).
-- [ ] MV and podcast cards are draggable (to library/playlist where it makes sense), consistent with track/album cards.
-- [ ] Add a **Music Video** category to the Home top panel/category chips.
-- [ ] Verify the category surfaces real MV content (not an empty/placeholder list).
+- [x] MV and podcast cards on Home/All support right-click → context menu (reuse `VideoMenu` / `PodcastMenu`).
+- [x] MV and podcast cards are draggable (to library/playlist where it makes sense), consistent with track/album cards.
+- [x] Add a **Music Video** category to the Home top panel/category chips.
+- [x] Verify the category surfaces real MV content (not an empty/placeholder list).
 
 Likely files: `frontend/src/pages/HomePage.tsx` (top category chips + sections),
 `frontend/src/components/cards/VideoMenu.tsx`, `frontend/src/components/cards/PodcastMenu.tsx`,
@@ -101,8 +103,8 @@ Likely files: `frontend/src/pages/HomePage.tsx` (top category chips + sections),
 (`openMenuAtPointer` pattern).
 
 Tests (this session):
-- [ ] Component/interaction test: MV & podcast cards expose a context-menu trigger and a drag handler.
-- [ ] Home renders the Music Video category chip and a non-empty section when MV data exists.
+- [x] Component/interaction test: MV & podcast cards expose a context-menu trigger and a drag handler.
+- [x] Home renders the Music Video category chip and a non-empty section when MV data exists.
 
 ---
 
@@ -241,13 +243,13 @@ Current → target:
 
 Goal: make the full results page match the dropdown's richness and Spotify's layout.
 
-- [ ] Add a **Top result** hero card for the strongest match (track/artist/album) with a play button, reusing the existing playback gates.
-- [ ] Build a unified result **row**: artwork · title · subtitle (`Song • Artist` / `Music video • Artist`) · type **badge** · inline action.
+- [x] Add a **Top result** hero card for the strongest match (track/artist/album) with a play button, reusing the existing playback gates.
+- [x] Build a unified result **row**: artwork · title · subtitle (`Song • Artist` / `Music video • Artist`) · type **badge** · inline action.
   - Reuse the inline-action patterns already in `TopBar`'s `SearchSuggestionRow` (like / follow / save, hover-play) so the page and the search dropdown stay consistent — lift them into a shared component if practical.
-- [ ] Make the **All** tab a mixed/interleaved list (top result + songs + artists + videos), not separate card grids.
-- [ ] Add the missing filter chips — **Podcasts & Shows**, **Profiles** — and ensure **Music videos** appear (`searchService` already returns `musicVideos`).
-- [ ] Wire each chip to filter the list; keep **Found in lyrics** as a sub-section under Songs/All.
-- [ ] Keep guest behaviour consistent (auth prompts on save/follow), matching the dropdown.
+- [x] Make the **All** tab a mixed/interleaved list (top result + songs + artists + videos), not separate card grids.
+- [x] Add the missing filter chips — **Podcasts & Shows**, **Profiles** — and ensure **Music videos** appear (`searchService` already returns `musicVideos`).
+- [x] Wire each chip to filter the list; keep **Found in lyrics** as a sub-section under Songs/All.
+- [x] Keep guest behaviour consistent (auth prompts on save/follow), matching the dropdown.
 
 Likely files: `frontend/src/pages/SearchPage.tsx` (main rework),
 `frontend/src/components/layout/TopBar.tsx` (`SearchSuggestionRow` + inline-action handlers to lift/share),
@@ -260,9 +262,9 @@ backend `backend/src/NotSpotify.Api/Controllers/SearchController.cs` (only if Pr
 > chips to a follow-up — decide at session start.
 
 Tests (this session):
-- [ ] Unit test on the **Top result** ranking helper: picks the strongest match deterministically.
-- [ ] Row renders the correct type badge + action per kind (song→save, artist→follow, video→save).
-- [ ] Filter chips narrow the list to the chosen kind; **All** interleaves results.
+- [x] Unit test on the **Top result** ranking helper: picks the strongest match deterministically.
+- [x] Row renders the correct type badge + action per kind (song→save, artist→follow, video→save).
+- [x] Filter chips narrow the list to the chosen kind; **All** interleaves results.
 
 ---
 
@@ -315,3 +317,51 @@ End-to-end verification the unit tests can't cover (needs the running app + back
 - [x] Settings "coming soon" items are either functional or cleanly disabled. (Phase 6 — commit `22f0809d`; live-verified via curl, manual QA still pending in the running UI.)
 - [ ] Search results page shows a Top result card + interleaved rows with type badges and inline add/follow/save; Podcasts/Profiles/Music-video filters work.
 - [ ] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home).
+- [ ] Follow and unfollow work from every artist/profile surface and persist after reload.
+- [ ] Saved podcasts and MVs in the left library sidebar navigate to their detail pages.
+
+---
+
+## Phase 13 — Follow/unfollow regression · Opus: high · Codex: high
+Bug: user cannot follow or unfollow.
+
+Goal: following/unfollowing should work consistently from artist pages, search rows/dropdowns,
+menus, and profile/social surfaces; the visible state should update optimistically and persist
+after refresh.
+
+- [ ] Reproduce where follow/unfollow is failing: artist follow (`/artists/{id}/follow`), user/profile follow (`/users/{id}/follow`), or frontend state sync.
+- [ ] Fix the broken path while preserving optimistic update + rollback semantics.
+- [ ] Ensure follow state refreshes correctly in `libraryStore`, artist detail, search dropdown/page rows, and any Follow buttons.
+- [ ] Guest clicks still open the auth prompt instead of firing a failing request.
+
+Likely files: `frontend/src/stores/libraryStore.ts`, `frontend/src/services/artistService.ts`,
+`frontend/src/services/friendService.ts`, `frontend/src/pages/ArtistDetailPage.tsx`,
+`frontend/src/pages/SearchPage.tsx`, `frontend/src/components/layout/TopBar.tsx`,
+backend `backend/src/NotSpotify.Api/Controllers/ArtistsController.cs`,
+`backend/src/NotSpotify.Api/Controllers/UsersController.cs`, `backend/src/NotSpotify.Api/Models/UserFollow.cs`.
+
+Tests (this session):
+- [ ] Frontend: follow button toggles to Following, unfollow toggles back, and failed API calls revert state.
+- [ ] Backend: follow/unfollow endpoint is idempotent and returns success for the current authenticated user.
+
+---
+
+## Phase 14 — Library sidebar MV/podcast navigation · Opus: med · Codex: medium
+Bug: podcasts and MVs are unclickable once saved in the left library sidebar.
+
+Goal: saved podcasts and music videos in Your Library should behave like albums/playlists:
+clicking the row opens the detail page, while drag/drop and context-menu behaviour remain intact.
+
+- [ ] Confirm saved podcast rows navigate to `/podcasts/{id}` from every sidebar layout state.
+- [ ] Confirm saved MV rows navigate to `/videos/{id}` from every sidebar layout state.
+- [ ] Prevent row navigation from being swallowed by menu buttons, drag handles, collapse controls, or minimized-sidebar chrome.
+- [ ] Keep existing library filters, drag/drop, and right-click menu behaviour for these media types.
+
+Likely files: `frontend/src/components/layout/Sidebar.tsx`,
+`frontend/src/stores/libraryStore.ts`, `frontend/src/components/cards/PodcastMenu.tsx`,
+`frontend/src/components/cards/VideoMenu.tsx`, `frontend/src/pages/PodcastPage.tsx`,
+`frontend/src/pages/MusicVideoPage.tsx`, router definitions.
+
+Tests (this session):
+- [ ] Sidebar render/navigation test: saved podcast and saved MV rows call the expected routes.
+- [ ] Interaction test: menu trigger/right-click still opens the menu without also navigating.

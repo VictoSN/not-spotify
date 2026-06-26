@@ -29,6 +29,8 @@ import { useTranslation } from '@/i18n/useTranslation'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
+import type { MusicVideo } from '@/types/musicVideo'
+import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist } from '@/types/playlist'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
@@ -133,6 +135,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     fetchLibrary,
     followArtist,
     saveAlbum,
+    saveVideo,
+    savePodcast,
   } = useLibraryStore()
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
   const likeTrack = useLibraryStore((s) => s.likeTrack)
@@ -165,7 +169,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
   const libraryDragActive = useDragStore(
-    (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum,
+    (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum || !!s.draggedVideo || !!s.draggedPodcast,
   )
 
   // True for the duration of an expand/minimize. Hover-only chrome (the collapse
@@ -340,12 +344,32 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     notify.success('Saved to Your Library')
   }
 
+  const dropVideoOnLibrary = (video: MusicVideo) => {
+    if (savedVideos.some((item) => item.id === video.id)) {
+      notify.info('Already in Your Library')
+      return
+    }
+    saveVideo(video)
+    notify.success('Saved video to Your Library')
+  }
+
+  const dropPodcastOnLibrary = (podcast: PodcastSummary) => {
+    if (savedPodcasts.some((item) => item.id === podcast.id)) {
+      notify.info('Already in Your Library')
+      return
+    }
+    savePodcast(podcast)
+    notify.success('Saved podcast to Your Library')
+  }
+
   // The whole library surface is a drop target, so tracks, artists, albums, and
   // singles can be saved regardless of filters or scroll position.
   const libraryDrop = useLibraryDrop(isAuthenticated, {
     onDropTrack: dropTrackOnLiked,
     onDropArtist: dropArtistOnLibrary,
     onDropAlbum: dropAlbumOnLibrary,
+    onDropVideo: dropVideoOnLibrary,
+    onDropPodcast: dropPodcastOnLibrary,
   })
 
   // ── Build the library list ──────────────────────────────────────
@@ -576,7 +600,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               type="button"
               onClick={collapseLibrarySidebar}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-black leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-normal leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
                 compactLibraryHeader ? 'text-sm' : 'text-base',
               )}
               aria-label={t('sidebar.collapse')}
@@ -588,7 +612,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <button
             onClick={handleCreate}
             className={cn(
-              'spotify-tooltip-anchor relative flex h-8 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
+              'spotify-tooltip-anchor relative flex h-8 shrink-0 items-center justify-center rounded-full bg-elevated text-xs font-normal text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
               compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
             )}
             aria-label={t('sidebar.createAria')}
@@ -604,22 +628,22 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         <div onScroll={handleLibraryBodyScroll} className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <div className="flex flex-col gap-3">
             <section className="rounded-lg bg-elevated p-4">
-              <h2 className="text-sm font-bold text-primary">{t('sidebar.auth.createTitle')}</h2>
-              <p className="mt-2 text-xs font-semibold text-primary">{t('sidebar.auth.createSub')}</p>
+              <h2 className="text-sm font-normal text-primary">{t('sidebar.auth.createTitle')}</h2>
+              <p className="mt-2 text-xs font-normal text-primary">{t('sidebar.auth.createSub')}</p>
               <button
                 onClick={() => openAuthPrompt({ title: t('sidebar.auth.createPromptTitle') })}
-                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-normal text-page transition-transform hover:scale-105 active:scale-95"
               >
                 {t('sidebar.auth.createButton')}
               </button>
             </section>
 
             <section className="rounded-lg bg-elevated p-4">
-              <h2 className="text-sm font-bold text-primary">{t('sidebar.auth.podcastsTitle')}</h2>
-              <p className="mt-2 text-xs font-semibold text-primary">{t('sidebar.auth.podcastsSub')}</p>
+              <h2 className="text-sm font-normal text-primary">{t('sidebar.auth.podcastsTitle')}</h2>
+              <p className="mt-2 text-xs font-normal text-primary">{t('sidebar.auth.podcastsSub')}</p>
               <button
                 onClick={() => openAuthPrompt({ title: t('sidebar.auth.podcastsPromptTitle') })}
-                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95"
+                className="mt-4 rounded-full bg-primary px-4 py-2 text-xs font-normal text-page transition-transform hover:scale-105 active:scale-95"
               >
                 {t('sidebar.auth.podcastsButton')}
               </button>
@@ -730,7 +754,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               type="button"
               onClick={collapseLibrarySidebar}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-black leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-normal leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
                 compactLibraryHeader ? 'text-sm' : 'text-base',
                 !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
@@ -745,7 +769,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               <button
                 onClick={() => setCreateMenuOpen((v) => !v)}
                 className={cn(
-                  'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-black text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
+                  'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-normal text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
                   compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
                 )}
                 aria-label={t('sidebar.createAria')}
@@ -817,7 +841,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               key={c.key}
               onClick={() => setFilter(filter === c.key ? 'all' : c.key)}
               className={cn(
-                'flex h-8 items-center rounded-full px-3 text-xs font-medium transition-all active:scale-95',
+                'flex h-8 items-center rounded-full px-3 text-xs font-normal transition-all active:scale-95',
                 filter === c.key
                   ? 'bg-primary text-page'
                   : 'bg-elevated text-primary hover:bg-elevated/70',
@@ -843,7 +867,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 if (!query) setSearchOpen(false)
               }}
               placeholder={t('sidebar.search')}
-              className="h-8 w-full rounded-full border border-transparent bg-elevated pl-8 pr-3 text-xs font-semibold text-primary transition-[background-color,border-color,box-shadow] duration-200 placeholder:font-semibold placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent/70"
+              className="h-8 w-full rounded-full border border-transparent bg-elevated pl-8 pr-3 text-xs font-normal text-primary transition-[background-color,border-color,box-shadow] duration-200 placeholder:font-normal placeholder:text-muted focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent/70"
             />
           </div>
         ) : (
@@ -859,7 +883,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         <div className="relative shrink-0">
           <button
             onClick={() => setSortMenuOpen((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all px-1"
+            className="flex items-center gap-1.5 text-xs font-normal text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all px-1"
             title={t('sidebar.sort')}
             aria-haspopup="menu"
             aria-expanded={sortMenuOpen}
@@ -871,24 +895,24 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setSortMenuOpen(false)} />
               <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl z-50">
-                <p className="px-3 pb-1 pt-2 text-xs font-bold text-secondary">{t('sidebar.sortBy')}</p>
+                <p className="px-3 pb-1 pt-2 text-xs font-normal text-secondary">{t('sidebar.sortBy')}</p>
                 {SORT_OPTIONS.map((o) => (
                   <button
                     key={o.key}
                     onClick={() => { setSort(o.key); setSortMenuOpen(false) }}
                     className="flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-surface"
                   >
-                    <span className={cn(sort === o.key ? 'font-semibold text-accent' : 'text-primary')}>{t(o.tKey)}</span>
+                    <span className={cn(sort === o.key ? 'font-normal text-accent' : 'text-primary')}>{t(o.tKey)}</span>
                     {sort === o.key && <CheckIcon className="h-4 w-4 text-accent" />}
                   </button>
                 ))}
                 <div className="my-1 border-t border-secondary/10" />
-                <p className="px-3 pb-1 pt-1 text-xs font-bold text-secondary">{t('sidebar.viewAs')}</p>
+                <p className="px-3 pb-1 pt-1 text-xs font-normal text-secondary">{t('sidebar.viewAs')}</p>
                 <div className="flex items-center gap-1 px-2 pb-2">
                   <button
                     onClick={() => { setView('list'); setSortMenuOpen(false) }}
                     className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors',
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-normal transition-colors',
                       viewMode === 'list' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
                     )}
                   >
@@ -897,7 +921,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   <button
                     onClick={() => { setView('grid'); setSortMenuOpen(false) }}
                     className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-semibold transition-colors',
+                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-normal transition-colors',
                       viewMode === 'grid' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
                     )}
                   >
@@ -983,7 +1007,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
                     <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
-                  <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                  <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
                   <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                     {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                   </p>
@@ -1038,7 +1062,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                    <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
                     <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
                       {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                     </p>
@@ -1207,7 +1231,7 @@ function LibraryArtwork({
 
   if (item.kind === 'artist') {
     return (
-      <span className={cn('select-none font-black uppercase text-secondary', fallbackSize)}>
+      <span className={cn('select-none font-normal uppercase text-secondary', fallbackSize)}>
         {libraryInitials(item.name)}
       </span>
     )
@@ -1318,7 +1342,7 @@ function LibraryListRow({
           )}
         </div>
         <div className="min-w-0 flex-1 pr-14">
-          <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+          <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
             {item.name}
           </p>
           <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
@@ -1397,7 +1421,7 @@ function LibraryGridCard({
             <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
           )}
         </div>
-        <p className={cn('truncate text-sm font-medium leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+        <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}
         </p>
         <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
@@ -1478,7 +1502,7 @@ function FolderGroup({
               }}
               onBlur={onRenameCommit}
               aria-label={t('sidebar.folderName')}
-              className="min-w-0 flex-1 rounded border border-accent/60 bg-surface px-1.5 py-1 text-sm font-medium text-primary outline-none"
+              className="min-w-0 flex-1 rounded border border-accent/60 bg-surface px-1.5 py-1 text-sm font-normal text-primary outline-none"
             />
           </div>
         ) : (
@@ -1509,7 +1533,7 @@ function FolderGroup({
                 <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
               </div>
               <div className="min-w-0 flex-1 pr-7">
-                <p className="truncate text-sm font-medium text-primary">{folder.name}</p>
+                <p className="truncate text-sm font-normal text-primary">{folder.name}</p>
                 {!compact && (
                   <p className="truncate text-xs text-secondary">
                     {t(count === 1 ? 'sidebar.folderItem' : 'sidebar.folderItems', { n: count })}

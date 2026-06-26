@@ -20,6 +20,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { SparklesIcon } from '@heroicons/react/24/outline'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { useDragStore } from '@/stores/dragStore'
 import { useHueStore } from '@/stores/hueStore'
 import { useDominantColor, getDominantColor, hueHeaderBackground } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
@@ -33,12 +34,28 @@ import { MixTile } from '@/components/cards/MixTile'
 import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
+import {
+  PODCAST_DND_MIME,
+  VIDEO_DND_MIME,
+  setPodcastDragImage,
+  setVideoDragImage,
+} from '@/utils/trackDnd'
 import { Spinner } from '@/components/ui/Spinner'
 import type { DailyMix } from '@/services/trackService'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 const PREVIEW_LIMIT = 10
+
+export type HomeFilter = 'all' | 'music' | 'podcasts' | 'videos'
+
+export function getHomeFilterVisibility(filter: HomeFilter) {
+  return {
+    showMusic: filter === 'all' || filter === 'music',
+    showPodcasts: filter === 'all' || filter === 'podcasts',
+    showVideos: filter === 'all' || filter === 'videos',
+  }
+}
 
 export function HomePage() {
   const { t } = useTranslation()
@@ -131,9 +148,8 @@ export function HomePage() {
 
   // Home's own filter ("All / Music / Podcasts") — lives in the page content, not
   // the global header. 'music' hides podcasts; 'podcasts' shows only podcasts.
-  const [homeFilter, setHomeFilter] = useState<'all' | 'music' | 'podcasts'>('all')
-  const showMusic = homeFilter !== 'podcasts'
-  const showPodcasts = homeFilter !== 'music'
+  const [homeFilter, setHomeFilter] = useState<HomeFilter>('all')
+  const { showMusic, showPodcasts, showVideos } = getHomeFilterVisibility(homeFilter)
 
   const getGreeting = () => {
     const h = new Date().getHours()
@@ -201,6 +217,7 @@ export function HomePage() {
             { key: 'all', label: t('home.filter.all') },
             { key: 'music', label: t('home.filter.music') },
             { key: 'podcasts', label: t('home.filter.podcasts') },
+            { key: 'videos', label: t('home.filter.musicVideos') },
           ] as const).map((f) => (
             <button
               key={f.key}
@@ -456,7 +473,7 @@ export function HomePage() {
         )}
 
         {/* Music videos */}
-        {showMusic && musicVideos.length > 0 && (
+        {showVideos && musicVideos.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.musicVideos')} href="/videos" variant="home" />
             <HorizontalScroller>
@@ -471,17 +488,31 @@ export function HomePage() {
   )
 }
 
-function HomePodcastTile({ podcast: p }: { podcast: PodcastSummary }) {
+export function HomePodcastTile({ podcast: p }: { podcast: PodcastSummary }) {
   const menuRef = useRef<PodcastMenuHandle>(null)
+  const setDraggedPodcast = useDragStore((s) => s.setDraggedPodcast)
   return (
     <div
       className="group relative w-40 shrink-0"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'copy'
+        e.dataTransfer.setData(PODCAST_DND_MIME, p.id)
+        e.dataTransfer.setData('text/plain', `${p.title} - ${p.author}`)
+        setPodcastDragImage(e, p)
+        setDraggedPodcast(p)
+        e.currentTarget.style.opacity = '0.4'
+      }}
+      onDragEnd={(e) => {
+        setDraggedPodcast(null)
+        e.currentTarget.style.opacity = ''
+      }}
       onContextMenu={(e) => openMenuAtPointer(e, menuRef)}
     >
-      <Link to={`/podcasts/${p.id}`} className="block rounded-lg transition-colors">
+      <Link to={`/podcasts/${p.id}`} draggable={false} className="block rounded-lg transition-colors">
         <div className="mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated">
           {p.imageUrl ? (
-            <img src={p.imageUrl} alt={p.title} className="h-full w-full object-cover" />
+            <img src={p.imageUrl} alt={p.title} draggable={false} className="h-full w-full object-cover" />
           ) : (
             <MicrophoneIcon className="h-10 w-10 text-secondary/60" />
           )}
@@ -500,17 +531,31 @@ function HomePodcastTile({ podcast: p }: { podcast: PodcastSummary }) {
   )
 }
 
-function HomeVideoTile({ video: v, queue }: { video: MusicVideo; queue: MusicVideo[] }) {
+export function HomeVideoTile({ video: v, queue }: { video: MusicVideo; queue: MusicVideo[] }) {
   const menuRef = useRef<VideoMenuHandle>(null)
+  const setDraggedVideo = useDragStore((s) => s.setDraggedVideo)
   return (
     <div
       className="group relative w-64 shrink-0"
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.effectAllowed = 'copy'
+        e.dataTransfer.setData(VIDEO_DND_MIME, v.id)
+        e.dataTransfer.setData('text/plain', `${v.title} - ${v.artist.name}`)
+        setVideoDragImage(e, v)
+        setDraggedVideo(v)
+        e.currentTarget.style.opacity = '0.4'
+      }}
+      onDragEnd={(e) => {
+        setDraggedVideo(null)
+        e.currentTarget.style.opacity = ''
+      }}
       onContextMenu={(e) => openMenuAtPointer(e, menuRef)}
     >
-      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} className="block rounded-lg transition-colors">
+      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} draggable={false} className="block rounded-lg transition-colors">
         <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
           {v.thumbnailUrl
-            ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />
+            ? <img src={v.thumbnailUrl} alt={v.title} draggable={false} className="h-full w-full object-cover" />
             : <FilmIcon className="h-8 w-8 text-secondary/60" />}
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-page">

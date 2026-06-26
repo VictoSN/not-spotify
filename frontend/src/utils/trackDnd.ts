@@ -1,11 +1,15 @@
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
+import type { MusicVideo } from '@/types/musicVideo'
+import type { PodcastSummary } from '@/types/podcast'
 
 /** Custom drag types so drop targets can tell app content apart from other drags. */
 export const TRACK_DND_MIME = 'application/x-notspotify-track'
 export const ARTIST_DND_MIME = 'application/x-notspotify-artist'
 export const ALBUM_DND_MIME = 'application/x-notspotify-album'
+export const VIDEO_DND_MIME = 'application/x-notspotify-video'
+export const PODCAST_DND_MIME = 'application/x-notspotify-podcast'
 
 /** Spotify's green — used for the drop affordance regardless of the app's accent theme. */
 export const DROP_GREEN = '#1ed760'
@@ -57,4 +61,12 @@ export function setArtistDragImage(e: React.DragEvent, artist: Artist) {
 
 export function setAlbumDragImage(e: React.DragEvent, album: Album) {
   setDragPillImage(e, album.title)
+}
+
+export function setVideoDragImage(e: React.DragEvent, video: MusicVideo) {
+  setDragPillImage(e, video.title)
+}
+
+export function setPodcastDragImage(e: React.DragEvent, podcast: PodcastSummary) {
+  setDragPillImage(e, podcast.title)
 }

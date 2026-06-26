@@ -171,6 +171,7 @@ export function NowPlayingPanel() {
     }
   }, [dragging])
   const isWide = isNowPlayingExpanded || width >= NP_WIDE_THRESHOLD
+  const showLargeInlineActions = width >= 380
   const toggleWide = () => {
     if (isNowPlayingExpanded) {
       setNowPlayingExpanded(false)
@@ -884,22 +885,35 @@ export function NowPlayingPanel() {
                 {currentTrack.artist.name}
               </Link>
             </div>
-            <div className="flex shrink-0 items-center -space-x-1">
+            <div className={cn('flex shrink-0 items-center', showLargeInlineActions ? '-space-x-0.5' : '-space-x-1')}>
               <button
                 type="button"
                 onClick={shareCurrentTrack}
-                className="spotify-tooltip-anchor invisible relative mt-1 flex h-7 w-7 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100 active:scale-95"
+                className={cn(
+                  'spotify-tooltip-anchor pointer-events-none relative mt-1 flex translate-x-2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary group-hover/now-playing-panel:pointer-events-auto group-hover/now-playing-panel:translate-x-0 group-hover/now-playing-panel:opacity-100 active:scale-95',
+                  showLargeInlineActions ? 'h-8 w-8' : 'h-7 w-7',
+                )}
                 aria-label={`Share ${currentTrack.title}`}
               >
-                <ShareIcon className="h-4 w-4" />
+                <ShareIcon className={showLargeInlineActions ? 'h-5 w-5' : 'h-4 w-4'} />
                 <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">Share</span>
               </button>
               <button
                 onClick={toggleLike}
-                className="mt-1 flex h-7 w-7 items-center justify-center rounded-full"
+                className={cn(
+                  'mt-1 flex items-center justify-center rounded-full',
+                  showLargeInlineActions ? 'h-8 w-8' : 'h-7 w-7',
+                )}
                 aria-label={isLiked ? t('player.unlike') : t('player.like')}
               >
-                <AnimatedLikeIcon liked={isLiked} className="h-4 w-4" heartClassName="h-4 w-4 text-secondary hover:text-primary" />
+                <AnimatedLikeIcon
+                  liked={isLiked}
+                  className={showLargeInlineActions ? 'h-5 w-5' : 'h-4 w-4'}
+                  heartClassName={cn(
+                    showLargeInlineActions ? 'h-5 w-5' : 'h-4 w-4',
+                    'text-secondary hover:text-primary',
+                  )}
+                />
               </button>
             </div>
           </div>

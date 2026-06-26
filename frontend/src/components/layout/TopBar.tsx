@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-do
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import {
   MagnifyingGlassIcon,
-  SunIcon,
-  MoonIcon,
   MusicalNoteIcon,
   UserGroupIcon,
   XMarkIcon,
@@ -472,7 +470,7 @@ export function TopBar() {
                   type="button"
                   onClick={(event) => toggleSuggestionArtistFollow(event, artist)}
                   className={cn(
-                    'shrink-0 rounded-full border px-4 py-1.5 text-sm font-normal transition-all hover:scale-[1.02] active:scale-95',
+                    'shrink-0 rounded-full border px-3 py-1 text-xs font-normal transition-all hover:scale-[1.02] active:scale-95',
                     followedArtistIds.has(artist.id)
                       ? 'border-primary bg-primary text-page'
                       : 'border-secondary/60 text-primary hover:border-primary',
@@ -585,16 +583,16 @@ export function TopBar() {
 
   if (!isAuthenticated) {
     return (
-      <header data-tauri-drag-region className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-16">
+      <header data-tauri-drag-region className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-14">
         <Link to="/" className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
 
         {/* Search bar — hidden on mobile (accessed via Search tab in bottom nav) */}
-        <div className="hidden md:flex min-w-0 items-center justify-center gap-2 justify-self-center w-full">
+        <div className="hidden md:flex min-w-0 items-center justify-center gap-1.5 justify-self-center w-full">
           <button
             onClick={() => navigate('/')}
-            className="topbar-control spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
+            className="topbar-control spotify-tooltip-anchor relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
             aria-label={t('topbar.home')}
             aria-current={isHome ? 'page' : undefined}
           >
@@ -617,7 +615,7 @@ export function TopBar() {
               onChange={handleSearch}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => setShowSearchPanel(true)}
-              className="h-12 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[15px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
+              className="h-11 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[16px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
             />
             {searchValue && (
               <button
@@ -671,17 +669,17 @@ export function TopBar() {
   }
 
   return (
-    <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-16 md:gap-2 md:px-4 relative">
+    <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-14 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
       <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
       </Link>
 
       {/* Center: home + search + theme toggle — desktop only */}
-      <div className="absolute left-1/2 top-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-2 lg:flex">
+      <div className="absolute inset-y-0 left-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 items-center justify-center gap-1.5 lg:flex">
         <button
           onClick={() => navigate('/')}
-          className="topbar-control spotify-tooltip-anchor relative flex h-12 min-h-12 w-12 min-w-12 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
+          className="topbar-control spotify-tooltip-anchor relative flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
           aria-label={t('topbar.home')}
           aria-current={isHome ? 'page' : undefined}
         >
@@ -693,7 +691,7 @@ export function TopBar() {
           <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.home')}</span>
         </button>
 
-        <div ref={searchContainerRef} className="relative w-full max-w-md">
+        <div ref={searchContainerRef} className="relative w-full">
           <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-6 w-6 -translate-y-1/2 text-secondary" />
           <input
             ref={searchInputRef}
@@ -704,48 +702,43 @@ export function TopBar() {
             onChange={handleSearch}
             onKeyDown={handleSearchKeyDown}
             onFocus={() => setShowSearchPanel(true)}
-            className="h-12 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[15px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
+            className="h-11 w-full rounded-full border border-transparent bg-elevated pl-12 pr-28 text-[16px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
           />
-          {searchValue && (
+          {/* Right-side controls grouped inside the pill: clear · mic · divider · browse */}
+          <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+            {searchValue && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="spotify-tooltip-anchor flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
+                aria-label={t('topbar.clearSearch')}
+              >
+                <XMarkIcon className="h-4 w-4" />
+                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.clearSearchField')}</span>
+              </button>
+            )}
+            {/* Voice search — only renders where the Web Speech API exists */}
+            <VoiceSearchButton
+              onResult={(text) => { setSearchValue(text); submitSearch(text) }}
+              className="h-8 w-8 bg-transparent hover:bg-transparent hover:scale-110"
+            />
+            <div className="h-6 w-px shrink-0 bg-secondary/25" />
             <button
               type="button"
-              onClick={handleClearSearch}
-              className="spotify-tooltip-anchor absolute right-[4.45rem] top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors duration-150 hover:text-primary"
-              aria-label={t('topbar.clearSearch')}
+              onClick={handleBrowseClick}
+              className={cn(
+                'spotify-tooltip-anchor flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 hover:text-primary',
+                isBrowse ? 'text-primary' : 'text-secondary',
+              )}
+              aria-label={t('topbar.browseAll')}
+              aria-current={isBrowse ? 'page' : undefined}
             >
-              <XMarkIcon className="h-4 w-4" />
-              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.clearSearchField')}</span>
+              <BrowseTrayIcon filled={isBrowse} />
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
             </button>
-          )}
-          <div className="pointer-events-none absolute right-14 top-1/2 h-6 w-px -translate-y-1/2 bg-secondary/25" />
-          <button
-            type="button"
-            onClick={handleBrowseClick}
-            className={cn(
-              'spotify-tooltip-anchor absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full transition-colors hover:bg-surface hover:text-primary',
-              isBrowse ? 'text-primary' : 'text-secondary',
-            )}
-            aria-label={t('topbar.browseAll')}
-            aria-current={isBrowse ? 'page' : undefined}
-          >
-            <BrowseTrayIcon filled={isBrowse} />
-            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{t('topbar.browse')}</span>
-          </button>
+          </div>
           {searchPanel}
         </div>
-
-        {/* Theme toggle */}
-        <button
-          onClick={toggleTheme}
-          className="topbar-control w-12 h-12 rounded-full bg-elevated hover:bg-elevated/70 hover:scale-105 flex items-center justify-center text-secondary hover:text-primary transition-all shrink-0"
-          aria-label={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
-          title={theme === 'dark' ? t('topbar.switchLight') : t('topbar.switchDark')}
-        >
-          {theme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-        </button>
-
-        {/* Voice search — only renders where the Web Speech API exists */}
-        <VoiceSearchButton onResult={(text) => { setSearchValue(text); submitSearch(text) }} />
       </div>
 
       {/* Mobile: page title area (spacer) */}
@@ -853,10 +846,10 @@ export function TopBar() {
               >
                 {t('topbar.settings')}
               </Link>
-              {/* Theme toggle in mobile menu */}
+              {/* Theme toggle — moved here from the top bar */}
               <button
                 onClick={() => { toggleTheme(); setShowMenu(false) }}
-                className={cn(userMenuItemClass, 'md:hidden')}
+                className={userMenuItemClass}
               >
                 {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
               </button>
@@ -967,19 +960,14 @@ function SearchSuggestionRow({
           <button
             type="button"
             onClick={onPlay}
-            className={cn(
-              'absolute inset-0 flex items-center justify-center bg-black/45 transition-opacity focus:opacity-100',
-              isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-            )}
+            className="absolute inset-0 flex items-center justify-center rounded-[inherit] bg-black/45 text-white opacity-0 transition-opacity duration-150 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 group-hover:opacity-100"
             aria-label={isPlaying ? 'Pause' : 'Play'}
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-page shadow-lg transition-transform hover:scale-105">
-              {isPlaying ? (
-                <PauseIcon className="h-4 w-4" />
-              ) : (
-                <PlayIcon className="ml-0.5 h-4 w-4" />
-              )}
-            </span>
+            {isPlaying ? (
+              <PauseIcon className="h-5 w-5" />
+            ) : (
+              <PlayIcon className="h-5 w-5 translate-x-[1px]" />
+            )}
           </button>
         )}
       </div>
@@ -997,7 +985,7 @@ function SearchSuggestionRow({
 function BrowseTrayIcon({ filled = false }: { filled?: boolean }) {
   if (filled) {
     return (
-      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7" fill="currentColor">
+      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-8 w-8" fill="currentColor">
         <path d="M10.5 6.8A1.3 1.3 0 0 1 11.8 5.5h8.4a1.3 1.3 0 0 1 1.3 1.3V10h-2.45V8h-6.1v2H10.5z" />
         <path
           fillRule="evenodd"
@@ -1009,7 +997,7 @@ function BrowseTrayIcon({ filled = false }: { filled?: boolean }) {
   }
 
   return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className="h-7 w-7" fill="none">
+    <svg viewBox="0 0 32 32" aria-hidden="true" className="h-8 w-8" fill="none">
       <path
         d="M11 9.5V6.8h10v2.7M7.5 13.2h17l-1.55 10H9.05l-1.55-10Z"
         stroke="currentColor"

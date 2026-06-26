@@ -758,7 +758,10 @@ export function NowPlayingPanel() {
       )}
       <div
         className={cn(
-          'group/np-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 p-4 transition-[background-color,box-shadow,backdrop-filter] duration-200',
+          // rounded-t-xl so the scrolled background follows the panel's rounded top
+          // corners instead of painting a square over them (the panel can't use
+          // overflow-hidden — the drag handle sits outside its left edge).
+          'group/np-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-2 rounded-t-xl p-4 transition-[background-color,box-shadow,backdrop-filter] duration-200',
           panelBodyScrolled
             ? 'bg-surface/90 shadow-[0_8px_20px_rgba(0,0,0,0.22)] backdrop-blur-md'
             : 'bg-transparent shadow-none backdrop-blur-0',

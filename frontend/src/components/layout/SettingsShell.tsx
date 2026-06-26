@@ -1,12 +1,7 @@
 import { Outlet, Link } from 'react-router-dom'
-import {
-  ArrowLeftIcon,
-  SunIcon,
-  MoonIcon,
-} from '@heroicons/react/24/outline'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
-import { useThemeStore } from '@/stores/themeStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Avatar } from '@/components/ui/Avatar'
 import { MobileNav } from './MobileNav'
@@ -19,46 +14,53 @@ import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet
  */
 export function SettingsShell() {
   const { user } = useAuthStore()
-  const { theme, toggleTheme } = useThemeStore()
   const isMobile = useIsMobile()
 
   return (
-    <div className="flex min-h-screen flex-col bg-page text-primary">
-      <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center gap-6 border-b border-elevated/40 bg-base/95 px-4 backdrop-blur sm:px-6">
-        <Link to="/" className="flex shrink-0 items-center" aria-label="Home">
-          <SpotifyMark className="h-7 w-7" />
-        </Link>
-
-        <nav className="hidden items-center gap-6 text-sm font-bold text-secondary md:flex">
-          <Link to="/premium" className="transition-colors hover:text-primary">Premium</Link>
-          <span className="cursor-default">Support</span>
-          <span className="cursor-default">Download</span>
-        </nav>
-
-        <div className="ml-auto flex items-center gap-3">
-          <button
-            onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-elevated text-secondary transition-all hover:scale-105 hover:bg-elevated/70 hover:text-primary"
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            {theme === 'dark' ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-          </button>
-
-          <Link
-            to="/"
-            className="hidden items-center gap-1.5 text-sm font-semibold text-secondary transition-colors hover:text-primary sm:flex"
-          >
-            <ArrowLeftIcon className="h-4 w-4" />
-            Back to app
+    <div className="flex min-h-screen flex-col bg-[#121212] text-white">
+      {/* Black top header matching Spotify account page */}
+      <header className="sticky top-0 z-20 h-16 shrink-0 bg-black">
+        <div className="mx-auto flex h-full max-w-[960px] items-center px-6">
+          {/* Logo */}
+          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Home">
+            <SpotifyMark className="h-8 w-8 text-white" />
+            <span className="hidden text-[18px] font-black tracking-tight text-white sm:block">Spotify</span>
           </Link>
 
-          <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
+          {/* Nav links */}
+          <nav className="ml-10 hidden items-center gap-7 md:flex">
+            <Link
+              to="/premium"
+              className="text-[13px] font-semibold text-[#b3b3b3] transition-colors hover:text-white"
+            >
+              Premium plans
+            </Link>
+            <span className="text-[13px] font-semibold text-[#b3b3b3] cursor-default">Support</span>
+            <span className="text-[13px] font-semibold text-[#b3b3b3] cursor-default">Download</span>
+          </nav>
+
+          {/* Right side */}
+          <div className="ml-auto flex items-center gap-0">
+            {/* Vertical divider */}
+            <div className="mr-5 h-5 w-px bg-[#3a3a3a] hidden sm:block" />
+
+            {/* Profile */}
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors hover:bg-white/10"
+            >
+              <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
+              <span className="hidden text-[13px] font-semibold text-white sm:block">
+                {user?.name ?? 'Profile'}
+              </span>
+              <ChevronDownIcon className="hidden h-3.5 w-3.5 text-white sm:block" />
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-4 py-8 sm:py-10">
+        <div className="mx-auto max-w-[780px] px-4 py-8">
           <Outlet />
         </div>
       </main>

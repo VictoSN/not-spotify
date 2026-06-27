@@ -31,7 +31,9 @@ export function TrackCard({ track, queue }: TrackCardProps) {
   const isLiked = likedTrackIds.has(track.id)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
 
-  const handlePlay = () => {
+  const handlePlay = (e: React.MouseEvent) => {
+    // Only respond to primary (left) clicks — right-click opens the context menu.
+    if (e.button !== 0) return
     if (isTrackSurfaceActive) {
       if (isPlaying) pause()
       else resume()

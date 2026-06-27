@@ -115,8 +115,8 @@ Tests (this session):
 Goal: right-clicking a song on the Recents page opens the track dropdown menu like
 other lists.
 
-- [ ] Right-click on a Recents row opens the track context menu (`TrackRowMenu` via `openMenuAtPointer`).
-- [ ] Keyboard/`⋯` access stays consistent with other track rows.
+- [x] Right-click on a Recents row opens the track context menu (`TrackRowMenu` via `openMenuAtPointer`).
+- [x] Keyboard/`⋯` access stays consistent with other track rows.
 
 Likely files: `frontend/src/pages/browse/RecentsPage.tsx`,
 `frontend/src/components/cards/TrackRowMenu.tsx`, `frontend/src/components/cards/TrackRow.tsx`,

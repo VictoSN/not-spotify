@@ -68,9 +68,9 @@ behaves like its own track — it registers in recents/library and drives the de
 music-video now-playing panel instead of the audio one.
 
 - [ ] Playing an MV registers it where audio tracks register (recents + saved library), so it appears in the left sidebar / Your Library.
-- [ ] An independently-played MV shows the **music-video** now-playing right panel, not the audio `NowPlayingPanel`.
-- [ ] Confirm `playbackMode === 'video'` is set/cleared correctly on independent MV play vs. an audio track that merely *has* a video.
-- [ ] No "song + ad" / "audio + MV audio" double-playback when switching between an MV and an audio track (coordinate with Phase 4).
+- [x] An independently-played MV shows the **music-video** now-playing right panel, not the audio `NowPlayingPanel`.
+- [x] Confirm `playbackMode === 'video'` is set/cleared correctly on independent MV play vs. an audio track that merely *has* a video.
+- [x] No "song + ad" / "audio + MV audio" double-playback when switching between an MV and an audio track (coordinate with Phase 4).
 
 Likely files: `frontend/src/stores/playerStore.ts` (`playVideo`, `playbackMode`,
 `isVideoPlaying`), `frontend/src/stores/libraryStore.ts` (`saveVideo`, recents),
@@ -380,7 +380,7 @@ Tests (this session):
 ## Phase 15 — Home/library clickability + empty-space create menu · Opus: high · Codex: high
 Bug / polish: some Home-page items feel dead or inconsistent — for example playlist cards,
 Daily Mix/mix track surfaces, or rows that visually look clickable but do not navigate.
-Also, right-clicking a clean empty area should feel professional by opening a simple
+Also, right-clicking a clean empty area in Your library/left sidebar should feel professional by opening a simple
 creation menu, like the screenshot: **Create playlist** and **Create folder**.
 
 Goal: make the Home and library surfaces feel consistently interactive, while adding a
@@ -394,7 +394,7 @@ menus, buttons, drag/drop, text inputs, or existing playlist actions.
   - track → track detail or play/open row, matching the existing app pattern
   - album/artist/MV/podcast → their existing detail pages
 - [ ] Preserve hover-play behaviour, drag/drop, and right-click media menus; do not let navigation fire when clicking menu buttons, play buttons, drag handles, or inline actions.
-- [ ] Add an empty-space right-click handler for the library/sidebar/content area that opens a compact create menu with:
+- [ ] Add an empty-space right-click handler for the Your library/left sidebar area that opens a compact create menu with:
   - **Create playlist**
   - **Create folder**
 - [ ] Only show the empty-space create menu when the event target is genuinely blank/non-interactive space.

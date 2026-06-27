@@ -18,5 +18,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: false,
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // jsdom component renders occasionally exceed the 5s default under the full
+    // parallel run on a loaded machine (they finish in ~1s in isolation). Give
+    // them headroom so a green suite doesn't flake on timing alone.
+    testTimeout: 15000,
+    hookTimeout: 15000,
   },
 })

@@ -315,12 +315,19 @@ Tests (this session):
 ## Phase 11 — Cross-cutting test hardening (dedicated) · Opus: high · Codex: high
 A focused pass after the feature phases to lock in behaviour and catch regressions.
 
-- [ ] Player state machine: audio ↔ MV ↔ ad transitions (no overlap, correct `playbackMode`, correct now-playing panel). Consolidates Phases 1, 4, 5.
-- [ ] Library/recents registration across media types (track, MV, podcast). Consolidates Phases 1, 2.
-- [ ] Recommendation/genre + "Show all" routing. Consolidates Phase 4.
-- [ ] Clickability/context-menu regressions: Home playlist/mix rows navigate correctly; empty-space right-click opens create actions without stealing media right-clicks. Consolidates Phase 15.
-- [ ] Playlist add-track hover affordance: the in-cover plus action works with mouse, keyboard, and existing add-song flows. Consolidates Phase 16.
-- [x] Run full suites green: `cd frontend && npm test` and `cd backend && dotnet test`. (Verified after warning cleanup: frontend 212 tests, backend 252 tests.)
+New consolidated regression net: `frontend/src/test/crossCutting.test.tsx` (11 tests)
+ties the per-phase suites together so a change in one store/component that quietly
+breaks another surface fails here too. Also bumped vitest `testTimeout`/`hookTimeout`
+to 15s in `vitest.config.ts` — jsdom component renders occasionally blew the 5s
+default under the full parallel run (e.g. `AccountSettingsPage` ran ~9.5s in the full
+suite vs ~1s in isolation), which was the one source of flaky non-green runs.
+
+- [x] Player state machine: audio ↔ MV ↔ ad transitions (no overlap, correct `playbackMode`, correct now-playing panel). Consolidates Phases 1, 4, 5. (`crossCutting.test.tsx` — audio→MV clears the audio deck + selects the video panel; MV→audio clears the video deck; a free-tier ad holds the song paused (no double audio) and `endAd` resumes; starting an MV cancels a playing ad.)
+- [x] Library/recents registration across media types (track, MV, podcast). Consolidates Phases 1, 2. (`crossCutting.test.tsx` — authed play records `recordPlay`, MV play lands most-recent-first in `savedVideos`, `savePodcast` registers; guest MV play is library-gated but still plays.)
+- [x] Recommendation/genre + "Show all" routing. Consolidates Phase 4. (`crossCutting.test.tsx` — curated discover cards never emit `/search`; canonical discover playlists map to `/new-releases` / `/recommended-tracks`; generated fallback rows route to `/genres/<slug>`.)
+- [x] Clickability/context-menu regressions: Home playlist/mix rows navigate correctly; empty-space right-click opens create actions without stealing media right-clicks. Consolidates Phase 15. (`crossCutting.test.tsx` covers card navigation vs nested play control; full coverage incl. blank-space create menu remains in `HomeNavigation.test.tsx` / `Sidebar.test.tsx`.)
+- [x] Playlist add-track hover affordance: the in-cover plus action works with mouse, keyboard, and existing add-song flows. Consolidates Phase 16. (`crossCutting.test.tsx` — the in-cover action sits over the artwork and adds exactly once; deeper coverage in `PlaylistAddableRow.test.tsx`.)
+- [x] Run full suites green: `cd frontend && npm test` and `cd backend && dotnet test`. (Verified: frontend 223 tests, backend 252 tests — all green; the formerly-flaky timeout is fixed by the config bump.)
 - [x] `npx tsc --noEmit` clean.
 
 ---

@@ -21,7 +21,11 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
-import type { PointerMenuHandle } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  type PointerMenuHandle,
+} from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { ShareIcon } from '@/components/common/ShareIcon'
 
@@ -146,7 +150,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
               modal={false}
               transition
               onClick={stop}
-              className="z-[1000] w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+              className={CONTEXT_MENU_PANEL_CLASS}
             >
               <MenuItem>
                 <button
@@ -156,7 +160,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     handleAddToQueue()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   <QueueListIcon className="w-4 h-4" />
                   Add to queue
@@ -171,7 +175,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     handleToggleSave()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   {isSaved ? <CheckCircleIcon className="w-4 h-4 text-accent" /> : <PlusCircleIcon className="w-4 h-4" />}
                   {isSaved ? 'Remove from Your Library' : 'Save to Your Library'}
@@ -186,7 +190,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     handleAlbumRadio()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   <RadioIcon className="w-4 h-4" />
                   Go to album radio
@@ -201,7 +205,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     void handleShare()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   <ShareIcon className="w-4 h-4" />
                   Share
@@ -218,7 +222,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     navigate(`/album/${album.id}`)
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   <MusicalNoteIcon className="w-4 h-4" />
                   Go to album
@@ -233,7 +237,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     navigate(`/artist/${album.artist.id}`)
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={CONTEXT_MENU_ITEM_CLASS}
                 >
                   <UserIcon className="w-4 h-4" />
                   Go to artist
@@ -248,7 +252,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                     navigate(`/album/${album.id}`)
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
                 >
                   <span>Open album page</span>
                   <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
@@ -258,7 +262,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
               <InstallAppMenuItem
                 label="Open in Desktop app"
                 onSelect={close}
-                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e]"
+                className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
               />
             </MenuItems>
           </>

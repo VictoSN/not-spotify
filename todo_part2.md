@@ -434,7 +434,7 @@ row clean, readable, and usable for mouse + keyboard users.
 - [x] In playlist add/search/recommendation rows, place the **+** action inside/on top of the track cover area on hover/focus.
 - [x] Reuse the existing Your Library hover mechanics where possible, so the cover hover, play overlay, and action animation feel consistent.
 - [x] Make the in-cover **+** add the song to the current playlist using the same handler as the existing far-right plus button.
-- [x] After adding, show a clear saved/added state (`✓`, disabled plus, or existing app pattern) and prevent duplicate adds.
+- [x] After adding, remove the track from recommendations/search results and prevent duplicate adds.
 - [x] Keep row click, hover-play, right-click menu, drag/drop, and mobile/touch behaviour from breaking.
 - [x] Ensure the button remains keyboard-accessible: focus should reveal the action even without mouse hover.
 

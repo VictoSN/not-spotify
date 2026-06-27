@@ -3,7 +3,11 @@ import { createPortal } from 'react-dom'
 import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/outline'
 import { usePointerMenu } from '@/hooks/usePointerMenu'
-import type { PointerMenuHandle } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  type PointerMenuHandle,
+} from '@/utils/contextMenu'
 
 interface MediaMenuShellProps {
   /** Accessible label for the visible "…" trigger button. */
@@ -70,7 +74,7 @@ export const MediaMenuShell = forwardRef<PointerMenuHandle, MediaMenuShellProps>
               modal={false}
               transition
               onClick={stop}
-              className="z-[1000] w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+              className={CONTEXT_MENU_PANEL_CLASS}
             >
               {children(close)}
             </MenuItems>
@@ -82,7 +86,7 @@ export const MediaMenuShell = forwardRef<PointerMenuHandle, MediaMenuShellProps>
 })
 
 interface MediaMenuItemProps {
-  /** Left-aligned leading icon node (already sized, e.g. <PlayIcon className="w-4 h-4" />). */
+  /** Left-aligned leading icon node; the shared panel normalises it to 18px. */
   icon?: ReactNode
   label: ReactNode
   /** Right-aligned trailing node (e.g. an "open in new tab" arrow). */
@@ -102,7 +106,7 @@ export function MediaMenuItem({ icon, label, trailing, onClick, disabled }: Medi
           e.stopPropagation()
           onClick(e)
         }}
-        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e] disabled:cursor-default disabled:opacity-70"
+        className={CONTEXT_MENU_ITEM_CLASS}
       >
         {icon}
         <span className="flex-1 truncate">{label}</span>

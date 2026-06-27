@@ -29,7 +29,11 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { trackService } from '@/services/trackService'
 import { useOfflineTrack } from '@/hooks/useOfflineTrack'
 import { usePointerMenu } from '@/hooks/usePointerMenu'
-import type { PointerMenuHandle } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  type PointerMenuHandle,
+} from '@/utils/contextMenu'
 import { shareLink } from '@/utils/share'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { repostService } from '@/services/repostService'
@@ -41,6 +45,7 @@ interface TrackRowMenuProps {
   track: Track
   /** When rendered inside a playlist page, omit this playlist from the "Add to playlist" flyout. */
   currentPlaylistId?: string
+  onRemovedFromCurrentPlaylist?: (trackId: string) => void
   /** Always show the trigger button regardless of parent hover state. */
   alwaysVisible?: boolean
   triggerClassName?: string
@@ -57,6 +62,7 @@ export type TrackRowMenuHandle = PointerMenuHandle
 export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(function TrackRowMenu({
   track,
   currentPlaylistId,
+  onRemovedFromCurrentPlaylist,
   alwaysVisible,
   triggerClassName,
   triggerIconClassName,
@@ -105,7 +111,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   // Playlists this track has already been added to — include the current playlist so the
   // user can remove the song they're looking at right now.
   const playlistsWithTrack = myOwnedPlaylists.filter((p) =>
-    (p.tracks ?? []).some((pt) => pt.track.id === track.id),
+    p.id !== currentPlaylistId && (p.tracks ?? []).some((pt) => pt.track.id === track.id),
   )
   // Playlists this track hasn't been added to — exclude the current playlist since it
   // would be a duplicate add.
@@ -213,9 +219,12 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   const handleRemoveFromPlaylist = async (playlistId: string) => {
     try {
       await removeTrackFromPlaylist(playlistId, track.id)
+      if (playlistId === currentPlaylistId) onRemovedFromCurrentPlaylist?.(track.id)
       notify.success('Removed from playlist')
+      return true
     } catch {
       notify.error("Couldn't remove from playlist")
+      return false
     }
   }
 
@@ -243,8 +252,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
     try {
       await repostService.createRepost({ trackId: track.id })
       notify.success('Reposted to your followers')
-    } catch (err: any) {
-      const msg = err?.response?.data?.message
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       if (msg) notify.error(msg)
       else notify.error("Couldn't repost")
     }
@@ -253,6 +262,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   // Stops the row's onClick (which would otherwise play the track) from firing
   // when the user interacts with anything inside the menu.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
+  const itemClass = CONTEXT_MENU_ITEM_CLASS
 
   return (
     <Menu>
@@ -299,7 +309,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
             // Headless UI's `anchor` adds for edge-scrolling — without it the
             // anchored panel clips the "Add to playlist" flyout, which sits
             // outside the panel box (positioned `right-full`, to its left).
-            className="z-[1000] w-56 origin-top overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+            className={CONTEXT_MENU_PANEL_CLASS}
           >
             {/*
               "Add to playlist" — intentionally NOT a MenuItem. Headless UI's
@@ -333,9 +343,9 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   }
                   openAddSubmenu()
                 }}
-                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                className={`${itemClass} justify-between`}
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-3">
                   <PlusIcon className="w-4 h-4" />
                   Add to playlist
                 </span>
@@ -383,7 +393,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       setPlaylistQuery('')
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                    className={itemClass}
                   >
                     <PlusIcon className="w-4 h-4" />
                     New playlist
@@ -402,7 +412,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                         setPlaylistQuery('')
                         close()
                       }}
-                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                      className={itemClass}
                     >
                       {p.coverUrl ? (
                         <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
@@ -422,7 +432,23 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
               )}
             </div>
 
-            {/* Remove from playlist — only shown when the track is in at least one owned playlist */}
+            {isAuthenticated && currentPlaylistId && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={async (event) => {
+                    stop(event)
+                    if (await handleRemoveFromPlaylist(currentPlaylistId)) close()
+                  }}
+                  className={itemClass}
+                >
+                  <MinusCircleIcon className="h-4 w-4" />
+                  Remove from this playlist
+                </button>
+              </MenuItem>
+            )}
+
+            {/* Other owned playlists containing this track keep the removable flyout. */}
             {isAuthenticated && playlistsWithTrack.length > 0 && (
               <div
                 className="relative"
@@ -438,9 +464,9 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     e.stopPropagation()
                     openRemoveSubmenu()
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                  className={`${itemClass} justify-between`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-3">
                     <MinusCircleIcon className="w-4 h-4" />
                     Remove from playlist
                   </span>
@@ -492,7 +518,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                           setRemovePlaylistQuery('')
                           close()
                         }}
-                        className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                        className={itemClass}
                       >
                         {p.coverUrl ? (
                           <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
@@ -519,7 +545,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   handleToggleLike()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className={itemClass}
               >
                 <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4" />
                 {isLiked ? 'Remove from your Liked Songs' : 'Save to your Liked Songs'}
@@ -536,7 +562,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       handlePlayNext()
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                    className={itemClass}
                   >
                     <ForwardIcon className="w-4 h-4" />
                     Play next
@@ -550,7 +576,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       handleAddToQueue()
                       close()
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                    className={itemClass}
                   >
                     <QueueListIcon className="w-4 h-4" />
                     Add to queue
@@ -567,7 +593,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   handleStartRadio()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className={itemClass}
               >
                 <RadioIcon className="w-4 h-4" />
                 Go to song radio
@@ -584,7 +610,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   navigate(`/artist/${track.artist.id}`)
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className={itemClass}
               >
                 <UserIcon className="w-4 h-4" />
                 Go to artist
@@ -599,7 +625,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   navigate(`/album/${track.album.id}`)
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className={itemClass}
               >
                 <MusicalNoteIcon className="w-4 h-4" />
                 Go to album
@@ -615,7 +641,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     onViewCredits()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className={itemClass}
                 >
                   <IdentificationIcon className="w-4 h-4" />
                   View credits
@@ -644,7 +670,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       setDownloading(false)
                     }
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className={itemClass}
                 >
                   {downloading
                     ? <ArrowPathIcon className="w-4 h-4 animate-spin" />
@@ -658,13 +684,13 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                 <button
                   type="button"
                   onClick={(e) => { stop(e); navigate('/premium'); close() }}
-                  className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-secondary hover:bg-surface data-[focus]:bg-surface"
+                  className="flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left font-normal text-secondary transition-colors hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-3">
                     <ArrowDownTrayIcon className="w-4 h-4" />
                     Download
                   </span>
-                  <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
+                  <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">Premium</span>
                 </button>
               </MenuItem>
             )}
@@ -680,7 +706,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     // Keep the menu open so the user sees the state change /
                     // any error without re-opening.
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface disabled:cursor-default disabled:opacity-70"
+                  className={itemClass}
                 >
                   {offline.busy ? (
                     <ArrowPathIcon className="w-4 h-4 animate-spin text-accent" />
@@ -711,7 +737,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     setShareToChatOpen(true)
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className={itemClass}
                 >
                   <ChatBubbleLeftRightIcon className="w-4 h-4" />
                   Share to chat
@@ -728,7 +754,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     void handleRepost()
                     close()
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                  className={itemClass}
                 >
                   <ArrowPathIcon className="w-4 h-4" />
                   Repost
@@ -744,7 +770,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   void handleShare()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface"
+                className={itemClass}
               >
                 <ShareIcon className="w-4 h-4" />
                 Share

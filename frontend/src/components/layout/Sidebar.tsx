@@ -38,7 +38,12 @@ import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
 import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
 import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
-import { isSidebarBlankContextTarget, openMenuAtPointer } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  isSidebarBlankContextTarget,
+  openMenuAtPointer,
+} from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
 import { playlistService } from '@/services/playlistService'
@@ -1154,7 +1159,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div
             role="menu"
             aria-label={t('sidebar.createAria')}
-            className="fixed z-[1000] w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl"
+            className={`fixed ${CONTEXT_MENU_PANEL_CLASS}`}
             style={{ left: blankCreateMenu.x, top: blankCreateMenu.y }}
           >
             <button
@@ -1163,7 +1168,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 setBlankCreateMenu(null)
                 void handleCreate()
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              className={CONTEXT_MENU_ITEM_CLASS}
             >
               <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.createPlaylist')}
             </button>
@@ -1173,7 +1178,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 setBlankCreateMenu(null)
                 handleCreateFolder()
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              className={CONTEXT_MENU_ITEM_CLASS}
             >
               <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.createFolder')}
             </button>

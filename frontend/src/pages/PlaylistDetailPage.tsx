@@ -409,6 +409,18 @@ export function PlaylistDetailPage() {
     }
   }
 
+  const handleTrackRemoved = (trackId: string) => {
+    setPlaylist((current) => {
+      if (!current) return current
+      const removed = current.tracks.find((item) => item.track.id === trackId)
+      return {
+        ...current,
+        tracks: current.tracks.filter((item) => item.track.id !== trackId),
+        totalDurationMs: Math.max(0, current.totalDurationMs - (removed?.track.durationMs ?? 0)),
+      }
+    })
+  }
+
   return (
     <div>
       {/* Header + actions: fuller colour block behind the cover, fading below */}
@@ -779,7 +791,12 @@ export function PlaylistDetailPage() {
             queue={tracks}
             showAlbum
             addedAt={pt.addedAt}
-            currentPlaylistId={playlist.smartRules ? undefined : playlist.id}
+            currentPlaylistId={
+              !playlist.smartRules && (playlist.isOwner || playlist.isCollaborator)
+                ? playlist.id
+                : undefined
+            }
+            onRemovedFromCurrentPlaylist={handleTrackRemoved}
             context={{ type: 'playlist', id: playlist.id }}
           />
         ))}

@@ -129,7 +129,8 @@ describe('Sidebar saved media navigation', () => {
     const createMenu = screen.getByRole('menu', { name: 'Create playlist or folder' })
     expect(createMenu).toBeInTheDocument()
     expect(createMenu.parentElement).toBe(document.body)
-    expect(createMenu).toHaveClass('z-[1000]')
+    expect(createMenu).toHaveClass('z-[1000]', 'w-64', 'text-sm', 'font-normal')
+    expect(screen.getByRole('menuitem', { name: 'Create folder' })).toHaveClass('min-h-10', 'font-normal')
     fireEvent.click(screen.getByRole('menuitem', { name: 'Create folder' }))
 
     const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]') as Array<{ name: string }>

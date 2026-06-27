@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { PlaylistAddableRow } from './PlaylistAddableRow'
 import type { Track } from '@/types/track'
@@ -23,8 +24,10 @@ const track: Track = {
 }
 
 describe('PlaylistAddableRow', () => {
+  const renderRow = (row: React.ReactNode) => render(<MemoryRouter>{row}</MemoryRouter>)
+
   it('places the keyboard-accessible add action over the cover hover/focus zone', () => {
-    render(<PlaylistAddableRow track={track} onAdd={vi.fn()} />)
+    renderRow(<PlaylistAddableRow track={track} onAdd={vi.fn()} />)
 
     const button = screen.getByRole('button', { name: `Add ${track.title} to this playlist` })
     expect(button.parentElement).toContainElement(screen.getByRole('img', { name: track.album.title }))
@@ -37,7 +40,7 @@ describe('PlaylistAddableRow', () => {
 
   it('locks rapid clicks so the existing add handler runs exactly once', () => {
     const onAdd = vi.fn(() => new Promise<void>(() => {}))
-    render(<PlaylistAddableRow track={track} onAdd={onAdd} />)
+    renderRow(<PlaylistAddableRow track={track} onAdd={onAdd} />)
 
     const button = screen.getByRole('button', { name: `Add ${track.title} to this playlist` })
     fireEvent.click(button)
@@ -46,16 +49,26 @@ describe('PlaylistAddableRow', () => {
     expect(onAdd).toHaveBeenCalledTimes(1)
   })
 
-  it('shows a persistent checked state and disables duplicate adds', () => {
+  it('uses a disabled in-flight state without rendering an added checkmark', () => {
     const onAdd = vi.fn()
-    render(<PlaylistAddableRow track={track} onAdd={onAdd} added />)
+    renderRow(<PlaylistAddableRow track={track} onAdd={onAdd} adding />)
 
-    const button = screen.getByRole('button', { name: `${track.title} added to this playlist` })
+    const button = screen.getByRole('button', { name: `Adding ${track.title} to this playlist` })
     expect(button).toBeDisabled()
-    expect(button).toHaveAttribute('title', 'Added to this playlist')
+    expect(button).toHaveAttribute('title', 'Adding to this playlist')
     expect(button).toHaveClass('opacity-100')
+    expect(button.querySelector('svg')).toBeInTheDocument()
     fireEvent.click(button)
     expect(onAdd).not.toHaveBeenCalled()
+  })
+
+  it('links the cover/title to the track and the metadata to artist and album pages', () => {
+    renderRow(<PlaylistAddableRow track={track} onAdd={vi.fn()} />)
+
+    expect(screen.getByRole('link', { name: `Open ${track.title}` })).toHaveAttribute('href', `/track/${track.id}`)
+    expect(screen.getByRole('link', { name: track.title })).toHaveAttribute('href', `/track/${track.id}`)
+    expect(screen.getByRole('link', { name: track.artist.name })).toHaveAttribute('href', `/artist/${track.artist.id}`)
+    expect(screen.getByRole('link', { name: track.album.title })).toHaveAttribute('href', `/album/${track.album.id}`)
   })
 
   it('does not turn ordinary row click, context-menu, or drag events into adds', () => {
@@ -63,16 +76,16 @@ describe('PlaylistAddableRow', () => {
     const onClick = vi.fn()
     const onContextMenu = vi.fn()
     const onDragStart = vi.fn()
-    render(
+    renderRow(
       <div onClick={onClick} onContextMenu={onContextMenu} onDragStart={onDragStart} draggable>
         <PlaylistAddableRow track={track} onAdd={onAdd} />
       </div>,
     )
 
-    const title = screen.getByText(track.title)
-    fireEvent.click(title)
-    fireEvent.contextMenu(title)
-    fireEvent.dragStart(title)
+    const row = screen.getByTestId(`playlist-add-row-${track.id}`)
+    fireEvent.click(row)
+    fireEvent.contextMenu(row)
+    fireEvent.dragStart(row)
 
     expect(onClick).toHaveBeenCalledTimes(1)
     expect(onContextMenu).toHaveBeenCalledTimes(1)

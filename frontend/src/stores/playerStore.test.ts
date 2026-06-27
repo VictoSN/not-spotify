@@ -21,6 +21,7 @@ vi.mock('@/services/adService', () => ({
 
 import { usePlayerStore } from './playerStore'
 import { useAuthStore } from './authStore'
+import { useLibraryStore } from './libraryStore'
 import { trackService } from '@/services/trackService'
 
 const track = (id: string): Track =>
@@ -485,5 +486,30 @@ describe('playerStore - music videos', () => {
     expect(s.isVideoPlaying).toBe(false)
     expect(s.currentTrack?.id).toBe('song')
     expect(s.isPlaying).toBe(true)
+  })
+
+  it('playVideo sets video mode and registers the MV in the library; playing audio resets the mode', () => {
+    setPremium()
+    useLibraryStore.setState({ savedVideos: [], savedVideoIds: new Set() })
+    const mv = video('mv1')
+    usePlayerStore.getState().playVideo(mv, [mv, video('mv2')])
+    expect(usePlayerStore.getState().playbackMode).toBe('video')
+    // Registered where audio tracks register — surfaces in Your Library / the sidebar,
+    // most-recent-first (so it doubles as recents ordering).
+    const lib = useLibraryStore.getState()
+    expect(lib.savedVideoIds.has('mv1')).toBe(true)
+    expect(lib.savedVideos[0]?.id).toBe('mv1')
+    // Playing an audio track resets playback back to audio mode.
+    usePlayerStore.getState().play(track('song'))
+    expect(usePlayerStore.getState().playbackMode).toBe('audio')
+  })
+
+  it('playVideo does not register in the library for guests (auth-gated like recents)', () => {
+    useAuthStore.setState({ isAuthenticated: false, user: null })
+    useLibraryStore.setState({ savedVideos: [], savedVideoIds: new Set() })
+    usePlayerStore.getState().playVideo(video('mv-guest'))
+    // Playback still switches to video mode — only the library side effect is gated.
+    expect(usePlayerStore.getState().playbackMode).toBe('video')
+    expect(useLibraryStore.getState().savedVideoIds.has('mv-guest')).toBe(false)
   })
 })

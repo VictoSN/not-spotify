@@ -206,7 +206,7 @@ h3 {
   width: max(3px, 22%);
   height: max(3px, 22%);
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--c-accent) 76%, var(--c-primary));
+  background: color-mix(in srgb, #ef4444 82%, var(--c-primary));
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.5);

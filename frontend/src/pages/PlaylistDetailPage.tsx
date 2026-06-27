@@ -1,26 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
-import { PlayIcon, PauseIcon, ClockIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
 import {
-  HeartIcon as HeartOutlineIcon,
-  TrashIcon,
   GlobeAltIcon,
   LockClosedIcon,
   UsersIcon,
-  PencilSquareIcon,
   PhotoIcon,
   ArrowsRightLeftIcon,
   MagnifyingGlassIcon,
-  PlusIcon,
+  PlusCircleIcon,
   XMarkIcon,
   UserPlusIcon,
   ArrowDownTrayIcon,
-  ArrowUpTrayIcon,
   SparklesIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import type { UserRef } from '@/types/user'
@@ -44,11 +39,10 @@ import { Avatar } from '@/components/ui/Avatar'
 import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
-import { ShareIcon } from '@/components/common/ShareIcon'
 import { PlaylistAddableRow } from '@/components/player/PlaylistAddableRow'
+import { PlaylistRowMenu } from '@/components/cards/PlaylistRowMenu'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
-import { shareLink } from '@/utils/share'
 import { cn } from '@/utils/cn'
 
 type TrackSort = 'custom' | 'title' | 'artist' | 'album' | 'duration' | 'added'
@@ -113,7 +107,6 @@ export function PlaylistDetailPage() {
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
-  const [shareCopied, setShareCopied] = useState(false)
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
   const startContext = usePlayContextGate()
   const isMobile = useIsMobile()
@@ -126,6 +119,7 @@ export function PlaylistDetailPage() {
   const deletePlaylistAction = useLibraryStore((s) => s.deletePlaylist)
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
   const syncPlaylistTracks = useLibraryStore((s) => s.syncPlaylistTracks)
+  const syncPlaylist = useLibraryStore((s) => s.syncPlaylist)
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const shuffleEnabled = usePlayerStore((s) => s.shuffleEnabled)
   const toggleShuffle = usePlayerStore((s) => s.toggleShuffle)
@@ -133,9 +127,15 @@ export function PlaylistDetailPage() {
   // This playlist is "active" only when it's the explicit playback context (a
   // track can live in many playlists, so we can't infer it from currentTrack).
   const { isActiveContext, isPlayingContext } = usePlaybackContext(id ? { type: 'playlist', id } : null)
-  // Tint the header from the playlist cover; playlists without one fall back
-  // to the first track's album art (matches what the placeholder tile shows).
-  const heroColor = useDominantColor(playlist?.coverUrl ?? playlist?.tracks?.[0]?.track.album.coverUrl)
+  // Tint the header from the playlist's saved cover. Empty/default-cover
+  // playlists use the default shade rather than deriving one from tracks.
+  // resetOnChange: when navigating from a playlist with a cover to one without
+  // (e.g. a sidebar-created playlist), clear the previous tint instead of
+  // letting it bleed into the new page's header.
+  const heroColor = useDominantColor(playlist?.coverUrl, { resetOnChange: true })
+  // Subtle neutral grey fallback so empty-cover playlists still get a gentle
+  // gradient wash instead of a flat background.
+  const heroBackground = heroGradient(heroColor) ?? heroGradient('hsl(0 0% 38%)')
 
   useEffect(() => {
     if (!id) return
@@ -360,6 +360,9 @@ export function PlaylistDetailPage() {
       if (coverFile) {
         updated = await playlistService.uploadCover(playlist.id, coverFile)
         setCoverFile(null)
+        // Eagerly sync the new cover into the library store so the sidebar
+        // and home page reflect the change without a full refresh.
+        syncPlaylist(updated)
       }
       setPlaylist(updated)
       setEditName(updated.name)
@@ -424,10 +427,14 @@ export function PlaylistDetailPage() {
   return (
     <div>
       {/* Header + actions: fuller colour block behind the cover, fading below */}
-      <div style={{ background: heroGradient(heroColor) }}>
+      <div style={{ background: heroBackground }}>
       <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
         <div className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl overflow-hidden flex-shrink-0 bg-elevated self-center sm:self-auto">
-          <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />
+          {/* Only render the explicit cover URL — no track-mosaic fallback.
+              Sidebar-created playlists keep the default icon until the user uploads
+              a cover. Track-created playlists have their cover stored permanently
+              by the backend, so coverUrl will always be set for those. */}
+          <PlaylistCover coverUrl={playlist.coverUrl} name={playlist.name} />
         </div>
         <div className="min-w-0 pb-2">
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
@@ -484,57 +491,38 @@ export function PlaylistDetailPage() {
           aria-label={shuffleEnabled ? 'Turn shuffle off' : 'Turn shuffle on'}
           aria-pressed={shuffleEnabled}
           className={cn(
-            'relative flex items-center justify-center w-10 h-10 rounded-full transition-all hover:scale-110 active:scale-95',
+            'spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95',
             shuffleEnabled ? 'text-accent' : 'text-secondary hover:text-primary',
           )}
         >
-          <ArrowsRightLeftIcon className="w-5 h-5" />
+          <ArrowsRightLeftIcon className="h-6 w-6 stroke-[2.5]" />
           {shuffleEnabled && (
             <span className="absolute -bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-accent" />
           )}
+          <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+            {shuffleEnabled ? 'Shuffle on' : 'Shuffle off'}
+          </span>
         </button>
 
-        {/* Owner-only: visibility toggle + delete + reopen find panel */}
+        {/* Owner-only: visibility, collaborators, invite */}
         {playlist.isOwner && (
           <>
-            <button
-              onClick={() => setEditOpen((v) => !v)}
-              disabled={busy}
-              title="Edit details"
-              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-            >
-              <PencilSquareIcon className="w-5 h-5" />
-              Edit
-            </button>
             <button
               onClick={handleVisibilityToggle}
               disabled={busy}
               title="Change visibility"
-              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+              aria-label={`Change visibility. Current: ${currentVisibility()}`}
+              className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
             >
-              {currentVisibility() === 'public' && <><GlobeAltIcon className="w-5 h-5" />Public</>}
-              {currentVisibility() === 'friends' && <><UsersIcon className="w-5 h-5" />Friends Only</>}
-              {currentVisibility() === 'private' && <><LockClosedIcon className="w-5 h-5" />Private</>}
+              {currentVisibility() === 'public' && <GlobeAltIcon className="h-6 w-6 stroke-[2.5]" />}
+              {currentVisibility() === 'friends' && <UsersIcon className="h-6 w-6 stroke-[2.5]" />}
+              {currentVisibility() === 'private' && <LockClosedIcon className="h-6 w-6 stroke-[2.5]" />}
+              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+                {currentVisibility() === 'public' && 'Public'}
+                {currentVisibility() === 'friends' && 'Friends only'}
+                {currentVisibility() === 'private' && 'Private'}
+              </span>
             </button>
-            <button
-              onClick={handleDelete}
-              disabled={busy}
-              title="Delete playlist"
-              className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-red-400 hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-            >
-              <TrashIcon className="w-5 h-5" />
-              Delete
-            </button>
-            {!playlist.smartRules && !findPanelOpen && (
-              <button
-                onClick={() => setFindPanelOpen(true)}
-                title="Add songs"
-                className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Add songs
-              </button>
-            )}
 
             {/* Collaborator strip */}
             {collaborators.length > 0 && (
@@ -559,10 +547,11 @@ export function PlaylistDetailPage() {
               <button
                 onClick={() => setInviteOpen(true)}
                 title="Invite collaborator"
-                className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+                aria-label="Invite collaborator"
+                className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
               >
-                <UserPlusIcon className="w-5 h-5" />
-                Invite
+                <UserPlusIcon className="h-6 w-6 stroke-[2.5]" />
+                <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Invite</span>
               </button>
             )}
           </>
@@ -574,19 +563,17 @@ export function PlaylistDetailPage() {
             onClick={handleSaveToggle}
             disabled={busy}
             title={playlist.isSaved ? 'Remove from your library' : 'Save to your library'}
-            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            aria-label={playlist.isSaved ? 'Remove from your library' : 'Save to your library'}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
           >
             {playlist.isSaved ? (
-              <>
-                <HeartSolidIcon className="w-7 h-7 text-accent" />
-                In Library
-              </>
+              <CheckCircleIcon className="liked-heart-pop h-7 w-7 text-accent" />
             ) : (
-              <>
-                <HeartOutlineIcon className="w-7 h-7" />
-                Add to Library
-              </>
+              <PlusCircleIcon className="h-7 w-7 stroke-[2.4]" />
             )}
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+              {playlist.isSaved ? 'Remove from your library' : 'Save to your library'}
+            </span>
           </button>
         )}
 
@@ -596,32 +583,23 @@ export function PlaylistDetailPage() {
             onClick={handleDownload}
             disabled={downloading}
             title="Download playlist as ZIP"
-            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            aria-label={downloading ? 'Downloading' : 'Download'}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            {downloading ? 'Downloading…' : 'Download'}
+            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+              {downloading ? 'Downloading...' : 'Download'}
+            </span>
           </button>
         ) : (
           <button
             onClick={() => navigate('/premium')}
             title="Download is a Premium feature"
-            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-accent hover:scale-105 active:scale-95 transition-all"
+            aria-label="Download is a Premium feature"
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-accent active:scale-95"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            Download
-            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">Premium</span>
-          </button>
-        )}
-
-        {/* Export metadata as JSON — free for everyone */}
-        {tracks.length > 0 && (
-          <button
-            onClick={handleExport}
-            title="Export playlist as JSON (titles and artists, no audio)"
-            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
-          >
-            <ArrowUpTrayIcon className="w-5 h-5" />
-            Export
+            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Download - Premium</span>
           </button>
         )}
 
@@ -630,25 +608,24 @@ export function PlaylistDetailPage() {
           <button
             onClick={() => setShareToChatOpen(true)}
             title="Send this playlist to a friend"
-            className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
+            aria-label="Send this playlist to a friend"
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
           >
-            <PaperAirplaneIcon className="w-5 h-5" />
-            Send to friend
+            <PaperAirplaneIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Send to friend</span>
           </button>
         )}
 
-        {/* Share — free for everyone */}
-        <button
-          onClick={async () => {
-            const r = await shareLink(`/playlist/${playlist.id}`, { title: playlist.name, text: `Check out ${playlist.name} on not-spotify` })
-            if (r === 'copied') { setShareCopied(true); setTimeout(() => setShareCopied(false), 1500) }
-          }}
-          title="Share this playlist"
-          className="flex items-center gap-2 text-sm font-semibold text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all"
-        >
-          <ShareIcon className="w-5 h-5" />
-          {shareCopied ? 'Link copied' : 'Share'}
-        </button>
+        <PlaylistRowMenu
+          playlist={playlist}
+          alwaysVisible
+          triggerClassName="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
+          triggerIconClassName="h-6 w-6 stroke-[2.7]"
+          onEditDetails={() => setEditOpen((v) => !v)}
+          onAddSongs={!findPanelOpen ? () => setFindPanelOpen(true) : undefined}
+          onExport={tracks.length > 0 ? handleExport : undefined}
+          onDelete={handleDelete}
+        />
       </div>
       </div>
 

@@ -33,6 +33,7 @@ import type { Album } from '@/types/album'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist } from '@/types/playlist'
+import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
 import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
@@ -93,6 +94,7 @@ interface LibItem {
   name: string
   subtitle: string
   image: string | null
+  playlist?: Playlist
   round: boolean
   to: string
   /** True for playlists the user owns — the only library rows a track can be dropped onto. */
@@ -397,6 +399,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         owner: p.isOwner ? t('sidebar.you') : (p.owner?.name ?? t('sidebar.unknown')),
       }),
       image: p.coverUrl,
+      playlist: p,
       round: false,
       to: `/playlist/${p.id}`,
       acceptsTracks: !!p.isOwner,
@@ -1320,6 +1323,13 @@ function LibraryArtwork({
         onError={() => setFailedSrc(imageSrc)}
       />
     )
+  }
+
+  if (item.kind === 'playlist' && item.playlist) {
+    // Only use the explicit cover URL — don't fall back to track mosaic in the
+    // sidebar. Sidebar-created playlists deliberately keep the default icon until
+    // the user uploads a cover. The detail page handles the mosaic fallback.
+    return <PlaylistCover coverUrl={item.playlist.coverUrl} name={item.playlist.name} />
   }
 
   if (item.kind === 'artist') {

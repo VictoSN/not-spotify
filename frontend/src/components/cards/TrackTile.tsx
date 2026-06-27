@@ -27,6 +27,7 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const isCurrent = currentTrack?.id === track.id
@@ -60,7 +61,7 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
         e.currentTarget.style.opacity = ''
       }}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
-      onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => c && setHoverColor(c))}
+      onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => { if (c) { setHoverColor(c); setLastCoverColor(c) } })}
       onMouseLeave={() => setHoverColor(null)}
     >
       <Link

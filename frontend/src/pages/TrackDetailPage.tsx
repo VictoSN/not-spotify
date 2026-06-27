@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowDownTrayIcon, CodeBracketIcon } from '@heroicons/react/24/outline'
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+import { ArrowDownTrayIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { trackService } from '@/services/trackService'
@@ -48,7 +48,7 @@ export function TrackDetailPage() {
 
   const heroColor = useDominantColor(track?.album.coverUrl)
   const playWithGate = usePlaybackGate()
-  const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
+  const { likedTrackIds, likeTrack, unlikeTrack, savedPlaylists } = useLibraryStore()
   const { isAuthenticated, user } = useAuthStore()
   const isPremium = user?.plan === 'premium'
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -62,6 +62,11 @@ export function TrackDetailPage() {
   const isThisTrackPlaying = isCurrentTrack && isPlaying
 
   const isLiked = track ? likedTrackIds.has(track.id) : false
+  const isSavedToPlaylist = track
+    ? savedPlaylists.some((playlist) =>
+        playlist.isOwner && (playlist.tracks ?? []).some((item) => item.track.id === track.id),
+      )
+    : false
 
   useEffect(() => {
     if (!id) return
@@ -234,36 +239,59 @@ export function TrackDetailPage() {
         {/* Like */}
         <button
           onClick={toggleLike}
-          className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors"
+          title={isLiked ? t('player.unlike') : t('player.like')}
+          className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
           aria-label={isLiked ? t('player.unlike') : t('player.like')}
         >
           <AnimatedLikeIcon liked={isLiked} className="w-7 h-7" heartClassName="w-7 h-7" />
+          <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+            {isLiked ? t('player.unlike') : t('player.like')}
+          </span>
         </button>
+
+        <TrackRowMenu
+          track={track}
+          alwaysVisible
+          hideDownload
+          openAddSubmenuOnTrigger
+          triggerTitle="Add to playlist"
+          triggerClassName="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
+          triggerContent={
+            <>
+              {isSavedToPlaylist ? (
+                <CheckCircleIcon className="liked-heart-pop h-7 w-7 text-accent" />
+              ) : (
+                <PlusCircleIcon className="h-7 w-7 stroke-[2.4]" />
+              )}
+              <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Add to playlist</span>
+            </>
+          }
+        />
 
         {/* Download (premium only) */}
         {isPremium && (
           <button
             onClick={handleDownload}
             disabled={downloading}
-            className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors disabled:opacity-50"
+            title={t('common.download')}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
             aria-label={t('common.download')}
           >
-            <ArrowDownTrayIcon className="w-6 h-6" />
+            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('common.download')}</span>
           </button>
         )}
 
-        {/* Copy embed code */}
-        <button
-          onClick={handleCopyEmbed}
-          className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary transition-colors"
-          aria-label={t('detail.embed')}
-          title={t('detail.embed')}
-        >
-          <CodeBracketIcon className="w-6 h-6" />
-        </button>
-
-        {/* More options menu — hide its Download item; the toolbar above already has one. */}
-        <TrackRowMenu track={track} alwaysVisible hideDownload />
+        {/* More options menu: Copy embed lives here; Download stays in the toolbar above. */}
+        <TrackRowMenu
+          track={track}
+          alwaysVisible
+          hideDownload
+          onCopyEmbed={handleCopyEmbed}
+          triggerTitle="More options"
+          triggerClassName="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
+          triggerIconClassName="h-6 w-6 stroke-[2.7]"
+        />
           </>
         }
       />

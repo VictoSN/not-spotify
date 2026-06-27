@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { PlayIcon } from '@heroicons/react/24/solid'
+import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { MusicalNoteIcon } from '@heroicons/react/24/outline'
 import type { Track } from '@/types/track'
 import type { Playlist } from '@/types/playlist'
@@ -23,7 +23,8 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { useDragStore } from '@/stores/dragStore'
 import { useHueStore } from '@/stores/hueStore'
 import { useDominantColor, getDominantColor, hueHeaderBackground } from '@/hooks/useDominantColor'
-import { usePlaybackGate } from '@/hooks/usePlaybackGate'
+import { usePlayContextGate } from '@/hooks/usePlaybackGate'
+import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
@@ -139,11 +140,19 @@ export function HomePage() {
   const baseColor = useDominantColor(heroSeed)
   const hoverColor = useHueStore((s) => s.hoverColor)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const lastCoverColor = useHueStore((s) => s.lastCoverColor)
   // Whether the main content area is scrolled past the hero (set by AppShell);
   // drives the Home filter bar's locked-hue background — the global header is unaffected.
   const headerScrolled = useHueStore((s) => s.headerScrolled)
   // Hovering a card tints the hue toward that cover; otherwise follow the playing track.
-  const heroColor = hoverColor ?? baseColor
+  // Neutral grey used only while the cursor rests on a card that has no cover
+  // image (or as the ultimate fallback when nothing at all provides a hue).
+  const DEFAULT_HERO = 'hsl(0 0% 33%)'
+  // hoverColor is the card currently under the cursor (may be DEFAULT_HERO for
+  // no-cover cards). lastCoverColor remembers the last card that had an actual
+  // cover, so the tint sticks after the cursor leaves. baseColor comes from the
+  // playing track / featured items.
+  const heroColor = hoverColor ?? lastCoverColor ?? baseColor ?? DEFAULT_HERO
 
   useEffect(() => () => setHoverColor(null), [setHoverColor])
 
@@ -191,7 +200,7 @@ export function HomePage() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-80 opacity-60 transition-colors duration-500"
         style={{
-          backgroundColor: heroColor ?? 'transparent',
+          backgroundColor: heroColor,
           maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
           WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
         }}
@@ -466,9 +475,32 @@ export function HomePage() {
 export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
   const { t } = useTranslation()
   const menuRef = useRef<PlaylistRowMenuHandle>(null)
-  const playWithGate = usePlaybackGate()
+  const startContext = usePlayContextGate()
+  const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
+  const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'playlist', id: playlist.id })
   const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const tracks = playlist.tracks?.map((item) => item.track) ?? []
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
+  // Neutral grey for cards without cover art — avoids the hero snapping to blue
+  // or the default when hovering an empty-cover playlist.
+  const NO_COVER_HUE = 'hsl(0 0% 33%)'
+
+  const handlePlay = async (event: React.MouseEvent) => {
+    event.preventDefault()
+    if (isActiveContext) {
+      togglePlayPause()
+      return
+    }
+    // If the store already has tracks (e.g. after visiting the detail page) use
+    // them directly; otherwise fetch the full playlist.
+    const stored = playlist.tracks?.map((item) => item.track)
+    if (stored && stored.length > 0) {
+      startContext({ type: 'playlist', id: playlist.id }, stored)
+      return
+    }
+    const full = await playlistService.getById(playlist.id)
+    const resolved = full.tracks.map((item) => item.track)
+    if (resolved.length > 0) startContext({ type: 'playlist', id: playlist.id }, resolved)
+  }
 
   return (
     <div
@@ -479,7 +511,14 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
         to={`/playlist/${playlist.id}`}
         onMouseEnter={() => {
           if (playlist.coverUrl) {
-            getDominantColor(playlist.coverUrl).then((color) => color && setHoverColor(color))
+            getDominantColor(playlist.coverUrl).then((color) => {
+              if (color) {
+                setHoverColor(color)
+                setLastCoverColor(color)
+              }
+            })
+          } else {
+            setHoverColor(NO_COVER_HUE)
           }
         }}
         onMouseLeave={() => setHoverColor(null)}
@@ -493,19 +532,18 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           )}
         </div>
         <span className="flex-1 truncate pr-2 text-base font-semibold text-primary">{playlist.name}</span>
-        {tracks.length > 0 && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault()
-              playWithGate(tracks[0], tracks)
-            }}
-            className="mr-3 flex h-10 w-10 shrink-0 translate-y-0 items-center justify-center rounded-full bg-accent opacity-100 shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
-            aria-label={t('home.playPlaylist', { name: playlist.name })}
-          >
+        <button
+          type="button"
+          onClick={handlePlay}
+          className="mr-3 flex h-10 w-10 shrink-0 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
+          aria-label={isPlayingContext ? `Pause ${playlist.name}` : t('home.playPlaylist', { name: playlist.name })}
+        >
+          {isPlayingContext ? (
+            <PauseIcon className="h-5 w-5 text-white" />
+          ) : (
             <PlayIcon className="ml-0.5 h-5 w-5 text-white" />
-          </button>
-        )}
+          )}
+        </button>
       </Link>
       <PlaylistRowMenu ref={menuRef} playlist={playlist} />
     </div>

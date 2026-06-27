@@ -30,6 +30,7 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setDraggedArtist = useDragStore((s) => s.setDraggedArtist)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const menuTriggerRef = useRef<ArtistMenuHandle>(null)
   const [loading, setLoading] = useState(false)
 
@@ -75,7 +76,7 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
         menuTriggerRef.current?.openAt(e.clientX, e.clientY)
       }}
       onMouseEnter={() => {
-        if (artist.imageUrl) getDominantColor(artist.imageUrl).then((c) => c && setHoverColor(c))
+        if (artist.imageUrl) getDominantColor(artist.imageUrl).then((c) => { if (c) { setHoverColor(c); setLastCoverColor(c) } })
       }}
       onMouseLeave={() => setHoverColor(null)}
     >

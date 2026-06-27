@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { PlayIcon, PauseIcon, ClockIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
-import { HeartIcon, ArrowDownTrayIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon, ClockIcon, CheckCircleIcon, HeartIcon as HeartSolid, StarIcon as StarSolid } from '@heroicons/react/24/solid'
+import { ArrowDownTrayIcon, PaperAirplaneIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { albumService } from '@/services/albumService'
@@ -25,6 +25,7 @@ import { formatMs } from '@/utils/formatTime'
 import { useDominantColor } from '@/hooks/useDominantColor'
 import { DetailHero } from '@/components/common/DetailHero'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
+import { AlbumMenu } from '@/components/cards/AlbumMenu'
 
 export function AlbumDetailPage() {
   const { t } = useTranslation()
@@ -166,23 +167,27 @@ export function AlbumDetailPage() {
         <button
           onClick={toggleSave}
           title={isSaved ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+          aria-label={isSaved ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
+          className={`spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full transition-all hover:scale-110 active:scale-95 ${
             isSaved
-              ? 'border-accent text-accent hover:border-red-400 hover:text-red-400'
-              : 'border-elevated/60 text-secondary hover:border-primary hover:text-primary'
+              ? 'text-accent hover:text-primary'
+              : 'text-secondary hover:text-primary'
           }`}
         >
-          {isSaved ? <HeartSolid className="w-5 h-5" /> : <HeartIcon className="w-5 h-5" />}
-          {isSaved ? t('common.saved') : t('detail.saveToLibrary')}
+          {isSaved ? <CheckCircleIcon className="liked-heart-pop h-7 w-7 text-accent" /> : <PlusCircleIcon className="h-7 w-7 stroke-[2.4]" />}
+          <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+            {isSaved ? t('detail.removeFromLibrary') : t('detail.saveToLibrary')}
+          </span>
         </button>
         {isAuthenticated && (
           <button
             onClick={() => setShareToChatOpen(true)}
             title="Send to a friend in chat"
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-primary hover:text-primary transition-colors"
+            aria-label="Send to a friend in chat"
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
           >
-            <PaperAirplaneIcon className="w-5 h-5" />
-            Send to friend
+            <PaperAirplaneIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Send to friend</span>
           </button>
         )}
         {isPremium ? (
@@ -190,22 +195,31 @@ export function AlbumDetailPage() {
             onClick={handleDownload}
             disabled={downloading}
             title={t('detail.downloadAlbum')}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+            aria-label={downloading ? t('common.downloading') : t('common.download')}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            {downloading ? t('common.downloading') : t('common.download')}
+            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
+              {downloading ? t('common.downloading') : t('common.download')}
+            </span>
           </button>
         ) : (
           <Link
             to="/premium"
             title={t('detail.downloadPremiumTitle')}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold border border-elevated/60 text-secondary hover:border-accent hover:text-accent transition-colors"
+            aria-label={t('detail.downloadPremiumTitle')}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-accent active:scale-95"
           >
-            <ArrowDownTrayIcon className="w-5 h-5" />
-            {t('common.download')}
-            <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">{t('common.premium')}</span>
+            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('common.download')} - {t('common.premium')}</span>
           </Link>
         )}
+        <AlbumMenu
+          album={album}
+          alwaysVisible
+          triggerClassName="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
+          triggerIconClassName="h-6 w-6 stroke-[2.7]"
+        />
           </>
         }
       />

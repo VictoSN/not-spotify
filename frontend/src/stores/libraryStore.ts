@@ -37,7 +37,10 @@ interface LibraryState {
   unsaveVideo: (videoId: string) => void
   savePodcast: (podcast: PodcastSummary) => void
   unsavePodcast: (podcastId: string) => void
-  createPlaylist: (name: string, description?: string, isPublic?: boolean, smartRules?: SmartPlaylistRules) => Promise<Playlist>
+  createPlaylist: (name: string, description?: string, isPublic?: boolean, smartRules?: SmartPlaylistRules, coverUrl?: string | null) => Promise<Playlist>
+  /** Update a single playlist in the store eagerly (e.g. after cover upload) so the
+   *  sidebar / home page reflect the change without a full library reload. */
+  syncPlaylist: (playlist: Playlist) => void
   syncPlaylistTracks: (playlistId: string, tracks: PlaylistTrack[]) => void
   addTrackToPlaylist: (playlistId: string, track: Track) => Promise<void>
   removeTrackFromPlaylist: (playlistId: string, trackId: string) => Promise<void>
@@ -250,10 +253,18 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     writeStored('ns-saved-podcasts', savedPodcasts)
   },
 
-  createPlaylist: async (name, description, isPublic = true, smartRules) => {
-    const playlist = await playlistService.create(name, description, isPublic, smartRules)
+  createPlaylist: async (name, description, isPublic = true, smartRules, coverUrl) => {
+    const playlist = await playlistService.create(name, description, isPublic, smartRules, coverUrl)
     set((s) => ({ savedPlaylists: [playlist, ...s.savedPlaylists] }))
     return playlist
+  },
+
+  syncPlaylist: (playlist) => {
+    set((s) => ({
+      savedPlaylists: s.savedPlaylists.map((p) =>
+        p.id === playlist.id ? { ...p, ...playlist, isOwner: playlist.isOwner ?? p.isOwner, isSaved: playlist.isSaved ?? p.isSaved } : p,
+      ),
+    }))
   },
 
   syncPlaylistTracks: (playlistId, tracks) => {
@@ -290,14 +301,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   addTrackToPlaylist: async (playlistId, track) => {
     try {
-      await playlistService.addTrack(playlistId, track)
+      const updatedPlaylist = await playlistService.addTrack(playlistId, track)
       set((s) => ({
         savedPlaylists: s.savedPlaylists.map((p) => {
           if (p.id !== playlistId) return p
           return {
             ...p,
-            tracks: [...(p.tracks ?? []), { track, addedAt: new Date().toISOString(), addedBy: p.owner }],
-            totalDurationMs: p.totalDurationMs + track.durationMs,
+            ...updatedPlaylist,
+            isOwner: updatedPlaylist.isOwner ?? p.isOwner,
+            isSaved: updatedPlaylist.isSaved ?? p.isSaved,
           }
         }),
       }))

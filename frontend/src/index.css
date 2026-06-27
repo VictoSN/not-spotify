@@ -336,6 +336,36 @@ body,
   background-color: rgba(150, 150, 150, 0.82);
 }
 
+/* The account page predates the shared theme tokens and still contains a few
+   fixed Spotify-dark utility classes. Keep its dark appearance unchanged, but
+   remap those legacy surfaces and labels when the app is in light mode. */
+html[data-theme="light"] .account-settings-page [class*="bg-[#282828]"],
+html[data-theme="light"] .account-settings-page [class*="bg-[#2a2a2a]"] {
+  background-color: var(--c-elevated) !important;
+}
+
+html[data-theme="light"] .account-settings-page [class*="bg-[#3a3a3a]"],
+html[data-theme="light"] .account-settings-page [class*="bg-[#1f1f1f]"] {
+  background-color: var(--c-surface) !important;
+}
+
+html[data-theme="light"] .account-settings-page [class*="hover:bg-[#323232]"]:hover,
+html[data-theme="light"] .account-settings-page [class*="hover:bg-white/"]:hover {
+  background-color: color-mix(in srgb, var(--c-primary) 10%, transparent) !important;
+}
+
+html[data-theme="light"] .account-settings-page [class~="text-white"]:not([class*="bg-red-"]):not([class*="bg-accent"]) {
+  color: var(--c-primary) !important;
+}
+
+html[data-theme="light"] .account-settings-page [class*="text-[#b3b3b3]"] {
+  color: var(--c-secondary) !important;
+}
+
+html[data-theme="light"] .account-settings-page [class*="divide-[#333333]"] > :not(:last-child) {
+  border-color: color-mix(in srgb, var(--c-primary) 12%, transparent) !important;
+}
+
 @property --sidebar-scrollbar-opacity {
   syntax: '<number>';
   inherits: true;
@@ -375,9 +405,44 @@ body,
   will-change: transform, opacity;
 }
 
+/* Keep the right panel's layout slot fixed while it exits. Only after this
+   transform completes does the component swap to its narrow rail, so Home's
+   card grid never reflows during the visible slide. */
+.right-sidebar-motion {
+  transition-property: transform, opacity;
+  transition-duration: 300ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.right-sidebar-motion.right-sidebar-slide-out {
+  animation: none;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(calc(100% + 12px));
+  transition-property: transform, opacity;
+}
+
+.right-sidebar-dragging {
+  transition: none;
+}
+
+@keyframes right-sidebar-rail-enter {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-right-sidebar-rail-enter {
+  animation: right-sidebar-rail-enter 160ms ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-right-sidebar-enter {
+  .animate-right-sidebar-enter,
+  .animate-right-sidebar-rail-enter {
     animation: none;
+  }
+
+  .right-sidebar-motion {
+    transition: none;
   }
 }
 

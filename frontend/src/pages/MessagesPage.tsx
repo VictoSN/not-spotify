@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PaperAirplaneIcon, ChatBubbleLeftRightIcon, CheckIcon } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
@@ -120,9 +120,9 @@ export function MessagesPage() {
   if (!me) return null
 
   return (
-    <div className="flex h-full min-h-0">
+    <div className="flex h-full min-h-0 bg-page text-primary">
       {/* ── Conversation list ─────────────────────────────────────────── */}
-      <aside className="flex w-full max-w-xs shrink-0 flex-col border-r border-elevated/40 sm:w-80">
+      <aside className="flex w-full max-w-xs shrink-0 flex-col border-r border-elevated/40 bg-sidebar sm:w-80">
         <div className="px-4 pb-3 pt-5">
           <h1 className="text-2xl font-bold text-primary">Messages</h1>
         </div>
@@ -213,7 +213,7 @@ export function MessagesPage() {
       </aside>
 
       {/* ── Thread ────────────────────────────────────────────────────── */}
-      <section className="flex min-w-0 flex-1 flex-col">
+      <section className="flex min-w-0 flex-1 flex-col bg-page">
         {!activePartner ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
             <ChatBubbleLeftRightIcon className="h-14 w-14 text-muted" />
@@ -225,17 +225,23 @@ export function MessagesPage() {
         ) : (
           <>
             {/* Header */}
-            <div className="flex items-center gap-3 border-b border-elevated/40 px-4 py-3">
-              <div className="relative">
-                <Avatar src={activePartner.avatarUrl} alt={activePartner.name} size="md" round />
-                {onlineIds.has(activePartner.userId) && (
-                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-page bg-accent" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-primary">{activePartner.name}</p>
-                <p className="text-xs text-secondary">{onlineIds.has(activePartner.userId) ? 'Online' : 'Offline'}</p>
-              </div>
+            <div className="flex items-center gap-3 border-b border-elevated/40 bg-page px-4 py-3">
+              <Link
+                to={`/user/${activePartner.userId}`}
+                className="group flex min-w-0 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
+                aria-label={`View ${activePartner.name}'s profile`}
+              >
+                <div className="relative">
+                  <Avatar src={activePartner.avatarUrl} alt={activePartner.name} size="md" round />
+                  {onlineIds.has(activePartner.userId) && (
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-page bg-accent" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-primary group-hover:underline">{activePartner.name}</p>
+                  <p className="text-xs text-secondary">{onlineIds.has(activePartner.userId) ? 'Online' : 'Offline'}</p>
+                </div>
+              </Link>
             </div>
 
             {/* Messages */}

@@ -15,7 +15,7 @@ export function ArtistBadgesDialog({ open, onClose }: ArtistBadgesDialogProps) {
     <Dialog open={open} onClose={onClose} className="relative z-[70]">
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" aria-hidden="true" />
       <div className="fixed inset-0 flex items-start justify-center p-4 pt-16 sm:items-center sm:pt-4">
-        <DialogPanel className="w-full max-w-xl rounded-lg bg-[#181818] p-5 shadow-2xl ring-1 ring-white/10 sm:p-6">
+        <DialogPanel className="w-full max-w-xl rounded-lg bg-surface p-5 shadow-2xl ring-1 ring-primary/10 sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <DialogTitle className="text-lg font-black text-primary">
               {t('artist.badges.title')}
@@ -23,14 +23,14 @@ export function ArtistBadgesDialog({ open, onClose }: ArtistBadgesDialogProps) {
             <button
               type="button"
               onClick={onClose}
-              className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-white/10 hover:text-primary"
+              className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
               aria-label={t('common.close')}
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
-          <div className="mt-5 rounded-md bg-white/10 p-4">
+          <div className="mt-5 rounded-md bg-primary/10 p-4">
             <div className="flex items-start gap-3">
               <CheckBadgeIcon className="mt-0.5 h-7 w-7 shrink-0 text-accent" />
               <div className="min-w-0">

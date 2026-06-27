@@ -22,7 +22,8 @@ public class MeExportControllerTests
         var waveforms = new AudioWaveformService(storage.Object, NullLogger<AudioWaveformService>.Instance);
 
         return new MeController(db, new MediaMapper(storage.Object), users.Object,
-            storage.Object, lyrics, NullLogger<MeController>.Instance, waveforms)
+            storage.Object, lyrics, NullLogger<MeController>.Instance, waveforms,
+            TestHelpers.NewNotifications(db))
             .AsUser(me.Id);
     }
 

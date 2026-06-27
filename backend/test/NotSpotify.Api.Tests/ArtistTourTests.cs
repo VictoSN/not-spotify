@@ -25,7 +25,8 @@ public class ArtistTourTests
         var waveforms = new AudioWaveformService(new Mock<IStorageService>().Object, NullLogger<AudioWaveformService>.Instance);
 
         return new MeController(db, TestHelpers.NewMapper(), users.Object,
-            new Mock<IStorageService>().Object, lyrics, NullLogger<MeController>.Instance, waveforms)
+            new Mock<IStorageService>().Object, lyrics, NullLogger<MeController>.Instance, waveforms,
+            TestHelpers.NewNotifications(db))
             .AsUser(me.Id, "Artist");
     }
 

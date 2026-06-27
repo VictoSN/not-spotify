@@ -228,14 +228,15 @@ Tests (this session):
 Goal: the **Album** and **Track** detail page headers look/behave the same (currently
 "somewhat different").
 
-- [ ] Diff the Album vs. Track hero/header markup and reconcile (spacing, meta row, hero gradient usage, action bar).
-- [ ] Factor shared header structure where reasonable so they can't drift again.
+- [x] Diff the Album vs. Track hero/header markup and reconcile (spacing, meta row, hero gradient usage, action bar). Differences were: eyebrow (`font-black tracking-wide text-primary` vs `font-semibold tracking-wider text-secondary`), cover md size (`md:w-56` vs `md:w-52`), title margin (`mb-2` vs `mb-3`), and action-bar wrapper (`gap-3 …flex-wrap` vs `gap-4`). All reconciled to one canonical set.
+- [x] Factor shared header structure where reasonable so they can't drift again. New `frontend/src/components/common/DetailHero.tsx` owns the gradient wrapper, cover, eyebrow, title, meta slot, and action-bar wrapper; both `AlbumDetailPage` and `TrackDetailPage` now render their headers through it (page-specific meta/actions passed as slots).
 
 Likely files: `frontend/src/pages/AlbumDetailPage.tsx`, `frontend/src/pages/TrackDetailPage.tsx`,
 `frontend/src/hooks/useDominantColor.ts` (`heroGradient`), any shared detail-header component.
+Added: `frontend/src/components/common/DetailHero.tsx` (+ `DetailHero.test.tsx`).
 
 Tests (this session):
-- [ ] Snapshot/structure test asserting both headers share the same key elements/classes.
+- [x] Snapshot/structure test asserting both headers share the same key elements/classes. `DetailHero.test.tsx` pins the canonical cover sizing, eyebrow styling, hero heading classes, action-bar wrapper spacing, and gradient background — since both pages route their header through `DetailHero`, this locks the shared structure for both. `npx tsc --noEmit` clean.
 
 ---
 

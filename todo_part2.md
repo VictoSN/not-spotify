@@ -115,8 +115,8 @@ Tests (this session):
 Goal: right-clicking a song on the Recents page opens the track dropdown menu like
 other lists.
 
-- [ ] Right-click on a Recents row opens the track context menu (`TrackRowMenu` via `openMenuAtPointer`).
-- [ ] Keyboard/`⋯` access stays consistent with other track rows.
+- [x] Right-click on a Recents row opens the track context menu (`TrackRowMenu` via `openMenuAtPointer`).
+- [x] Keyboard/`⋯` access stays consistent with other track rows.
 
 Likely files: `frontend/src/pages/browse/RecentsPage.tsx`,
 `frontend/src/components/cards/TrackRowMenu.tsx`, `frontend/src/components/cards/TrackRow.tsx`,
@@ -361,10 +361,10 @@ Bug: podcasts and MVs are unclickable once saved in the left library sidebar.
 Goal: saved podcasts and music videos in Your Library should behave like albums/playlists:
 clicking the row opens the detail page, while drag/drop and context-menu behaviour remain intact.
 
-- [ ] Confirm saved podcast rows navigate to `/podcasts/{id}` from every sidebar layout state.
-- [ ] Confirm saved MV rows navigate to `/videos/{id}` from every sidebar layout state.
-- [ ] Prevent row navigation from being swallowed by menu buttons, drag handles, collapse controls, or minimized-sidebar chrome.
-- [ ] Keep existing library filters, drag/drop, and right-click menu behaviour for these media types.
+- [x] Confirm saved podcast rows navigate to `/podcasts/{id}` from every sidebar layout state.
+- [x] Confirm saved MV rows navigate to `/videos/{id}` from every sidebar layout state.
+- [x] Prevent row navigation from being swallowed by menu buttons, drag handles, collapse controls, or minimized-sidebar chrome.
+- [x] Keep existing library filters, drag/drop, and right-click menu behaviour for these media types.
 
 Likely files: `frontend/src/components/layout/Sidebar.tsx`,
 `frontend/src/stores/libraryStore.ts`, `frontend/src/components/cards/PodcastMenu.tsx`,
@@ -372,8 +372,8 @@ Likely files: `frontend/src/components/layout/Sidebar.tsx`,
 `frontend/src/pages/MusicVideoPage.tsx`, router definitions.
 
 Tests (this session):
-- [ ] Sidebar render/navigation test: saved podcast and saved MV rows call the expected routes.
-- [ ] Interaction test: menu trigger/right-click still opens the menu without also navigating.
+- [x] Sidebar render/navigation test: saved podcast and saved MV rows call the expected routes.
+- [x] Interaction test: menu trigger/right-click still opens the menu without also navigating.
 
 ---
 

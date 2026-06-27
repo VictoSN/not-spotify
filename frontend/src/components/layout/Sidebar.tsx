@@ -35,6 +35,8 @@ import type { Playlist } from '@/types/playlist'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
 import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
+import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
+import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
@@ -522,6 +524,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const artistById = useMemo(() => new Map(followedArtists.map((a) => [a.id, a])), [followedArtists])
   const artistFor = (item: LibItem): Artist | undefined =>
     item.kind === 'artist' ? artistById.get(item.id) : undefined
+  const videoById = useMemo(() => new Map(savedVideos.map((video) => [video.id, video])), [savedVideos])
+  const videoFor = (item: LibItem): MusicVideo | undefined =>
+    item.kind === 'video' ? videoById.get(item.id) : undefined
+  const podcastById = useMemo(() => new Map(savedPodcasts.map((podcast) => [podcast.id, podcast])), [savedPodcasts])
+  const podcastFor = (item: LibItem): PodcastSummary | undefined =>
+    item.kind === 'podcast' ? podcastById.get(item.id) : undefined
 
   // ── Folders (a client-side grouping layer over `items`) ─────────
   const itemByKey = useMemo(() => new Map(items.map((i) => [i.key, i])), [items])
@@ -686,17 +694,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             <HeartIcon className="w-5 h-5 text-white" />
           </Link>
           {items.map((item) => (
-            <Link
+            <CollapsedLibraryItem
               key={item.key}
-              to={item.to}
-              title={item.name}
-              className={cn(
-                'w-12 h-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center hover:scale-105 transition-transform',
-                item.round ? 'rounded-full' : 'rounded-md',
-              )}
-            >
-              <LibraryArtwork item={item} compact={compactLibrary} />
-            </Link>
+              item={item}
+              compact={compactLibrary}
+              video={videoFor(item)}
+              podcast={podcastFor(item)}
+            />
           ))}
         </div>
 
@@ -970,6 +974,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 playlistFor={playlistFor}
                 albumFor={albumFor}
                 artistFor={artistFor}
+                videoFor={videoFor}
+                podcastFor={podcastFor}
               />
             ))}
           </div>
@@ -1029,6 +1035,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}
+                  menuVideo={videoFor(item)}
+                  menuPodcast={podcastFor(item)}
                 >
                   <RowOverlay
                     variant="grid"
@@ -1084,6 +1092,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}
+                  menuVideo={videoFor(item)}
+                  menuPodcast={podcastFor(item)}
                 >
                   <RowOverlay
                     variant="list"
@@ -1246,6 +1256,59 @@ function libraryInitials(name: string) {
   return (words[0] ?? '?').slice(0, 2).toUpperCase()
 }
 
+/** A minimized-sidebar item with the same media context menus as expanded rows. */
+function CollapsedLibraryItem({
+  item,
+  compact,
+  video,
+  podcast,
+}: {
+  item: LibItem
+  compact: boolean
+  video?: MusicVideo
+  podcast?: PodcastSummary
+}) {
+  const videoMenuRef = useRef<VideoMenuHandle>(null)
+  const podcastMenuRef = useRef<PodcastMenuHandle>(null)
+  const handleContextMenu = video
+    ? (event: React.MouseEvent) => openMenuAtPointer(event, videoMenuRef)
+    : podcast
+      ? (event: React.MouseEvent) => openMenuAtPointer(event, podcastMenuRef)
+      : undefined
+
+  return (
+    <div className="group/row relative" onContextMenu={handleContextMenu}>
+      <Link
+        to={item.to}
+        title={item.name}
+        aria-label={item.name}
+        className={cn(
+          'flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-elevated transition-transform hover:scale-105',
+          item.round ? 'rounded-full' : 'rounded-md',
+        )}
+      >
+        <LibraryArtwork item={item} compact={compact} />
+      </Link>
+      {video && (
+        <VideoMenu
+          ref={videoMenuRef}
+          video={video}
+          triggerClassName="absolute bottom-0 right-0 z-20 rounded-full bg-black/70 p-1 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
+          triggerIconClassName="h-3.5 w-3.5 text-white"
+        />
+      )}
+      {podcast && (
+        <PodcastMenu
+          ref={podcastMenuRef}
+          podcast={podcast}
+          triggerClassName="absolute bottom-0 right-0 z-20 rounded-full bg-black/70 p-1 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
+          triggerIconClassName="h-3.5 w-3.5 text-white"
+        />
+      )}
+    </div>
+  )
+}
+
 /**
  * Cover overlay play/pause button. Derives its icon purely from the global
  * player (no local state): pause when this surface is the active *playing*
@@ -1297,6 +1360,8 @@ function LibraryListRow({
   menuPlaylist,
   menuAlbum,
   menuArtist,
+  menuVideo,
+  menuPodcast,
 }: {
   item: LibItem
   compact: boolean
@@ -1306,18 +1371,26 @@ function LibraryListRow({
   menuPlaylist?: Playlist
   menuAlbum?: Album
   menuArtist?: Artist
+  menuVideo?: MusicVideo
+  menuPodcast?: PodcastSummary
 }) {
   // Playlists get the Spotify-style pointer menu; other rows keep the ⋯ behaviour.
   const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
   const albumMenuRef = useRef<AlbumMenuHandle>(null)
   const artistMenuRef = useRef<ArtistMenuHandle>(null)
+  const videoMenuRef = useRef<VideoMenuHandle>(null)
+  const podcastMenuRef = useRef<PodcastMenuHandle>(null)
   const handleContextMenu = menuPlaylist
     ? (e: React.MouseEvent) => openMenuAtPointer(e, playlistMenuRef)
     : menuAlbum
       ? (e: React.MouseEvent) => openMenuAtPointer(e, albumMenuRef)
       : menuArtist
         ? (e: React.MouseEvent) => openMenuAtPointer(e, artistMenuRef)
-        : undefined
+        : menuVideo
+          ? (e: React.MouseEvent) => openMenuAtPointer(e, videoMenuRef)
+          : menuPodcast
+            ? (e: React.MouseEvent) => openMenuAtPointer(e, podcastMenuRef)
+            : undefined
   return (
     <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
@@ -1360,6 +1433,22 @@ function LibraryListRow({
           <ArtistMenu ref={artistMenuRef} artist={menuArtist} />
         </div>
       )}
+      {menuVideo && (
+        <VideoMenu
+          ref={videoMenuRef}
+          video={menuVideo}
+          triggerClassName="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full p-1.5"
+          triggerIconClassName="h-5 w-5 stroke-[2.2] text-secondary hover:text-primary"
+        />
+      )}
+      {menuPodcast && (
+        <PodcastMenu
+          ref={podcastMenuRef}
+          podcast={menuPodcast}
+          triggerClassName="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full p-1.5"
+          triggerIconClassName="h-5 w-5 stroke-[2.2] text-secondary hover:text-primary"
+        />
+      )}
     </div>
   )
 }
@@ -1375,6 +1464,8 @@ function LibraryGridCard({
   menuPlaylist,
   menuAlbum,
   menuArtist,
+  menuVideo,
+  menuPodcast,
 }: {
   item: LibItem
   compact: boolean
@@ -1385,17 +1476,25 @@ function LibraryGridCard({
   menuPlaylist?: Playlist
   menuAlbum?: Album
   menuArtist?: Artist
+  menuVideo?: MusicVideo
+  menuPodcast?: PodcastSummary
 }) {
   const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
   const albumMenuRef = useRef<AlbumMenuHandle>(null)
   const artistMenuRef = useRef<ArtistMenuHandle>(null)
+  const videoMenuRef = useRef<VideoMenuHandle>(null)
+  const podcastMenuRef = useRef<PodcastMenuHandle>(null)
   const handleContextMenu = menuPlaylist
     ? (e: React.MouseEvent) => openMenuAtPointer(e, playlistMenuRef)
     : menuAlbum
       ? (e: React.MouseEvent) => openMenuAtPointer(e, albumMenuRef)
       : menuArtist
         ? (e: React.MouseEvent) => openMenuAtPointer(e, artistMenuRef)
-        : undefined
+        : menuVideo
+          ? (e: React.MouseEvent) => openMenuAtPointer(e, videoMenuRef)
+          : menuPodcast
+            ? (e: React.MouseEvent) => openMenuAtPointer(e, podcastMenuRef)
+            : undefined
   return (
     <div className="group/row relative" onContextMenu={handleContextMenu}>
       <NavLink
@@ -1438,6 +1537,20 @@ function LibraryGridCard({
           <ArtistMenu ref={artistMenuRef} artist={menuArtist} />
         </div>
       )}
+      {menuVideo && (
+        <VideoMenu
+          ref={videoMenuRef}
+          video={menuVideo}
+          triggerClassName="absolute right-2 top-2 z-20 rounded-full bg-black/65 p-1.5 backdrop-blur-sm"
+        />
+      )}
+      {menuPodcast && (
+        <PodcastMenu
+          ref={podcastMenuRef}
+          podcast={menuPodcast}
+          triggerClassName="absolute right-2 top-2 z-20 rounded-full bg-black/65 p-1.5 backdrop-blur-sm"
+        />
+      )}
     </div>
   )
 }
@@ -1458,6 +1571,8 @@ function FolderGroup({
   playlistFor,
   albumFor,
   artistFor,
+  videoFor,
+  podcastFor,
 }: {
   folder: LibraryFolder
   contents: LibItem[]
@@ -1473,6 +1588,8 @@ function FolderGroup({
   playlistFor: (item: LibItem) => Playlist | undefined
   albumFor: (item: LibItem) => Album | undefined
   artistFor: (item: LibItem) => Artist | undefined
+  videoFor: (item: LibItem) => MusicVideo | undefined
+  podcastFor: (item: LibItem) => PodcastSummary | undefined
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -1600,6 +1717,8 @@ function FolderGroup({
                 menuPlaylist={playlistFor(item)}
                 menuAlbum={albumFor(item)}
                 menuArtist={artistFor(item)}
+                menuVideo={videoFor(item)}
+                menuPodcast={podcastFor(item)}
               >
                 <RowOverlay
                   variant="list"

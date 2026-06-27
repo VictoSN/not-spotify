@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 
 /**
  * The single source of truth for the app's right-click ("context") menu
@@ -74,17 +75,17 @@ export function usePointerMenu(): PointerMenuController {
     // false. Without this guard the menu would instantly reopen, looking like
     // it never closes. Treat a just-closed menu as the toggle-off.
     if (Date.now() - closedAtRef.current < 300) return
-    setCoords({ x, y })
-    // Double rAF ensures React has committed the coordinate update (and the
-    // portal MenuButton is in the DOM at the correct position) before we fire
-    // the programmatic click. A single rAF can race with React's commit in
-    // deeply-nested or overflow-scrolled containers like the now-playing panel.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        hiddenBtnRef.current?.click()
-        bindScrollClose()
-      })
+    // flushSync guarantees React commits the coordinate update synchronously
+    // before we programmatically click the portal MenuButton. Without this,
+    // React 18's automatic batching can defer the commit past the click, so
+    // the button is still parked at (-9999,-9999) and the menu opens off-screen
+    // — especially noticeable in deeply-nested containers like the now-playing
+    // panel where re-renders are frequent.
+    flushSync(() => {
+      setCoords({ x, y })
     })
+    hiddenBtnRef.current?.click()
+    bindScrollClose()
   }, [bindScrollClose])
 
   const openFromButton = useCallback((e: React.MouseEvent) => {

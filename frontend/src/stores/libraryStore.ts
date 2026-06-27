@@ -75,20 +75,28 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       for (const r of savedRows) likedAtMap[r.track.id] = r.savedAt
       const likedIds = new Set(likedTracks.map((t) => t.id))
 
+      let cachedFollowed: Artist[] = []
+      try {
+        const stored = localStorage.getItem(followedArtistsKey())
+        if (stored) cachedFollowed = JSON.parse(stored)
+      } catch { /* ignore */ }
+
       let followedArtists: Artist[] = []
       try {
-        // Backend is the source of truth (so notifications fire); fall back to
-        // the localStorage cache if the call fails (e.g. offline / older API).
-        followedArtists = await artistService.getFollowing()
+        // Backend is the source of truth for artists tied to a user account (so
+        // notifications fire). Catalog artists with no linked account are a
+        // backend no-op and are only ever cached locally — union those back in
+        // or every reload would silently drop them (the GET returns just the
+        // account-backed follows).
+        const backendFollowed = await artistService.getFollowing()
+        const backendIds = new Set(backendFollowed.map((a) => a.id))
+        const localOnly = cachedFollowed.filter((a) => !backendIds.has(a.id))
+        followedArtists = [...backendFollowed, ...localOnly]
       } catch {
-        try {
-          const stored = localStorage.getItem('ns-followed-artists')
-          if (stored) followedArtists = JSON.parse(stored)
-        } catch { /* ignore */ }
-        followedArtists = await refreshFollowedArtists(followedArtists)
+        followedArtists = await refreshFollowedArtists(cachedFollowed)
       }
       try {
-        localStorage.setItem('ns-followed-artists', JSON.stringify(followedArtists))
+        localStorage.setItem(followedArtistsKey(), JSON.stringify(followedArtists))
       } catch { /* ignore */ }
       const followedIds = new Set(followedArtists.map((a) => a.id))
 
@@ -157,7 +165,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const newArtists = [artist, ...prev]
     const newIds = new Set([...prevIds, artist.id])
     set({ followedArtists: newArtists, followedArtistIds: newIds })
-    localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    localStorage.setItem(followedArtistsKey(), JSON.stringify(newArtists))
     // Auth gate: skip API call for guests; components gate too, but the
     // store shouldn't fire a guaranteed-401 for an unauthenticated user.
     if (!useAuthStore.getState().isAuthenticated) return
@@ -165,7 +173,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       await artistService.follow(artist.id)
     } catch {
       set({ followedArtists: prev, followedArtistIds: prevIds })
-      localStorage.setItem('ns-followed-artists', JSON.stringify(prev))
+      localStorage.setItem(followedArtistsKey(), JSON.stringify(prev))
     }
   },
 
@@ -177,14 +185,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     newIds.delete(artistId)
     const newArtists = prev.filter((a) => a.id !== artistId)
     set({ followedArtists: newArtists, followedArtistIds: newIds })
-    localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    localStorage.setItem(followedArtistsKey(), JSON.stringify(newArtists))
     // Auth gate: skip API call for guests (see followArtist).
     if (!useAuthStore.getState().isAuthenticated) return
     try {
       await artistService.unfollow(artistId)
     } catch {
       set({ followedArtists: prev, followedArtistIds: prevIds })
-      localStorage.setItem('ns-followed-artists', JSON.stringify(prev))
+      localStorage.setItem(followedArtistsKey(), JSON.stringify(prev))
     }
   },
 
@@ -348,6 +356,15 @@ function writeStored<T>(key: string, value: T[]) {
   }
 }
 
+// Followed artists are cached locally because catalog artists with no linked
+// user account are a backend no-op (see ArtistsController.Follow). The cache is
+// scoped per-user so one account's local-only follows never leak into the next
+// account on a shared browser (the key was previously global).
+function followedArtistsKey(): string {
+  const uid = useAuthStore.getState().user?.id
+  return uid ? `ns-followed-artists:${uid}` : 'ns-followed-artists'
+}
+
 async function refreshFollowedArtists(artists: Artist[]) {
   if (artists.length === 0) return artists
   const refreshed = await Promise.all(
@@ -360,7 +377,7 @@ async function refreshFollowedArtists(artists: Artist[]) {
     }),
   )
   try {
-    localStorage.setItem('ns-followed-artists', JSON.stringify(refreshed))
+    localStorage.setItem(followedArtistsKey(), JSON.stringify(refreshed))
   } catch {
     /* ignore */
   }
@@ -374,8 +391,10 @@ async function refreshFollowedArtists(artists: Artist[]) {
 useAuthStore.subscribe((state, prev) => {
   if (!prev.isAuthenticated || state.isAuthenticated) return
   try {
-    // Keep ns-followed-artists: follows are local-only until the backend supports them.
+    // Followed artists are cached under a per-user key (followedArtistsKey), so
+    // they survive that user's own re-login without leaking to the next account.
     // clean up any legacy liked-songs keys from before backend persistence
+    localStorage.removeItem('ns-followed-artists') // drop the old global key
     localStorage.removeItem('ns-liked-tracks')
     localStorage.removeItem('ns-liked-at')
   } catch {

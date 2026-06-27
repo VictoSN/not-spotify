@@ -18,6 +18,17 @@ vi.mock('@/services/artistService', () => ({
   },
 }))
 
+// fetchLibrary also pulls playlists / liked songs / saved albums.
+vi.mock('@/services/playlistService', () => ({
+  playlistService: { getUserPlaylists: vi.fn().mockResolvedValue([]) },
+}))
+vi.mock('@/services/trackService', () => ({
+  trackService: { getLikedSongs: vi.fn().mockResolvedValue([]) },
+}))
+vi.mock('@/services/albumService', () => ({
+  albumService: { getSavedAlbums: vi.fn().mockResolvedValue([]) },
+}))
+
 import { useLibraryStore } from './libraryStore'
 import { useAuthStore } from './authStore'
 import { artistService } from '@/services/artistService'
@@ -150,17 +161,52 @@ describe('libraryStore.syncPlaylistTracks', () => {
   })
 })
 
-describe('libraryStore logout reset', () => {
-  it('clears volatile library state but keeps local followed artists on logout', async () => {
-    await useLibraryStore.getState().followArtist(artist('a1'))
-    expect(localStorage.getItem('ns-followed-artists')).not.toBeNull()
+describe('libraryStore.fetchLibrary follow hydration (per-user)', () => {
+  it('unions locally-cached follows with the backend list so account-less artist follows survive reload', async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'u1' } as never })
+    // a-local was followed before but has no linked user account → the backend
+    // GET never returns it; only the per-user cache remembers it.
+    localStorage.setItem('ns-followed-artists:u1', JSON.stringify([artist('a-local', 'Local Only')]))
+    vi.mocked(artistService.getFollowing).mockResolvedValueOnce([artist('a-backend', 'Backend Artist')])
 
-    useAuthStore.setState({ isAuthenticated: true } as never)
+    await useLibraryStore.getState().fetchLibrary()
+
+    const ids = useLibraryStore.getState().followedArtists.map((a) => a.id).sort()
+    expect(ids).toEqual(['a-backend', 'a-local'])
+    expect(useLibraryStore.getState().followedArtistIds.has('a-local')).toBe(true)
+  })
+
+  it('does not leak another account\'s cached follows (cache is keyed per user)', async () => {
+    // u1 has a cached follow…
+    localStorage.setItem('ns-followed-artists:u1', JSON.stringify([artist('a-u1')]))
+    // …but u2 signs in and the backend returns nobody.
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'u2' } as never })
+    vi.mocked(artistService.getFollowing).mockResolvedValueOnce([])
+
+    await useLibraryStore.getState().fetchLibrary()
+
+    expect(useLibraryStore.getState().followedArtists).toEqual([])
+  })
+})
+
+describe('libraryStore logout reset', () => {
+  it('clears volatile state but keeps the user\'s own followed-artists cache, and drops the legacy global key', async () => {
+    // Follow while signed in as u1 → persists under the per-user key.
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'u1' } as never })
+    vi.mocked(artistService.follow).mockResolvedValueOnce(undefined)
+    await useLibraryStore.getState().followArtist(artist('a1'))
+    expect(localStorage.getItem('ns-followed-artists:u1')).not.toBeNull()
+    // Simulate a stale global key left over from a previous app version.
+    localStorage.setItem('ns-followed-artists', JSON.stringify([artist('leaked')]))
+
     useAuthStore.setState({ isAuthenticated: false } as never)
 
     expect(useLibraryStore.getState().followedArtists).toEqual([])
     expect(useLibraryStore.getState().likedSongs).toEqual([])
     expect(useLibraryStore.getState().followedArtistIds.size).toBe(0)
-    expect(JSON.parse(localStorage.getItem('ns-followed-artists')!).map((a: Artist) => a.id)).toEqual(['a1'])
+    // The user's own cache survives logout (so their next sign-in restores it)…
+    expect(JSON.parse(localStorage.getItem('ns-followed-artists:u1')!).map((a: Artist) => a.id)).toEqual(['a1'])
+    // …but the legacy global key is purged so it can't leak into the next account.
+    expect(localStorage.getItem('ns-followed-artists')).toBeNull()
   })
 })

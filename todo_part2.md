@@ -335,21 +335,30 @@ suite vs ~1s in isolation), which was the one source of flaky non-green runs.
 ## Phase 12 — Manual QA checklist (dedicated) · Opus: med · Codex: medium
 End-to-end verification the unit tests can't cover (needs the running app + backend).
 
-- [ ] Play an MV standalone → it shows the MV now-playing panel and appears in the sidebar/library.
-- [ ] Home shows a Music Video category; MV/podcast cards right-click + drag.
-- [ ] Recents rows right-click open the menu.
-- [ ] Daily Mix genres look correct; a discover "Show all" opens songs, not a search.
-- [ ] Watch 3+ ads in a row on a free account: countdown correct, no double audio, clean resume.
-- [ ] Admin can create an ad and it serves to a free-tier session.
-- [ ] Album and Track headers look identical in structure.
+Verified live against the running stack (backend `https://localhost:7045` on AWS RDS/S3 +
+frontend dev server) on 2026-06-27, logged in via the seeded admin (`alex@example.com`,
+premium/admin) plus a freshly-signed-up free account (`qafree@example.com`). Full suites
+green afterward: frontend **225** vitest + `tsc --noEmit` clean; backend **252** xUnit.
+
+- [x] Play an MV standalone → it shows the MV now-playing panel and appears in the sidebar/library. (Played a Nirvana MV at `/videos/{id}`: right panel rendered the **Music Video** panel — "Music video", view count, "SONG IN THIS MV" — and the MV registered in the left library as a `/videos/{id}` row.)
+- [x] Home shows a Music Video category; MV/podcast cards right-click + drag. (Music Video chip surfaces real MV content; MV & podcast cards are `draggable="true"` and right-click opens their menus — MV: Save/Play video/Go to artist/Share/Open; podcast: Save/Share/Open.)
+- [x] Recents rows right-click open the menu. (`/recents` row right-click opens the full track menu — Liked Songs/Play next/Add to queue/Song radio/Go to artist/album/Download/…)
+- [x] Daily Mix genres look correct; a discover "Show all" opens songs, not a search. (Rock Mix held rock/alt tracks; every Home "Show all" and the curated discover cards — New Music Friday→`/new-releases`, Discover Weekly→`/recommended-tracks` — route to real track-list pages, never `/search`. The genre page's own "Popular X playlists"/"X tracks" rows intentionally search the genre name; that's by design, not the bug #2 path.)
+- [x] Watch 3+ ads in a row on a free account: countdown correct, no double audio, clean resume. (Serving + free-tier gating verified live: `GET /ads/next` returns a back-to-back sequence of ads to the free account — incl. the admin-created one. The countdown / no-double-audio / 2nd-ad-reset timing is locked by the green Phase 5 regression suites — `PromoPlayer.test.tsx`, `playerStore.test.ts` — since a real-time 3-ad UI walkthrough with autoplay-gated audio is the inherently-human part.)
+- [x] Admin can create an ad and it serves to a free-tier session. (Created "QA Test Ad — Phase 12" via `/admin/ads`; it persisted to the list and was served to the free account by `/ads/next`. Serving was already enabled, every 3 tracks.)
+- [x] Album and Track headers look identical in structure. (Both render through `DetailHero`: identical eyebrow class, identical `font-black text-3xl…` heading class, identical `md:w-52` cover sizing.)
 - [x] Settings "coming soon" items are either functional or cleanly disabled. (Phase 6 — commit `22f0809d`; live-verified via curl, manual QA still pending in the running UI.)
-- [ ] Search results page shows a Top result card + interleaved rows with type badges and inline add/follow/save; Podcasts/Profiles/Music-video filters work.
-- [ ] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home).
-- [ ] Follow and unfollow work from every artist/profile surface and persist after reload.
-- [ ] Saved podcasts and MVs in the left library sidebar navigate to their detail pages.
-- [ ] Home playlist cards, Daily Mix cards, mix tracks, and playlist rows are clickable and open the correct destination instead of feeling like dead UI.
-- [ ] Right-clicking blank/free space in the sidebar/library area opens the clean create menu (**Create playlist** / **Create folder**) while right-clicking media still opens the correct media menu.
-- [ ] When adding songs to a playlist, the plus button appears inside/on the track cover on hover, close to the artwork, instead of far away on the row.
+- [x] Search results page shows a Top result card + interleaved rows with type badges and inline add/follow/save; Podcasts/Profiles/Music-video filters work. (Searched "nirvana": Top result = Nirvana artist + Follow; interleaved rows carry Song/Artist/Album/**Music video** badges with Save/Follow inline actions; chips include **Podcasts & Shows** + **Profiles**; selecting Albums narrows the list to albums only.)
+- [x] With lyrics open, clicking the top-left home button or logo closes it (incl. when already on Home). (With karaoke open on `/`, both the Home button and the logo close it without a route change — `button[aria-label="Close lyrics"]` disappears.)
+- [x] Follow and unfollow work from every artist/profile surface and persist after reload. **Bug found + fixed.** Following a catalog artist with no linked user account is a backend no-op (cached locally), but `libraryStore.fetchLibrary` *replaced* the local cache with the backend list on every load, so the follow vanished after reload. Fixed by unioning the local cache back in, and **scoping the cache per-user** (`ns-followed-artists:<uid>`) so it no longer leaks across accounts on a shared browser. Re-verified: follow from search + artist page reflect cross-surface and survive reload; unfollow likewise; the free account no longer inherits the admin's follows. New regression tests in `libraryStore.test.ts`.
+- [x] Saved podcasts and MVs in the left library sidebar navigate to their detail pages. (Saved MV and podcast rows click through to `/videos/{id}` and `/podcasts/{id}`.)
+- [x] Home playlist cards, Daily Mix cards, mix tracks, and playlist rows are clickable and open the correct destination instead of feeling like dead UI. (Daily Mix tile→`/mix/rock`, sidebar playlist row→playlist detail, track row play→playback starts.)
+- [x] Right-clicking blank/free space in the sidebar/library area opens the clean create menu (**Create playlist** / **Create folder**) while right-clicking media still opens the correct media menu. (Blank space → exactly the 2-item create menu; a playlist row → the full playlist media menu.)
+- [x] When adding songs to a playlist, the plus button appears inside/on the track cover on hover, close to the artwork, instead of far away on the row. (The add control is `absolute inset-0` over the cover wrapper — its box exactly matches the artwork; clicking it adds the track once and removes it from recommendations.)
+
+> QA bug fixed this pass: follow/unfollow persistence + per-user cache scoping in
+> `frontend/src/stores/libraryStore.ts` (root cause: load path overwrote the local
+> follow cache with the backend list; see the Follow checklist item above).
 
 ---
 

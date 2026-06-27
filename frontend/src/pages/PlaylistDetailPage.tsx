@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import { PlayIcon, PauseIcon, ClockIcon } from '@heroicons/react/24/solid'
@@ -45,6 +45,7 @@ import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { ShareIcon } from '@/components/common/ShareIcon'
+import { PlaylistAddableRow } from '@/components/player/PlaylistAddableRow'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { shareLink } from '@/utils/share'
@@ -108,6 +109,7 @@ export function PlaylistDetailPage() {
   const [searchResults, setSearchResults] = useState<Track[]>([])
   const [recommendations, setRecommendations] = useState<Track[]>([])
   const [addingTrackIds, setAddingTrackIds] = useState<Set<string>>(new Set())
+  const addingTrackLocks = useRef<Set<string>>(new Set())
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
@@ -202,11 +204,11 @@ export function PlaylistDetailPage() {
     return () => { cancelled = true }
   }, [debouncedQuery, playlist?.isOwner, playlist?.isCollaborator])
 
-  // Tracks already in the playlist (or in-flight) should never appear in the find panel.
+  // Existing and in-flight tracks disappear from recommendations immediately.
   const findCandidates = useMemo(() => {
     if (!playlist) return []
     const present = new Set(playlist.tracks.map((pt) => pt.track.id))
-    const filter = (t: Track) => !present.has(t.id) && !addingTrackIds.has(t.id)
+    const filter = (track: Track) => !present.has(track.id) && !addingTrackIds.has(track.id)
     const source = searchQuery.trim() ? searchResults : recommendations
     return source.filter(filter)
   }, [playlist, searchQuery, searchResults, recommendations, addingTrackIds])
@@ -370,6 +372,12 @@ export function PlaylistDetailPage() {
 
   const handleAdd = async (track: Track) => {
     if (!playlist) return
+    if (
+      addingTrackLocks.current.has(track.id) ||
+      addingTrackIds.has(track.id) ||
+      playlist.tracks.some((item) => item.track.id === track.id)
+    ) return
+    addingTrackLocks.current.add(track.id)
     setAddingTrackIds((s) => {
       const next = new Set(s)
       next.add(track.id)
@@ -392,6 +400,7 @@ export function PlaylistDetailPage() {
       // Refresh recs so the just-added track drops off and a new one fills the slot.
       playlistService.getRecommendations(playlist.id, 10).then(setRecommendations).catch(() => {})
     } finally {
+      addingTrackLocks.current.delete(track.id)
       setAddingTrackIds((s) => {
         const next = new Set(s)
         next.delete(track.id)
@@ -809,10 +818,10 @@ export function PlaylistDetailPage() {
           ) : (
             <div className="flex flex-col gap-1">
               {findCandidates.map((track) => (
-                <AddableRow
+                <PlaylistAddableRow
                   key={track.id}
                   track={track}
-                  disabled={addingTrackIds.has(track.id)}
+                  adding={addingTrackIds.has(track.id)}
                   onAdd={() => handleAdd(track)}
                 />
               ))}
@@ -835,40 +844,6 @@ export function PlaylistDetailPage() {
           onClose={() => setInviteOpen(false)}
         />
       )}
-    </div>
-  )
-}
-
-/** Lightweight row used inside the "find something" panel: cover, title, artist, album, + */
-function AddableRow({
-  track,
-  onAdd,
-  disabled,
-}: {
-  track: Track
-  onAdd: () => void
-  disabled?: boolean
-}) {
-  return (
-    <div
-      className="grid items-center gap-4 px-3 py-2 rounded-md hover:bg-elevated/50 transition-colors"
-      style={{ gridTemplateColumns: '40px minmax(0, 5fr) minmax(0, 3fr) 40px' }}
-    >
-      <img src={track.album.coverUrl} alt={track.album.title} className="w-10 h-10 rounded object-cover" />
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-primary truncate">{track.title}</p>
-        <p className="text-xs text-secondary truncate">{track.artist.name}</p>
-      </div>
-      <p className="text-xs text-secondary truncate hidden md:block">{track.album.title}</p>
-      <button
-        onClick={onAdd}
-        disabled={disabled}
-        title="Add to this playlist"
-        aria-label={`Add ${track.title} to this playlist`}
-        className="w-9 h-9 rounded-full border border-secondary/50 flex items-center justify-center text-primary hover:scale-105 hover:border-accent hover:text-accent active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100"
-      >
-        <PlusIcon className="w-4 h-4" />
-      </button>
     </div>
   )
 }

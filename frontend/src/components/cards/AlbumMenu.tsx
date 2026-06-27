@@ -146,7 +146,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
               modal={false}
               transition
               onClick={stop}
-              className="z-50 w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+              className="z-[1000] w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
             >
               <MenuItem>
                 <button

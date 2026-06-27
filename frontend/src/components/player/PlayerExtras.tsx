@@ -74,8 +74,8 @@ export function EqualizerButton() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full right-0 z-50 mb-3 w-72 rounded-md border border-secondary/10 bg-elevated p-4 shadow-2xl">
+          <div className="fixed inset-0 z-[990]" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full right-0 z-[1000] mb-3 w-72 rounded-md border border-secondary/10 bg-elevated p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">{t('player.equalizer')}</p>
               <select
@@ -182,8 +182,8 @@ export function SleepTimerButton() {
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute bottom-full right-0 z-50 mb-3 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-2xl">
+          <div className="fixed inset-0 z-[990]" onClick={() => setOpen(false)} />
+          <div className="absolute bottom-full right-0 z-[1000] mb-3 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-2xl">
             <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-secondary">
               {t('player.sleep')}
             </p>

@@ -210,7 +210,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                 transition
                 onClick={stop}
                 onContextMenu={(e) => e.preventDefault()}
-                className="z-50 w-60 origin-top overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+                className="z-[1000] w-60 origin-top overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
               >
                 <MenuItem>
                   <button type="button" onClick={(e) => { stop(e); handleAddToQueue(); close() }} className={itemClass}>

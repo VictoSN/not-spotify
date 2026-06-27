@@ -35,7 +35,7 @@ export function TrackActionsMenu({ track, isOpen, onClose }: TrackActionsMenuPro
   return (
     <div
       ref={menuRef}
-      className="absolute right-0 top-full mt-1 w-48 bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden z-50"
+      className="absolute right-0 top-full z-[1000] mt-1 w-48 bg-elevated rounded-lg shadow-xl border border-secondary/20 overflow-hidden"
     >
       {savedPlaylists.length === 0 ? (
         <div className="px-4 py-3 text-sm text-secondary text-center">

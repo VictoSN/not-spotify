@@ -125,6 +125,19 @@ public class AdminAdsControllerTests
     }
 
     [Fact]
+    public async Task GetSettings_NoRow_MatchesPublicServingDefaults()
+    {
+        await using var db = TestHelpers.NewDb();
+        var controller = NewController(db);
+
+        var ok = Assert.IsType<OkObjectResult>((await controller.GetSettings()).Result);
+        var dto = Assert.IsType<AdSettingsDto>(ok.Value);
+
+        Assert.Equal(3, dto.AdsPerNTracks);
+        Assert.False(dto.IsEnabled);
+    }
+
+    [Fact]
     public async Task Settings_RoundTrip_PersistsCadenceAndToggle()
     {
         await using var db = TestHelpers.NewDb();

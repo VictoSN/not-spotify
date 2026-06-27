@@ -2,11 +2,12 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { HomePage, HomePodcastTile, HomeVideoTile, getHomeFilterVisibility } from './HomePage'
+import { HomePage, HomePodcastTile, HomeQuickPlaylist, HomeVideoTile, getHomeFilterVisibility } from './HomePage'
 import { useDragStore } from '@/stores/dragStore'
 import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
+import type { Playlist } from '@/types/playlist'
 
 class ResizeObserverStub {
   observe() {}
@@ -88,6 +89,20 @@ const podcast: PodcastSummary = {
   createdAt: '2026-01-01T00:00:00Z',
 }
 
+const playlist: Playlist = {
+  id: 'playlist-1',
+  name: 'Home Playlist',
+  description: null,
+  coverUrl: '/playlist.jpg',
+  isPublic: true,
+  owner: { id: 'owner-1', name: 'Owner', imageUrl: null },
+  tracks: [],
+  followerCount: 0,
+  totalDurationMs: 0,
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
+
 function dataTransfer() {
   return {
     effectAllowed: '',
@@ -121,7 +136,12 @@ describe('Home media interactions', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Music Video' }))
+    const videoFilter = await screen.findByRole('button', { name: 'Music Video' })
+    expect(videoFilter).toHaveClass('font-normal', 'bg-white/15')
+    for (const container of [screen.getByTestId('home-filter-content'), screen.getByTestId('home-main-content')]) {
+      expect(container).toHaveClass('px-4', 'sm:px-6', 'lg:px-8', '2xl:px-10')
+    }
+    fireEvent.click(videoFilter)
 
     expect(await screen.findByRole('heading', { name: 'Music videos' })).toBeInTheDocument()
     expect(screen.getByText('Back to Friends')).toBeInTheDocument()
@@ -155,5 +175,22 @@ describe('Home media interactions', () => {
 
     expect(transfer.setData).toHaveBeenCalledWith(PODCAST_DND_MIME, podcast.id)
     expect(useDragStore.getState().draggedPodcast?.id).toBe(podcast.id)
+  })
+
+  it('opens the existing playlist menu from a Home quick-access tile right-click', async () => {
+    render(
+      <MemoryRouter>
+        <HomeQuickPlaylist playlist={playlist} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.contextMenu(screen.getByRole('link', { name: 'Home Playlist' }), {
+      clientX: 120,
+      clientY: 80,
+    })
+
+    const menuItem = await screen.findByRole('menuitem', { name: 'Add to queue' })
+    expect(menuItem).toBeInTheDocument()
+    fireEvent.click(menuItem)
   })
 })

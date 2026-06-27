@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 interface OverlayScrollbarProps {
   /** The scrollable element whose scroll position this thumb mirrors. */
   scrollRef: React.RefObject<HTMLDivElement | null>
+  /** Attach the thumb to the panel edge instead of using the default 2px inset. */
+  flushRight?: boolean
 }
 
 /**
@@ -18,7 +20,7 @@ interface OverlayScrollbarProps {
  * Mount inside a `position: relative` ancestor that shares the scroll viewport's
  * box (e.g. the `<main>` card). Renders nothing when the content doesn't overflow.
  */
-export function OverlayScrollbar({ scrollRef }: OverlayScrollbarProps) {
+export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrollbarProps) {
   const [thumb, setThumb] = useState<{ height: number; top: number } | null>(null)
   // Visible (and brighter) while hovering the scroll area, scrolling, or dragging.
   const [active, setActive] = useState(false)
@@ -109,8 +111,15 @@ export function OverlayScrollbar({ scrollRef }: OverlayScrollbarProps) {
     // Home sticky header (z-30) so the thumb stays visible beside the header
     // instead of being painted over by it. pointer-events-none so it never
     // blocks clicks on the content underneath; only the thumb itself is grabbable.
-    <div aria-hidden className="pointer-events-none absolute right-0 top-0 z-40 h-full w-4">
+    <div
+      aria-hidden
+      data-overlay-scrollbar-track
+      className={`pointer-events-none absolute right-0 top-0 z-40 h-full bg-transparent ${
+        flushRight ? 'w-[12px]' : 'w-4'
+      }`}
+    >
       <div
+        data-overlay-scrollbar-thumb
         onMouseDown={(e) => {
           const el = scrollRef.current
           if (!el) return
@@ -122,7 +131,9 @@ export function OverlayScrollbar({ scrollRef }: OverlayScrollbarProps) {
         style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
         // ~12px thick, near-square (2px radius), semi-transparent gray — visible at
         // rest, brighter while scrolling/hovering, brightest when grabbed.
-        className={`pointer-events-auto absolute right-[2px] w-[12px] rounded-[2px] transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
+        className={`pointer-events-auto absolute w-[12px] rounded-[2px] transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
+          flushRight ? 'right-0' : 'right-[2px]'
+        } ${
           active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
         }`}
       />

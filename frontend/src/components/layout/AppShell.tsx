@@ -32,6 +32,7 @@ export function AppShell() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
   const location = useLocation()
+  const isHomeRoute = location.pathname === '/'
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
@@ -116,8 +117,9 @@ export function AppShell() {
           it and makes the centered search bar look like it floats too high. */}
       <div
         className={cn(
-          'flex flex-1 px-2 pb-2 pt-0 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
-          nowPlayingExpandedVisible ? 'gap-0' : 'gap-2',
+          'flex flex-1 min-h-0 overflow-hidden pb-2 pl-2 pt-0 transition-[gap] duration-300 ease-out',
+          isHomeRoute ? 'pr-0' : 'pr-2',
+          nowPlayingExpandedVisible ? 'gap-0' : 'gap-2.5',
         )}
       >
         {!isMobile && <Sidebar takeoverHidden={nowPlayingExpandedVisible} />}
@@ -145,7 +147,7 @@ export function AppShell() {
           >
             <Outlet />
           </div>
-          {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} />}
+          {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} flushRight={isHomeRoute} />}
           {karaokeVisible && (
             <div className="flex-1 min-h-0">
               <KaraokeView />

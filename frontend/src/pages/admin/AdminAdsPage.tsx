@@ -88,24 +88,28 @@ export function AdminAdsPage() {
 
   const [savingSettings, setSavingSettings] = useState(false)
 
-  const load = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const [adList, adSettings] = await Promise.all([
-        adminAdService.list(),
-        adminAdService.getSettings(),
-      ])
-      setAds(adList)
-      setSettings(adSettings)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load advertisements')
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  useEffect(() => {
+    let cancelled = false
 
-  useEffect(() => { load() }, [])
+    Promise.all([adminAdService.list(), adminAdService.getSettings()])
+      .then(([adList, adSettings]) => {
+        if (cancelled) return
+        setAds(adList)
+        setSettings(adSettings)
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load advertisements')
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const openCreate = () => {
     setForm(blankForm)

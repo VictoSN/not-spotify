@@ -192,10 +192,12 @@ function GenreRow({
 function EditorialRow({ row }: { row: BrowseFeatureRow }) {
   return (
     <section className="mb-10">
-      <SectionHeader title={row.title} href={row.items[0]?.href} />
+      {/* "Show all" and each card open a real track-list route (a discovery page or
+          the themed genre page), never a name→search query for the showcase title. */}
+      <SectionHeader title={row.title} href={row.href ?? row.items[0]?.href} />
       <HorizontalScroller>
         {row.items.map((item) => (
-          <Link key={item.title} to={item.href ?? searchHref(item.title)} className="group w-40 shrink-0 rounded-lg p-0 transition-colors hover:bg-transparent sm:w-44">
+          <Link key={item.title} to={item.href ?? '/genres'} className="group w-40 shrink-0 rounded-lg p-0 transition-colors hover:bg-transparent sm:w-44">
             <div className="mb-3 aspect-square overflow-hidden rounded-md bg-elevated shadow-lg">
               <img src={item.imageUrl} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
             </div>

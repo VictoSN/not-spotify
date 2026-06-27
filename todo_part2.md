@@ -134,10 +134,10 @@ Tests (this session):
 Goal: Daily Mix assigns the right genre, and a discover/showcase "Show all" opens the
 underlying songs instead of running a text search.
 
-- [ ] **#1 Daily Mix genre:** a song shows up under the correct genre/mix; fix the mis-assignment in the mix/recommendation build.
-- [ ] **#2 "Show all" in a discover playlist:** clicking "Show all" on a showcase (e.g. *New Music Friday*) opens that playlist's tracks, **not** a search for the playlist's name.
+- [x] **#1 Daily Mix genre:** a song shows up under the correct genre/mix; fix the mis-assignment in the mix/recommendation build. `BuildDailyMixTracksAsync`'s artist-dominance filter used the artist's *top-2* genres — an artist with only 2 genres has both in their top-2, so a stray/secondary tag leaked into the wrong genre's mix. Tightened to require the genre be the artist's **plurality** (most-common, ties allowed) genre, so a pop act's mis-tagged "rock" track no longer lands in the Rock mix.
+- [x] **#2 "Show all" in a discover playlist:** clicking "Show all" on a showcase (e.g. *New Music Friday*) opens that playlist's tracks, **not** a search for the playlist's name.
   - Current (buggy) logic: each showcase list is turned into a search query, so "Show all" runs `search("New Music Friday")` instead of navigating to the playlist's songs.
-  - Replace the name→search-query routing with a real playlist/track-list destination (id-based route).
+  - [x] Replaced the name→search-query routing with real in-app track-list routes. `browseContent.ts`'s `card()` no longer emits `/search?q=<title>`; curated discover cards map to real pages (New Music Friday → `/new-releases`, Discover Weekly → `/recommended-tracks`, Release Radar → `/new-releases`), `BrowseFeatureRow` gained a `href` for its "Show all", and every other showcase card/row falls back to the themed genre page (`/genres/<slug>`). `GenreDetailPage`'s `EditorialRow` uses those real routes.
 
 Likely files: `frontend/src/services/trackService.ts`, `frontend/src/pages/MixDetailPage.tsx`,
 `frontend/src/components/cards/MixTile.tsx`, `frontend/src/data/browseContent.ts`,
@@ -148,8 +148,10 @@ backend: `backend/src/NotSpotify.Api/Controllers/TracksController.cs`,
 `backend/src/NotSpotify.Api/Dtos/ResourceDtos.cs`.
 
 Tests (this session):
-- [ ] Backend: extend `RecommendationEndpointsTests` so a track's genre/mix assignment is asserted (reproduce #1, then prove fixed).
-- [ ] Frontend: "Show all" resolves to a playlist/track-list route, not a `/search?q=` URL.
+- [x] Backend: extend `RecommendationEndpointsTests` so a track's genre/mix assignment is asserted (reproduce #1, then prove fixed). `DailyMixes_OnlyIncludesTracksWhoseArtistIsDominatedByThatGenre` — a pop act's stray rock-tagged track must not appear in the Rock mix while the genuine rock act's tracks do. Fails against the old top-2 rule, passes after the plurality fix.
+- [x] Frontend: "Show all" resolves to a playlist/track-list route, not a `/search?q=` URL. `GenreDetailPage.test.tsx` — renders the discover showcases and asserts the row "Show all" → `/new-releases` and cards → `/new-releases` / `/recommended-tracks` (never `/search`), plus data-level assertions over `curatedBrowseCategories` and `getBrowseFallbackRows`.
+
+> Note: making the backend test suite compile required adding the `NotificationService` arg to two stale `MeController` test call sites (`ArtistTourTests.cs`, `MeExportControllerTests.cs`) — a pre-existing break unrelated to Phase 4. The full backend suite is now green except `ChatControllerTests.Send_ToFriend_PersistsMessageAndPushesRealtime` (pre-existing: notification deep-link is `/messages?u=<id>` but the test still expects `/messages/<id>`). The 4 failing frontend `libraryStore` follow/unfollow tests are the open Phase 13 regression.
 
 ---
 
@@ -226,14 +228,15 @@ Tests (this session):
 Goal: the **Album** and **Track** detail page headers look/behave the same (currently
 "somewhat different").
 
-- [ ] Diff the Album vs. Track hero/header markup and reconcile (spacing, meta row, hero gradient usage, action bar).
-- [ ] Factor shared header structure where reasonable so they can't drift again.
+- [x] Diff the Album vs. Track hero/header markup and reconcile (spacing, meta row, hero gradient usage, action bar). Differences were: eyebrow (`font-black tracking-wide text-primary` vs `font-semibold tracking-wider text-secondary`), cover md size (`md:w-56` vs `md:w-52`), title margin (`mb-2` vs `mb-3`), and action-bar wrapper (`gap-3 …flex-wrap` vs `gap-4`). All reconciled to one canonical set.
+- [x] Factor shared header structure where reasonable so they can't drift again. New `frontend/src/components/common/DetailHero.tsx` owns the gradient wrapper, cover, eyebrow, title, meta slot, and action-bar wrapper; both `AlbumDetailPage` and `TrackDetailPage` now render their headers through it (page-specific meta/actions passed as slots).
 
 Likely files: `frontend/src/pages/AlbumDetailPage.tsx`, `frontend/src/pages/TrackDetailPage.tsx`,
 `frontend/src/hooks/useDominantColor.ts` (`heroGradient`), any shared detail-header component.
+Added: `frontend/src/components/common/DetailHero.tsx` (+ `DetailHero.test.tsx`).
 
 Tests (this session):
-- [ ] Snapshot/structure test asserting both headers share the same key elements/classes.
+- [x] Snapshot/structure test asserting both headers share the same key elements/classes. `DetailHero.test.tsx` pins the canonical cover sizing, eyebrow styling, hero heading classes, action-bar wrapper spacing, and gradient background — since both pages route their header through `DetailHero`, this locks the shared structure for both. `npx tsc --noEmit` clean.
 
 ---
 

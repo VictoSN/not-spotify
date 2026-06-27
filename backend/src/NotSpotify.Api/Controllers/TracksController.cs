@@ -554,8 +554,15 @@ public class TracksController : ControllerBase
         // Catalogue is loosely tagged — admins sometimes attach popular genres
         // (e.g., "rock") to tracks that aren't really that style. To keep mixes
         // coherent, only include tracks from artists whose own catalogue is
-        // *actually* dominated by this genre. "Dominated" = the genre is one of
-        // the artist's top-2 most-common genres across their approved tracks.
+        // *actually* dominated by this genre. "Dominated" = the genre is the
+        // artist's single most-common genre (its plurality; ties allowed) across
+        // their approved tracks.
+        //
+        // A looser "top-2 genres" rule mis-assigns tracks: an artist who records
+        // mostly pop but has one stray rock-tagged track has only two genres, so
+        // *both* sit in their top-2 and that one crossover/mis-tag leaks into the
+        // Rock mix even though they're a pop act. Requiring the plurality keeps the
+        // track under the genre its artist actually belongs to.
         var artistGenreCounts = await _db.TrackGenres
             .Where(tg => tg.Track.Status == "approved")
             .GroupBy(tg => new { tg.Track.ArtistId, tg.GenreId })
@@ -564,7 +571,11 @@ public class TracksController : ControllerBase
 
         var qualifiedArtistIds = artistGenreCounts
             .GroupBy(x => x.ArtistId)
-            .Where(g => g.OrderByDescending(x => x.Count).Take(2).Any(x => x.GenreId == genreId))
+            .Where(g =>
+            {
+                var topCount = g.Max(x => x.Count);
+                return g.Any(x => x.GenreId == genreId && x.Count == topCount);
+            })
             .Select(g => g.Key)
             .ToHashSet();
 

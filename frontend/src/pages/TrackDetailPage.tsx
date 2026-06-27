@@ -12,7 +12,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
-import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
+import { useDominantColor } from '@/hooks/useDominantColor'
+import { DetailHero } from '@/components/common/DetailHero'
 import { useTranslation } from '@/i18n/useTranslation'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
@@ -174,27 +175,22 @@ export function TrackDetailPage() {
 
   return (
     <div>
-      {/* ── Hero + actions: fuller colour block behind the cover, fading below ── */}
-      <div style={{ background: heroGradient(heroColor) }}>
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
-        {/* Cover */}
-        <img
-          src={track.album.coverUrl}
-          alt={track.album.title}
-          className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 rounded-md shadow-2xl flex-shrink-0 object-cover self-center sm:self-auto"
-        />
-
-        {/* Meta */}
-        <div className="min-w-0 pb-2">
-          <p className="text-xs font-semibold text-secondary uppercase tracking-wider mb-1">{t('detail.song')}</p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-3 break-words">
+      <DetailHero
+        heroColor={heroColor}
+        coverUrl={track.album.coverUrl}
+        coverAlt={track.album.title}
+        eyebrow={t('detail.song')}
+        title={
+          <>
             {track.title}
             {track.explicit && (
               <span className="ml-2 text-xs font-semibold bg-elevated px-1.5 py-0.5 rounded text-secondary align-middle">
                 E
               </span>
             )}
-          </h1>
+          </>
+        }
+        meta={
           <div className="flex items-center gap-2 text-sm flex-wrap">
             {track.artist.imageUrl && (
               <img
@@ -223,11 +219,9 @@ export function TrackDetailPage() {
             <span className="text-secondary">·</span>
             <span className="text-secondary">{t('detail.plays', { n: formatNumber(track.playCount) })}</span>
           </div>
-        </div>
-      </div>
-
-      {/* ── Action bar ───────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 px-4 sm:px-6 py-4">
+        }
+        actions={
+          <>
         {/* Play */}
         <Button onClick={handlePlay} size="lg" className="gap-2">
           {isThisTrackPlaying ? (
@@ -270,8 +264,9 @@ export function TrackDetailPage() {
 
         {/* More options menu — hide its Download item; the toolbar above already has one. */}
         <TrackRowMenu track={track} alwaysVisible hideDownload />
-      </div>
-      </div>
+          </>
+        }
+      />
 
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4">

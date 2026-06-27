@@ -375,6 +375,46 @@ public class RecommendationEndpointsTests
         Assert.All(mix.Tracks, t => Assert.Equal(rockTrack.Id, t.Id));
     }
 
+    [Fact]
+    public async Task DailyMixes_OnlyIncludesTracksWhoseArtistIsDominatedByThatGenre()
+    {
+        await using var db = TestHelpers.NewDb();
+        var rock = db.AddGenre("Rock", "rock");
+        var pop = db.AddGenre("Pop", "pop");
+
+        // A genuine rock act: their catalogue is centred on rock.
+        var (rocker, rockerAlbum) = db.AddArtistAlbum("Rocker");
+        var rockA = db.AddTrack("Rock A", rocker, rockerAlbum, playCount: 5);
+        var rockB = db.AddTrack("Rock B", rocker, rockerAlbum, playCount: 4);
+        db.Tag(rockA, rock);
+        db.Tag(rockB, rock);
+
+        // A pop act with one stray rock-tagged track (a crossover / mis-tag). Pop
+        // dominates their catalogue, so this track must not surface in the Rock mix.
+        var (popper, popperAlbum) = db.AddArtistAlbum("Popper");
+        var pop1 = db.AddTrack("Pop 1", popper, popperAlbum, playCount: 9);
+        var pop2 = db.AddTrack("Pop 2", popper, popperAlbum, playCount: 9);
+        var pop3 = db.AddTrack("Pop 3", popper, popperAlbum, playCount: 9);
+        var leak = db.AddTrack("Leaky crossover", popper, popperAlbum, playCount: 9);
+        db.Tag(pop1, pop);
+        db.Tag(pop2, pop);
+        db.Tag(pop3, pop);
+        db.Tag(leak, rock); // mis-tagged rock, but Popper is a pop act
+        await db.SaveChangesAsync();
+
+        // Guest → mixes for the biggest catalogue genres (both rock and pop qualify).
+        var action = await Controller(db).AsGuest().DailyMixes();
+        var ok = Assert.IsType<OkObjectResult>(action.Result);
+        var mixes = Assert.IsAssignableFrom<IEnumerable<DailyMixDto>>(ok.Value).ToList();
+
+        var rockMix = Assert.Single(mixes, m => m.Id == "rock");
+        var rockIds = rockMix.Tracks.Select(t => t.Id).ToList();
+        Assert.Contains(rockA.Id, rockIds);          // the rock act's tracks belong here
+        Assert.Contains(rockB.Id, rockIds);
+        // The pop act's stray rock tag must NOT leak in — pop dominates their catalogue.
+        Assert.DoesNotContain(leak.Id, rockIds);
+    }
+
     // ── Discover Weekly ────────────────────────────────────────────────────────────────
 
     [Fact]

@@ -10,6 +10,8 @@ export interface BrowseFeatureItem {
 export interface BrowseFeatureRow {
   title: string
   items: BrowseFeatureItem[]
+  /** Real route for the row's "Show all" link (never a name→search query). */
+  href?: string
 }
 
 export interface BrowseCategorySeed {
@@ -31,11 +33,22 @@ const img = (id: string, width = 640, height = 640) =>
 const square = (seed: string) => `https://picsum.photos/seed/not-spotify-${seed}/640/640`
 const hero = (seed: string) => `https://picsum.photos/seed/not-spotify-hero-${seed}/1800/620`
 
-const card = (slug: string, title: string, description: string, imageUrl = square(`${slug}-${title}`)): BrowseFeatureItem => ({
+// A showcase card opens a real in-app track-list destination — a dedicated
+// discovery route, or the themed genre page — rather than a text search for the
+// card's title. Searching a curated name like "New Music Friday" matches no
+// catalogue track and lands on an empty results page (bug #2). Pass `to` to point
+// a card at a specific route; otherwise it falls back to the themed genre page.
+const card = (
+  slug: string,
+  title: string,
+  description: string,
+  imageUrl = square(`${slug}-${title}`),
+  to = `/genres/${slug}`,
+): BrowseFeatureItem => ({
   title,
   description,
   imageUrl,
-  href: `/search?q=${encodeURIComponent(title)}`,
+  href: to,
 })
 
 export const curatedBrowseCategories: BrowseCategorySeed[] = [
@@ -50,10 +63,11 @@ export const curatedBrowseCategories: BrowseCategorySeed[] = [
     rows: [
       {
         title: 'Discover new music',
+        href: '/new-releases',
         items: [
-          card('music', 'New Music Friday', 'Fresh tracks and future favorites.', img('photo-1493225457124-a3eb161ffa5f')),
-          card('music', 'Discover Weekly', 'New finds shaped around your taste.', img('photo-1514525253161-7a46d19cd819')),
-          card('music', 'Release Radar', 'Catch the latest from artists you follow.', img('photo-1494232410401-ad00d5433cfa')),
+          card('music', 'New Music Friday', 'Fresh tracks and future favorites.', img('photo-1493225457124-a3eb161ffa5f'), '/new-releases'),
+          card('music', 'Discover Weekly', 'New finds shaped around your taste.', img('photo-1514525253161-7a46d19cd819'), '/recommended-tracks'),
+          card('music', 'Release Radar', 'Catch the latest from artists you follow.', img('photo-1494232410401-ad00d5433cfa'), '/new-releases'),
         ],
       },
     ],
@@ -214,6 +228,7 @@ export function getBrowseFallbackRows(slug: string, name: string): BrowseFeature
   return [
     {
       title: `${name} playlists`,
+      href: `/genres/${slug}`,
       items: [
         card(slug, `${name} Essentials`, `The core sounds and standout moments in ${name}.`, getBrowseCoverUrl(slug)),
         card(slug, `Best of ${name}`, `A polished set of favorite ${name} tracks.`, square(`${slug}-best`)),

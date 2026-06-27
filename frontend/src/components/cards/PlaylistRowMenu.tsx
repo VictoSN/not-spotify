@@ -398,7 +398,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                         onPointerDown={stop}
                         onMouseEnter={openFolderSubmenu}
                         onMouseLeave={scheduleCloseFolderSubmenu}
-                        className="absolute left-full top-0 ml-1 w-64 max-h-80 overflow-y-auto rounded-md bg-[#282828] py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-black/20"
+                        className="absolute left-full top-0 ml-1 max-h-80 w-64 overflow-y-auto rounded-md bg-elevated py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-primary/10"
                       >
                         <button
                           type="button"

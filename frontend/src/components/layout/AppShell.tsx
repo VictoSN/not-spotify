@@ -42,6 +42,7 @@ export function AppShell() {
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
+  const libraryMinimizing = useUiStore((s) => s.libraryMinimizing)
   const socialPanelOpen = useUiStore((s) => s.socialPanelOpen)
   const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
@@ -131,7 +132,8 @@ export function AppShell() {
             into it (and reclaim it on minimize) — unmounting here would jump the layout. */}
         <main
           className={cn(
-            'relative min-w-0 rounded-xl bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+            'relative min-w-0 rounded-xl bg-page overflow-hidden flex flex-col',
+            !libraryMinimizing && 'transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
             nowPlayingExpandedVisible || libraryExpanded
               ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
               : 'flex-1 basis-0 translate-x-0 opacity-100',

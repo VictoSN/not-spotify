@@ -180,6 +180,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [libraryBodyScrolled, setLibraryBodyScrolled] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
+  const libraryMinimizing = useUiStore((s) => s.libraryMinimizing)
+  const setLibraryMinimizing = useUiStore((s) => s.setLibraryMinimizing)
   const libraryDragActive = useDragStore(
     (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum || !!s.draggedVideo || !!s.draggedPodcast,
   )
@@ -196,9 +198,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const toggleLibraryExpanded = () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
     setIsLibraryAnimating(true)
+    setLibraryMinimizing(libraryExpanded)
     setLibraryBodyScrolled(false)
     // Slightly longer than the 300ms width transition so the reveal lands after it settles.
-    libAnimTimer.current = window.setTimeout(() => setIsLibraryAnimating(false), 320)
+    libAnimTimer.current = window.setTimeout(() => {
+      setIsLibraryAnimating(false)
+      setLibraryMinimizing(false)
+    }, 320)
     setLibraryExpanded(!libraryExpanded)
   }
   const collapseLibrarySidebar = () => {
@@ -207,7 +213,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   }
   useEffect(() => () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
-  }, [])
+    setLibraryMinimizing(false)
+  }, [setLibraryMinimizing])
 
   const setView = (v: 'list' | 'grid') => {
     setViewMode(v)
@@ -599,7 +606,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     'group/sidebar sidebar-scrollbar-hover-region relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
-    !dragging &&
+    !dragging && !libraryMinimizing &&
       'transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
     takeoverHidden ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100',
   )
@@ -719,7 +726,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
         <div
           className={cn(
-            'flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide transition-opacity duration-150 animate-sidebar-retract',
+            'animate-fade-in flex-1 overflow-y-auto px-3 pb-3 flex flex-col items-center gap-3 scrollbar-hide',
             libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
           )}
         >

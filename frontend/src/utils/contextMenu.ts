@@ -5,11 +5,11 @@ export interface PointerMenuHandle {
 
 /** Shared Spotify-like sizing for every pointer/right-click menu panel. */
 export const CONTEXT_MENU_PANEL_CLASS =
-  'z-[1000] w-64 origin-top overflow-visible! rounded-md bg-[#282828] py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-black/20 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.5]'
+  'z-[1000] w-64 origin-top overflow-visible! rounded-md bg-elevated py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-primary/10 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.5]'
 
 /** Shared row rhythm for pointer/right-click menu actions. */
 export const CONTEXT_MENU_ITEM_CLASS =
-  'flex min-h-10 w-full cursor-pointer items-center gap-3 px-3 py-2 text-left font-normal text-primary transition-colors hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e] disabled:cursor-default disabled:opacity-70'
+  'flex min-h-10 w-full cursor-pointer items-center gap-3 px-3 py-2 text-left font-normal text-primary transition-colors hover:bg-primary/10 data-[focus]:bg-primary/10 disabled:cursor-default disabled:opacity-70'
 
 const SIDEBAR_INTERACTIVE_SELECTOR = [
   'a',

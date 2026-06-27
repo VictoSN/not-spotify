@@ -366,7 +366,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
             // anchored panel clips the "Add to playlist" flyout, which sits
             // outside the panel box (positioned `right-full`, to its left).
             className={openAddSubmenuOnTrigger
-              ? 'z-[1000] flex max-h-[32rem] w-80 origin-top flex-col overflow-hidden rounded-md bg-[#1f1f1f] text-sm font-normal leading-5 shadow-2xl ring-1 ring-black/20 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0'
+              ? 'z-[1000] flex max-h-[32rem] w-80 origin-top flex-col overflow-hidden rounded-md bg-elevated text-sm font-normal leading-5 shadow-2xl ring-1 ring-primary/10 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0'
               : CONTEXT_MENU_PANEL_CLASS}
           >
             {openAddSubmenuOnTrigger ? (
@@ -383,7 +383,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       onMouseDown={stop}
                       onPointerDown={stop}
                       placeholder="Find a playlist"
-                      className="h-9 w-full rounded-md bg-[#333] pl-8 pr-3 text-sm font-semibold text-primary outline-none placeholder:text-secondary focus:ring-1 focus:ring-accent/50"
+                      className="h-9 w-full rounded-md bg-surface pl-8 pr-3 text-sm font-semibold text-primary outline-none placeholder:text-secondary focus:ring-1 focus:ring-accent/50"
                     />
                   </div>
                 </div>
@@ -394,7 +394,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     stop(e)
                     await handleNewPlaylistInPicker()
                   }}
-                  className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <PlusIcon className="h-5 w-5" />
                   New playlist
@@ -411,7 +411,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                           stop(e)
                           toggleStagedPlaylist(p.id)
                         }}
-                        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333]"
+                        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-primary/10"
                       >
                         <span className="flex min-w-0 items-center gap-3">
                           <div className="h-9 w-9 shrink-0 overflow-hidden rounded">
@@ -433,7 +433,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     </p>
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-3 bg-[#1f1f1f] px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.35)]">
+                <div className="flex items-center justify-end gap-3 bg-elevated px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.18)]">
                   <button
                     type="button"
                     disabled={savingPlaylistPicker}
@@ -518,7 +518,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   }}
                   className={isMobile
                     ? 'flex max-h-96 w-full flex-col overflow-hidden bg-elevated/80 border-t border-secondary/10 py-1'
-                    : 'absolute right-full top-0 mr-1 flex max-h-[32rem] w-80 flex-col overflow-hidden rounded-md bg-[#1f1f1f] shadow-2xl ring-1 ring-black/20 py-1'}
+                    : 'absolute right-full top-0 mr-1 flex max-h-[32rem] w-80 flex-col overflow-hidden rounded-md bg-elevated shadow-2xl ring-1 ring-primary/10 py-1'}
                 >
                   <div className="px-2 pt-1 pb-2">
                     <div className="relative">
@@ -543,7 +543,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       stop(e)
                       await handleNewPlaylistInPicker()
                     }}
-                    className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <PlusIcon className="h-5 w-5" />
                     New playlist
@@ -562,7 +562,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                         stop(e)
                         toggleStagedPlaylist(p.id)
                       }}
-                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333]"
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-primary/10"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                       <div className="h-6 w-6 shrink-0 overflow-hidden rounded">
@@ -585,7 +585,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                     </p>
                   )}
                   </div>
-                  <div className="flex items-center justify-end gap-3 bg-[#1f1f1f] px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.35)]">
+                  <div className="flex items-center justify-end gap-3 bg-elevated px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.18)]">
                     <button
                       type="button"
                       disabled={savingPlaylistPicker}
@@ -853,7 +853,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                 <button
                   type="button"
                   onClick={(e) => { stop(e); navigate('/premium'); close() }}
-                  className="flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left font-normal text-secondary transition-colors hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                  className="flex min-h-10 w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left font-normal text-secondary transition-colors hover:bg-primary/10 data-[focus]:bg-primary/10"
                 >
                   <span className="flex items-center gap-3">
                     <ArrowDownTrayIcon className="w-4 h-4" />

@@ -8,6 +8,8 @@ interface UiState {
   libraryExpanded: boolean
   setLibraryExpanded: (v: boolean) => void
   toggleLibraryExpanded: () => void
+  libraryMinimizing: boolean
+  setLibraryMinimizing: (v: boolean) => void
 
   // Friend Activity feed in the right rail. While open it takes the slot the
   // Now Playing panel normally occupies (Spotify's buddy-feed behavior).
@@ -28,6 +30,8 @@ export const useUiStore = create<UiState>((set) => ({
   libraryExpanded: false,
   setLibraryExpanded: (v) => set({ libraryExpanded: v }),
   toggleLibraryExpanded: () => set((s) => ({ libraryExpanded: !s.libraryExpanded })),
+  libraryMinimizing: false,
+  setLibraryMinimizing: (v) => set({ libraryMinimizing: v }),
 
   friendActivityOpen: false,
   setFriendActivityOpen: (v) => set({ friendActivityOpen: v }),

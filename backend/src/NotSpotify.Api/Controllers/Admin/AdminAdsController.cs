@@ -66,7 +66,9 @@ public class AdminAdsController : ControllerBase
     public async Task<ActionResult<AdSettingsDto>> GetSettings(CancellationToken ct = default)
     {
         var s = await _db.AdSettings.OrderBy(x => x.UpdatedAt).FirstOrDefaultAsync(ct);
-        return Ok(new AdSettingsDto(s?.AdsPerNTracks ?? 3, s?.IsEnabled ?? true));
+        // Match the public /ads/settings default: ads remain off until an admin
+        // explicitly enables and saves serving settings.
+        return Ok(new AdSettingsDto(s?.AdsPerNTracks ?? 3, s?.IsEnabled ?? false));
     }
 
     [HttpPut("settings")]

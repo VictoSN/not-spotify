@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Controllers.Admin;
+using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Models;
 using Xunit;
@@ -121,6 +122,19 @@ public class AdminAdsControllerTests
         var result = await controller.Update(Guid.NewGuid(), ValidRequest());
 
         Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetSettings_NoRow_MatchesPublicServingDefaults()
+    {
+        await using var db = TestHelpers.NewDb();
+        var controller = NewController(db);
+
+        var ok = Assert.IsType<OkObjectResult>((await controller.GetSettings()).Result);
+        var dto = Assert.IsType<AdSettingsDto>(ok.Value);
+
+        Assert.Equal(3, dto.AdsPerNTracks);
+        Assert.False(dto.IsEnabled);
     }
 
     [Fact]

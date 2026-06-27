@@ -208,9 +208,9 @@ Goal: an admin can create/manage advertisements that are served to free-tier use
 (Backend ad models/controllers exist; a frontend **admin ads** page appears to be
 missing and must be added + wired.)
 
-- [ ] Admin UI to create/edit/list advertisements (new admin page under `frontend/src/pages/admin/`, following the existing admin form pattern).
-- [ ] Wire it to the admin ads API; confirm created ads are the ones served to free-tier accounts (ties into Phase 5).
-- [ ] Gate the page behind the admin role / existing admin entrance.
+- [x] Admin UI to create/edit/list advertisements (`AdminAdsPage` includes create/edit/delete, targeting, flight windows, impression totals, and serving settings).
+- [x] Wire it to the admin ads API; created ads persist to the same `Advertisements` table queried by `/ads/next` for free-tier playback. Admin/public no-row serving defaults are aligned to disabled until explicitly enabled.
+- [x] Gate the page behind the admin role / existing admin entrance (`/admin/ads` is nested under `AdminRoute` and linked from the admin Monetization navigation).
 
 Likely files (frontend, new): `frontend/src/pages/admin/AdminAdsPage.tsx` (+ form),
 patterns from `frontend/src/pages/admin/AdminTrackFormPage.tsx` / `AdminDashboardPage.tsx`,
@@ -219,8 +219,8 @@ Backend (exists): `backend/src/NotSpotify.Api/Controllers/Admin/AdminAdsControll
 `backend/src/NotSpotify.Api/Dtos/AdminDtos.cs`, `backend/src/NotSpotify.Api/Models/Advertisement.cs`.
 
 Tests (this session):
-- [ ] Backend: `AdminAdsController` create/list/update covered (extend ad tests).
-- [ ] Frontend: admin ads form submits and renders the created ad in the list.
+- [x] Backend: `AdminAdsController` create/list/update and settings defaults/round-trip covered in `AdminAdsControllerTests`.
+- [x] Frontend: `AdminAdsPage.test.tsx` verifies listing, required validation, settings, and that form submission renders the created ad.
 
 ---
 

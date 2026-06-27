@@ -27,6 +27,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
+import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
 import { TrackTile } from '@/components/cards/TrackTile'
@@ -46,6 +47,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 
 const PREVIEW_LIMIT = 10
+const HOME_CONTENT_GUTTER = 'px-4 sm:px-6 lg:px-8 2xl:px-10'
 
 export type HomeFilter = 'all' | 'music' | 'podcasts' | 'videos'
 
@@ -62,7 +64,6 @@ export function HomePage() {
   useDocumentTitle(t('topbar.home'))
   const { user, isAuthenticated } = useAuthStore()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const playWithGate = usePlaybackGate()
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const [trending, setTrending] = useState<Track[]>([])
   const [mostLiked, setMostLiked] = useState<Track[]>([])
@@ -212,7 +213,10 @@ export function HomePage() {
           WebkitBackdropFilter: headerScrolled ? 'blur(18px)' : 'none',
         }}
       >
-        <div className="flex items-center gap-2 px-4 py-3">
+        <div
+          data-testid="home-filter-content"
+          className={cn('flex items-center gap-2 py-3', HOME_CONTENT_GUTTER)}
+        >
           {([
             { key: 'all', label: t('home.filter.all') },
             { key: 'music', label: t('home.filter.music') },
@@ -223,10 +227,10 @@ export function HomePage() {
               key={f.key}
               onClick={() => setHomeFilter(f.key)}
               className={cn(
-                'flex h-8 items-center rounded-full px-3.5 text-sm font-medium transition-all active:scale-95',
+                'flex h-8 items-center rounded-full px-3.5 text-sm font-normal transition-all active:scale-95',
                 homeFilter === f.key
                   ? 'bg-primary text-page'
-                  : 'bg-elevated/80 text-primary hover:bg-elevated backdrop-blur-sm',
+                  : 'bg-white/15 text-primary hover:bg-white/20 backdrop-blur-sm',
               )}
               aria-pressed={homeFilter === f.key}
             >
@@ -236,7 +240,10 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className="relative px-4 pb-6">
+      <div
+        data-testid="home-main-content"
+        className={cn('relative pb-6', HOME_CONTENT_GUTTER)}
+      >
         {isAuthenticated && (
           <h1 className="text-3xl font-bold text-primary mb-6 mt-2">
             {getGreeting()}
@@ -297,42 +304,10 @@ export function HomePage() {
 
         {/* Quick access — the same library shown in the sidebar */}
         {showMusic && isAuthenticated && quickPicks.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
-            {quickPicks.map((p) => {
-              const tracks = p.tracks?.map((pt) => pt.track) ?? []
-              return (
-                <Link
-                  key={p.id}
-                  to={`/playlist/${p.id}`}
-                  onMouseEnter={() => {
-                    if (p.coverUrl) getDominantColor(p.coverUrl).then((c) => c && setHoverColor(c))
-                  }}
-                  onMouseLeave={() => setHoverColor(null)}
-                  className="relative flex items-center gap-4 bg-elevated/40 hover:bg-elevated rounded-md overflow-hidden group transition-colors"
-                >
-                  <div className="w-20 h-20 shrink-0 bg-surface flex items-center justify-center overflow-hidden">
-                    {p.coverUrl ? (
-                      <img src={p.coverUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <MusicalNoteIcon className="w-7 h-7 text-secondary" />
-                    )}
-                  </div>
-                  <span className="text-base font-semibold text-primary truncate pr-2 flex-1">{p.name}</span>
-                  {tracks.length > 0 && (
-                    <button
-                      onClick={(e) => {
-                        e.preventDefault()
-                        playWithGate(tracks[0], tracks)
-                      }}
-                      className="mr-3 w-10 h-10 shrink-0 rounded-full bg-accent flex items-center justify-center opacity-100 translate-y-0 md:opacity-0 md:translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0 hover:scale-105 active:scale-95 transition-all shadow-lg"
-                      aria-label={t('home.playPlaylist', { name: p.name })}
-                    >
-                      <PlayIcon className="w-5 h-5 text-white ml-0.5" />
-                    </button>
-                  )}
-                </Link>
-              )
-            })}
+          <div className="mb-8 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+            {quickPicks.map((playlist) => (
+              <HomeQuickPlaylist key={playlist.id} playlist={playlist} />
+            ))}
           </div>
         )}
 
@@ -484,6 +459,55 @@ export function HomePage() {
           </section>
         )}
       </div>
+    </div>
+  )
+}
+
+export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
+  const { t } = useTranslation()
+  const menuRef = useRef<PlaylistRowMenuHandle>(null)
+  const playWithGate = usePlaybackGate()
+  const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const tracks = playlist.tracks?.map((item) => item.track) ?? []
+
+  return (
+    <div
+      className="group relative"
+      onContextMenu={(event) => openMenuAtPointer(event, menuRef)}
+    >
+      <Link
+        to={`/playlist/${playlist.id}`}
+        onMouseEnter={() => {
+          if (playlist.coverUrl) {
+            getDominantColor(playlist.coverUrl).then((color) => color && setHoverColor(color))
+          }
+        }}
+        onMouseLeave={() => setHoverColor(null)}
+        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-elevated/40 transition-colors hover:bg-elevated"
+      >
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
+          {playlist.coverUrl ? (
+            <img src={playlist.coverUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <MusicalNoteIcon className="h-7 w-7 text-secondary" />
+          )}
+        </div>
+        <span className="flex-1 truncate pr-2 text-base font-semibold text-primary">{playlist.name}</span>
+        {tracks.length > 0 && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault()
+              playWithGate(tracks[0], tracks)
+            }}
+            className="mr-3 flex h-10 w-10 shrink-0 translate-y-0 items-center justify-center rounded-full bg-accent opacity-100 shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
+            aria-label={t('home.playPlaylist', { name: playlist.name })}
+          >
+            <PlayIcon className="ml-0.5 h-5 w-5 text-white" />
+          </button>
+        )}
+      </Link>
+      <PlaylistRowMenu ref={menuRef} playlist={playlist} />
     </div>
   )
 }

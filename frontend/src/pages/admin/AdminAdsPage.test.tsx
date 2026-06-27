@@ -1,5 +1,5 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import React from 'react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AdAdmin } from '@/types/ad'
 import { AdminAdsPage } from './AdminAdsPage'
@@ -62,19 +62,18 @@ describe('AdminAdsPage', () => {
   })
 
   it('submits the form and renders the created ad in the list', async () => {
-    const user = userEvent.setup()
     create.mockResolvedValue(makeAd({ id: 'new', title: 'Fresh ad', advertiser: 'BrandX' }))
     render(<AdminAdsPage />)
 
     // Wait for initial load (empty list).
     expect(await screen.findByText('No advertisements yet.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'New ad' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New ad' }))
 
     const form = screen.getByRole('form', { name: 'New advertisement' })
-    await user.type(within(form).getByLabelText('Title *'), 'Fresh ad')
-    await user.type(within(form).getByLabelText('Audio URL *'), 'https://cdn/fresh.mp3')
-    await user.click(within(form).getByRole('button', { name: 'Create ad' }))
+    fireEvent.change(within(form).getByLabelText('Title *'), { target: { value: 'Fresh ad' } })
+    fireEvent.change(within(form).getByLabelText('Audio URL *'), { target: { value: 'https://cdn/fresh.mp3' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'Create ad' }))
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1))
     expect(create).toHaveBeenCalledWith(
@@ -86,26 +85,23 @@ describe('AdminAdsPage', () => {
   })
 
   it('blocks submit and shows an error when required fields are missing', async () => {
-    const user = userEvent.setup()
     render(<AdminAdsPage />)
     await screen.findByText('No advertisements yet.')
 
-    await user.click(screen.getByRole('button', { name: 'New ad' }))
-    await user.click(screen.getByRole('button', { name: 'Create ad' }))
+    fireEvent.click(screen.getByRole('button', { name: 'New ad' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create ad' }))
 
     expect(await screen.findByText('Title is required.')).toBeInTheDocument()
     expect(create).not.toHaveBeenCalled()
   })
 
   it('saves the global serving settings', async () => {
-    const user = userEvent.setup()
     updateSettings.mockResolvedValue({ adsPerNTracks: 5, isEnabled: false })
     render(<AdminAdsPage />)
 
     const cadence = await screen.findByLabelText('Ads per N tracks')
-    await user.clear(cadence)
-    await user.type(cadence, '5')
-    await user.click(screen.getByRole('button', { name: 'Save settings' }))
+    fireEvent.change(cadence, { target: { value: '5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save settings' }))
 
     await waitFor(() => expect(updateSettings).toHaveBeenCalledTimes(1))
     expect(updateSettings).toHaveBeenCalledWith(expect.objectContaining({ adsPerNTracks: 5 }))

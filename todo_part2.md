@@ -159,9 +159,9 @@ Tests (this session):
 Goal: the ad countdown is correct, and the **2nd+** ad plays cleanly (no double audio,
 no glitchy timer). The 1st ad is currently OK; subsequent ones are buggy.
 
-- [ ] **#7** Fix the broken seconds countdown (timer drift / wrong remaining seconds).
-- [ ] **#9** Fix the 2nd-and-later ad: never play song + ad simultaneously; reset the timer/state fully between ads; ensure exactly one active ad at a time.
-- [ ] Audit ad lifecycle: start → countdown → end → resume music, and what state leaks between ads (likely a not-reset interval/ref or stale `playbackMode`).
+- [x] **#7** Fix the broken seconds countdown (timer drift / wrong remaining seconds). `PromoPlayer` now initializes remaining seconds from `durationMs`, clears/replaces fallback intervals, and ignores stale timer/audio callbacks after cleanup so the display resets cleanly per ad.
+- [x] **#9** Fix the 2nd-and-later ad: never play song + ad simultaneously; reset the timer/state fully between ads; ensure exactly one active ad at a time. `audioEngine` treats `currentAd` as a hard hold: cancels active crossfades and pauses both decks so an outgoing fade tail cannot keep playing under the ad; the store regression covers two full ad cycles.
+- [x] Audit ad lifecycle: start → countdown → end → resume music, and what state leaks between ads (likely a not-reset interval/ref or stale `playbackMode`). The leaks were stale fallback timers/callbacks in `PromoPlayer` and crossfade tail audio in `audioEngine`; both are pinned by focused tests.
 
 Likely files: `frontend/src/components/player/PromoPlayer.tsx`,
 `frontend/src/stores/playerStore.ts` (ad gating vs. playback), `frontend/src/services/adService.ts`,
@@ -170,9 +170,9 @@ backend: `backend/src/NotSpotify.Api/Controllers/AdsController.cs`,
 `backend/src/NotSpotify.Api/Models/Advertisement.cs`.
 
 Tests (this session):
-- [ ] `playerStore`/PromoPlayer logic test: timer counts down to 0 once per ad; music is paused for the whole ad and resumes after.
-- [ ] Regression test for "second ad": two ads back-to-back never overlap and the timer resets between them.
-- [ ] Backend `AdsControllerTests` covers the ad-selection/sequence path used by free tier.
+- [x] `playerStore`/PromoPlayer logic test: timer counts down to 0 once per ad; music is paused for the whole ad and resumes after. (`PromoPlayer.test.tsx`, `playerStore.test.ts`)
+- [x] Regression test for "second ad": two ads back-to-back never overlap and the timer resets between them. (`PromoPlayer.test.tsx`, `playerStore.test.ts`)
+- [x] Backend `AdsControllerTests` covers the ad-selection/sequence path used by free tier. (`dotnet test --filter AdsControllerTests` passes; also fixed a missing `NotSpotify.Api.Data` import in `AdminAdsControllerTests.cs` that blocked backend ad test compilation.)
 
 ---
 

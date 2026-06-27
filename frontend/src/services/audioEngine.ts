@@ -548,6 +548,7 @@ class AudioEngine {
       const {
         currentTrack,
         isPlaying,
+        currentAd,
         volume,
         isMuted,
         currentTime,
@@ -559,6 +560,11 @@ class AudioEngine {
       } = state
       const target = isMuted ? 0 : volumeToGain(volume)
       const contextKey = `${currentContextType ?? ''}:${currentContextId ?? ''}`
+
+      if (currentAd) {
+        this.cancelFade()
+        this.decks.forEach((deck) => deck.pause())
+      }
 
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {
@@ -589,7 +595,7 @@ class AudioEngine {
       if (isPlaying !== prevIsPlaying) {
         if (isPlaying) {
           this.resumeAudioGraph()
-          this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+          if (!currentAd) this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
         }
         else this.activeDeck.pause()
         prevIsPlaying = isPlaying

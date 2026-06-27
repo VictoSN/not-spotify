@@ -416,6 +416,38 @@ describe('playerStore — audio ads', () => {
     expect(s.currentAd).toBeNull()
     expect(s.currentTrack?.id).toBe('a') // nothing was queued behind the ad, so nothing advances
   })
+
+  it('serves a clean second ad cycle without overlapping or reusing the first held track', async () => {
+    setFree()
+    getNext
+      .mockResolvedValueOnce({ id: 'ad1', title: 'First ad' } as never)
+      .mockResolvedValueOnce({ id: 'ad2', title: 'Second ad' } as never)
+    const q = Array.from({ length: 12 }, (_, i) => track(`t${i}`))
+    usePlayerStore.getState().play(q[0], q)
+
+    for (let i = 0; i < 4; i++) usePlayerStore.getState().skipNext()
+    await flush()
+    expect(usePlayerStore.getState().currentAd).toEqual({ id: 'ad1', title: 'First ad' })
+    expect(usePlayerStore.getState().isPlaying).toBe(false)
+
+    usePlayerStore.getState().endAd()
+    expect(usePlayerStore.getState().currentTrack?.id).toBe('t4')
+    expect(usePlayerStore.getState().isPlaying).toBe(true)
+
+    for (let i = 0; i < 4; i++) usePlayerStore.getState().skipNext()
+    await flush()
+    expect(getNext).toHaveBeenCalledTimes(2)
+    expect(usePlayerStore.getState().currentAd).toEqual({ id: 'ad2', title: 'Second ad' })
+    expect(usePlayerStore.getState().currentTrack?.id).toBe('t7')
+    expect(usePlayerStore.getState().isPlaying).toBe(false)
+
+    usePlayerStore.getState().endAd()
+    const s = usePlayerStore.getState()
+    expect(s.currentAd).toBeNull()
+    expect(s.currentTrack?.id).toBe('t8')
+    expect(s.queueIndex).toBe(8)
+    expect(s.isPlaying).toBe(true)
+  })
 })
 
 describe('playerStore — playback context', () => {

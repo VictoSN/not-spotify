@@ -33,19 +33,22 @@ export function PromoPlayer() {
     adService.recordImpression(ad.id).catch(() => {})
 
     let done = false
-    let fallbackTimer = 0
+    let fallbackTimer: number | null = null
     const finish = () => {
       if (done) return
       done = true
-      window.clearInterval(fallbackTimer)
+      if (fallbackTimer != null) window.clearInterval(fallbackTimer)
       endAd()
     }
 
     // Time-based fallback: ends the break even if the audio never plays.
     const startFallback = (totalSeconds: number) => {
+      if (done) return
+      if (fallbackTimer != null) window.clearInterval(fallbackTimer)
       const startedAt = Date.now()
       setRemaining(Math.ceil(totalSeconds))
       fallbackTimer = window.setInterval(() => {
+        if (done) return
         const left = totalSeconds - (Date.now() - startedAt) / 1000
         setRemaining(Math.max(0, Math.ceil(left)))
         if (left <= 0) finish()
@@ -54,13 +57,17 @@ export function PromoPlayer() {
 
     if (!ad.audioUrl) {
       startFallback(ad.durationMs > 0 ? ad.durationMs / 1000 : FALLBACK_SECONDS)
-      return () => window.clearInterval(fallbackTimer)
+      return () => {
+        done = true
+        if (fallbackTimer != null) window.clearInterval(fallbackTimer)
+      }
     }
 
     const audio = new Audio(ad.audioUrl)
     audio.preload = 'auto'
     audio.volume = isMuted ? 0 : volume
     audioRef.current = audio
+    if (ad.durationMs > 0) setRemaining(Math.ceil(ad.durationMs / 1000))
 
     const onTime = () => {
       const total = Number.isFinite(audio.duration) && audio.duration > 0
@@ -81,7 +88,8 @@ export function PromoPlayer() {
     })
 
     return () => {
-      window.clearInterval(fallbackTimer)
+      done = true
+      if (fallbackTimer != null) window.clearInterval(fallbackTimer)
       audio.pause()
       audio.removeEventListener('timeupdate', onTime)
       audio.removeEventListener('loadedmetadata', onTime)

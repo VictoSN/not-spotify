@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Controllers.Admin;
+using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Models;
 using Xunit;

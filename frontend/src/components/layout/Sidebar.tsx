@@ -651,7 +651,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               type="button"
               onClick={collapseLibrarySidebar}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 group-hover/sidebar:pl-9',
                 'text-base',
               )}
               aria-label={t('sidebar.collapse')}
@@ -807,7 +807,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               onClick={collapseLibrarySidebar}
               onContextMenu={handleLibraryTitleContextMenu}
               className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
                 'text-base',
                 !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
               )}
@@ -1065,7 +1065,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
                   <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
-                  <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
+                  <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
                     {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                   </p>
                 </NavLink>
@@ -1122,7 +1122,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
-                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">
+                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
                       {t('sidebar.likedSongsSub', { n: likedSongs.length })}
                     </p>
                   </div>
@@ -1525,7 +1525,7 @@ function LibraryListRow({
           </p>
           <p
             className={cn(
-              'mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]',
+              'mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary',
               pinned && 'pl-5',
             )}
           >
@@ -1629,7 +1629,7 @@ function LibraryGridCard({
         <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
           {item.name}
         </p>
-        <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
+        <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">{item.subtitle}</p>
       </NavLink>
       {children}
       {menuPlaylist && <PlaylistRowMenu ref={playlistMenuRef} playlist={menuPlaylist} />}

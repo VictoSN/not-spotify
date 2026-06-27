@@ -47,7 +47,7 @@ export function DesktopTitleBar() {
 
   return (
     <div
-      className="desktop-titlebar flex h-9 shrink-0 items-center border-b border-elevated/50 bg-black text-primary select-none"
+      className="desktop-titlebar flex h-9 shrink-0 items-center border-b border-elevated/50 bg-base text-primary select-none"
       onMouseDown={(event) => {
         if (event.button !== 0) return
         if (event.detail === 2) void toggleMaximize()

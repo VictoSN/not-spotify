@@ -55,7 +55,7 @@ export const MediaMenuShell = forwardRef<PointerMenuHandle, MediaMenuShellProps>
               }}
               className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
             >
-              <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-white'} />
+              <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary'} />
             </button>
 
             {createPortal(

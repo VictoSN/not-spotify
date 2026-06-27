@@ -2497,7 +2497,7 @@ function highlightQueryText(text: string, query: string) {
   return text.split(pattern).map((part, index) => {
     if (terms.some((term) => part.toLowerCase() === term.toLowerCase())) {
       return (
-        <mark key={`${part}-${index}`} className="bg-transparent font-black text-white/85">
+        <mark key={`${part}-${index}`} className="bg-transparent font-black text-primary">
           {part}
         </mark>
       )
@@ -2533,7 +2533,7 @@ export function SupportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] text-white antialiased">
+    <div className="min-h-screen bg-page text-primary antialiased">
       <SupportHeader user={user} isAuthenticated={isAuthenticated} logout={logout} />
       <main>
         {selectedArticle ? (
@@ -2577,24 +2577,24 @@ function SupportHeader({
   logout: () => void
 }) {
   return (
-    <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-black px-4 shadow-[0_1px_0_rgba(255,255,255,0.04)]">
+    <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-base px-4 border-b border-primary/5">
       <div className="flex min-w-0 items-center gap-6">
-        <Link to="/" className="flex items-center gap-2 text-white" aria-label="Not Spotify home">
-          <SpotifyMark className="h-6 w-6 text-white" />
+        <Link to="/" className="flex items-center gap-2 text-primary" aria-label="Not Spotify home">
+          <SpotifyMark className="h-6 w-6 text-primary" />
           <span className="hidden text-xl font-black tracking-[-0.02em] sm:inline">Not Spotify</span>
         </Link>
-        <nav className="hidden items-center gap-7 text-xs font-black text-white md:flex">
-          <Link to="/premium" className="transition-colors hover:text-primary">
+        <nav className="hidden items-center gap-7 text-xs font-black text-primary md:flex">
+          <Link to="/premium" className="transition-colors hover:text-accent">
             Explore Premium
           </Link>
           <InstallAppButton className="transition-colors hover:text-primary" />
         </nav>
       </div>
 
-      <div className="flex shrink-0 items-center gap-4 text-xs font-black text-white">
+      <div className="flex shrink-0 items-center gap-4 text-xs font-black text-primary">
         <button
           type="button"
-          className="hidden items-center gap-2 text-white/90 transition-colors hover:text-white sm:flex"
+          className="hidden items-center gap-2 text-primary/90 transition-colors hover:text-primary sm:flex"
           aria-label="Language"
         >
           <Globe2 className="h-4 w-4" />
@@ -2608,7 +2608,7 @@ function SupportHeader({
               to="/account"
               className="flex h-8 items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-3 text-xs font-black text-black transition-transform hover:scale-105 active:scale-95"
             >
-              <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Account'} size="sm" round className="!h-6 !w-6 bg-[#535353] text-[10px] text-white" />
+              <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Account'} size="sm" round className="!h-6 !w-6 bg-elevated text-[10px] text-primary" />
               Account
             </Link>
           </>
@@ -2651,11 +2651,11 @@ function SupportHome({
         <div className="pointer-events-none absolute left-1/2 top-28 h-36 w-[470px] -translate-x-1/2 rounded-full bg-[radial-gradient(circle_at_35%_50%,rgba(30,215,96,0.18),transparent_38%),radial-gradient(circle_at_72%_55%,rgba(68,122,255,0.2),transparent_42%)] blur-3xl" />
 
         <div className="relative mx-auto max-w-[520px] text-center">
-          <h1 className="text-[32px] font-black leading-none tracking-[-0.02em] text-white sm:text-[40px]">
+          <h1 className="text-[32px] font-black leading-none tracking-[-0.02em] text-primary sm:text-[40px]">
             Not Spotify Support
           </h1>
 
-          <div className="mx-auto mt-8 max-w-[390px] rounded-[2px] border border-white/35 bg-[#121212] p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.42)]">
+          <div className="mx-auto mt-8 max-w-[390px] rounded-[2px] border border-primary/20 bg-page p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
             <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
 
             <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search" />
@@ -2667,11 +2667,11 @@ function SupportHome({
         <BrowseHelpArticles groups={SUPPORT_GROUPS} />
       </section>
 
-      <section className="relative z-0 bg-[#2a2a2a] px-4 py-7 sm:py-8">
+      <section className="relative z-0 bg-elevated px-4 py-7 sm:py-8">
         <div className="mx-auto max-w-[390px]">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-lg font-black tracking-[-0.02em] text-white">Quick help</h2>
-            <SlidersHorizontal className="hidden h-4 w-4 text-white/40 sm:block" />
+            <h2 className="text-lg font-black tracking-[-0.02em] text-primary">Quick help</h2>
+            <SlidersHorizontal className="hidden h-4 w-4 text-secondary sm:block" />
           </div>
 
           <div className="space-y-1">
@@ -2680,14 +2680,14 @@ function SupportHome({
                 <Link
                   key={item.slug}
                   to={supportTopicHref(item.slug)}
-                  className="flex items-center justify-between py-3 text-xs font-black text-white transition-colors hover:text-[#1ed760]"
+                  className="flex items-center justify-between py-3 text-xs font-black text-primary transition-colors hover:text-accent"
                 >
                   <span>{item.title}</span>
-                  <ChevronRight className="h-5 w-5 text-white/55" />
+                  <ChevronRight className="h-5 w-5 text-secondary" />
                 </Link>
               ))
             ) : (
-              <p className="py-3.5 text-sm font-bold text-white/60">No quick help matches that search.</p>
+              <p className="py-3.5 text-sm font-bold text-secondary">No quick help matches that search.</p>
             )}
           </div>
         </div>
@@ -2702,7 +2702,7 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
 
   return (
     <div>
-      <h2 className="text-lg font-black tracking-[-0.02em] text-white">Browse help articles</h2>
+      <h2 className="text-lg font-black tracking-[-0.02em] text-primary">Browse help articles</h2>
 
       <div className="mt-4">
         {groups.length > 0 ? (
@@ -2710,16 +2710,16 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
             const isOpen = openGroup === id
 
             return (
-              <div key={id} className="border-b border-white/20">
+              <div key={id} className="border-b border-primary/20">
                 <button
                   type="button"
                   onClick={() => setOpenGroup(isOpen ? null : id)}
                   className="group flex w-full items-center gap-3 py-3.5 text-left"
                   aria-expanded={isOpen}
                 >
-                  <Icon className="h-4 w-4 shrink-0 text-[#1ed760]" strokeWidth={2.4} />
-                  <span className="min-w-0 flex-1 text-xs font-black text-white">{title}</span>
-                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-white/60 transition-transform group-hover:text-white', isOpen && 'rotate-180')} />
+                  <Icon className="h-4 w-4 shrink-0 text-accent" strokeWidth={2.4} />
+                  <span className="min-w-0 flex-1 text-xs font-black text-primary">{title}</span>
+                  <ChevronDown className={cn('h-4 w-4 shrink-0 text-secondary transition-transform group-hover:text-primary', isOpen && 'rotate-180')} />
                 </button>
 
                 <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
@@ -2732,11 +2732,11 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
                             <button
                               type="button"
                               onClick={() => setOpenSection(sectionOpen ? null : section.id)}
-                              className="flex w-full items-center justify-between py-2 text-left text-xs font-black text-white transition-colors hover:text-[#1ed760]"
+                              className="flex w-full items-center justify-between py-2 text-left text-xs font-black text-primary transition-colors hover:text-accent"
                               aria-expanded={sectionOpen}
                             >
                               <span>{section.title}</span>
-                              <ChevronDown className={cn('h-3.5 w-3.5 text-white/60 transition-transform', sectionOpen && 'rotate-180')} />
+                              <ChevronDown className={cn('h-3.5 w-3.5 text-secondary transition-transform', sectionOpen && 'rotate-180')} />
                             </button>
                             <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', sectionOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
                               <div className="overflow-hidden">
@@ -2745,7 +2745,7 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
                                     <Link
                                       key={item.slug}
                                       to={supportTopicHref(item.slug)}
-                                      className="block rounded-sm py-1.5 text-xs font-bold text-white/90 transition-colors hover:text-[#1ed760]"
+                                      className="block rounded-sm py-1.5 text-xs font-bold text-primary/90 transition-colors hover:text-accent"
                                     >
                                       {item.title}
                                     </Link>
@@ -2763,7 +2763,7 @@ function BrowseHelpArticles({ groups }: { groups: HelpGroup[] }) {
             )
           })
         ) : (
-          <div className="rounded-md border border-white/15 bg-white/[0.03] p-5 text-sm font-bold text-white/70">
+          <div className="rounded-md border border-secondary/30 bg-elevated p-5 text-sm font-bold text-secondary">
             No help articles match that search.
           </div>
         )}
@@ -2793,20 +2793,20 @@ function SearchResultsPage({
       <div className="mx-auto max-w-[390px]">
         <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} onClear={onClear} placeholder="Search support" />
 
-        <nav className="mt-5 flex items-center gap-2 text-xs font-black text-white/65">
-          <Link to="/support" className="transition-colors hover:text-white">
+        <nav className="mt-5 flex items-center gap-2 text-xs font-black text-secondary">
+          <Link to="/support" className="transition-colors hover:text-primary">
             Home
           </Link>
-          <ChevronRight className="h-3.5 w-3.5 text-white/45" />
-          <span className="text-white/80">Search Results</span>
+          <ChevronRight className="h-3.5 w-3.5 text-secondary/60" />
+          <span className="text-primary/80">Search Results</span>
         </nav>
 
-        <p className="mt-7 text-xs font-black text-white/75">
+        <p className="mt-7 text-xs font-black text-primary/75">
           {results.length} search {results.length === 1 ? 'result' : 'results'} for "{normalized}"
         </p>
 
         {results.length > 0 ? (
-          <div className="mt-3 divide-y divide-white/10">
+          <div className="mt-3 divide-y divide-primary/10">
             {results.map((article) => {
               const excerpt = getArticleExcerpt(article, normalized)
 
@@ -2816,8 +2816,8 @@ function SearchResultsPage({
                     <FileText className="h-3.5 w-3.5" />
                     Help article
                   </span>
-                  <span className="block text-xs font-black text-white">{article.title}</span>
-                  <span className="mt-1 block text-[11px] font-semibold leading-4 text-white/60">
+                  <span className="block text-xs font-black text-primary">{article.title}</span>
+                  <span className="mt-1 block text-[11px] font-semibold leading-4 text-secondary">
                     {highlightQueryText(excerpt, normalized)}
                   </span>
                 </Link>
@@ -2825,9 +2825,9 @@ function SearchResultsPage({
             })}
           </div>
         ) : (
-          <div className="mt-6 rounded-sm border border-white/15 bg-white/[0.03] p-5">
-            <p className="text-sm font-black text-white">No results found</p>
-            <p className="mt-2 text-xs font-semibold leading-5 text-white/60">Try a different keyword or browse help articles from the support home page.</p>
+          <div className="mt-6 rounded-sm border border-secondary/20 bg-elevated p-5">
+            <p className="text-sm font-black text-primary">No results found</p>
+            <p className="mt-2 text-xs font-semibold leading-5 text-secondary">Try a different keyword or browse help articles from the support home page.</p>
           </div>
         )}
       </div>
@@ -2856,12 +2856,12 @@ function ArticlePage({
 
       <div className="relative mx-auto grid max-w-[1120px] gap-12 lg:grid-cols-[minmax(0,650px)_330px] lg:gap-20">
         <div className="min-w-0">
-          <nav className="mb-6 flex items-center gap-2 text-sm font-black text-white/75">
-            <Link to="/support" className="transition-colors hover:text-white">
+          <nav className="mb-6 flex items-center gap-2 text-sm font-black text-secondary">
+            <Link to="/support" className="transition-colors hover:text-primary">
               Home
             </Link>
-            <ChevronRight className="h-4 w-4 text-white/50" />
-            <span className="text-white">{article.groupTitle}</span>
+            <ChevronRight className="h-4 w-4 text-secondary/60" />
+            <span className="text-primary">{article.groupTitle}</span>
           </nav>
 
           <ArticleSearchPanel
@@ -2871,20 +2871,20 @@ function ArticlePage({
             setActiveMode={setActiveMode}
             onSearch={onSearch}
           />
-          <p className="mt-3 text-xs font-bold text-white/80">You're engaging with an AI-powered tool.</p>
+          <p className="mt-3 text-xs font-bold text-secondary">You're engaging with an AI-powered tool.</p>
 
           <Link
             to="/account"
-            className="mt-8 flex items-center gap-4 rounded-md bg-[#2a2a2a] p-4 text-left transition-colors hover:bg-[#333]"
+            className="mt-8 flex items-center gap-4 rounded-md bg-elevated p-4 text-left transition-colors hover:bg-surface"
           >
-            <span className="flex h-14 w-14 shrink-0 rotate-6 items-center justify-center rounded-md bg-black shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]">
-              <UserRound className="h-8 w-8 -rotate-6 text-[#1ed760]" />
+            <span className="flex h-14 w-14 shrink-0 rotate-6 items-center justify-center rounded-md bg-page ring-1 ring-primary/10">
+              <UserRound className="h-8 w-8 -rotate-6 text-accent" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-black text-white">Manage your account</span>
-              <span className="block text-sm font-semibold text-white/80">Your profile, payment and more.</span>
+              <span className="block text-base font-black text-primary">Manage your account</span>
+              <span className="block text-sm font-semibold text-secondary">Your profile, payment and more.</span>
             </span>
-            <ChevronRight className="h-6 w-6 shrink-0 text-white/70" />
+            <ChevronRight className="h-6 w-6 shrink-0 text-secondary" />
           </Link>
 
           <ArticleContent article={article} />
@@ -2912,7 +2912,7 @@ function ArticleSearchPanel({
   onSearch: () => void
 }) {
   return (
-    <div className="rounded-[3px] border border-white/35 bg-[#121212] p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.36)]">
+    <div className="rounded-[3px] border border-primary/20 bg-page p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
       <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
       <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search support" />
     </div>
@@ -3029,15 +3029,15 @@ function SearchModeTabs({
   setActiveMode: (value: 'ai' | 'basic') => void
 }) {
   return (
-    <div className="mx-auto mb-2.5 flex h-6 max-w-[215px] rounded-full bg-[#2a2a2a] p-0.5 text-[10px] font-black">
+    <div className="mx-auto mb-2.5 flex h-6 max-w-[215px] rounded-full bg-elevated p-0.5 text-[10px] font-black">
       <button
         type="button"
         onClick={() => setActiveMode('ai')}
         className={cn(
           'flex flex-1 items-center justify-center gap-1.5 rounded-full border transition-colors',
           activeMode === 'ai'
-            ? 'border-[#1ed760] bg-[#151515] text-white shadow-sm'
-            : 'border-transparent text-white/70 hover:text-white',
+            ? 'border-accent bg-page text-primary shadow-sm'
+            : 'border-transparent text-secondary hover:text-primary',
         )}
       >
         <Search className="h-3 w-3" />
@@ -3049,8 +3049,8 @@ function SearchModeTabs({
         className={cn(
           'flex flex-1 items-center justify-center gap-1.5 rounded-full border transition-colors',
           activeMode === 'basic'
-            ? 'border-white/55 bg-[#2a2a2a] text-white'
-            : 'border-transparent text-white/70 hover:text-white',
+            ? 'border-secondary/55 bg-elevated text-primary'
+            : 'border-transparent text-secondary hover:text-primary',
         )}
       >
         <Bot className="h-3 w-3" />
@@ -3097,16 +3097,16 @@ function GuideSteps({ storageKey, steps }: { storageKey: string; steps: string[]
   const pct = steps.length ? Math.round((completed / steps.length) * 100) : 0
 
   return (
-    <div className="rounded-md border border-white/12 bg-[#1c1c1c] p-4">
+    <div className="rounded-md border border-secondary/20 bg-elevated p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-black text-white">
+        <p className="text-sm font-black text-primary">
           {allDone ? "✅ You're all set" : `${completed} of ${steps.length} steps done`}
         </p>
         {completed > 0 && (
           <button
             type="button"
             onClick={() => persist(steps.map(() => false))}
-            className="inline-flex items-center gap-1 text-xs font-bold text-white/55 transition-colors hover:text-white"
+            className="inline-flex items-center gap-1 text-xs font-bold text-secondary transition-colors hover:text-primary"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             Reset
@@ -3114,8 +3114,8 @@ function GuideSteps({ storageKey, steps }: { storageKey: string; steps: string[]
         )}
       </div>
 
-      <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
-        <div className="h-full rounded-full bg-[#1ed760] transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-primary/10">
+        <div className="h-full rounded-full bg-accent transition-[width] duration-300" style={{ width: `${pct}%` }} />
       </div>
 
       <ul className="space-y-0.5">
@@ -3126,17 +3126,17 @@ function GuideSteps({ storageKey, steps }: { storageKey: string; steps: string[]
               role="checkbox"
               aria-checked={done[i]}
               onClick={() => toggle(i)}
-              className="flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-white/[0.04]"
+              className="flex w-full items-start gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-primary/5"
             >
               <span
                 className={cn(
                   'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
-                  done[i] ? 'border-[#1ed760] bg-[#1ed760] text-black' : 'border-white/40 text-transparent',
+                  done[i] ? 'border-accent bg-accent text-black' : 'border-secondary/50 text-transparent',
                 )}
               >
                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
               </span>
-              <span className={cn('text-[15px] font-semibold leading-6', done[i] ? 'text-white/50 line-through' : 'text-white')}>
+              <span className={cn('text-[15px] font-semibold leading-6', done[i] ? 'text-secondary line-through' : 'text-primary')}>
                 {step}
               </span>
             </button>
@@ -3149,10 +3149,10 @@ function GuideSteps({ storageKey, steps }: { storageKey: string; steps: string[]
 
 function ArticleContent({ article }: { article: ArticleDetail }) {
   return (
-    <article className="mt-8 rounded-md bg-[#2a2a2a] px-7 py-8 text-white shadow-[0_22px_70px_rgba(0,0,0,0.22)] sm:px-8 sm:py-9">
+    <article className="mt-8 rounded-md bg-elevated px-7 py-8 text-primary shadow-[0_22px_70px_rgba(0,0,0,0.10)] sm:px-8 sm:py-9">
       <h1 className="text-[40px] font-black leading-tight tracking-[-0.04em] sm:text-5xl">{article.title}</h1>
 
-      <div className="mt-8 space-y-8 text-[15px] font-bold leading-6 text-white">
+      <div className="mt-8 space-y-8 text-[15px] font-bold leading-6 text-primary">
         {article.blocks.map((block, index) => (
           <section key={`${article.slug}-${index}`}>
             {block.heading && <h2 className="mb-4 text-3xl font-black tracking-[-0.04em]">{block.heading}</h2>}
@@ -3215,8 +3215,8 @@ function ArticleFeedback({ slug }: { slug: string }) {
   }
 
   return (
-    <section className="mt-8 flex flex-col gap-4 rounded-md bg-[#2a2a2a] p-5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-base font-black text-white">
+    <section className="mt-8 flex flex-col gap-4 rounded-md bg-elevated p-5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-base font-black text-primary">
         {vote ? 'Thanks for your feedback.' : 'Was this article helpful?'}
       </p>
       {!vote && (
@@ -3224,7 +3224,7 @@ function ArticleFeedback({ slug }: { slug: string }) {
           <button
             type="button"
             onClick={() => record('up')}
-            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2 text-sm font-black text-white transition-colors hover:border-white hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-2 rounded-full border border-secondary/40 px-5 py-2 text-sm font-black text-primary transition-colors hover:border-primary hover:bg-elevated"
           >
             <ThumbsUp className="h-4 w-4" />
             Yes
@@ -3232,7 +3232,7 @@ function ArticleFeedback({ slug }: { slug: string }) {
           <button
             type="button"
             onClick={() => record('down')}
-            className="inline-flex items-center gap-2 rounded-full border border-white/25 px-5 py-2 text-sm font-black text-white transition-colors hover:border-white hover:bg-white/[0.06]"
+            className="inline-flex items-center gap-2 rounded-full border border-secondary/40 px-5 py-2 text-sm font-black text-primary transition-colors hover:border-primary hover:bg-elevated"
           >
             <ThumbsDown className="h-4 w-4" />
             No
@@ -3247,19 +3247,19 @@ function RelatedArticles({ article }: { article: ArticleDetail }) {
   if (article.related.length === 0) return null
 
   return (
-    <section className="mt-8 rounded-md bg-[#2a2a2a] p-6">
-      <h2 className="text-base font-black text-white">Related Articles</h2>
-      <div className="mt-4 divide-y divide-white/10">
+    <section className="mt-8 rounded-md bg-elevated p-6">
+      <h2 className="text-base font-black text-primary">Related Articles</h2>
+      <div className="mt-4 divide-y divide-primary/10">
         {article.related.map((slug) => {
           const related = getArticle(slug)
           return (
             <Link
               key={slug}
               to={supportTopicHref(slug)}
-              className="flex items-center justify-between py-3 text-sm font-black text-white transition-colors hover:text-[#1ed760]"
+              className="flex items-center justify-between py-3 text-sm font-black text-primary transition-colors hover:text-accent"
             >
               {related.title}
-              <ChevronRight className="h-5 w-5 text-white/50" />
+              <ChevronRight className="h-5 w-5 text-secondary" />
             </Link>
           )
         })}
@@ -3279,19 +3279,19 @@ function ArticleSidebar({ article }: { article: ArticleDetail }) {
 
   return (
     <aside className="lg:sticky lg:top-20 lg:self-start">
-      <div className="overflow-hidden rounded-md bg-[#2a2a2a] text-white shadow-[0_22px_70px_rgba(0,0,0,0.18)]">
+      <div className="overflow-hidden rounded-md bg-elevated text-primary shadow-[0_22px_70px_rgba(0,0,0,0.10)]">
         {SUPPORT_GROUPS.map((group) => {
           const groupOpen = openGroup === group.id
           return (
-            <div key={group.id} className="border-b border-white/20 last:border-b-0">
+            <div key={group.id} className="border-b border-primary/10 last:border-b-0">
               <button
                 type="button"
                 onClick={() => setOpenGroup(groupOpen ? null : group.id)}
-                className="flex w-full items-center justify-between px-6 py-5 text-left text-base font-black text-white transition-colors hover:bg-white/[0.04]"
+                className="flex w-full items-center justify-between px-6 py-5 text-left text-base font-black text-primary transition-colors hover:bg-primary/5"
                 aria-expanded={groupOpen}
               >
                 <span>{group.title}</span>
-                <ChevronDown className={cn('h-4 w-4 text-white/70 transition-transform', groupOpen && 'rotate-180')} />
+                <ChevronDown className={cn('h-4 w-4 text-secondary transition-transform', groupOpen && 'rotate-180')} />
               </button>
 
               <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', groupOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
@@ -3304,11 +3304,11 @@ function ArticleSidebar({ article }: { article: ArticleDetail }) {
                           <button
                             type="button"
                             onClick={() => setOpenSection(sectionOpen ? null : section.id)}
-                            className="flex w-full items-center justify-between py-3 text-left text-sm font-black text-white transition-colors hover:text-[#1ed760]"
+                            className="flex w-full items-center justify-between py-3 text-left text-sm font-black text-primary transition-colors hover:text-accent"
                             aria-expanded={sectionOpen}
                           >
                             <span>{section.title}</span>
-                            <ChevronDown className={cn('h-4 w-4 text-white/60 transition-transform', sectionOpen && 'rotate-180')} />
+                            <ChevronDown className={cn('h-4 w-4 text-secondary transition-transform', sectionOpen && 'rotate-180')} />
                           </button>
                           <div className={cn('grid transition-[grid-template-rows,opacity] duration-200 ease-out', sectionOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
                             <div className="overflow-hidden">
@@ -3318,8 +3318,8 @@ function ArticleSidebar({ article }: { article: ArticleDetail }) {
                                     key={item.slug}
                                     to={supportTopicHref(item.slug)}
                                     className={cn(
-                                      'block py-2 text-sm font-bold transition-colors hover:text-[#1ed760]',
-                                      item.slug === article.slug ? 'text-[#1ed760]' : 'text-white/90',
+                                      'block py-2 text-sm font-bold transition-colors hover:text-accent',
+                                      item.slug === article.slug ? 'text-accent' : 'text-primary/90',
                                     )}
                                     aria-current={item.slug === article.slug ? 'page' : undefined}
                                   >

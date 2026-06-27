@@ -169,7 +169,7 @@ export function ArtistEventDetailPage() {
           <button
             type="button"
             onClick={() => void shareLink(`/artist/${artist.id}/events/${event.id}`, { title: `${artist.name} at ${event.venue}` })}
-            className="rounded-full p-2 text-secondary transition-colors hover:bg-white/10 hover:text-primary"
+            className="rounded-full p-2 text-secondary transition-colors hover:bg-elevated hover:text-primary"
             aria-label="Share event"
           >
             <ShareIcon className="h-6 w-6" />

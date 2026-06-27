@@ -120,7 +120,7 @@ export function SocialAuthButtons({
                 onUnavailable(provider.id)
               }
             }}
-            className="relative flex h-12 w-full items-center justify-center rounded-full border border-[#727272] bg-transparent px-12 text-sm font-bold text-primary transition-all hover:border-primary active:scale-[0.99]"
+            className="relative flex h-12 w-full items-center justify-center rounded-full border border-secondary/60 bg-transparent px-12 text-sm font-bold text-primary transition-all hover:border-primary active:scale-[0.99]"
           >
             <span className="absolute left-6">
               <ProviderIcon provider={provider.id} />

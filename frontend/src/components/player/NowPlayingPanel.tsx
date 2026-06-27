@@ -412,7 +412,7 @@ export function NowPlayingPanel() {
     const heroOpacity = Math.max(0, 1 - heroProgress * 1.35)
     // Shared style for the compact top-right control buttons (subtle circular
     // gray hover, gray→white on hover — Spotify fullscreen).
-    const npFsControlClass = 'flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-white/10 hover:text-primary active:scale-95'
+    const npFsControlClass = 'flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-95'
     const artistHeroImage = artist?.headerImageUrl ?? artist?.imageUrl ?? artistAvatarUrl ?? null
     // Fall back to artwork if the selected hero source isn't available for this track.
     const effectiveHeroView =
@@ -425,8 +425,8 @@ export function NowPlayingPanel() {
     // vertical fade that deepens into the page colour — fills the panel edge to
     // edge and keeps the cover visually fused with the background (Spotify-like).
     const expandedHeroBackground = albumHeroColor
-      ? `radial-gradient(130% 70% at 50% 0%, color-mix(in srgb, ${albumHeroColor} 55%, transparent) 0%, transparent 72%), linear-gradient(to bottom, color-mix(in srgb, ${albumHeroColor} 72%, #121212) 0%, color-mix(in srgb, ${albumHeroColor} 40%, #121212) 45%, color-mix(in srgb, ${albumHeroColor} 12%, #121212) 72%, #121212 100%)`
-      : 'linear-gradient(to bottom, #181818 0%, #151515 52%, #121212 100%)'
+      ? `radial-gradient(130% 70% at 50% 0%, color-mix(in srgb, ${albumHeroColor} 55%, transparent) 0%, transparent 72%), linear-gradient(to bottom, color-mix(in srgb, ${albumHeroColor} 72%, var(--c-page)) 0%, color-mix(in srgb, ${albumHeroColor} 40%, var(--c-page)) 45%, color-mix(in srgb, ${albumHeroColor} 12%, var(--c-page)) 72%, var(--c-page) 100%)`
+      : 'linear-gradient(to bottom, var(--c-surface) 0%, color-mix(in srgb, var(--c-surface) 50%, var(--c-page)) 52%, var(--c-page) 100%)'
 
     return (
       <aside ref={panelRef} style={panelStyle} className={panelClass}>
@@ -435,7 +435,7 @@ export function NowPlayingPanel() {
         )}
         <div
           onScroll={(event) => setExpandedScroll(event.currentTarget.scrollTop)}
-          className="spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll relative flex-1 overflow-y-auto bg-[#121212]"
+          className="spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll relative flex-1 overflow-y-auto bg-page"
         >
           <div
             aria-hidden
@@ -445,7 +445,7 @@ export function NowPlayingPanel() {
 
           <div
             className="sticky top-0 z-30 flex items-center justify-between gap-5 px-5 py-4 transition-colors duration-200"
-            style={{ backgroundColor: `rgba(18,18,18,${Math.min(0.82, heroProgress * 0.95)})` }}
+            style={{ backgroundColor: `color-mix(in srgb, var(--c-page) ${Math.min(82, heroProgress * 95)}%, transparent)` }}
           >
             <Link
               to={`/album/${currentTrack.album.id}`}
@@ -462,7 +462,7 @@ export function NowPlayingPanel() {
                 aria-label={t('np.showArtwork')}
                 aria-pressed={heroView === 'artwork'}
                 title={t('np.showArtwork')}
-                className={cn(npFsControlClass, heroView === 'artwork' && 'bg-white/10 text-primary')}
+                className={cn(npFsControlClass, heroView === 'artwork' && 'bg-primary/10 text-primary')}
               >
                 <PhotoIcon className="h-[18px] w-[18px]" />
               </button>
@@ -474,7 +474,7 @@ export function NowPlayingPanel() {
                 title={video ? t('np.showClip') : t('np.noClip')}
                 className={cn(
                   npFsControlClass,
-                  heroView === 'canvas' && 'bg-white/10 text-primary',
+                  heroView === 'canvas' && 'bg-primary/10 text-primary',
                   !video && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
                 )}
               >
@@ -488,7 +488,7 @@ export function NowPlayingPanel() {
                 title={t('np.showArtist')}
                 className={cn(
                   npFsControlClass,
-                  heroView === 'artist' && 'bg-white/10 text-primary',
+                  heroView === 'artist' && 'bg-primary/10 text-primary',
                   !artistHeroImage && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
                 )}
               >
@@ -664,7 +664,7 @@ export function NowPlayingPanel() {
                         </Link>
                       </div>
                       {upNext.slice(0, 3).map((track) => (
-                        <Link key={track.id} to={`/track/${track.id}`} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-white/5">
+                        <Link key={track.id} to={`/track/${track.id}`} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-elevated/50">
                           <img src={track.album.coverUrl} alt="" className="h-12 w-12 rounded object-cover" />
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-primary">{track.title}</p>
@@ -729,9 +729,9 @@ export function NowPlayingPanel() {
                             <Link
                               key={dateItem.id}
                               to={`/artist/${artist.id}/events/${dateItem.id}`}
-                              className="flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-white/5"
+                              className="flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-elevated/40"
                             >
-                              <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded bg-black text-center leading-none">
+                              <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded bg-elevated text-center leading-none">
                                 <span className="text-[10px] font-black uppercase text-secondary">
                                   {date.toLocaleDateString(undefined, { month: 'short' })}
                                 </span>
@@ -1020,9 +1020,9 @@ export function NowPlayingPanel() {
                     <Link
                       key={dateItem.id}
                       to={`/artist/${artistId}/events/${dateItem.id}`}
-                      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-md transition-colors hover:bg-white/5"
+                      className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-md transition-colors hover:bg-elevated/40"
                     >
-                      <div className="flex h-14 w-14 flex-col items-center justify-center rounded bg-black/65 text-center leading-none">
+                      <div className="flex h-14 w-14 flex-col items-center justify-center rounded bg-elevated text-center leading-none">
                         <span className="text-[10px] font-black text-primary">
                           {date.toLocaleDateString(undefined, { month: 'short' })}
                         </span>

@@ -478,7 +478,7 @@ export function PlaylistDetailPage() {
               <button
                 type="button"
                 onClick={openEditDetails}
-                className="cursor-pointer text-left focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                className="cursor-pointer text-left focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70"
                 aria-label={`Edit details for ${playlist.name}`}
               >
                 {playlist.name}
@@ -679,7 +679,7 @@ export function PlaylistDetailPage() {
         <Dialog open onClose={closeEditDetails} className="relative z-[100]">
           <div className="fixed inset-0 bg-black/70 backdrop-blur-[1px]" aria-hidden="true" />
           <div className="fixed inset-0 flex items-center justify-center p-4">
-            <DialogPanel className="spotify-scrollbar max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg bg-[#282828] p-6 text-primary shadow-2xl ring-1 ring-white/5">
+            <DialogPanel className="spotify-scrollbar max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg bg-elevated p-6 text-primary shadow-2xl ring-1 ring-primary/10">
               <form onSubmit={handleSaveEdits}>
                 <div className="mb-6 flex items-center justify-between gap-4">
                   <DialogTitle className="text-2xl font-bold">Edit details</DialogTitle>
@@ -687,7 +687,7 @@ export function PlaylistDetailPage() {
                     type="button"
                     onClick={closeEditDetails}
                     disabled={busy}
-                    className="rounded-full p-1 text-secondary transition-colors hover:bg-white/10 hover:text-primary disabled:opacity-50"
+                    className="rounded-full p-1 text-secondary transition-colors hover:bg-elevated hover:text-primary disabled:opacity-50"
                     aria-label="Close edit details"
                   >
                     <XMarkIcon className="h-6 w-6" />
@@ -700,7 +700,7 @@ export function PlaylistDetailPage() {
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="h-10 rounded border border-white/20 bg-[#3e3e3e] px-3 text-sm text-primary outline-none transition-colors focus:border-white/60"
+                  className="h-10 rounded border border-secondary/30 bg-surface px-3 text-sm text-primary outline-none transition-colors focus:border-primary/60"
                   autoFocus
                   required
                 />
@@ -711,7 +711,7 @@ export function PlaylistDetailPage() {
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Add an optional description"
-                  className="min-h-[124px] resize-none rounded border border-transparent bg-[#3e3e3e] px-3 py-3 text-sm font-normal text-primary outline-none placeholder:text-secondary focus:border-white/40"
+                  className="min-h-[124px] resize-none rounded border border-transparent bg-surface px-3 py-3 text-sm font-normal text-primary outline-none placeholder:text-secondary focus:border-primary/40"
                 />
               </label>
               {playlist.smartRules && (
@@ -775,7 +775,7 @@ export function PlaylistDetailPage() {
                   type="button"
                   onClick={() => void handleModalVisibilityToggle()}
                   disabled={busy}
-                  className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-white/60 px-4 text-sm font-semibold transition-colors hover:border-white hover:bg-white/5 disabled:opacity-50"
+                  className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-secondary/60 px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-elevated disabled:opacity-50"
                 >
                   {currentVisibility() === 'private' ? (
                     <GlobeAltIcon className="h-4 w-4" />

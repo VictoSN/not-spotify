@@ -74,20 +74,20 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
       className={cn(
         'flex items-center gap-4 px-4 transition-colors',
         'min-h-[60px] py-3',
-        disabled ? 'cursor-default opacity-50' : 'cursor-pointer hover:bg-white/[0.04]',
+        disabled ? 'cursor-default opacity-50' : 'cursor-pointer hover:bg-primary/5',
       )}
     >
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#3a3a3a]">
-        <Icon className="h-[17px] w-[17px] text-[#b3b3b3]" />
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-surface">
+        <Icon className="h-[17px] w-[17px] text-secondary" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-semibold leading-tight text-white">{label}</p>
-        {description && <p className="mt-0.5 truncate text-[12px] text-[#b3b3b3]">{description}</p>}
+        <p className="text-[14px] font-semibold leading-tight text-primary">{label}</p>
+        {description && <p className="mt-0.5 truncate text-[12px] text-secondary">{description}</p>}
       </div>
       {external ? (
-        <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-[#b3b3b3]" />
+        <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
       ) : (
-        <ChevronRightIcon className="h-5 w-5 shrink-0 text-[#b3b3b3]" />
+        <ChevronRightIcon className="h-5 w-5 shrink-0 text-secondary" />
       )}
     </div>
   )
@@ -102,9 +102,9 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-[4px] bg-[#282828]">
-      <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold text-white">{title}</h2>
-      <div className="divide-y divide-[#333333]">{children}</div>
+    <section className="mt-5 overflow-hidden rounded-[4px] bg-elevated">
+      <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold text-primary">{title}</h2>
+      <div className="divide-y divide-primary/10">{children}</div>
     </section>
   )
 }
@@ -343,39 +343,39 @@ export function AccountSettingsPage() {
     <div className="pb-12">
       {/* Search bar */}
       <div className="relative mb-4">
-        <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#727272]" />
+        <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />
         <input
           type="search"
           placeholder="Search account or help articles"
-          className="h-[46px] w-full rounded-[4px] bg-[#2a2a2a] pl-11 pr-4 text-[14px] text-white placeholder:text-[#727272] outline-none focus:ring-1 focus:ring-white/20 border border-transparent focus:border-white/10"
+          className="h-[46px] w-full rounded-[4px] bg-elevated pl-11 pr-4 text-[14px] text-primary placeholder:text-secondary outline-none focus:ring-1 focus:ring-primary/20 border border-transparent focus:border-primary/20"
         />
       </div>
 
       {/* Top plan cardbox grid */}
       <div className="flex gap-2">
         {/* Left: plan card (~70%) */}
-        <div className="flex-[7] rounded-[4px] bg-[#282828] p-5">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-[#b3b3b3]">Your plan</p>
+        <div className="flex-[7] rounded-[4px] bg-elevated p-5">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-secondary">Your plan</p>
           <div className="mt-3 flex items-center gap-2">
             <SpotifyMark className="h-5 w-5 text-[#1db954]" />
             <span className="text-[13px] font-bold text-[#1db954]">
               {isPremium ? 'Premium' : 'Free'}
             </span>
           </div>
-          <h2 className="mt-1 text-[30px] font-black leading-tight text-white">
+          <h2 className="mt-1 text-[30px] font-black leading-tight text-primary">
             {isPremium ? 'Premium' : 'Free'}
           </h2>
-          <p className="mt-2 text-[13px] text-[#b3b3b3]">
+          <p className="mt-2 text-[13px] text-secondary">
             {isPremium ? (
               <>
-                {renews ? <>Your next bill is for {formatDate(renews)}</> : <>Status{' '}<span className="font-semibold capitalize text-white">{subscription?.status ?? 'active'}</span></>}
+                {renews ? <>Your next bill is for {formatDate(renews)}</> : <>Status{' '}<span className="font-semibold capitalize text-primary">{subscription?.status ?? 'active'}</span></>}
               </>
             ) : (
               'Upgrade for unlimited, uninterrupted listening.'
             )}
           </p>
           {isPremium && (
-            <p className="mt-1 text-[13px] text-[#b3b3b3]">
+            <p className="mt-1 text-[13px] text-secondary">
               {billingInterval === 'monthly' ? 'Monthly billing' : billingInterval === 'yearly' ? 'Annual billing' : null}
             </p>
           )}
@@ -395,10 +395,10 @@ export function AccountSettingsPage() {
         <div className="flex flex-[3] flex-col gap-2">
           <Link
             to="/profile?edit=1"
-            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[4px] bg-[#282828] px-4 py-5 text-center transition-colors hover:bg-[#323232]"
+            className="flex flex-1 flex-col items-center justify-center gap-2 rounded-[4px] bg-elevated px-4 py-5 text-center transition-colors hover:bg-surface"
           >
-            <PencilIcon className="h-6 w-6 text-[#b3b3b3]" />
-            <span className="text-[13px] font-semibold text-white">Edit personal info</span>
+            <PencilIcon className="h-6 w-6 text-secondary" />
+            <span className="text-[13px] font-semibold text-primary">Edit personal info</span>
           </Link>
           <button
             type="button"
@@ -406,12 +406,12 @@ export function AccountSettingsPage() {
             disabled={busy || !isPremium}
             title={isPremium ? undefined : 'Upgrade to Premium before managing a saved payment method.'}
             className={cn(
-              'flex flex-1 flex-col items-center justify-center gap-2 rounded-[4px] bg-[#282828] px-4 py-5 text-center transition-colors',
-              isPremium ? 'hover:bg-[#323232] cursor-pointer' : 'opacity-40 cursor-default',
+              'flex flex-1 flex-col items-center justify-center gap-2 rounded-[4px] bg-elevated px-4 py-5 text-center transition-colors',
+              isPremium ? 'hover:bg-surface cursor-pointer' : 'opacity-40 cursor-default',
             )}
           >
-            <CreditCardIcon className="h-6 w-6 text-[#b3b3b3]" />
-            <span className="text-[13px] font-semibold text-white">{busy ? 'Opening…' : 'Update card'}</span>
+            <CreditCardIcon className="h-6 w-6 text-secondary" />
+            <span className="text-[13px] font-semibold text-primary">{busy ? 'Opening…' : 'Update card'}</span>
           </button>
         </div>
       </div>
@@ -507,23 +507,23 @@ export function AccountSettingsPage() {
           />
         ) : artistApp === undefined ? (
           <div className="flex min-h-[60px] items-center gap-4 px-4">
-            <MusicalNoteIcon className="h-5 w-5 shrink-0 text-[#b3b3b3]" />
-            <p className="text-[14px] text-[#b3b3b3]">Loading…</p>
+            <MusicalNoteIcon className="h-5 w-5 shrink-0 text-secondary" />
+            <p className="text-[14px] text-secondary">Loading…</p>
           </div>
         ) : artistApp === null ? (
           <div className="px-4 py-4">
             <div className="flex items-center gap-4">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#3a3a3a]">
-                <MusicalNoteIcon className="h-[17px] w-[17px] text-[#b3b3b3]" />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-surface">
+                <MusicalNoteIcon className="h-[17px] w-[17px] text-secondary" />
               </span>
               <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-semibold text-white">Become an artist</p>
-                <p className="text-[12px] text-[#b3b3b3]">Apply to publish your music</p>
+                <p className="text-[14px] font-semibold text-primary">Become an artist</p>
+                <p className="text-[12px] text-secondary">Apply to publish your music</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowApplyForm((v) => !v)}
-                className="text-[13px] font-semibold text-[#1db954] hover:text-white transition-colors"
+                className="text-[13px] font-semibold text-accent hover:text-primary transition-colors"
               >
                 {showApplyForm ? 'Cancel' : 'Apply'}
               </button>
@@ -531,32 +531,32 @@ export function AccountSettingsPage() {
             {showApplyForm && (
               <form onSubmit={handleApply} className="mt-4 flex flex-col gap-3">
                 <div>
-                  <label className="block text-[12px] font-semibold text-white mb-1">Artist name</label>
+                  <label className="block text-[12px] font-semibold text-primary mb-1">Artist name</label>
                   <input
                     required
                     value={applyName}
                     onChange={(e) => setApplyName(e.target.value)}
-                    className="w-full bg-[#3a3a3a] border border-transparent focus:border-white/20 text-white placeholder:text-[#727272] rounded px-3 py-2 text-[13px] focus:outline-none"
+                    className="w-full bg-surface border border-transparent focus:border-primary/30 text-primary placeholder:text-secondary rounded px-3 py-2 text-[13px] focus:outline-none"
                     placeholder="Your artist name"
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-semibold text-white mb-1">Bio (optional)</label>
+                  <label className="block text-[12px] font-semibold text-primary mb-1">Bio (optional)</label>
                   <textarea
                     value={applyBio}
                     onChange={(e) => setApplyBio(e.target.value)}
                     rows={3}
-                    className="w-full bg-[#3a3a3a] border border-transparent focus:border-white/20 text-white placeholder:text-[#727272] rounded px-3 py-2 text-[13px] focus:outline-none resize-none"
+                    className="w-full bg-surface border border-transparent focus:border-primary/30 text-primary placeholder:text-secondary rounded px-3 py-2 text-[13px] focus:outline-none resize-none"
                     placeholder="Tell us about your music…"
                   />
                 </div>
                 <div>
-                  <label className="block text-[12px] font-semibold text-white mb-1">Sample work URL (optional)</label>
+                  <label className="block text-[12px] font-semibold text-primary mb-1">Sample work URL (optional)</label>
                   <input
                     type="url"
                     value={applySample}
                     onChange={(e) => setApplySample(e.target.value)}
-                    className="w-full bg-[#3a3a3a] border border-transparent focus:border-white/20 text-white placeholder:text-[#727272] rounded px-3 py-2 text-[13px] focus:outline-none"
+                    className="w-full bg-surface border border-transparent focus:border-primary/30 text-primary placeholder:text-secondary rounded px-3 py-2 text-[13px] focus:outline-none"
                     placeholder="https://soundcloud.com/…"
                   />
                 </div>
@@ -573,30 +573,30 @@ export function AccountSettingsPage() {
           </div>
         ) : artistApp.status === 'pending' ? (
           <div className="flex min-h-[60px] items-center gap-4 px-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#3a3a3a]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-surface">
               <ClockIcon className="h-[17px] w-[17px] text-yellow-400" />
             </span>
             <div>
-              <p className="text-[14px] font-semibold text-white">Application pending review</p>
-              <p className="text-[12px] text-[#b3b3b3]">
+              <p className="text-[14px] font-semibold text-primary">Application pending review</p>
+              <p className="text-[12px] text-secondary">
                 Submitted as &ldquo;{artistApp.displayName}&rdquo; · Admins will review it shortly
               </p>
             </div>
           </div>
         ) : artistApp.status === 'rejected' ? (
           <div className="flex min-h-[60px] items-center gap-4 px-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[#3a3a3a]">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-surface">
               <XCircleIcon className="h-[17px] w-[17px] text-red-400" />
             </span>
             <div>
-              <p className="text-[14px] font-semibold text-white">Application rejected</p>
+              <p className="text-[14px] font-semibold text-primary">Application rejected</p>
               {artistApp.reviewNote && (
-                <p className="text-[12px] text-[#b3b3b3]">Reason: {artistApp.reviewNote}</p>
+                <p className="text-[12px] text-secondary">Reason: {artistApp.reviewNote}</p>
               )}
               <button
                 type="button"
                 onClick={() => { setArtistApp(null); setShowApplyForm(true) }}
-                className="text-[12px] font-semibold text-[#1db954] hover:text-white transition-colors mt-1 block"
+                className="text-[12px] font-semibold text-accent hover:text-primary transition-colors mt-1 block"
               >
                 Apply again
               </button>
@@ -619,28 +619,28 @@ export function AccountSettingsPage() {
       <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
       {panel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-[6px] bg-[#282828] p-6 shadow-2xl">
+          <div className="w-full max-w-lg rounded-[6px] bg-elevated p-6 shadow-2xl">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-primary">
                 {panel === 'recover' && 'Recover playlists'}
                 {panel === 'redeem' && 'Redeem code'}
                 {panel === 'apps' && 'Login methods'}
                 {panel === 'ads' && 'Ad preferences'}
                 {panel === 'delete' && 'Delete account'}
               </h2>
-              <button type="button" onClick={() => setPanel(null)} className="rounded-full px-3 py-1 text-sm font-bold text-[#b3b3b3] hover:text-white">Close</button>
+              <button type="button" onClick={() => setPanel(null)} className="rounded-full px-3 py-1 text-sm font-bold text-secondary hover:text-primary">Close</button>
             </div>
             {panelError && <p className="mb-3 rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{panelError}</p>}
 
             {panel === 'recover' && (
               <div className="space-y-3">
-                {panelBusy && <p className="text-sm text-[#b3b3b3]">Loading...</p>}
-                {!panelBusy && deletedPlaylists.length === 0 && <p className="text-sm text-[#b3b3b3]">No recoverable playlists right now.</p>}
+                {panelBusy && <p className="text-sm text-secondary">Loading...</p>}
+                {!panelBusy && deletedPlaylists.length === 0 && <p className="text-sm text-secondary">No recoverable playlists right now.</p>}
                 {deletedPlaylists.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 rounded bg-[#1f1f1f] p-3">
+                  <div key={p.id} className="flex items-center gap-3 rounded bg-page p-3">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-white">{p.name}</p>
-                      <p className="text-xs text-[#b3b3b3]">{p.trackCount} tracks - recoverable until {formatDate(p.expiresAt)}</p>
+                      <p className="truncate text-sm font-bold text-primary">{p.name}</p>
+                      <p className="text-xs text-secondary">{p.trackCount} tracks - recoverable until {formatDate(p.expiresAt)}</p>
                     </div>
                     <button type="button" disabled={panelBusy} onClick={() => void restorePlaylist(p.id)} className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-black disabled:opacity-50">Restore</button>
                   </div>
@@ -650,28 +650,28 @@ export function AccountSettingsPage() {
 
             {panel === 'redeem' && (
               <form onSubmit={redeem} className="space-y-4">
-                <p className="text-sm text-[#b3b3b3]">Enter a NotSpotify gift or trial code. Try NOTSPOTIFY30 for a 30-day Premium trial.</p>
-                <input value={redeemCode} onChange={(e) => setRedeemCode(e.target.value)} placeholder="NOTSPOTIFY30" className="w-full rounded bg-[#3a3a3a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-white/30" />
+                <p className="text-sm text-secondary">Enter a NotSpotify gift or trial code. Try NOTSPOTIFY30 for a 30-day Premium trial.</p>
+                <input value={redeemCode} onChange={(e) => setRedeemCode(e.target.value)} placeholder="NOTSPOTIFY30" className="w-full rounded bg-surface px-3 py-2 text-sm text-primary outline-none focus:ring-1 focus:ring-primary/30" />
                 <button type="submit" disabled={panelBusy || !redeemCode.trim()} className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black disabled:opacity-50">Redeem</button>
               </form>
             )}
 
             {panel === 'apps' && (
               <div className="space-y-3">
-                {panelBusy && <p className="text-sm text-[#b3b3b3]">Loading...</p>}
+                {panelBusy && <p className="text-sm text-secondary">Loading...</p>}
                 {loginMethods && (
                   <>
-                    <p className="text-sm text-[#b3b3b3]">Password sign-in is {loginMethods.hasPassword ? 'enabled' : 'not set for this account'}.</p>
+                    <p className="text-sm text-secondary">Password sign-in is {loginMethods.hasPassword ? 'enabled' : 'not set for this account'}.</p>
                     {(['google', 'facebook', 'apple'] as const).map((provider) => {
                       const state = loginMethods.externalProviders[provider]
                       const label = provider[0].toUpperCase() + provider.slice(1)
                       return (
-                        <div key={provider} className="flex items-center justify-between rounded bg-[#1f1f1f] p-3">
+                        <div key={provider} className="flex items-center justify-between rounded bg-page p-3">
                           <div>
-                            <p className="text-sm font-bold text-white">{label}</p>
-                            <p className="text-xs text-[#b3b3b3]">{state.available ? 'Available for sign-in' : state.configured ? 'Disabled by admin' : 'Not configured'}</p>
+                            <p className="text-sm font-bold text-primary">{label}</p>
+                            <p className="text-xs text-secondary">{state.available ? 'Available for sign-in' : state.configured ? 'Disabled by admin' : 'Not configured'}</p>
                           </div>
-                          {state.available && <a href={`${import.meta.env.VITE_API_URL}/auth/external/${provider}?mode=popup&returnUrl=${encodeURIComponent(window.location.origin)}`} className="rounded-full border border-[#b3b3b3] px-3 py-1 text-xs font-bold text-white hover:border-white">Connect</a>}
+                          {state.available && <a href={`${import.meta.env.VITE_API_URL}/auth/external/${provider}?mode=popup&returnUrl=${encodeURIComponent(window.location.origin)}`} className="rounded-full border border-secondary px-3 py-1 text-xs font-bold text-primary hover:border-primary">Connect</a>}
                         </div>
                       )
                     })}
@@ -690,10 +690,10 @@ export function AccountSettingsPage() {
                   ['emailProductUpdates', 'Product update emails', 'Receive occasional product announcements.'],
                   ['emailSecurityAlerts', 'Security emails', 'Receive security and account access alerts.'],
                 ] as const).map(([key, label, sub]) => (
-                  <label key={key} className="flex items-center justify-between gap-4 rounded bg-[#1f1f1f] p-3">
+                  <label key={key} className="flex items-center justify-between gap-4 rounded bg-page p-3">
                     <span>
-                      <span className="block text-sm font-bold text-white">{label}</span>
-                      <span className="block text-xs text-[#b3b3b3]">{sub}</span>
+                      <span className="block text-sm font-bold text-primary">{label}</span>
+                      <span className="block text-xs text-secondary">{sub}</span>
                     </span>
                     <input type="checkbox" checked={prefs[key]} onChange={(e) => setPrefs({ ...prefs, [key]: e.target.checked })} className="h-5 w-5 accent-[#1db954]" />
                   </label>
@@ -704,8 +704,8 @@ export function AccountSettingsPage() {
 
             {panel === 'delete' && (
               <div className="space-y-4">
-                <p className="text-sm text-[#b3b3b3]">This permanently deletes your NotSpotify account, playlists, library, social data, and active sessions. This cannot be undone.</p>
-                <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE" className="w-full rounded bg-[#3a3a3a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-red-300" />
+                <p className="text-sm text-secondary">This permanently deletes your NotSpotify account, playlists, library, social data, and active sessions. This cannot be undone.</p>
+                <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE" className="w-full rounded bg-surface px-3 py-2 text-sm text-primary outline-none focus:ring-1 focus:ring-red-300" />
                 <button type="button" disabled={panelBusy || deleteConfirm.trim().toUpperCase() !== 'DELETE'} onClick={deleteAccount} className="rounded-full bg-red-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">Delete account</button>
               </div>
             )}

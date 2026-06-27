@@ -266,7 +266,7 @@ export function ArtistProfilePage() {
                 <h2 className="mb-4 text-2xl font-black text-primary">Artist pick</h2>
                 <Link
                   to={`/album/${artistPick.id}`}
-                  className="group flex w-full max-w-[520px] items-start gap-3 rounded-md transition-colors hover:bg-white/5"
+                  className="group flex w-full max-w-[520px] items-start gap-3 rounded-md transition-colors hover:bg-elevated/50"
                 >
                   <img
                     src={artistPick.coverUrl}
@@ -336,7 +336,7 @@ export function ArtistProfilePage() {
                   <Link
                     key={d.id}
                     to={`/artist/${artist.id}/events/${d.id}`}
-                    className="flex min-w-0 items-center gap-4 rounded-md p-1 transition-colors hover:bg-white/5"
+                    className="flex min-w-0 items-center gap-4 rounded-md p-1 transition-colors hover:bg-elevated/50"
                   >
                     <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded bg-elevated text-center leading-none">
                       <span className="text-xs font-bold text-secondary">

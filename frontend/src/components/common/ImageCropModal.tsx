@@ -230,16 +230,16 @@ export function ImageCropModal({
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true" />
       <div className="fixed inset-0 overflow-y-auto p-4 sm:p-6">
         <div className="flex min-h-full items-center justify-center">
-          <DialogPanel className="w-full max-w-3xl rounded-2xl border border-white/10 bg-[#181818] p-4 shadow-2xl sm:p-6">
+          <DialogPanel className="w-full max-w-3xl rounded-2xl border border-secondary/20 bg-surface p-4 shadow-2xl sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-4">
               <div>
-                <DialogTitle className="text-xl font-bold text-white">{title}</DialogTitle>
-                <p className="mt-1 text-sm text-[#b3b3b3]">Drag to reposition, then zoom until it looks right.</p>
+                <DialogTitle className="text-xl font-bold text-primary">{title}</DialogTitle>
+                <p className="mt-1 text-sm text-secondary">Drag to reposition, then zoom until it looks right.</p>
               </div>
               <button
                 type="button"
                 onClick={onCancel}
-                className="rounded-full p-2 text-[#b3b3b3] transition-colors hover:bg-white/10 hover:text-white"
+                className="rounded-full p-2 text-secondary transition-colors hover:bg-elevated hover:text-primary"
                 aria-label="Close image cropper"
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -280,7 +280,7 @@ export function ImageCropModal({
             </div>
 
             <div className="mt-5 flex items-center gap-3">
-              <ArrowsPointingOutIcon className="h-5 w-5 shrink-0 text-[#b3b3b3]" />
+              <ArrowsPointingOutIcon className="h-5 w-5 shrink-0 text-secondary" />
               <input
                 type="range"
                 min={1}
@@ -288,7 +288,7 @@ export function ImageCropModal({
                 step={0.01}
                 value={zoom}
                 onChange={(event) => handleZoom(Number(event.target.value))}
-                className="w-full accent-[#1ed760]"
+                className="w-full accent-accent"
                 aria-label="Image zoom"
               />
             </div>

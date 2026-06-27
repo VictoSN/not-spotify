@@ -48,7 +48,7 @@ function EventRow({ event, artistName, artistId }: { event: TourDate; artistName
   )
 
   return (
-    <Link to={`/artist/${artistId}/events/${event.id}`} className="flex items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-white/5">
+    <Link to={`/artist/${artistId}/events/${event.id}`} className="flex items-center gap-3 rounded-md px-2 py-3 transition-colors hover:bg-elevated/60">
       {content}
     </Link>
   )
@@ -120,7 +120,7 @@ export function ArtistEventsPage() {
           <button
             type="button"
             onClick={() => void shareLink(`/artist/${artist.id}/events`, { title: `${artist.name} concerts` })}
-            className="rounded-full p-2 text-secondary transition-colors hover:bg-white/10 hover:text-primary"
+            className="rounded-full p-2 text-secondary transition-colors hover:bg-elevated hover:text-primary"
             aria-label="Share events"
           >
             <ShareIcon className="h-5 w-5" />

@@ -239,7 +239,7 @@ export function HomePage() {
                 'flex h-8 items-center rounded-full px-3 py-1 text-sm font-normal transition-all active:scale-95',
                 homeFilter === f.key
                   ? 'bg-primary text-page'
-                  : 'bg-white/10 text-primary hover:bg-white/15 backdrop-blur-sm',
+                  : 'bg-elevated text-secondary hover:bg-surface hover:text-primary backdrop-blur-sm',
               )}
               aria-pressed={homeFilter === f.key}
             >
@@ -522,7 +522,7 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           }
         }}
         onMouseLeave={() => setHoverColor(null)}
-        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-white/10 transition-colors hover:bg-white/15"
+        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-elevated transition-colors hover:bg-surface"
       >
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
           {playlist.coverUrl ? (

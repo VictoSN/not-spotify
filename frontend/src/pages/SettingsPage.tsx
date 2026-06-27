@@ -81,8 +81,8 @@ function Switch({
     >
       <span
         className={cn(
-          'absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200',
-          checked ? 'translate-x-5' : 'translate-x-0',
+          'absolute left-1 top-1 h-4 w-4 rounded-full shadow-sm transition-transform duration-200',
+          checked ? 'translate-x-5 bg-white' : 'translate-x-0 bg-secondary',
         )}
       />
     </button>

@@ -1268,7 +1268,7 @@ function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<strin
       title: row.item.title,
       subtitle: (
         <>
-          {row.item.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-normal text-[#282828]">E</span>}
+          {row.item.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-normal text-page">E</span>}
           {row.kind === 'lyrics'
             ? t('search.row.lyricsBy', { artist: row.item.artist.name })
             : t('search.row.songBy', { artist: row.item.artist.name })}

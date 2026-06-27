@@ -19,7 +19,7 @@ export function ArtistBioDialog({ artist, open, onClose }: ArtistBioDialogProps)
     <Dialog open={open} onClose={onClose} className="relative z-[70]">
       <div className="fixed inset-0 bg-black/80" aria-hidden="true" />
       <div className="fixed inset-0 flex items-center justify-center overflow-y-auto px-4 py-6 sm:py-10">
-        <DialogPanel className="spotify-scrollbar relative max-h-[min(820px,calc(100vh-4rem))] w-full max-w-2xl overflow-y-auto overflow-x-hidden rounded-lg bg-[#181818] text-primary shadow-2xl ring-1 ring-white/10">
+        <DialogPanel className="spotify-scrollbar relative max-h-[min(820px,calc(100vh-4rem))] w-full max-w-2xl overflow-y-auto overflow-x-hidden rounded-lg bg-surface text-primary shadow-2xl ring-1 ring-primary/10">
           <button
             type="button"
             onClick={onClose}
@@ -30,9 +30,9 @@ export function ArtistBioDialog({ artist, open, onClose }: ArtistBioDialogProps)
           </button>
 
           {imageUrl && (
-            <div className="relative h-72 bg-black sm:h-[385px]">
+            <div className="relative h-72 bg-surface sm:h-[385px]">
               <img src={imageUrl} alt={artist.name} className="h-full w-full object-cover" />
-              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#181818] to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-surface to-transparent" />
             </div>
           )}
 
@@ -70,7 +70,7 @@ export function ArtistBioDialog({ artist, open, onClose }: ArtistBioDialogProps)
               {artist.verified && (
                 <div className="rounded-md bg-elevated px-4 py-4">
                   <div className="flex items-center gap-3">
-                    <CheckBadgeIcon className="h-8 w-8 shrink-0 text-[#b7f7c1]" />
+                    <CheckBadgeIcon className="h-8 w-8 shrink-0 text-accent" />
                     <h3 className="text-base font-black text-primary">{t('artist.badges.verifiedTitle')}</h3>
                   </div>
                   <p className="mt-2 text-sm font-semibold leading-6 text-secondary">

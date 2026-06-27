@@ -40,7 +40,7 @@ export function JamBar() {
       )}
       <button
         onClick={stopJam}
-        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-secondary transition-colors hover:bg-black/20 hover:text-primary ${role === 'host' ? 'ml-3' : 'ml-auto'}`}
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold text-secondary transition-colors hover:bg-primary/10 hover:text-primary ${role === 'host' ? 'ml-3' : 'ml-auto'}`}
         aria-label={role === 'host' ? 'End jam' : 'Leave jam'}
       >
         <XMarkIcon className="h-3.5 w-3.5" />

@@ -432,7 +432,7 @@ export function TopBar() {
               title={track.title}
               subtitle={(
                 <>
-                  {track.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-black text-[#282828]">E</span>}
+                  {track.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-black text-page">E</span>}
                   {t('topbar.result.songBy', { artist: track.artist.name })}
                 </>
               )}

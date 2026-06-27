@@ -546,7 +546,7 @@ function SongResultsTable({ rows }: { rows: SongTableRow[] }) {
 
   return (
     <section>
-      <div className="grid grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_64px] items-center border-b border-primary/10 px-3 pb-2 text-sm font-normal text-secondary">
+      <div className="grid grid-cols-[44px_minmax(0,1fr)_64px] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_64px] items-center border-b border-primary/10 px-3 pb-2 text-sm font-normal text-secondary">
         <span className="text-center">#</span>
         <span>{actions.t('search.table.title')}</span>
         <span className="hidden md:block">{actions.t('search.table.album')}</span>
@@ -582,7 +582,7 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
         event.preventDefault()
         navigate(presentation.path)
       }}
-      className="group grid grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_64px] items-center rounded-md px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
+      className="group grid grid-cols-[44px_minmax(0,1fr)_64px] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_64px] items-center rounded-md px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
     >
       <span className="text-center text-base font-normal text-secondary group-hover:hidden">{index}</span>
       <button

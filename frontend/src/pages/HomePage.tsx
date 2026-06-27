@@ -224,7 +224,7 @@ export function HomePage() {
       >
         <div
           data-testid="home-filter-content"
-          className={cn('flex items-center gap-2 py-3', HOME_CONTENT_GUTTER)}
+          className={cn('flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide', HOME_CONTENT_GUTTER)}
         >
           {([
             { key: 'all', label: t('home.filter.all') },
@@ -236,7 +236,7 @@ export function HomePage() {
               key={f.key}
               onClick={() => setHomeFilter(f.key)}
               className={cn(
-                'flex h-8 items-center rounded-full px-3 py-1 text-sm font-normal transition-all active:scale-95',
+                'flex h-8 shrink-0 items-center rounded-full px-3 py-1 text-sm font-normal transition-all active:scale-95',
                 homeFilter === f.key
                   ? 'bg-primary text-page'
                   : 'bg-elevated text-secondary hover:bg-surface hover:text-primary backdrop-blur-sm',

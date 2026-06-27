@@ -59,7 +59,7 @@ export function InstallPrompt() {
   if (!visible || !deferred) return null
 
   return (
-    <div className="fixed bottom-24 left-1/2 z-50 w-[min(92vw,26rem)] -translate-x-1/2 rounded-xl border border-white/10 bg-elevated p-4 shadow-2xl sm:bottom-28">
+    <div className="fixed bottom-24 left-1/2 z-50 w-[min(92vw,26rem)] -translate-x-1/2 rounded-xl border border-primary/10 bg-elevated p-4 shadow-2xl sm:bottom-28">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
           <ArrowDownTrayIcon className="h-5 w-5" />

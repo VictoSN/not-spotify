@@ -120,9 +120,12 @@ export function AppShell() {
           it and makes the centered search bar look like it floats too high. */}
       <div
         className={cn(
-          'flex flex-1 min-h-0 overflow-hidden pb-2 pl-2 pt-0 transition-[gap] duration-300 ease-out',
-          isHomeRoute ? 'pr-0' : 'pr-2',
-          nowPlayingExpandedVisible ? 'gap-0' : 'gap-2.5',
+          'flex flex-1 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
+          isMobile ? 'p-0 gap-0' : cn(
+            'pb-2 pl-2 pt-0',
+            isHomeRoute ? 'pr-0' : 'pr-2',
+            nowPlayingExpandedVisible ? 'gap-0' : 'gap-2.5',
+          ),
         )}
       >
         {!isMobile && <Sidebar takeoverHidden={nowPlayingExpandedVisible} />}
@@ -132,7 +135,8 @@ export function AppShell() {
             into it (and reclaim it on minimize) — unmounting here would jump the layout. */}
         <main
           className={cn(
-            'relative min-w-0 rounded-xl bg-page overflow-hidden flex flex-col',
+            'relative min-w-0 bg-page overflow-hidden flex flex-col',
+            isMobile ? 'rounded-none' : 'rounded-xl',
             !libraryMinimizing && 'transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
             nowPlayingExpandedVisible || libraryExpanded
               ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'

@@ -130,13 +130,13 @@ export function ArtistEventsPage() {
         <section className="mb-12">
           <h2 className="mb-5 text-2xl font-black text-primary">Near {locationLabel}</h2>
           {nearby.length > 0 ? (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-primary/10">
               {nearby.map((event) => <EventRow key={event.id} event={event} artistName={artist.name} artistId={artist.id} />)}
             </div>
           ) : (
             <div className="py-2 text-center">
               <p className="text-sm text-secondary">No upcoming events.</p>
-              <a href="#all-events" className="mt-5 inline-flex rounded-full bg-white px-5 py-2 text-sm font-bold text-black">
+              <a href="#all-events" className="mt-5 inline-flex rounded-full bg-primary px-5 py-2 text-sm font-bold text-page">
                 Browse all events
               </a>
             </div>
@@ -148,7 +148,7 @@ export function ArtistEventsPage() {
             {nearby.length > 0 ? 'Other locations' : 'All upcoming events'}
           </h2>
           {otherEvents.length > 0 ? (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-primary/10">
               {otherEvents.map((event) => <EventRow key={event.id} event={event} artistName={artist.name} artistId={artist.id} />)}
             </div>
           ) : (

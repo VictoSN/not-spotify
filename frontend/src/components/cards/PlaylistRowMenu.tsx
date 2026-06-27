@@ -462,16 +462,15 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
 function PinIcon({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 16 16"
       aria-hidden="true"
       className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
     >
-      <path d="M9 3.5h6M10.5 3.5v5.2L8 11.7v1.1h8v-1.1L13.5 8.7V3.5M12 12.8V20.5" />
+      <path
+        d="M5.25 1.5h5.5v1.2L9.6 3.85v3.1l1.65 1.65v1.15H8.6v4.75H7.4V9.75H4.75V8.6L6.4 6.95v-3.1L5.25 2.7V1.5Z"
+        transform="rotate(45 8 8)"
+      />
     </svg>
   )
 }

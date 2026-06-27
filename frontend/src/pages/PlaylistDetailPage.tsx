@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useConfirm } from '@/hooks/useConfirm'
 import { PlayIcon, PauseIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
 import {
@@ -373,6 +374,38 @@ export function PlaylistDetailPage() {
     }
   }
 
+  const openEditDetails = () => {
+    if (!playlist?.isOwner) return
+    setEditName(playlist.name)
+    setEditDescription(playlist.description ?? '')
+    setSmartGenre(playlist.smartRules?.genre ?? '')
+    setSmartRating(playlist.smartRules?.minimumRating?.toString() ?? '')
+    setSmartPlayCount(playlist.smartRules?.minimumPlayCount?.toString() ?? '')
+    setSmartDays(playlist.smartRules?.addedWithinDays?.toString() ?? '')
+    setSmartLimit(playlist.smartRules?.limit?.toString() ?? '100')
+    setClearSmartRules(false)
+    setCoverFile(null)
+    setEditOpen(true)
+  }
+
+  const closeEditDetails = () => {
+    if (busy) return
+    setCoverFile(null)
+    setEditOpen(false)
+  }
+
+  const handleModalVisibilityToggle = async () => {
+    if (!playlist) return
+    const next: PlaylistVisibility = currentVisibility() === 'private' ? 'public' : 'private'
+    setBusy(true)
+    try {
+      await setPlaylistVisibility(playlist.id, next)
+      setPlaylist({ ...playlist, visibility: next, isPublic: next === 'public' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const handleAdd = async (track: Track) => {
     if (!playlist) return
     if (
@@ -440,7 +473,20 @@ export function PlaylistDetailPage() {
           <p className="text-xs font-semibold text-secondary uppercase tracking-wider">
             {playlist.smartRules ? 'Smart playlist' : { public: 'Public playlist', friends: 'Friends only', private: 'Private playlist' }[currentVisibility()]}
           </p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mt-1 mb-3 break-words">{playlist.name}</h1>
+          <h1 className="mt-1 mb-3 break-words text-3xl font-black text-primary sm:text-4xl md:text-5xl">
+            {playlist.isOwner ? (
+              <button
+                type="button"
+                onClick={openEditDetails}
+                className="cursor-pointer text-left focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                aria-label={`Edit details for ${playlist.name}`}
+              >
+                {playlist.name}
+              </button>
+            ) : (
+              playlist.name
+            )}
+          </h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
           <p className="text-xs text-secondary">
             <span className="font-semibold text-primary">{playlist.owner.name}</span>
@@ -621,7 +667,7 @@ export function PlaylistDetailPage() {
           alwaysVisible
           triggerClassName="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95"
           triggerIconClassName="h-6 w-6 stroke-[2.7]"
-          onEditDetails={() => setEditOpen((v) => !v)}
+          onEditDetails={openEditDetails}
           onAddSongs={!findPanelOpen ? () => setFindPanelOpen(true) : undefined}
           onExport={tracks.length > 0 ? handleExport : undefined}
           onDelete={handleDelete}
@@ -630,24 +676,42 @@ export function PlaylistDetailPage() {
       </div>
 
       {playlist.isOwner && editOpen && (
-        <form onSubmit={handleSaveEdits} className="mx-6 mb-4 rounded-lg bg-surface p-5">
-          <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
-            <div className="grid gap-4">
-              <label className="grid gap-2">
-                <span className="text-sm font-semibold text-secondary">Name</span>
+        <Dialog open onClose={closeEditDetails} className="relative z-[100]">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-[1px]" aria-hidden="true" />
+          <div className="fixed inset-0 flex items-center justify-center p-4">
+            <DialogPanel className="spotify-scrollbar max-h-[calc(100vh-2rem)] w-full max-w-xl overflow-y-auto rounded-lg bg-[#282828] p-6 text-primary shadow-2xl ring-1 ring-white/5">
+              <form onSubmit={handleSaveEdits}>
+                <div className="mb-6 flex items-center justify-between gap-4">
+                  <DialogTitle className="text-2xl font-bold">Edit details</DialogTitle>
+                  <button
+                    type="button"
+                    onClick={closeEditDetails}
+                    disabled={busy}
+                    className="rounded-full p-1 text-secondary transition-colors hover:bg-white/10 hover:text-primary disabled:opacity-50"
+                    aria-label="Close edit details"
+                  >
+                    <XMarkIcon className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+                  <div className="order-2 grid content-start gap-4 sm:col-start-2 sm:row-start-1">
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-secondary">Name</span>
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="h-11 rounded-md border border-secondary/20 bg-elevated px-3 text-sm text-primary outline-none transition-colors focus:border-accent"
+                  className="h-10 rounded border border-white/20 bg-[#3e3e3e] px-3 text-sm text-primary outline-none transition-colors focus:border-white/60"
+                  autoFocus
                   required
                 />
               </label>
-              <label className="grid gap-2">
-                <span className="text-sm font-semibold text-secondary">Description</span>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-secondary">Description</span>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="min-h-24 rounded-md border border-secondary/20 bg-elevated px-3 py-2 text-sm text-primary outline-none transition-colors focus:border-accent"
+                  placeholder="Add an optional description"
+                  className="min-h-[124px] resize-none rounded border border-transparent bg-[#3e3e3e] px-3 py-3 text-sm font-normal text-primary outline-none placeholder:text-secondary focus:border-white/40"
                 />
               </label>
               {playlist.smartRules && (
@@ -686,8 +750,8 @@ export function PlaylistDetailPage() {
               )}
             </div>
 
-            <div>
-              <div className="aspect-square overflow-hidden rounded-md bg-elevated">
+            <div className="order-1 sm:col-start-1 sm:row-start-1">
+              <div className="aspect-square overflow-hidden rounded bg-elevated shadow-lg">
                 {coverFile ? (
                   <img src={URL.createObjectURL(coverFile)} alt="Cover preview" className="h-full w-full object-cover" />
                 ) : playlist.coverUrl ? (
@@ -696,7 +760,7 @@ export function PlaylistDetailPage() {
                   <div className="flex h-full w-full items-center justify-center text-5xl">🎵</div>
                 )}
               </div>
-              <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-full bg-elevated px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-elevated/70">
+              <label className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-elevated px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-elevated/70">
                 <PhotoIcon className="h-4 w-4" />
                 Choose cover
                 <input
@@ -706,18 +770,41 @@ export function PlaylistDetailPage() {
                   onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
                 />
               </label>
+              {!playlist.smartRules && (
+                <button
+                  type="button"
+                  onClick={() => void handleModalVisibilityToggle()}
+                  disabled={busy}
+                  className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-white/60 px-4 text-sm font-semibold transition-colors hover:border-white hover:bg-white/5 disabled:opacity-50"
+                >
+                  {currentVisibility() === 'private' ? (
+                    <GlobeAltIcon className="h-4 w-4" />
+                  ) : (
+                    <LockClosedIcon className="h-4 w-4" />
+                  )}
+                  {currentVisibility() === 'private' ? 'Make public' : 'Make private'}
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Button type="submit" disabled={busy || !editName.trim()}>
-              {busy ? 'Saving...' : 'Save details'}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setEditOpen(false)} disabled={busy}>
-              Cancel
-            </Button>
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={busy || !editName.trim()}
+                    className="h-12 min-w-24 rounded-full bg-white px-8 text-sm font-bold text-black transition-transform hover:scale-105 active:scale-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {busy ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+
+                <p className="mt-3 text-[11px] font-semibold leading-4 text-primary">
+                  By proceeding, you agree to give Spotify access to the image you choose to upload. Please make sure you have the right to upload the image.
+                </p>
+              </form>
+            </DialogPanel>
           </div>
-        </form>
+        </Dialog>
       )}
 
       {/* Track list */}

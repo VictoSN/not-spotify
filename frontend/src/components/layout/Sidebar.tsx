@@ -596,7 +596,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
+    'group/sidebar sidebar-scrollbar-hover-region relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
     !dragging &&
@@ -669,7 +669,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
         </div>
 
-        <div onScroll={handleLibraryBodyScroll} className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+        <div onScroll={handleLibraryBodyScroll} className="spotify-scrollbar sidebar-hover-scrollbar min-h-0 flex-1 overflow-y-auto px-2 pb-2">
           <div className="flex flex-col gap-3">
             <section className="rounded-lg bg-elevated p-4">
               <h2 className="text-sm font-normal text-primary">{t('sidebar.auth.createTitle')}</h2>
@@ -991,7 +991,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         className={cn(
           // Mounts fresh at opacity-0 each toggle so the list↔grid reflow happens unseen while
           // the panel resizes, then fades in once the width settles (isLibraryAnimating clears).
-          'spotify-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-2 transition-opacity duration-300 ease-out motion-reduce:transition-none',
+          'spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-2 transition-opacity duration-300 ease-out motion-reduce:transition-none',
           isLibraryAnimating ? 'opacity-0' : 'opacity-100',
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
@@ -1132,6 +1132,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   item={item}
                   compact={compactLibrary}
                   nowPlaying={isNowPlaying(item)}
+                  pinned={pinned.has(item.key)}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
@@ -1271,7 +1272,9 @@ function PinButton({
         'absolute z-10 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
         // Sits just left of the row's ⋯ menu button.
         variant === 'list'
-          ? 'right-9 top-1/2 -translate-y-1/2'
+          ? pinned
+            ? 'bottom-[9px] left-[var(--sidebar-pin-left)] p-0'
+            : 'right-9 top-1/2 -translate-y-1/2'
           : 'right-11 top-2 bg-page/70 backdrop-blur-sm',
         pinned
           ? 'text-accent opacity-100'
@@ -1442,6 +1445,7 @@ function LibraryListRow({
   item,
   compact,
   nowPlaying,
+  pinned = false,
   children,
   onPlay,
   menuPlaylist,
@@ -1453,6 +1457,7 @@ function LibraryListRow({
   item: LibItem
   compact: boolean
   nowPlaying: boolean
+  pinned?: boolean
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   menuPlaylist?: Playlist
@@ -1479,7 +1484,13 @@ function LibraryListRow({
             ? (e: React.MouseEvent) => openMenuAtPointer(e, podcastMenuRef)
             : undefined
   return (
-    <div className="group/row relative" onContextMenu={handleContextMenu}>
+    <div
+      className={cn(
+        'group/row relative',
+        compact ? '[--sidebar-pin-left:68px]' : '[--sidebar-pin-left:76px]',
+      )}
+      onContextMenu={handleContextMenu}
+    >
       <NavLink
         to={item.to}
         className={({ isActive }) =>
@@ -1505,7 +1516,14 @@ function LibraryListRow({
           <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
             {item.name}
           </p>
-          <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]">{item.subtitle}</p>
+          <p
+            className={cn(
+              'mt-0.5 truncate text-[13px] font-normal leading-tight text-[#b3b3b3]',
+              pinned && 'pl-5',
+            )}
+          >
+            {item.subtitle}
+          </p>
         </div>
       </NavLink>
       {children}
@@ -1813,16 +1831,15 @@ function FolderGroup({
 function PinIcon({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 16 16"
       aria-hidden="true"
       className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
     >
-      <path d="M9 3.5h6M10.5 3.5v5.2L8 11.7v1.1h8v-1.1L13.5 8.7V3.5M12 12.8V20.5" />
+      <path
+        d="M5.25 1.5h5.5v1.2L9.6 3.85v3.1l1.65 1.65v1.15H8.6v4.75H7.4V9.75H4.75V8.6L6.4 6.95v-3.1L5.25 2.7V1.5Z"
+        transform="rotate(45 8 8)"
+      />
     </svg>
   )
 }
@@ -1845,7 +1862,7 @@ function DiagonalExpandIcon() {
       <path
         d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
         stroke="currentColor"
-        strokeWidth="1.45"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -1859,7 +1876,7 @@ function DiagonalCollapseIcon() {
       <path
         d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
         stroke="currentColor"
-        strokeWidth="1.45"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

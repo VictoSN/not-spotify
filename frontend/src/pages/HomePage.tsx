@@ -198,7 +198,7 @@ export function HomePage() {
       {/* Dynamic colour hue — smoothly crossfades to the hovered card's colour */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-80 opacity-60 transition-colors duration-500"
+        className="pointer-events-none absolute inset-x-0 top-0 h-80 opacity-60 transition-[background-color] duration-700 ease-in-out motion-reduce:transition-none"
         style={{
           backgroundColor: heroColor,
           maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
@@ -236,10 +236,10 @@ export function HomePage() {
               key={f.key}
               onClick={() => setHomeFilter(f.key)}
               className={cn(
-                'flex h-8 items-center rounded-full px-3.5 text-sm font-normal transition-all active:scale-95',
+                'flex h-8 items-center rounded-full px-3 py-1 text-sm font-normal transition-all active:scale-95',
                 homeFilter === f.key
                   ? 'bg-primary text-page'
-                  : 'bg-white/15 text-primary hover:bg-white/20 backdrop-blur-sm',
+                  : 'bg-white/10 text-primary hover:bg-white/15 backdrop-blur-sm',
               )}
               aria-pressed={homeFilter === f.key}
             >
@@ -324,7 +324,7 @@ export function HomePage() {
         {showMusic && dailyMixes.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.madeForYou')} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {dailyMixes.map((mix) => (
                 <MixTile key={mix.id} mix={mix} flush />
               ))}
@@ -336,7 +336,7 @@ export function HomePage() {
         {showMusic && isAuthenticated && forYou.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.forYouToday')} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {forYou.map((track) => (
                 <TrackTile key={track.id} track={track} queue={forYou} flush />
               ))}
@@ -348,7 +348,7 @@ export function HomePage() {
         {showMusic && isAuthenticated && recents.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.recentlyPlayed')} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {recents.map((track) => (
                 <TrackTile key={track.id} track={track} queue={recents} flush />
               ))}
@@ -360,7 +360,7 @@ export function HomePage() {
         {showMusic && trending.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.trendingNow')} href="/charts" variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {trending.map((track) => (
                 <TrackTile key={track.id} track={track} queue={trending} flush />
               ))}
@@ -372,7 +372,7 @@ export function HomePage() {
         {showMusic && mostLiked.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.mostLiked')} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {mostLiked.map((track) => (
                 <TrackTile key={track.id} track={track} queue={mostLiked} flush />
               ))}
@@ -384,7 +384,7 @@ export function HomePage() {
         {showMusic && popularInCountry.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {popularInCountry.map((track) => (
                 <TrackTile key={track.id} track={track} queue={popularInCountry} flush />
               ))}
@@ -396,7 +396,7 @@ export function HomePage() {
         {showMusic && recommendedPlaylists.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.recommendedPlaylists')} href="/playlists" variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {recommendedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} flush />
               ))}
@@ -408,7 +408,7 @@ export function HomePage() {
         {showMusic && newMusic.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.newMusic')} variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {newMusic.map((track) => (
                 <TrackTile key={track.id} track={track} queue={newMusic} flush />
               ))}
@@ -420,7 +420,7 @@ export function HomePage() {
         {showMusic && popularArtists.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.popularArtists')} href="/popular-artists" variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {popularArtists.map((artist) => (
                 <ArtistCard key={artist.id} artist={artist} flush />
               ))}
@@ -436,7 +436,7 @@ export function HomePage() {
               href="/new-releases"
               variant="home"
             />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {newReleases.slice(0, PREVIEW_LIMIT).map((album) => (
                 <AlbumCard key={album.id} album={album} flush />
               ))}
@@ -448,7 +448,7 @@ export function HomePage() {
         {showPodcasts && podcasts.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.podcasts')} href="/podcasts" variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {podcasts.map((p) => (
                 <HomePodcastTile key={p.id} podcast={p} />
               ))}
@@ -460,7 +460,7 @@ export function HomePage() {
         {showVideos && musicVideos.length > 0 && (
           <section className="mb-6">
             <SectionHeader title={t('home.section.musicVideos')} href="/videos" variant="home" />
-            <HorizontalScroller>
+            <HorizontalScroller bleedRight>
               {musicVideos.map((v) => (
                 <HomeVideoTile key={v.id} video={v} queue={musicVideos} />
               ))}
@@ -522,7 +522,7 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           }
         }}
         onMouseLeave={() => setHoverColor(null)}
-        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-elevated/40 transition-colors hover:bg-elevated"
+        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-white/10 transition-colors hover:bg-white/15"
       >
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
           {playlist.coverUrl ? (

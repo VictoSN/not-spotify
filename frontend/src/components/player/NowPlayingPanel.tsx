@@ -69,7 +69,7 @@ function DiagonalExpandIcon() {
       <path
         d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
         stroke="currentColor"
-        strokeWidth="1.45"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -83,7 +83,7 @@ function DiagonalCollapseIcon() {
       <path
         d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
         stroke="currentColor"
-        strokeWidth="1.45"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -306,7 +306,7 @@ export function NowPlayingPanel() {
     else el.pause()
   }, [isPlaying, video])
   const panelClass = cn(
-    'group/now-playing-panel relative hidden h-full max-h-full min-h-0 flex-col overflow-visible rounded-xl bg-surface lg:flex',
+    'group/now-playing-panel sidebar-scrollbar-hover-region animate-right-sidebar-enter relative hidden h-full max-h-full min-h-0 flex-col overflow-visible rounded-xl bg-surface lg:flex',
     isNowPlayingExpanded ? 'min-w-0' : 'shrink-0',
     !dragging && 'transition-[width,flex-basis,flex-grow,opacity,transform] duration-300 ease-out',
   )
@@ -316,8 +316,9 @@ export function NowPlayingPanel() {
 
   // Collapsed → thin sliver with an expand control (does not fully close).
   if (isNowPlayingCollapsed) {
+    if (!currentTrack) return null
     return (
-      <aside className="group/now-playing-rail relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
+      <aside className="group/now-playing-rail animate-right-sidebar-enter relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
@@ -434,7 +435,7 @@ export function NowPlayingPanel() {
         )}
         <div
           onScroll={(event) => setExpandedScroll(event.currentTarget.scrollTop)}
-          className="spotify-scrollbar ns-bleed-scroll relative flex-1 overflow-y-auto bg-[#121212]"
+          className="spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll relative flex-1 overflow-y-auto bg-[#121212]"
         >
           <div
             aria-hidden
@@ -811,7 +812,7 @@ export function NowPlayingPanel() {
       </div>
       <div
         onScroll={(event) => setPanelBodyScrolled(event.currentTarget.scrollTop > 8)}
-        className="spotify-scrollbar ns-bleed-scroll relative min-h-0 flex-1 overflow-y-auto"
+        className="spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll relative min-h-0 flex-1 overflow-y-auto"
       >
         {/* MV preview blends edge-to-edge with the panel; no rounding/shadow. */}
         {video && (

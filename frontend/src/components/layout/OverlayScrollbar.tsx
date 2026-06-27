@@ -107,15 +107,21 @@ export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrol
   if (!thumb) return null
 
   return (
-    // Full-height rail pinned to the far-right edge. z-40 keeps it ABOVE the
-    // Home sticky header (z-30) so the thumb stays visible beside the header
-    // instead of being painted over by it. pointer-events-none so it never
-    // blocks clicks on the content underneath; only the thumb itself is grabbable.
+    <>
+      {flushRight && (
+        <div
+          aria-hidden
+          data-overlay-scrollbar-fade
+          className="pointer-events-none absolute right-0 top-0 z-[39] h-full w-6"
+          style={{ background: 'linear-gradient(to right, transparent, rgba(0, 0, 0, 0.18))' }}
+        />
+      )}
+    {/* Full-height transparent rail pinned to the far-right edge. */}
     <div
       aria-hidden
       data-overlay-scrollbar-track
       className={`pointer-events-none absolute right-0 top-0 z-40 h-full bg-transparent ${
-        flushRight ? 'w-[12px]' : 'w-4'
+        flushRight ? 'w-[10px]' : 'w-4'
       }`}
     >
       <div
@@ -131,12 +137,13 @@ export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrol
         style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
         // ~12px thick, near-square (2px radius), semi-transparent gray — visible at
         // rest, brighter while scrolling/hovering, brightest when grabbed.
-        className={`pointer-events-auto absolute w-[12px] rounded-[2px] transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
-          flushRight ? 'right-0' : 'right-[2px]'
+        className={`pointer-events-auto absolute rounded-[2px] border-0 outline-none shadow-none transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
+          flushRight ? 'right-0 w-[10px]' : 'right-[2px] w-[12px]'
         } ${
           active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
         }`}
       />
     </div>
+    </>
   )
 }

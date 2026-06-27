@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid'
+import { cn } from '@/utils/cn'
 
 interface HorizontalScrollerProps {
   children: ReactNode
+  /** Let Home media rails paint through its right page gutter under the overlay scrollbar. */
+  bleedRight?: boolean
 }
 
-export function HorizontalScroller({ children }: HorizontalScrollerProps) {
+export function HorizontalScroller({ children, bleedRight = false }: HorizontalScrollerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
@@ -48,7 +51,12 @@ export function HorizontalScroller({ children }: HorizontalScrollerProps) {
         // Pull the row left by the cards' own p-3 (12px) so the first card's artwork
         // lines up with the section heading (which has no padding), while each card
         // keeps its hover-highlight padding — matching Spotify's alignment.
-        className="flex gap-4 overflow-x-auto pb-2 -mx-3 scrollbar-hide scroll-smooth"
+        className={cn(
+          'flex gap-4 overflow-x-auto pb-2 scrollbar-hide scroll-smooth',
+          bleedRight
+            ? '-ml-3 -mr-4 sm:-mr-6 lg:-mr-8 2xl:-mr-10'
+            : '-mx-3',
+        )}
       >
         {children}
       </div>

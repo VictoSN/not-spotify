@@ -95,7 +95,7 @@ function MessagesTab() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="spotify-scrollbar flex-1 overflow-y-auto px-2 pb-3">
+      <div className="spotify-scrollbar sidebar-hover-scrollbar flex-1 overflow-y-auto px-2 pb-3">
         {conversations.length === 0 && newChatFriends.length === 0 ? (
           <div className="flex flex-col items-center px-6 pt-10 text-center">
             <ChatBubbleLeftRightIcon className="mb-3 h-10 w-10 text-secondary" />
@@ -219,7 +219,7 @@ export function SocialPanel() {
     <aside
       style={isDesktopRail ? { width } : undefined}
       className={cn(
-        'fixed inset-x-2 bottom-20 top-[4.5rem] z-40 flex flex-col overflow-hidden rounded-xl border border-secondary/10 bg-surface shadow-2xl md:left-auto md:w-96 lg:relative lg:inset-auto lg:z-auto lg:shrink-0 lg:rounded-xl lg:border-0 lg:shadow-none',
+        'sidebar-scrollbar-hover-region animate-right-sidebar-enter fixed inset-x-2 bottom-20 top-[4.5rem] z-40 flex flex-col overflow-hidden rounded-xl border border-secondary/10 bg-surface shadow-2xl md:left-auto md:w-96 lg:relative lg:inset-auto lg:z-auto lg:shrink-0 lg:rounded-xl lg:border-0 lg:shadow-none',
         !dragging && 'lg:transition-[width,opacity,transform] lg:duration-300 lg:ease-out',
       )}
     >

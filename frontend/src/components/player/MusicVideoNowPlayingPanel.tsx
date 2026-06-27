@@ -105,8 +105,9 @@ export function MusicVideoNowPlayingPanel() {
   }, [currentVideo, videos])
 
   if (isNowPlayingCollapsed) {
+    if (!currentVideo) return null
     return (
-      <aside className="group/now-playing-rail relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
+      <aside className="group/now-playing-rail animate-right-sidebar-enter relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
         <button
           onClick={() => setNowPlayingCollapsed(false)}
           className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
@@ -128,7 +129,7 @@ export function MusicVideoNowPlayingPanel() {
 
   const panelStyle = { flexBasis: width, flexGrow: 0, width }
   const panelClass = cn(
-    'relative hidden h-full max-h-full min-h-0 shrink-0 flex-col overflow-visible rounded-xl bg-surface lg:flex',
+    'sidebar-scrollbar-hover-region animate-right-sidebar-enter relative hidden h-full max-h-full min-h-0 shrink-0 flex-col overflow-visible rounded-xl bg-surface lg:flex',
     !dragging && 'transition-[width,flex-basis,opacity,transform] duration-300 ease-out',
   )
 
@@ -173,7 +174,7 @@ export function MusicVideoNowPlayingPanel() {
         </button>
       </div>
 
-      <div className="spotify-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-5">
+      <div className="spotify-scrollbar sidebar-hover-scrollbar ns-bleed-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-5">
         <div className="group/current-video relative" onContextMenu={(event) => openMenuAtPointer(event, currentVideoMenuRef)}>
           {isCurrentWatchPage ? (
             <Link to={`/videos/${currentVideo.id}`} className="group block overflow-hidden rounded-lg bg-black">

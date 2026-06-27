@@ -37,6 +37,7 @@ export function AppShell() {
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
+  const currentVideo = usePlayerStore((s) => s.currentVideo)
   const playbackMode = usePlayerStore((s) => s.playbackMode)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
   const currentTrackId = currentTrack?.id
@@ -45,7 +46,8 @@ export function AppShell() {
   const isKaraokeOpen = usePlayerStore((s) => s.isKaraokeOpen)
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const karaokeVisible = isKaraokeOpen && !!currentTrack
-  const nowPlayingExpandedVisible = isNowPlayingExpanded && !socialPanelOpen && !isMobile && isNowPlayingOpen
+  const hasCurrentMedia = selectNowPlayingPanel(playbackMode) === 'video' ? !!currentVideo : !!currentTrack
+  const nowPlayingExpandedVisible = isNowPlayingExpanded && !socialPanelOpen && !isMobile && isNowPlayingOpen && hasCurrentMedia
   const prevAuth = useRef(isAuthenticated)
 
   // Scroll detection for the main content area — drives the Spotify-style locked
@@ -157,7 +159,7 @@ export function AppShell() {
 
         {/* Right rail on desktop, responsive overlay on smaller screens. */}
         {isAuthenticated && (
-          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && (
+          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && hasCurrentMedia && (
             selectNowPlayingPanel(playbackMode) === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
           )
         )}

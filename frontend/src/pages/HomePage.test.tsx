@@ -137,7 +137,7 @@ describe('Home media interactions', () => {
     )
 
     const videoFilter = await screen.findByRole('button', { name: 'Music Video' })
-    expect(videoFilter).toHaveClass('font-normal', 'bg-white/15')
+    expect(videoFilter).toHaveClass('h-8', 'px-3', 'py-1', 'text-sm', 'font-normal', 'bg-white/10')
     for (const container of [screen.getByTestId('home-filter-content'), screen.getByTestId('home-main-content')]) {
       expect(container).toHaveClass('px-4', 'sm:px-6', 'lg:px-8', '2xl:px-10')
     }
@@ -184,7 +184,9 @@ describe('Home media interactions', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.contextMenu(screen.getByRole('link', { name: 'Home Playlist' }), {
+    const playlistLink = screen.getByRole('link', { name: 'Home Playlist' })
+    expect(playlistLink).toHaveClass('bg-white/10', 'hover:bg-white/15')
+    fireEvent.contextMenu(playlistLink, {
       clientX: 120,
       clientY: 80,
     })

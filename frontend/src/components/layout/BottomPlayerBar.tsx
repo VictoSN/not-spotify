@@ -1,18 +1,37 @@
-﻿import { useState } from 'react'
-import { EllipsisHorizontalIcon, QueueListIcon, UserGroupIcon } from '@heroicons/react/24/outline'
-import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
+﻿import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  EllipsisHorizontalIcon,
+  QueueListIcon,
+  UserGroupIcon,
+  AdjustmentsHorizontalIcon,
+  MoonIcon,
+} from '@heroicons/react/24/outline'
+import { PlayIcon, PauseIcon, MoonIcon as MoonSolid } from '@heroicons/react/24/solid'
 import { MicVocal } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
-import { EqualizerButton, PlaybackSpeedButton, SleepTimerButton } from '@/components/player/PlayerExtras'
+import { Slider } from '@/components/ui/Slider'
+import {
+  EQUALIZER_BANDS,
+  EQUALIZER_PRESETS,
+  type EqualizerPresetId,
+  getEqualizerSettings,
+  getPresetGains,
+  normalizeEqualizerSettings,
+  saveEqualizerSettings,
+} from '@/services/equalizerPrefs'
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useJamStore } from '@/stores/jamStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useTranslation } from '@/i18n/useTranslation'
+import { cn } from '@/utils/cn'
+
+const RATES = [1, 1.25, 1.5, 2, 0.75]
+const TIMER_OPTIONS = [15, 30, 45, 60]
 
 // Inline SVG: rectangle with small inset rectangle â€” standard PiP icon
 function PipIcon({ className }: { className?: string }) {
@@ -58,6 +77,65 @@ export function BottomPlayerBar() {
     }
   }
   const [moreOpen, setMoreOpen] = useState(false)
+  const [eqOpen, setEqOpen] = useState(false)
+  const [sleepOpen, setSleepOpen] = useState(false)
+  const [eqSettings, setEqSettings] = useState(getEqualizerSettings)
+  const eqRowRef = useRef<HTMLButtonElement>(null)
+  const sleepRowRef = useRef<HTMLButtonElement>(null)
+
+  // Sync EQ settings from other tabs / localStorage changes
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const next = event instanceof CustomEvent
+        ? normalizeEqualizerSettings(event.detail)
+        : getEqualizerSettings()
+      setEqSettings(next)
+    }
+    window.addEventListener('EQUALIZER_EVENT', onChange)
+    window.addEventListener('storage', onChange)
+    return () => {
+      window.removeEventListener('EQUALIZER_EVENT', onChange)
+      window.removeEventListener('storage', onChange)
+    }
+  }, [])
+
+  const eqActive = eqSettings.gains.some((gain) => gain !== 0)
+
+  const applyPreset = (preset: EqualizerPresetId) => {
+    const next = { preset, gains: getPresetGains(preset) }
+    setEqSettings(next)
+    saveEqualizerSettings(next)
+  }
+
+  const setGain = (index: number, gain: number) => {
+    const gains = eqSettings.gains.map((current, i) => (i === index ? gain : current))
+    const next = { preset: 'custom' as const, gains }
+    setEqSettings(next)
+    saveEqualizerSettings(next)
+  }
+
+  // Sleep timer
+  const [sleepNow, setSleepNow] = useState(() => Date.now())
+  const sleepTimerEndsAt = usePlayerStore((s) => s.sleepTimerEndsAt)
+  const setSleepTimer = usePlayerStore((s) => s.setSleepTimer)
+  useEffect(() => {
+    if (sleepTimerEndsAt == null) return
+    const id = window.setInterval(() => setSleepNow(Date.now()), 30_000)
+    return () => window.clearInterval(id)
+  }, [sleepTimerEndsAt])
+  const sleepActive = sleepTimerEndsAt != null
+  const sleepMinutesLeft = sleepActive ? Math.max(1, Math.ceil((sleepTimerEndsAt - sleepNow) / 60_000)) : null
+
+  const pickSleep = (minutes: number | null) => {
+    setSleepTimer(minutes)
+    setSleepOpen(false)
+  }
+
+  // Playback speed
+  const playbackRate = usePlayerStore((s) => s.playbackRate)
+  const setPlaybackRate = usePlayerStore((s) => s.setPlaybackRate)
+  const nextRate = useMemo(() => RATES[(RATES.indexOf(playbackRate) + 1) % RATES.length] ?? 1, [playbackRate])
+
   const isVideoMode = playbackMode === 'video'
   const hasMedia = isVideoMode ? !!currentVideo : !!currentTrack
   const activePlaying = isVideoMode ? isVideoPlaying : isPlaying
@@ -189,55 +267,146 @@ export function BottomPlayerBar() {
               <>
                 <button
                   className="fixed inset-0 z-[990] cursor-default"
-                  onClick={() => setMoreOpen(false)}
+                  onClick={() => { setMoreOpen(false); setEqOpen(false); setSleepOpen(false) }}
                   aria-label="Close more player controls"
                 />
                 <div className="absolute bottom-full right-0 z-[1000] mb-3 w-72 rounded-lg border border-secondary/10 bg-elevated p-2 shadow-2xl">
-                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-primary">Playback speed</p>
-                      <p className="text-xs text-secondary">Change how fast the track plays</p>
-                    </div>
-                    <PlaybackSpeedButton />
-                  </div>}
-                  <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-primary">{t('player.sleep')}</p>
-                      <p className="text-xs text-secondary">Stop playback automatically</p>
-                    </div>
-                    <SleepTimerButton />
+                  {/* ── Playback speed ── */}
+                  {!isVideoMode && (
+                    <button
+                      onClick={() => { setPlaybackRate(nextRate); setMoreOpen(false) }}
+                      className="flex w-full items-center justify-between gap-4 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-primary">Playback speed</p>
+                        <p className="text-xs text-secondary">Change how fast the track plays</p>
+                      </div>
+                      <span className={`w-9 shrink-0 text-center text-xs font-bold tabular-nums ${playbackRate !== 1 ? 'text-accent' : 'text-secondary'}`}>
+                        {playbackRate}×
+                      </span>
+                    </button>
+                  )}
+
+                  {/* ── Sleep timer ── */}
+                  <div className="relative">
+                    <button
+                      ref={sleepRowRef}
+                      onClick={() => setSleepOpen((v) => !v)}
+                      className="flex w-full items-center justify-between gap-4 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-primary">{t('player.sleep')}</p>
+                        <p className="text-xs text-secondary">
+                          {sleepActive ? t('player.sleep.left', { n: sleepMinutesLeft ?? 0 }) : 'Stop playback automatically'}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 ${sleepActive ? 'text-accent' : 'text-secondary'}`}>
+                        {sleepActive ? <MoonSolid className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                      </span>
+                    </button>
+                    {sleepOpen && (
+                      <div className="absolute bottom-full right-0 z-[1010] mb-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-2xl">
+                        <p className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-secondary">{t('player.sleep')}</p>
+                        {TIMER_OPTIONS.map((m) => (
+                          <button key={m} onClick={() => pickSleep(m)} className="block w-full px-3 py-2 text-left text-sm font-semibold text-primary transition-colors hover:bg-surface">
+                            {t('player.sleep.minutes', { n: m })}
+                          </button>
+                        ))}
+                        {sleepActive && (
+                          <>
+                            <div className="my-1 border-t border-secondary/10" />
+                            <button onClick={() => pickSleep(null)} className="block w-full px-3 py-2 text-left text-sm font-semibold text-accent transition-colors hover:bg-surface">
+                              {t('player.sleep.turnOff', { n: sleepMinutesLeft ?? 0 })}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-primary">{t('player.equalizer')}</p>
-                      <p className="text-xs text-secondary">Adjust the sound profile</p>
+
+                  {/* ── Equalizer ── */}
+                  {!isVideoMode && (
+                    <div className="relative">
+                      <button
+                        ref={eqRowRef}
+                        onClick={() => setEqOpen((v) => !v)}
+                        className="flex w-full items-center justify-between gap-4 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-primary">{t('player.equalizer')}</p>
+                          <p className="text-xs text-secondary">Adjust the sound profile</p>
+                        </div>
+                        <span className={cn('shrink-0', eqActive ? 'text-accent' : 'text-secondary')}>
+                          <AdjustmentsHorizontalIcon className="h-5 w-5" />
+                        </span>
+                      </button>
+                      {eqOpen && (
+                        <>
+                          <button className="fixed inset-0 z-[1005]" onClick={() => setEqOpen(false)} aria-label="Close equalizer" />
+                          <div className="absolute bottom-full right-0 z-[1010] mb-2 w-72 rounded-md border border-secondary/10 bg-elevated p-4 shadow-2xl">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <p className="text-[11px] font-bold uppercase tracking-wide text-secondary">{t('player.equalizer')}</p>
+                              <select
+                                aria-label={t('player.eq.preset')}
+                                value={eqSettings.preset}
+                                onChange={(e) => applyPreset(e.target.value as EqualizerPresetId)}
+                                className="rounded-md border border-secondary/20 bg-surface px-2 py-1 text-xs font-semibold text-primary outline-none transition-colors hover:border-secondary/40 focus:border-accent"
+                              >
+                                {EQUALIZER_PRESETS.map((preset) => (
+                                  <option key={preset.id} value={preset.id}>{preset.label}</option>
+                                ))}
+                                <option value="custom">{t('player.eq.custom')}</option>
+                              </select>
+                            </div>
+                            <div className="space-y-3">
+                              {EQUALIZER_BANDS.map((band, i) => (
+                                <div key={band.frequency} className="grid grid-cols-[3.5rem_1fr_2.25rem] items-center gap-3">
+                                  <span className="text-xs font-semibold text-secondary">{band.label}</span>
+                                  <Slider
+                                    value={eqSettings.gains[i] ?? 0}
+                                    min={-12}
+                                    max={12}
+                                    step={1}
+                                    onValueChange={(value) => setGain(i, value)}
+                                    aria-label={t('player.eq.bandGain', { band: band.label })}
+                                    trackClassName="bg-surface"
+                                    thumbClassName="opacity-100 md:opacity-100"
+                                  />
+                                  <span className="text-right text-xs tabular-nums text-secondary">
+                                    {(eqSettings.gains[i] ?? 0) > 0 ? '+' : ''}{eqSettings.gains[i] ?? 0}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    <EqualizerButton />
-                  </div>}
-                  {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-primary">
-                        {jamRole === 'host' ? t('player.jam.end') : 'Jam'}
-                      </p>
-                      <p className="text-xs text-secondary">
-                        {jamRole === 'host' ? 'Stop the current listening session' : 'Listen together with friends'}
-                      </p>
-                    </div>
+                  )}
+
+                  {/* ── Jam ── */}
+                  {!isVideoMode && (
                     <button
                       onClick={() => {
                         if (jamRole === 'host') stopJam()
                         else startHosting()
                         setMoreOpen(false)
                       }}
-                      className={`transition-all hover:scale-110 active:scale-90 ${
-                        jamRole === 'host' ? 'text-accent' : 'text-secondary hover:text-primary'
-                      }`}
-                      aria-label={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
-                      title={jamRole === 'host' ? t('player.jam.end') : t('player.jam.start')}
+                      className="flex w-full items-center justify-between gap-4 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface"
                     >
-                      <UserGroupIcon className="h-5 w-5" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-primary">
+                          {jamRole === 'host' ? t('player.jam.end') : 'Jam'}
+                        </p>
+                        <p className="text-xs text-secondary">
+                          {jamRole === 'host' ? 'Stop the current listening session' : 'Listen together with friends'}
+                        </p>
+                      </div>
+                      <span className={jamRole === 'host' ? 'text-accent' : 'text-secondary'}>
+                        <UserGroupIcon className="h-5 w-5" />
+                      </span>
                     </button>
-                  </div>}
+                  )}
                 </div>
               </>
             )}

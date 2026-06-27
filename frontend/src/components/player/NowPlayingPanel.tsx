@@ -930,7 +930,7 @@ export function NowPlayingPanel() {
         </div>
 
         {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
-        <NowPlayingLyrics track={currentTrack} />
+        <NowPlayingLyrics track={currentTrack} accentColor={albumHeroColor} />
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (

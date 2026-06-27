@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { MusicalNoteIcon } from '@heroicons/react/24/outline'
 import type { PlaylistTrack } from '@/types/playlist'
 
 interface PlaylistCoverProps {
@@ -15,11 +17,20 @@ interface PlaylistCoverProps {
  *   4. a music-note placeholder.
  */
 export function PlaylistCover({ coverUrl, tracks, name, className = '' }: PlaylistCoverProps) {
-  if (coverUrl) {
-    return <img src={coverUrl} alt={name} className={`h-full w-full object-cover ${className}`} />
+  const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null)
+  const imageCoverUrl = coverUrl && failedCoverUrl !== coverUrl ? coverUrl : null
+
+  if (imageCoverUrl) {
+    return (
+      <img
+        src={imageCoverUrl}
+        alt={name}
+        className={`h-full w-full object-cover ${className}`}
+        onError={() => setFailedCoverUrl(imageCoverUrl)}
+      />
+    )
   }
 
-  // Distinct album covers, in track order, up to four.
   const covers: string[] = []
   for (const pt of tracks ?? []) {
     const url = pt.track?.album?.coverUrl
@@ -41,5 +52,9 @@ export function PlaylistCover({ coverUrl, tracks, name, className = '' }: Playli
     return <img src={covers[0]} alt={name} className={`h-full w-full object-cover ${className}`} />
   }
 
-  return <div className={`flex h-full w-full items-center justify-center text-4xl ${className}`}>🎵</div>
+  return (
+    <div className={`flex h-full w-full items-center justify-center bg-elevated text-secondary ${className}`}>
+      <MusicalNoteIcon className="h-1/2 w-1/2" />
+    </div>
+  )
 }

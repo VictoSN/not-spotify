@@ -31,6 +31,7 @@ export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: A
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const setDraggedAlbum = useDragStore((s) => s.setDraggedAlbum)
   const menuTriggerRef = useRef<AlbumMenuHandle>(null)
   const [loading, setLoading] = useState(false)
@@ -76,7 +77,7 @@ export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: A
         setDraggedAlbum(null)
         e.currentTarget.style.opacity = ''
       }}
-      onMouseEnter={() => getDominantColor(album.coverUrl).then((c) => c && setHoverColor(c))}
+      onMouseEnter={() => getDominantColor(album.coverUrl).then((c) => { if (c) { setHoverColor(c); setLastCoverColor(c) } })}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => {
         e.preventDefault()

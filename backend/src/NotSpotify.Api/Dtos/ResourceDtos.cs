@@ -178,9 +178,10 @@ public record PlaylistSummaryDto(
 
 public record CreatePlaylistRequest(
     string Name,
-    string? Description,
+    string? Description = null,
     bool IsPublic = true,
-    SmartPlaylistRulesDto? SmartRules = null
+    SmartPlaylistRulesDto? SmartRules = null,
+    [property: JsonPropertyName("coverUrl")] string? CoverUrl = null
 );
 
 public record UpdatePlaylistRequest(

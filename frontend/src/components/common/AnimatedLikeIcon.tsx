@@ -1,4 +1,5 @@
-import { PlusCircleIcon } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartOutlineIcon } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { cn } from '@/utils/cn'
 
 interface AnimatedLikeIconProps {
@@ -11,7 +12,7 @@ export function AnimatedLikeIcon({ liked, className, heartClassName }: AnimatedL
   if (liked) {
     return (
       <span
-        className={cn('liked-heart-pop relative inline-grid shrink-0 place-items-center align-middle leading-none text-accent', className)}
+        className={cn('liked-heart-pop relative inline-grid shrink-0 place-items-center align-middle leading-none text-red-500', className)}
         aria-hidden="true"
       >
         <span className="liked-heart-particle liked-heart-particle-1" />
@@ -20,20 +21,10 @@ export function AnimatedLikeIcon({ liked, className, heartClassName }: AnimatedL
         <span className="liked-heart-particle liked-heart-particle-4" />
         <span className="liked-heart-particle liked-heart-particle-5" />
         <span className="liked-heart-particle liked-heart-particle-6" />
-        <svg viewBox="0 0 24 24" className="h-full w-full" aria-hidden="true">
-          <circle cx="12" cy="12" r="9.75" fill="currentColor" />
-          <path
-            d="m8.1 12.15 2.45 2.45 5.35-5.35"
-            fill="none"
-            stroke="#000"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.25"
-          />
-        </svg>
+        <HeartSolidIcon className="h-full w-full" />
       </span>
     )
   }
 
-  return <PlusCircleIcon className={cn('shrink-0 stroke-[2.25] transition-colors', heartClassName ?? className)} />
+  return <HeartOutlineIcon className={cn('shrink-0 stroke-[2.4] transition-colors', heartClassName ?? className)} />
 }

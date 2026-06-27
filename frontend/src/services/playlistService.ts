@@ -28,8 +28,9 @@ export const playlistService = {
     description?: string,
     isPublic = true,
     smartRules?: SmartPlaylistRules,
+    coverUrl?: string | null,
   ): Promise<Playlist> {
-    const res = await api.post<Playlist>('/playlists', { name, description, isPublic, smartRules })
+    const res = await api.post<Playlist>('/playlists', { name, description, isPublic, smartRules, coverUrl })
     return res.data
   },
 
@@ -68,8 +69,9 @@ export const playlistService = {
     return res.data
   },
 
-  async addTrack(playlistId: string, track: Track): Promise<void> {
-    await api.post(`/playlists/${playlistId}/tracks`, { trackId: track.id })
+  async addTrack(playlistId: string, track: Track): Promise<Playlist> {
+    const res = await api.post<Playlist>(`/playlists/${playlistId}/tracks`, { trackId: track.id })
+    return res.data
   },
 
   async removeTrack(playlistId: string, trackId: string): Promise<void> {

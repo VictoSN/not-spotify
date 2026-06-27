@@ -16,6 +16,9 @@ import {
   CheckIcon,
   UserCircleIcon,
   XCircleIcon,
+  EllipsisHorizontalIcon,
+  PlusIcon,
+  ArrowUpTrayIcon,
 } from '@heroicons/react/24/outline'
 import type { Playlist } from '@/types/playlist'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -42,6 +45,13 @@ import {
 
 interface PlaylistRowMenuProps {
   playlist: Playlist
+  alwaysVisible?: boolean
+  triggerClassName?: string
+  triggerIconClassName?: string
+  onEditDetails?: () => void
+  onAddSongs?: () => void
+  onExport?: () => void
+  onDelete?: () => void | Promise<void>
 }
 
 export type PlaylistRowMenuHandle = PointerMenuHandle
@@ -55,7 +65,16 @@ export type PlaylistRowMenuHandle = PointerMenuHandle
  * Headless UI's Menu.
  */
 export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenuProps>(
-  function PlaylistRowMenu({ playlist }, ref) {
+  function PlaylistRowMenu({
+    playlist,
+    alwaysVisible,
+    triggerClassName,
+    triggerIconClassName,
+    onEditDetails,
+    onAddSongs,
+    onExport,
+    onDelete,
+  }, ref) {
     const navigate = useNavigate()
     const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
     const savePlaylist = useLibraryStore((s) => s.savePlaylist)
@@ -99,7 +118,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
 
     // Pointer-anchored open/close/reopen behaviour shared with every other menu.
     const menu = usePointerMenu()
-    const { coords, hiddenBtnRef, openAt } = menu
+    const { coords, hiddenBtnRef, openAt, openFromButton } = menu
     // Reset the (hover) "Move to folder" flyout each time the menu (re)opens.
     useImperativeHandle(ref, () => ({
       openAt: (x: number, y: number) => {
@@ -150,6 +169,10 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
     }
 
     const handleDelete = async () => {
+      if (onDelete) {
+        await onDelete()
+        return
+      }
       try {
         await deletePlaylist(playlist.id)
         notify.success('Playlist deleted')
@@ -196,6 +219,25 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
           return (
             <>
               {/* Invisible, body-portaled trigger parked at the cursor. */}
+              {(alwaysVisible || triggerClassName) && (
+                <button
+                  type="button"
+                  aria-label={`More options for ${playlist.name}`}
+                  title={`More options for ${playlist.name}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    stop(e)
+                    if (open) close()
+                    else openFromButton(e)
+                  }}
+                  className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
+                >
+                  <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
+                  {triggerClassName?.includes('spotify-tooltip-anchor') && (
+                    <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">More options</span>
+                  )}
+                </button>
+              )}
               {createPortal(
                 <MenuButton
                   ref={hiddenBtnRef}
@@ -239,11 +281,36 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     <div className="my-1 h-px bg-secondary/20" />
 
                     <MenuItem>
-                      <button type="button" onClick={(e) => { stop(e); navigate(`/playlist/${playlist.id}`); close() }} className={itemClass}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          stop(e)
+                          if (onEditDetails) onEditDetails()
+                          else navigate(`/playlist/${playlist.id}`)
+                          close()
+                        }}
+                        className={itemClass}
+                      >
                         <PencilIcon className="h-4 w-4" />
                         Edit details
                       </button>
                     </MenuItem>
+                    {onAddSongs && !playlist.smartRules && (
+                      <MenuItem>
+                        <button type="button" onClick={(e) => { stop(e); onAddSongs(); close() }} className={itemClass}>
+                          <PlusIcon className="h-4 w-4" />
+                          Add songs
+                        </button>
+                      </MenuItem>
+                    )}
+                    {onExport && (playlist.tracks?.length ?? 0) > 0 && (
+                      <MenuItem>
+                        <button type="button" onClick={(e) => { stop(e); onExport(); close() }} className={itemClass}>
+                          <ArrowUpTrayIcon className="h-4 w-4" />
+                          Export
+                        </button>
+                      </MenuItem>
+                    )}
                     <MenuItem>
                       <button type="button" onClick={(e) => { stop(e); void handleDelete(); close() }} className={itemClass}>
                         <MinusCircleIcon className="h-4 w-4" />

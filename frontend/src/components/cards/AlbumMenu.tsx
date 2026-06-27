@@ -123,6 +123,7 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
             <button
               type="button"
               aria-label={`More options for ${album.title}`}
+              title={`More options for ${album.title}`}
               onClick={(e) => {
                 e.preventDefault()
                 stop(e)

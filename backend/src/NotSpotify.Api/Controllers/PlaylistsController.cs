@@ -25,19 +25,25 @@ public class PlaylistsController : ControllerBase
     private readonly IStorageService _storage;
     private readonly AudioDownloadService _audioDownloads;
     private readonly SmartPlaylistService _smartPlaylists;
+    private readonly IHttpClientFactory _httpFactory;
+    private readonly ILogger<PlaylistsController> _logger;
 
     public PlaylistsController(
         AppDbContext db,
         MediaMapper mapper,
         IStorageService storage,
         AudioDownloadService audioDownloads,
-        SmartPlaylistService smartPlaylists)
+        SmartPlaylistService smartPlaylists,
+        IHttpClientFactory httpFactory,
+        ILogger<PlaylistsController> logger)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
         _audioDownloads = audioDownloads;
         _smartPlaylists = smartPlaylists;
+        _httpFactory = httpFactory;
+        _logger = logger;
     }
 
     private Guid? CurrentUserId()
@@ -182,11 +188,52 @@ public class PlaylistsController : ControllerBase
             Rules = req.SmartRules is null ? null : SmartPlaylistService.Serialize(req.SmartRules),
         };
         _db.Playlists.Add(playlist);
+
+        // When a cover source URL is provided (playlist created from a track's context
+        // menu via "Add to playlist → New playlist"), download the image and store it
+        // permanently in our storage so it behaves exactly like a user upload.
+        // Sidebar-created playlists send no coverUrl → keep the default artwork.
+        if (!string.IsNullOrWhiteSpace(req.CoverUrl))
+        {
+            var ext = InferImageExt(req.CoverUrl);
+            var key = $"covers/playlists/{playlist.Id}/{Guid.NewGuid()}{ext}";
+            try
+            {
+                var http = _httpFactory.CreateClient();
+                var imageBytes = await http.GetByteArrayAsync(req.CoverUrl, ct);
+                await using var stream = new MemoryStream(imageBytes);
+                await _storage.UploadAsync(key, stream, "image/" + ext.TrimStart('.'), ct);
+                playlist.CoverKey = key;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to persist cover for playlist {PlaylistId} from {Url} — storing URL reference instead",
+                    playlist.Id, req.CoverUrl);
+                // Fall back: store the URL as-is so the playlist still has artwork in
+                // contexts where the URL is reachable (e.g. the detail page).
+                playlist.CoverUrl = req.CoverUrl;
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
         var loaded = await LoadFullPlaylist(playlist.Id, ct);
         await HydrateSmartTracksAsync(loaded!, ct);
         return CreatedAtAction(nameof(Get), new { id = playlist.Id }, await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
+    }
+
+    /// <summary>Guess a safe image file extension from a URL path, defaulting to .jpg.</summary>
+    private static string InferImageExt(string url)
+    {
+        // Parse the path part of the URL, stripping query / fragment.
+        var path = url;
+        var q = url.IndexOf('?');
+        if (q >= 0) path = url[..q];
+        var h = path.IndexOf('#');
+        if (h >= 0) path = path[..h];
+
+        var ext = Path.GetExtension(path)?.ToLowerInvariant();
+        return AllowedImageExts.Contains(ext ?? "") ? ext! : ".jpg";
     }
 
     [HttpPatch("{id:guid}")]

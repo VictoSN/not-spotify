@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -19,8 +19,9 @@ import {
   ArrowDownCircleIcon,
   CheckCircleIcon,
   IdentificationIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/outline'
-import { ArrowPathIcon } from '@heroicons/react/24/solid'
+import { ArrowPathIcon, CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -40,6 +41,7 @@ import { repostService } from '@/services/repostService'
 import { notify } from '@/utils/toast'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { ShareIcon } from '@/components/common/ShareIcon'
+import { PlaylistCover } from './PlaylistCover'
 
 interface TrackRowMenuProps {
   track: Track
@@ -54,6 +56,10 @@ interface TrackRowMenuProps {
   /** Hide the premium "Download" item — used where a dedicated download button already exists
    *  in the surrounding toolbar (e.g. the track detail page) so it doesn't appear twice. */
   hideDownload?: boolean
+  onCopyEmbed?: () => void | Promise<void>
+  triggerContent?: ReactNode
+  triggerTitle?: string
+  openAddSubmenuOnTrigger?: boolean
 }
 
 /** Imperative handle so parents can open the menu at the pointer on right-click. */
@@ -68,6 +74,10 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   triggerIconClassName,
   onViewCredits,
   hideDownload,
+  onCopyEmbed,
+  triggerContent,
+  triggerTitle,
+  openAddSubmenuOnTrigger,
 }, ref) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
@@ -76,11 +86,14 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   const [removePlaylistQuery, setRemovePlaylistQuery] = useState('')
   const [downloading, setDownloading] = useState(false)
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
+  const [stagedPlaylistIds, setStagedPlaylistIds] = useState<Set<string>>(new Set())
+  const [savingPlaylistPicker, setSavingPlaylistPicker] = useState(false)
   // Hover-intent timer: closing the flyout is delayed so the pointer can cross
   // the small gap between the "Add to playlist" row and the flyout without it
   // flickering shut.
   const addCloseTimer = useRef<number | null>(null)
   const removeCloseTimer = useRef<number | null>(null)
+  const autoAddedPlaylistIdsRef = useRef<Set<string>>(new Set())
   const isMobile = useIsMobile()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isPremium = useAuthStore((s) => s.user?.plan === 'premium')
@@ -107,27 +120,20 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   const isLiked = likedTrackIds.has(track.id)
   const isInQueue = queue.some((t) => t.id === track.id)
   const myOwnedPlaylists = savedPlaylists.filter((p) => p.isOwner)
+  const playlistsWithTrack: typeof myOwnedPlaylists = []
 
   // Playlists this track has already been added to — include the current playlist so the
   // user can remove the song they're looking at right now.
-  const playlistsWithTrack = myOwnedPlaylists.filter((p) =>
-    p.id !== currentPlaylistId && (p.tracks ?? []).some((pt) => pt.track.id === track.id),
-  )
   // Playlists this track hasn't been added to — exclude the current playlist since it
   // would be a duplicate add.
-  const playlistsWithoutTrack = myOwnedPlaylists.filter(
-    (p) => p.id !== currentPlaylistId && !(p.tracks ?? []).some((pt) => pt.track.id === track.id),
-  )
-
   const trimmedQuery = playlistQuery.trim().toLowerCase()
-  const filteredAddPlaylists = trimmedQuery
-    ? playlistsWithoutTrack.filter((p) => p.name.toLowerCase().includes(trimmedQuery))
-    : playlistsWithoutTrack
-
-  const trimmedRemoveQuery = removePlaylistQuery.trim().toLowerCase()
-  const filteredRemovePlaylists = trimmedRemoveQuery
-    ? playlistsWithTrack.filter((p) => p.name.toLowerCase().includes(trimmedRemoveQuery))
-    : playlistsWithTrack
+  const addPickerPlaylists = myOwnedPlaylists.filter((p) => p.id !== currentPlaylistId)
+  const filteredAddPlaylists = [
+    ...(trimmedQuery
+      ? addPickerPlaylists.filter((p) => p.name.toLowerCase().includes(trimmedQuery))
+      : addPickerPlaylists),
+  ].sort((a, b) => Number(stagedPlaylistIds.has(b.id)) - Number(stagedPlaylistIds.has(a.id)))
+  const filteredRemovePlaylists: typeof myOwnedPlaylists = []
 
   const openAddSubmenu = () => {
     if (addCloseTimer.current) {
@@ -136,8 +142,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
     }
     // Lazily ensure the playlist list is hydrated.
     if (savedPlaylists.length === 0) void fetchLibrary()
+    setStagedPlaylistIds(currentPlaylistIdsWithTrack())
     setAddSubmenuOpen(true)
-    setRemoveSubmenuOpen(false)
   }
 
   const scheduleCloseAddSubmenu = () => {
@@ -148,23 +154,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
     }, 120)
   }
 
-  const openRemoveSubmenu = () => {
-    if (removeCloseTimer.current) {
-      clearTimeout(removeCloseTimer.current)
-      removeCloseTimer.current = null
-    }
-    if (savedPlaylists.length === 0) void fetchLibrary()
-    setRemoveSubmenuOpen(true)
-    setAddSubmenuOpen(false)
-  }
-
-  const scheduleCloseRemoveSubmenu = () => {
-    if (removeCloseTimer.current) clearTimeout(removeCloseTimer.current)
-    removeCloseTimer.current = window.setTimeout(() => {
-      setRemoveSubmenuOpen(false)
-      setRemovePlaylistQuery('')
-    }, 120)
-  }
+  const openRemoveSubmenu = () => {}
+  const scheduleCloseRemoveSubmenu = () => {}
 
   // Clear any pending close timers if the menu unmounts.
   useEffect(() => () => {
@@ -204,15 +195,20 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
       }
     })
 
-  const handleAddToPlaylist = async (playlistId: string) => {
+  const handleAddToPlaylist = async (playlistId: string, options?: { silent?: boolean }) => {
     try {
       await addTrackToPlaylist(playlistId, track)
-      notify.success('Added to playlist')
+      if (!options?.silent) notify.success('Added to playlist')
+      return true
     } catch (error) {
       // The backend returns 409 when the track is already in the playlist.
       const status = (error as { response?: { status?: number } })?.response?.status
-      if (status === 409) notify.info('Already in this playlist')
-      else notify.error("Couldn't add to playlist")
+      if (status === 409) {
+        if (!options?.silent) notify.info('Already in this playlist')
+        return true
+      }
+      if (!options?.silent) notify.error("Couldn't add to playlist")
+      return false
     }
   }
 
@@ -228,13 +224,62 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
     }
   }
 
-  const handleNewPlaylist = async () => {
+  const currentPlaylistIdsWithTrack = () =>
+    new Set(
+      myOwnedPlaylists
+        .filter((p) => p.id !== currentPlaylistId && (p.tracks ?? []).some((pt) => pt.track.id === track.id))
+        .map((p) => p.id),
+    )
+
+  const openPlaylistPicker = () => {
+    if (savedPlaylists.length === 0) void fetchLibrary()
+    autoAddedPlaylistIdsRef.current.clear()
+    setPlaylistQuery('')
+    setStagedPlaylistIds(currentPlaylistIdsWithTrack())
+  }
+
+  const toggleStagedPlaylist = (playlistId: string) => {
+    setStagedPlaylistIds((current) => {
+      const next = new Set(current)
+      if (next.has(playlistId)) next.delete(playlistId)
+      else next.add(playlistId)
+      return next
+    })
+  }
+
+  const applyPlaylistPicker = async () => {
+    setSavingPlaylistPicker(true)
     try {
-      const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`, undefined, true)
-      await addTrackToPlaylist(playlist.id, track)
-      navigate(`/playlist/${playlist.id}`)
+      const before = currentPlaylistIdsWithTrack()
+      autoAddedPlaylistIdsRef.current.forEach((playlistId) => before.add(playlistId))
+      for (const playlistId of stagedPlaylistIds) {
+        if (!before.has(playlistId)) await handleAddToPlaylist(playlistId)
+      }
+      for (const playlistId of before) {
+        if (!stagedPlaylistIds.has(playlistId)) await handleRemoveFromPlaylist(playlistId)
+      }
+      autoAddedPlaylistIdsRef.current.clear()
+    } finally {
+      setSavingPlaylistPicker(false)
+    }
+  }
+
+  const handleNewPlaylistInPicker = async () => {
+    setSavingPlaylistPicker(true)
+    try {
+      const playlist = await createPlaylist(`My Playlist #${savedPlaylists.length + 1}`, undefined, true, undefined, track.album.coverUrl)
+      const added = await handleAddToPlaylist(playlist.id, { silent: true })
+      if (added) {
+        autoAddedPlaylistIdsRef.current.add(playlist.id)
+        setStagedPlaylistIds((current) => new Set([...current, playlist.id]))
+        notify.success('Playlist created and track added')
+      } else {
+        notify.error("Playlist created, but couldn't add this track")
+      }
     } catch {
       notify.error("Couldn't create playlist")
+    } finally {
+      setSavingPlaylistPicker(false)
     }
   }
 
@@ -273,20 +318,31 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
           {/* Visible "…" affordance — a plain button that opens the menu just below it. */}
           <button
             type="button"
-            aria-label="More options"
+            aria-label={triggerTitle ?? 'More options'}
+            title={triggerTitle ?? 'More options'}
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.
               setAddSubmenuOpen(false)
-              setRemoveSubmenuOpen(false)
               setPlaylistQuery('')
-              setRemovePlaylistQuery('')
               if (open) close()
-              else openFromButton(e)
+              else {
+                openFromButton(e)
+                if (openAddSubmenuOnTrigger) {
+                  if (!isAuthenticated) {
+                    openAuthPrompt({
+                      title: 'Save songs to playlists with a free account',
+                      imageUrl: track.album.coverUrl,
+                    })
+                  } else openPlaylistPicker()
+                }
+              }
             }}
             className={`cursor-pointer transition-opacity ${alwaysVisible ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'} ${triggerClassName ?? ''}`}
           >
-            <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
+            {triggerContent ?? (
+              <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
+            )}
           </button>
           {/* Real Headless UI trigger: invisible, portaled to <body>, parked at the
               pointer so the menu spawns exactly there (immune to transformed ancestors). */}
@@ -309,8 +365,105 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
             // Headless UI's `anchor` adds for edge-scrolling — without it the
             // anchored panel clips the "Add to playlist" flyout, which sits
             // outside the panel box (positioned `right-full`, to its left).
-            className={CONTEXT_MENU_PANEL_CLASS}
+            className={openAddSubmenuOnTrigger
+              ? 'z-[1000] flex max-h-[32rem] w-80 origin-top flex-col overflow-hidden rounded-md bg-[#1f1f1f] text-sm font-normal leading-5 shadow-2xl ring-1 ring-black/20 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0'
+              : CONTEXT_MENU_PANEL_CLASS}
           >
+            {openAddSubmenuOnTrigger ? (
+              <>
+                <div className="px-3 pb-2 pt-3 text-xs font-bold text-secondary">Add to playlist</div>
+                <div className="px-2 pb-2">
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
+                    <input
+                      type="text"
+                      value={playlistQuery}
+                      onChange={(e) => setPlaylistQuery(e.target.value)}
+                      onClick={stop}
+                      onMouseDown={stop}
+                      onPointerDown={stop}
+                      placeholder="Find a playlist"
+                      className="h-9 w-full rounded-md bg-[#333] pl-8 pr-3 text-sm font-semibold text-primary outline-none placeholder:text-secondary focus:ring-1 focus:ring-accent/50"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={savingPlaylistPicker}
+                  onClick={async (e) => {
+                    stop(e)
+                    await handleNewPlaylistInPicker()
+                  }}
+                  className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  New playlist
+                </button>
+                <div className="mx-4 h-px bg-secondary/20" />
+                <div className="min-h-0 flex-1 overflow-y-auto py-1">
+                  {filteredAddPlaylists.map((p) => {
+                    const selected = stagedPlaylistIds.has(p.id)
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={(e) => {
+                          stop(e)
+                          toggleStagedPlaylist(p.id)
+                        }}
+                        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333]"
+                      >
+                        <span className="flex min-w-0 items-center gap-3">
+                          <div className="h-9 w-9 shrink-0 overflow-hidden rounded">
+                            <PlaylistCover coverUrl={p.coverUrl} tracks={p.tracks} name={p.name} />
+                          </div>
+                          <span className="truncate">{p.name}</span>
+                        </span>
+                        {selected ? (
+                          <CheckCircleSolidIcon className="h-5 w-5 shrink-0 text-accent" />
+                        ) : (
+                          <span className="h-5 w-5 shrink-0 rounded-full border border-secondary/70" />
+                        )}
+                      </button>
+                    )
+                  })}
+                  {filteredAddPlaylists.length === 0 && (
+                    <p className="px-4 py-5 text-sm text-secondary">
+                      {trimmedQuery ? 'No matches.' : 'No playlists yet.'}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-3 bg-[#1f1f1f] px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.35)]">
+                  <button
+                    type="button"
+                    disabled={savingPlaylistPicker}
+                    onClick={(e) => {
+                      stop(e)
+                      setPlaylistQuery('')
+                      setStagedPlaylistIds(currentPlaylistIdsWithTrack())
+                      close()
+                    }}
+                    className="rounded-full px-4 py-2 text-sm font-bold text-secondary transition-colors hover:text-primary disabled:opacity-60"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={savingPlaylistPicker}
+                    onClick={async (e) => {
+                      stop(e)
+                      await applyPlaylistPicker()
+                      setPlaylistQuery('')
+                      close()
+                    }}
+                    className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-base transition-transform hover:scale-105 disabled:opacity-60"
+                  >
+                    {savingPlaylistPicker ? 'Saving...' : 'Done'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
             {/*
               "Add to playlist" — intentionally NOT a MenuItem. Headless UI's
               MenuItem auto-closes the parent Menu on click and manages focus
@@ -363,10 +516,9 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                       addCloseTimer.current = null
                     }
                   }}
-                  onMouseLeave={scheduleCloseAddSubmenu}
                   className={isMobile
-                    ? 'w-full max-h-60 overflow-y-auto bg-elevated/80 border-t border-secondary/10 py-1'
-                    : 'absolute right-full top-0 mr-1 w-72 max-h-96 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1'}
+                    ? 'flex max-h-96 w-full flex-col overflow-hidden bg-elevated/80 border-t border-secondary/10 py-1'
+                    : 'absolute right-full top-0 mr-1 flex max-h-[32rem] w-80 flex-col overflow-hidden rounded-md bg-[#1f1f1f] shadow-2xl ring-1 ring-black/20 py-1'}
                 >
                   <div className="px-2 pt-1 pb-2">
                     <div className="relative">
@@ -386,67 +538,86 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
 
                   <button
                     type="button"
+                    disabled={savingPlaylistPicker}
                     onClick={async (e) => {
                       stop(e)
-                      await handleNewPlaylist()
-                      setAddSubmenuOpen(false)
-                      setPlaylistQuery('')
-                      close()
+                      await handleNewPlaylistInPicker()
                     }}
-                    className={itemClass}
+                    className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <PlusIcon className="w-4 h-4" />
+                    <PlusIcon className="h-5 w-5" />
                     New playlist
                   </button>
 
                   {filteredAddPlaylists.length > 0 && <div className="my-1 h-px bg-secondary/20" />}
 
-                  {filteredAddPlaylists.map((p) => (
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                  {filteredAddPlaylists.map((p) => {
+                    const selected = stagedPlaylistIds.has(p.id)
+                    return (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={async (e) => {
+                      onClick={(e) => {
                         stop(e)
-                        await handleAddToPlaylist(p.id)
-                        setAddSubmenuOpen(false)
-                        setPlaylistQuery('')
-                        close()
+                        toggleStagedPlaylist(p.id)
                       }}
-                      className={itemClass}
+                      className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-2 text-left text-base font-bold text-primary transition-colors hover:bg-[#333]"
                     >
-                      {p.coverUrl ? (
-                        <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
-                      ) : (
-                        <div className="w-6 h-6 rounded bg-surface flex items-center justify-center text-[10px]">🎵</div>
-                      )}
+                      <span className="flex min-w-0 items-center gap-3">
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded">
+                        <PlaylistCover coverUrl={p.coverUrl} tracks={p.tracks} name={p.name} />
+                      </div>
                       <span className="truncate">{p.name}</span>
+                      </span>
+                      {selected ? (
+                        <CheckCircleSolidIcon className="h-5 w-5 shrink-0 text-accent" />
+                      ) : (
+                        <span className="h-5 w-5 shrink-0 rounded-full border border-secondary/70" />
+                      )}
                     </button>
-                  ))}
+                    )
+                  })}
 
                   {filteredAddPlaylists.length === 0 && (
                     <p className="px-3 py-2 text-xs text-secondary">
                       {trimmedQuery ? 'No matches.' : 'No playlists yet.'}
                     </p>
                   )}
+                  </div>
+                  <div className="flex items-center justify-end gap-3 bg-[#1f1f1f] px-4 py-3 shadow-[0_-18px_30px_rgba(0,0,0,0.35)]">
+                    <button
+                      type="button"
+                      disabled={savingPlaylistPicker}
+                      onClick={(e) => {
+                        stop(e)
+                        setAddSubmenuOpen(false)
+                        setPlaylistQuery('')
+                        setStagedPlaylistIds(currentPlaylistIdsWithTrack())
+                        close()
+                      }}
+                      className="rounded-full px-4 py-2 text-sm font-bold text-secondary transition-colors hover:text-primary disabled:opacity-60"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={savingPlaylistPicker}
+                      onClick={async (e) => {
+                        stop(e)
+                        await applyPlaylistPicker()
+                        setAddSubmenuOpen(false)
+                        setPlaylistQuery('')
+                        close()
+                      }}
+                      className="rounded-full bg-primary px-5 py-2 text-sm font-bold text-base transition-transform hover:scale-105 disabled:opacity-60"
+                    >
+                      {savingPlaylistPicker ? 'Saving...' : 'Done'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
-
-            {isAuthenticated && currentPlaylistId && (
-              <MenuItem>
-                <button
-                  type="button"
-                  onClick={async (event) => {
-                    stop(event)
-                    if (await handleRemoveFromPlaylist(currentPlaylistId)) close()
-                  }}
-                  className={itemClass}
-                >
-                  <MinusCircleIcon className="h-4 w-4" />
-                  Remove from this playlist
-                </button>
-              </MenuItem>
-            )}
 
             {/* Other owned playlists containing this track keep the removable flyout. */}
             {isAuthenticated && playlistsWithTrack.length > 0 && (
@@ -520,11 +691,9 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                         }}
                         className={itemClass}
                       >
-                        {p.coverUrl ? (
-                          <img src={p.coverUrl} alt={p.name} className="w-6 h-6 rounded object-cover" />
-                        ) : (
-                          <div className="w-6 h-6 rounded bg-surface flex items-center justify-center text-[10px]">🎵</div>
-                        )}
+                      <div className="h-6 w-6 shrink-0 overflow-hidden rounded">
+                        <PlaylistCover coverUrl={p.coverUrl} tracks={p.tracks} name={p.name} />
+                      </div>
                         <span className="truncate">{p.name}</span>
                       </button>
                     ))}
@@ -762,6 +931,23 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
               </MenuItem>
             )}
 
+            {onCopyEmbed && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    stop(e)
+                    void onCopyEmbed()
+                    close()
+                  }}
+                  className={itemClass}
+                >
+                  <CodeBracketIcon className="w-4 h-4" />
+                  Copy embed code
+                </button>
+              </MenuItem>
+            )}
+
             <MenuItem>
               <button
                 type="button"
@@ -776,6 +962,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                 Share
               </button>
             </MenuItem>
+              </>
+            )}
           </MenuItems>
 
           {shareToChatOpen && (

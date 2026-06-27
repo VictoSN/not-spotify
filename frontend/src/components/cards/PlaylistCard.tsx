@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { HeartIcon } from '@heroicons/react/24/outline'
-import { HeartIcon as HeartSolid, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
+import { PlusCircleIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { useHueStore } from '@/stores/hueStore'
 import { usePlayerStore } from '@/stores/playerStore'
@@ -31,6 +31,7 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const { savedPlaylists, savePlaylist, unsavePlaylist } = useLibraryStore()
   const isSaved = savedPlaylists.some((p) => p.id === playlist.id)
   const menuTriggerRef = useRef<PlaylistRowMenuHandle>(null)
@@ -71,7 +72,18 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
     <Link
       to={`/playlist/${playlist.id}`}
       onMouseEnter={() => {
-        if (playlist.coverUrl) getDominantColor(playlist.coverUrl).then((c) => c && setHoverColor(c))
+        if (playlist.coverUrl) {
+          getDominantColor(playlist.coverUrl).then((c) => {
+            if (c) {
+              setHoverColor(c)
+              setLastCoverColor(c)
+            }
+          })
+        } else {
+          // No cover — show a neutral grey so the hero doesn't snap to an
+          // unrelated colour from the last playing track.
+          setHoverColor('hsl(0 0% 33%)')
+        }
       }}
       onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
@@ -91,9 +103,9 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
           aria-label={isSaved ? `Remove ${playlist.name} from library` : `Add ${playlist.name} to library`}
         >
           {isSaved ? (
-            <HeartSolid className="w-5 h-5 text-accent" />
+            <CheckCircleIcon className="liked-heart-pop h-5 w-5 text-accent" />
           ) : (
-            <HeartIcon className="w-5 h-5 text-white hover:text-accent transition-colors" />
+            <PlusCircleIcon className="h-5 w-5 text-white transition-colors hover:text-accent stroke-[2.4]" />
           )}
         </button>
       </div>

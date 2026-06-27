@@ -956,7 +956,7 @@ function SearchSuggestionRow({
       onKeyDown={handleKeyDown}
       className={cn(
         'group flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none',
-        isActive && 'bg-primary/10',
+        _isActive && 'bg-primary/10',
       )}
     >
       <div className={cn('relative h-12 w-12 shrink-0 overflow-hidden bg-primary/10', imageRounded)}>

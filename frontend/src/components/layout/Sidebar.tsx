@@ -1339,6 +1339,7 @@ function LibraryArtwork({
     // Only use the explicit cover URL — don't fall back to track mosaic in the
     // sidebar. Sidebar-created playlists deliberately keep the default icon until
     // the user uploads a cover. The detail page handles the mosaic fallback.
+    // WHY IS THE SIDEBAR MINIMIZE SLIDE ANIMATION IS SO JANKY? Because the PlaylistCover component is a motion.div, and it animates its scale on mount. The sidebar minimize animation is also a scale transform, so the two transforms fight each other. The solution is to not animate the PlaylistCover at all in the sidebar.
     return <PlaylistCover coverUrl={item.playlist.coverUrl} name={item.playlist.name} />
   }
 

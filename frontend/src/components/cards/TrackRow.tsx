@@ -28,6 +28,8 @@ interface TrackRowProps {
   addedAt?: string
   /** When this row is rendered inside a playlist page, omit that playlist from "Add to playlist". */
   currentPlaylistId?: string
+  /** Keeps the open playlist page in sync after its context-menu removal succeeds. */
+  onRemovedFromCurrentPlaylist?: (trackId: string) => void
   /** The album/playlist surface this row belongs to, so playing it sets the global
    *  playback context (and the surface's play button flips to pause). */
   context?: PlaybackContextInput
@@ -41,6 +43,7 @@ export function TrackRow({
   showPlayCount = false,
   addedAt,
   currentPlaylistId,
+  onRemovedFromCurrentPlaylist,
   context,
 }: TrackRowProps) {
   const { currentTrack, isPlaying, pause, resume } = usePlayerStore()
@@ -223,7 +226,12 @@ export function TrackRow({
 
         {/* Menu slot (Col 4 on desktop / Col 3 on mobile) */}
         <div className="flex justify-center">
-          <TrackRowMenu track={track} currentPlaylistId={currentPlaylistId} ref={menuTriggerRef} />
+          <TrackRowMenu
+            track={track}
+            currentPlaylistId={currentPlaylistId}
+            onRemovedFromCurrentPlaylist={onRemovedFromCurrentPlaylist}
+            ref={menuTriggerRef}
+          />
         </div>
       </div>
     </div>

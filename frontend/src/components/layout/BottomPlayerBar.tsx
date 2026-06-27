@@ -188,11 +188,11 @@ export function BottomPlayerBar() {
             {moreOpen && (
               <>
                 <button
-                  className="fixed inset-0 z-40 cursor-default"
+                  className="fixed inset-0 z-[990] cursor-default"
                   onClick={() => setMoreOpen(false)}
                   aria-label="Close more player controls"
                 />
-                <div className="absolute bottom-full right-0 z-50 mb-3 w-72 rounded-lg border border-secondary/10 bg-elevated p-2 shadow-2xl">
+                <div className="absolute bottom-full right-0 z-[1000] mb-3 w-72 rounded-lg border border-secondary/10 bg-elevated p-2 shadow-2xl">
                   {!isVideoMode && <div className="flex items-center justify-between gap-4 rounded-md px-3 py-2.5 hover:bg-surface">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-primary">Playback speed</p>

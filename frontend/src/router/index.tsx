@@ -53,6 +53,7 @@ import { AdminDevPage } from '@/pages/admin/AdminDevPage'
 import { AdminTeamPage } from '@/pages/admin/AdminTeamPage'
 import { AdminApprovalsPage } from '@/pages/admin/AdminApprovalsPage'
 import { AdminPlaylistsPage } from '@/pages/admin/AdminPlaylistsPage'
+import { AdminAdsPage } from '@/pages/admin/AdminAdsPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
@@ -162,6 +163,7 @@ export const router = createBrowserRouter([
               { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
               { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
               { path: 'admin/playlists', element: <AdminPlaylistsPage /> },
+              { path: 'admin/ads', element: <AdminAdsPage /> },
               { path: 'admin/applications', element: <AdminApplicationsPage /> },
               { path: 'admin/team', element: <AdminTeamPage /> },
               { path: 'admin/approvals', element: <AdminApprovalsPage /> },

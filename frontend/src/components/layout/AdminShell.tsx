@@ -7,6 +7,7 @@ import {
   ChartBarSquareIcon,
   ChevronRightIcon,
   ClipboardDocumentListIcon,
+  MegaphoneIcon,
   MusicalNoteIcon,
   QueueListIcon,
   RectangleStackIcon,
@@ -48,6 +49,12 @@ const navSections: { label: string; items: AdminNavItem[] }[] = [
       { to: '/admin/albums', label: 'Albums', description: 'Releases and metadata', icon: RectangleStackIcon },
       { to: '/admin/tracks', label: 'Tracks', description: 'Audio, reviews, and stats', icon: MusicalNoteIcon },
       { to: '/admin/playlists', label: 'Playlists', description: 'Featured flags and curation', icon: QueueListIcon },
+    ],
+  },
+  {
+    label: 'Monetization',
+    items: [
+      { to: '/admin/ads', label: 'Advertisements', description: 'House ads for the free tier', icon: MegaphoneIcon },
     ],
   },
   {

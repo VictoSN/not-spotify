@@ -64,7 +64,7 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
       onMouseLeave={() => setHoverColor(null)}
     >
       <Link
-        to={`/album/${track.album.id}`}
+        to={`/track/${track.id}`}
         draggable={false}
         className={`block rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
       >

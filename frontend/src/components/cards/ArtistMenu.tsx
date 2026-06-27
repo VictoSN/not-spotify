@@ -20,7 +20,11 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
-import type { PointerMenuHandle } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  type PointerMenuHandle,
+} from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { ShareIcon } from '@/components/common/ShareIcon'
 
@@ -129,7 +133,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
             modal={false}
             transition
             onClick={stop}
-            className="z-50 w-56 origin-top overflow-visible! rounded-md bg-[#282828] shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+            className={CONTEXT_MENU_PANEL_CLASS}
           >
             <MenuItem>
               <button
@@ -139,7 +143,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   handleToggleFollow()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={CONTEXT_MENU_ITEM_CLASS}
               >
                 {isFollowing ? <UserMinusIcon className="w-4 h-4" /> : <UserPlusIcon className="w-4 h-4" />}
                 {isFollowing ? 'Unfollow' : 'Follow'}
@@ -154,7 +158,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   notify.info("We'll avoid recommending this artist")
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={CONTEXT_MENU_ITEM_CLASS}
               >
                 <NoSymbolIcon className="w-4 h-4" />
                 Don't play this artist
@@ -169,7 +173,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   handleArtistRadio()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={CONTEXT_MENU_ITEM_CLASS}
               >
                 <RadioIcon className="w-4 h-4" />
                 Go to artist radio
@@ -184,7 +188,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   notify.success('Report submitted for review')
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={CONTEXT_MENU_ITEM_CLASS}
               >
                 <ExclamationTriangleIcon className="w-4 h-4" />
                 Report
@@ -199,7 +203,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   void handleShare()
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={CONTEXT_MENU_ITEM_CLASS}
               >
                 <ShareIcon className="w-4 h-4" />
                 Share
@@ -216,7 +220,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                   navigate(`/artist/${artist.id}`)
                   close()
                 }}
-                className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e] data-[focus]:bg-[#3e3e3e]"
+                className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
               >
                 <span>Go to artist</span>
                 <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
@@ -226,7 +230,7 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
             <InstallAppMenuItem
               label="Open in Desktop app"
               onSelect={close}
-              className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-[#3e3e3e]"
+              className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
             />
           </MenuItems>
         </>

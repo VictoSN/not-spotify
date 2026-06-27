@@ -22,7 +22,8 @@ import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { formatMs } from '@/utils/formatTime'
-import { useDominantColor, heroGradient } from '@/hooks/useDominantColor'
+import { useDominantColor } from '@/hooks/useDominantColor'
+import { DetailHero } from '@/components/common/DetailHero'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 
 export function AlbumDetailPage() {
@@ -103,19 +104,14 @@ export function AlbumDetailPage() {
 
   return (
     <div>
-      {/* Hero + actions: fuller colour block behind the cover, fading below */}
-      <div style={{ background: heroGradient(heroColor) }}>
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6 p-4 sm:p-6 pb-4">
-        <img
-          src={album.coverUrl}
-          alt={album.title}
-          className="w-36 h-36 sm:w-44 sm:h-44 md:w-56 md:h-56 rounded-md shadow-2xl flex-shrink-0 object-cover self-center sm:self-auto"
-        />
-        <div className="min-w-0 pb-2">
-          <p className="mb-1 text-xs font-black uppercase tracking-wide text-primary">
-            {album.type.toUpperCase()}
-          </p>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-primary mb-2 break-words">{album.title}</h1>
+      <DetailHero
+        heroColor={heroColor}
+        coverUrl={album.coverUrl}
+        coverAlt={album.title}
+        eyebrow={album.type.toUpperCase()}
+        title={album.title}
+        meta={
+          <>
           {/* Stats row */}
           <div className="flex items-center gap-4 mb-2 flex-wrap">
             {(album.ratingCount ?? 0) > 0 && (
@@ -148,10 +144,10 @@ export function AlbumDetailPage() {
               {t('detail.songsCount', { count: tracks.length, dur: formatMs(totalDuration) })}
             </span>
           </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 px-4 sm:px-6 py-4 flex-wrap">
+          </>
+        }
+        actions={
+          <>
         <Button
           onClick={() => {
             if (!tracks.length) return
@@ -210,8 +206,9 @@ export function AlbumDetailPage() {
             <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent px-1.5 py-0.5 rounded">{t('common.premium')}</span>
           </Link>
         )}
-      </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="px-4">
         <div

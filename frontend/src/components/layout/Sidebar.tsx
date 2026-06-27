@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import {
   ChevronDownIcon,
@@ -37,7 +38,12 @@ import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
 import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
 import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
-import { openMenuAtPointer } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  isSidebarBlankContextTarget,
+  openMenuAtPointer,
+} from '@/utils/contextMenu'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
 import { playlistService } from '@/services/playlistService'
@@ -167,6 +173,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const [blankCreateMenu, setBlankCreateMenu] = useState<{ x: number; y: number } | null>(null)
   const [libraryBodyScrolled, setLibraryBodyScrolled] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
@@ -549,6 +556,27 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     setRenameValue(folder.name)
   }
 
+  const openLibraryCreateContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+    setCreateMenuOpen(false)
+    setSortMenuOpen(false)
+    setBlankCreateMenu({
+      x: Math.max(8, Math.min(event.clientX, window.innerWidth - 192)),
+      y: Math.max(8, Math.min(event.clientY, window.innerHeight - 104)),
+    })
+  }
+
+  const handleLibraryBlankContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSidebarBlankContextTarget(event.target, event.defaultPrevented)) return
+    openLibraryCreateContextMenu(event)
+  }
+
+  const handleLibraryTitleContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    if (event.defaultPrevented || window.getSelection()?.toString().trim()) return
+    event.stopPropagation()
+    openLibraryCreateContextMenu(event)
+  }
+
   const commitRename = (id: string) => {
     renameFolder(id, renameValue)
     setRenamingFolderId(null)
@@ -560,7 +588,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar relative flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
+    'group/sidebar relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
     !dragging &&
@@ -730,6 +758,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       className={frameClass}
     >
       <div
+        onContextMenu={handleLibraryBlankContextMenu}
+        data-sidebar-empty-space="true"
+        data-sidebar-header-space="true"
         className={cn(
           'sticky top-0 z-20 shrink-0 rounded-t-xl bg-sidebar transition-[background-color,box-shadow,backdrop-filter] duration-200',
           libraryBodyScrolled ? 'shadow-[0_8px_20px_rgba(0,0,0,0.22)] backdrop-blur-md' : 'shadow-none backdrop-blur-0',
@@ -757,6 +788,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             <button
               type="button"
               onClick={collapseLibrarySidebar}
+              onContextMenu={handleLibraryTitleContextMenu}
               className={cn(
                 'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
                 'text-base',
@@ -790,8 +822,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               </button>
               {createMenuOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
-                  <div className="absolute right-0 top-full z-50 mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                  <div className="fixed inset-0 z-[990]" onClick={() => setCreateMenuOpen(false)} />
+                  <div role="menu" className="absolute right-0 top-full z-[1000] mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
                     <button
                       onClick={() => {
                         setCreateMenuOpen(false)
@@ -897,8 +929,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
           {sortMenuOpen && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setSortMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-2 w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl z-50">
+              <div className="fixed inset-0 z-[990]" onClick={() => setSortMenuOpen(false)} />
+              <div role="menu" className="absolute right-0 top-full z-[1000] mt-2 w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
                 <p className="px-3 pb-1 pt-2 text-xs font-normal text-secondary">{t('sidebar.sortBy')}</p>
                 {SORT_OPTIONS.map((o) => (
                   <button
@@ -944,6 +976,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       <div
         key={libraryExpanded ? 'expanded' : 'normal'}
         onScroll={handleLibraryBodyScroll}
+        onContextMenu={handleLibraryBlankContextMenu}
+        data-sidebar-empty-space="true"
         className={cn(
           // Mounts fresh at opacity-0 each toggle so the list↔grid reflow happens unseen while
           // the panel resizes, then fades in once the width settles (isLibraryAnimating clears).
@@ -1110,6 +1144,48 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </>
         )}
       </div>
+
+      {blankCreateMenu && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[990]"
+            aria-hidden="true"
+            onClick={() => setBlankCreateMenu(null)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              setBlankCreateMenu(null)
+            }}
+          />
+          <div
+            role="menu"
+            aria-label={t('sidebar.createAria')}
+            className={`fixed ${CONTEXT_MENU_PANEL_CLASS}`}
+            style={{ left: blankCreateMenu.x, top: blankCreateMenu.y }}
+          >
+            <button
+              role="menuitem"
+              onClick={() => {
+                setBlankCreateMenu(null)
+                void handleCreate()
+              }}
+              className={CONTEXT_MENU_ITEM_CLASS}
+            >
+              <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.createPlaylist')}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setBlankCreateMenu(null)
+                handleCreateFolder()
+              }}
+              className={CONTEXT_MENU_ITEM_CLASS}
+            >
+              <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.createFolder')}
+            </button>
+          </div>
+        </>,
+        document.body,
+      )}
 
       {libraryDrop.isOver && (
         <div
@@ -1656,8 +1732,8 @@ function FolderGroup({
               </button>
               {menuOpen && (
                 <>
-                  <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-                  <div className="absolute right-0 top-full z-50 mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                  <div className="fixed inset-0 z-[990]" onClick={() => setMenuOpen(false)} />
+                  <div role="menu" className="absolute right-0 top-full z-[1000] mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
                     <button
                       onClick={() => {
                         setMenuOpen(false)

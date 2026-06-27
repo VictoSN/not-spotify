@@ -2991,7 +2991,7 @@ function SupportSearchField({
       </label>
 
       {showDropdown && (
-        <div className="absolute left-0 right-0 top-full z-50 -mt-px border border-black/80 bg-white py-1 text-black shadow-[0_18px_38px_rgba(0,0,0,0.35)]" role="listbox">
+        <div className="absolute left-0 right-0 top-full z-[1000] -mt-px border border-black/80 bg-white py-1 text-black shadow-[0_18px_38px_rgba(0,0,0,0.35)]" role="listbox">
           {suggestions.map((item) => (
             <Link
               key={item.slug}

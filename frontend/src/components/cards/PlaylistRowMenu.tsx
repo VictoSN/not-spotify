@@ -5,18 +5,17 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import {
   QueueListIcon,
   MinusCircleIcon,
-  PlusCircleIcon,
   PencilIcon,
-  TrashIcon,
   MusicalNoteIcon,
   FolderPlusIcon,
   FolderIcon,
   LockClosedIcon,
   LockOpenIcon,
   UserPlusIcon,
-  NoSymbolIcon,
   ChevronRightIcon,
   CheckIcon,
+  UserCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline'
 import type { Playlist } from '@/types/playlist'
 import { useLibraryStore } from '@/stores/libraryStore'
@@ -35,7 +34,11 @@ import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { ShareIcon } from '@/components/common/ShareIcon'
-import type { PointerMenuHandle } from '@/utils/contextMenu'
+import {
+  CONTEXT_MENU_ITEM_CLASS,
+  CONTEXT_MENU_PANEL_CLASS,
+  type PointerMenuHandle,
+} from '@/utils/contextMenu'
 
 interface PlaylistRowMenuProps {
   playlist: Playlist
@@ -184,8 +187,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
 
     const stop = (e: React.SyntheticEvent) => e.stopPropagation()
 
-    const itemClass =
-      'flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-left text-primary hover:bg-surface data-[focus]:bg-surface'
+    const itemClass = CONTEXT_MENU_ITEM_CLASS
 
     return (
       <Menu>
@@ -210,7 +212,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                 transition
                 onClick={stop}
                 onContextMenu={(e) => e.preventDefault()}
-                className="z-50 w-60 origin-top overflow-visible! rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1 text-[13px] font-bold focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0"
+                className={CONTEXT_MENU_PANEL_CLASS}
               >
                 <MenuItem>
                   <button type="button" onClick={(e) => { stop(e); handleAddToQueue(); close() }} className={itemClass}>
@@ -226,7 +228,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     </button>
                   ) : (
                     <button type="button" onClick={(e) => { stop(e); void handleAddToProfile(); close() }} className={itemClass}>
-                      <PlusCircleIcon className="h-4 w-4" />
+                      <UserCircleIcon className="h-4 w-4" />
                       Add to profile
                     </button>
                   )}
@@ -244,7 +246,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     </MenuItem>
                     <MenuItem>
                       <button type="button" onClick={(e) => { stop(e); void handleDelete(); close() }} className={itemClass}>
-                        <TrashIcon className="h-4 w-4" />
+                        <MinusCircleIcon className="h-4 w-4" />
                         Delete
                       </button>
                     </MenuItem>
@@ -296,7 +298,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     onClick={(e) => { stop(e); notify.info('Excluded from your taste profile'); close() }}
                     className={itemClass}
                   >
-                    <NoSymbolIcon className="h-4 w-4" />
+                    <XCircleIcon className="h-4 w-4" />
                     Exclude from your taste profile
                   </button>
                 </MenuItem>
@@ -314,9 +316,9 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); openFolderSubmenu() }}
-                      className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                      className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
                     >
-                      <span className="flex items-center gap-2.5">
+                      <span className="flex items-center gap-3">
                         <FolderIcon className="h-4 w-4" />
                         Move to folder
                       </span>
@@ -329,12 +331,12 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                         onPointerDown={stop}
                         onMouseEnter={openFolderSubmenu}
                         onMouseLeave={scheduleCloseFolderSubmenu}
-                        className="absolute left-full top-0 ml-1 w-56 max-h-80 overflow-y-auto rounded-md bg-elevated shadow-2xl ring-1 ring-black/20 py-1"
+                        className="absolute left-full top-0 ml-1 w-64 max-h-80 overflow-y-auto rounded-md bg-[#282828] py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-black/20"
                       >
                         <button
                           type="button"
                           onClick={(e) => { stop(e); addItemToFolder(createFolder().id, itemKey); setFolderSubmenuOpen(false); close() }}
-                          className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                          className={CONTEXT_MENU_ITEM_CLASS}
                         >
                           <FolderPlusIcon className="h-4 w-4" />
                           New folder
@@ -345,7 +347,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                             key={f.id}
                             type="button"
                             onClick={(e) => { stop(e); addItemToFolder(f.id, itemKey); setFolderSubmenuOpen(false); close() }}
-                            className="flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-left text-primary hover:bg-surface"
+                            className={`${CONTEXT_MENU_ITEM_CLASS} justify-between`}
                           >
                             <span className="truncate">{f.name}</span>
                             {currentFolderId === f.id && <CheckIcon className="h-4 w-4 shrink-0 text-accent" />}

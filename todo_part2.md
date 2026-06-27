@@ -387,19 +387,19 @@ Goal: make the Home and library surfaces feel consistently interactive, while ad
 safe empty-space context menu that does **not** conflict with album/artist/track/card
 menus, buttons, drag/drop, text inputs, or existing playlist actions.
 
-- [ ] Audit Home-page cards/rows: playlists, Daily Mix tiles, mix tracks, recent items, and any tile that visually looks clickable.
-- [ ] Make each clickable surface navigate to the correct destination:
+- [x] Audit Home-page cards/rows: playlists, Daily Mix tiles, mix tracks, recent items, and any tile that visually looks clickable.
+- [x] Make each clickable surface navigate to the correct destination:
   - playlist → playlist detail
   - Daily Mix / generated mix → mix detail or generated-track list
   - track → track detail or play/open row, matching the existing app pattern
   - album/artist/MV/podcast → their existing detail pages
-- [ ] Preserve hover-play behaviour, drag/drop, and right-click media menus; do not let navigation fire when clicking menu buttons, play buttons, drag handles, or inline actions.
-- [ ] Add an empty-space right-click handler for the Your library/left sidebar area that opens a compact create menu with:
+- [x] Preserve hover-play behaviour, drag/drop, and right-click media menus; do not let navigation fire when clicking menu buttons, play buttons, drag handles, or inline actions.
+- [x] Add an empty-space right-click handler for the Your library/left sidebar area that opens a compact create menu with:
   - **Create playlist**
   - **Create folder**
-- [ ] Only show the empty-space create menu when the event target is genuinely blank/non-interactive space.
-- [ ] Do not override existing context menus for tracks, albums, artists, playlists, podcasts, MVs, inputs, modals, or browser text selection.
-- [ ] Keep the create actions wired to the same logic used by the current **Create** dropdown, so there is no duplicate creation path.
+- [x] Only show the empty-space create menu when the event target is genuinely blank/non-interactive space.
+- [x] Do not override existing context menus for tracks, albums, artists, playlists, podcasts, MVs, inputs, modals, or browser text selection.
+- [x] Keep the create actions wired to the same logic used by the current **Create** dropdown, so there is no duplicate creation path.
 
 Likely files: `frontend/src/pages/HomePage.tsx`, `frontend/src/components/layout/Sidebar.tsx`,
 `frontend/src/components/layout/AppShell.tsx`, `frontend/src/components/cards/MixTile.tsx`,
@@ -412,11 +412,11 @@ Recommended intelligence / effort:
 - **Codex: high** — use high because it needs careful regression checks across Home, sidebar, library rows, and playlist/mix cards.
 
 Tests (this session):
-- [ ] Home interaction test: clicking playlist/mix/card surfaces navigates to the expected route.
-- [ ] Interaction test: clicking nested buttons/menu/play controls does **not** trigger row navigation.
-- [ ] Context-menu test: right-click blank sidebar/library space opens the create menu.
-- [ ] Context-menu test: right-click on media opens the media menu, not the blank-space create menu.
-- [ ] Creation test: **Create playlist** and **Create folder** call the existing creation handlers/store actions.
+- [x] Home interaction test: clicking playlist/mix/card surfaces navigates to the expected route.
+- [x] Interaction test: clicking nested buttons/menu/play controls does **not** trigger row navigation.
+- [x] Context-menu test: right-click blank sidebar/library space opens the create menu.
+- [x] Context-menu test: right-click on media opens the media menu, not the blank-space create menu.
+- [x] Creation test: **Create playlist** and **Create folder** call the existing creation handlers/store actions.
 
 ---
 
@@ -428,12 +428,12 @@ hover near the cover and the action appears directly inside or over the artwork 
 Goal: move the add-song affordance into the track-cover hover zone, while keeping the
 row clean, readable, and usable for mouse + keyboard users.
 
-- [ ] In playlist add/search/recommendation rows, place the **+** action inside/on top of the track cover area on hover/focus.
-- [ ] Reuse the existing Your Library hover mechanics where possible, so the cover hover, play overlay, and action animation feel consistent.
-- [ ] Make the in-cover **+** add the song to the current playlist using the same handler as the existing far-right plus button.
-- [ ] After adding, show a clear saved/added state (`✓`, disabled plus, or existing app pattern) and prevent duplicate adds.
-- [ ] Keep row click, hover-play, right-click menu, drag/drop, and mobile/touch behaviour from breaking.
-- [ ] Ensure the button remains keyboard-accessible: focus should reveal the action even without mouse hover.
+- [x] In playlist add/search/recommendation rows, place the **+** action inside/on top of the track cover area on hover/focus.
+- [x] Reuse the existing Your Library hover mechanics where possible, so the cover hover, play overlay, and action animation feel consistent.
+- [x] Make the in-cover **+** add the song to the current playlist using the same handler as the existing far-right plus button.
+- [x] After adding, show a clear saved/added state (`✓`, disabled plus, or existing app pattern) and prevent duplicate adds.
+- [x] Keep row click, hover-play, right-click menu, drag/drop, and mobile/touch behaviour from breaking.
+- [x] Ensure the button remains keyboard-accessible: focus should reveal the action even without mouse hover.
 
 Likely files: `frontend/src/pages/PlaylistDetailPage.tsx`,
 `frontend/src/components/cards/TrackRow.tsx`, `frontend/src/components/cards/TrackTile.tsx`,
@@ -445,7 +445,7 @@ Recommended intelligence / effort:
 - **Codex: medium** — enough to implement cleanly with tests; bump to **high** only if the add-song UI is duplicated across several components or tied to playlist persistence bugs.
 
 Tests (this session):
-- [ ] Render test: add-song rows show the **+** action inside/on the cover when hovered or focused.
-- [ ] Interaction test: clicking the in-cover **+** adds the track to the current playlist exactly once.
-- [ ] Regression test: row navigation/menu/play/drag actions still work and do not accidentally trigger add.
+- [x] Render test: add-song rows show the **+** action inside/on the cover when hovered or focused.
+- [x] Interaction test: clicking the in-cover **+** adds the track to the current playlist exactly once.
+- [x] Regression test: row navigation/menu/play/drag actions still work and do not accidentally trigger add.
 

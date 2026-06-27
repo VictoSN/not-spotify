@@ -355,7 +355,7 @@ export function TopBar() {
   const showSuggestionSkeleton = trimmedSearchValue.length > 0 && suggestionsLoading
 
   const searchPanel = shouldShowSearchPanel && (
-    <div className="spotify-scrollbar absolute left-0 right-0 top-full z-50 mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-elevated py-2 shadow-2xl">
+    <div className="spotify-scrollbar absolute left-0 right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5.5rem)] overflow-y-auto overscroll-contain rounded-xl border border-secondary/15 bg-elevated py-2 shadow-2xl">
       {showSuggestionSkeleton ? (
         <SearchSuggestionsSkeleton />
       ) : (
@@ -798,8 +798,8 @@ export function TopBar() {
 
         {showMenu && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-full z-50 mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
+            <div className="fixed inset-0 z-[990]" onClick={() => setShowMenu(false)} />
+            <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
               <Link
                 to="/account"
                 onClick={() => setShowMenu(false)}

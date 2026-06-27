@@ -286,8 +286,8 @@ button and logo navigate to `/`; when you're already on `/`, the pathname doesn'
 so the effect never fires and the lyrics stay open. Only `toggleKaraoke` (the lyrics
 `MicVocal` icon in `BottomPlayerBar`) closes it.
 
-- [ ] Clicking the top-left **home** button and the **logo** closes the lyrics/karaoke view, even when already on that route.
-- [ ] Keep the existing close-on-route-change behaviour for all other navigation.
+- [x] Clicking the top-left **home** button and the **logo** closes the lyrics/karaoke view, even when already on that route. (`TopBar` now calls `setKaraokeOpen(false)` from both home controls before navigating.)
+- [x] Keep the existing close-on-route-change behaviour for all other navigation. (`AppShell`'s route-change effect remains in place.)
 - [ ] (Optional, Spotify-parity) any primary navigation click closes the lyrics view.
 
 Likely files: `frontend/src/components/layout/AppShell.tsx` (`setKaraokeOpen`, the
@@ -296,7 +296,7 @@ route-change effect), `frontend/src/components/layout/TopBar.tsx` (home button +
 `setKaraokeOpen`, `toggleKaraoke`), `frontend/src/components/player/KaraokeView.tsx`.
 
 Tests (this session):
-- [ ] Clicking home/logo while already on the same route calls `setKaraokeOpen(false)`.
+- [x] Clicking home/logo while already on the same route calls `setKaraokeOpen(false)`. (`TopBar.test.tsx`)
 
 ---
 

@@ -69,6 +69,7 @@ export function TopBar() {
   const playbackMode = usePlayerStore((s) => s.playbackMode)
   const currentVideo = usePlayerStore((s) => s.currentVideo)
   const isVideoPlaying = usePlayerStore((s) => s.isVideoPlaying)
+  const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const {
     likedTrackIds,
@@ -187,6 +188,11 @@ export function TopBar() {
     setShowSearchPanel(false)
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
     else navigate('/search')
+  }
+
+  const goHome = () => {
+    setKaraokeOpen(false)
+    navigate('/')
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -584,14 +590,14 @@ export function TopBar() {
   if (!isAuthenticated) {
     return (
       <header data-tauri-drag-region className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-14">
-        <Link to="/" className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
+        <Link to="/" onClick={() => setKaraokeOpen(false)} className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
 
         {/* Search bar — hidden on mobile (accessed via Search tab in bottom nav) */}
         <div className="hidden md:flex min-w-0 items-center justify-center gap-1.5 justify-self-center w-full">
           <button
-            onClick={() => navigate('/')}
+            onClick={goHome}
             className="topbar-control spotify-tooltip-anchor relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
             aria-label={t('topbar.home')}
             aria-current={isHome ? 'page' : undefined}
@@ -671,14 +677,14 @@ export function TopBar() {
   return (
     <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-14 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
-      <Link to="/" className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
+      <Link to="/" onClick={() => setKaraokeOpen(false)} className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
       </Link>
 
       {/* Center: home + search + theme toggle — desktop only */}
       <div className="absolute inset-y-0 left-1/2 hidden w-[min(560px,calc(100vw-36rem))] min-w-[420px] -translate-x-1/2 items-center justify-center gap-1.5 lg:flex">
         <button
-          onClick={() => navigate('/')}
+          onClick={goHome}
           className="topbar-control spotify-tooltip-anchor relative flex h-11 min-h-11 w-11 min-w-11 shrink-0 items-center justify-center rounded-[9999px] bg-elevated transition-all hover:scale-105 hover:bg-elevated/70"
           aria-label={t('topbar.home')}
           aria-current={isHome ? 'page' : undefined}

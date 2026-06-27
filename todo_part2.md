@@ -123,7 +123,7 @@ Likely files: `frontend/src/pages/browse/RecentsPage.tsx`,
 `frontend/src/utils/contextMenu.ts` (`openMenuAtPointer`).
 
 Tests (this session):
-- [ ] Interaction test: a Recents row's `onContextMenu` opens the menu handle.
+- [x] Interaction test: a Recents row's `onContextMenu` opens the menu handle. (`RecentsPage.test.tsx` — right-click opens the `TrackRowMenu`; also asserts the `⋯` trigger stays present.)
 
 > Small phase — fine to fold into Phase 2 if doing both in one session, since both are
 > about enabling right-click menus on media rows.

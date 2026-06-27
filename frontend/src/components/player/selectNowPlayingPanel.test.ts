@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { selectNowPlayingPanel } from './nowPlayingPanel'
+import { selectNowPlayingPanel } from './selectNowPlayingPanel'
 
 describe('selectNowPlayingPanel', () => {
   it('chooses the dedicated music-video panel when playbackMode is video', () => {

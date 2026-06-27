@@ -206,6 +206,10 @@ else
     builder.Services.AddSingleton<IStorageService, LocalStorageService>();
     Console.WriteLine("[Storage] Using LocalStorage (no S3/Supabase config — user-secrets not loaded?)");
 }
+var openSearchOptions = builder.Configuration.GetSection("OpenSearch").Get<OpenSearchOptions>() ?? new OpenSearchOptions();
+builder.Services.AddSingleton(openSearchOptions);
+builder.Services.AddSingleton<OpenSearchService>();
+
 builder.Services.AddScoped<MediaMapper>();
 builder.Services.AddScoped<AudioDownloadService>();
 builder.Services.AddScoped<LyricsService>();
@@ -918,6 +922,20 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"[SearchText] Backfill skipped: {ex.Message}");
     }
+
+    // Ensure OpenSearch indices exist (creates them on first run; skips if already present).
+    // Does nothing when OpenSearch:Endpoint is empty — search falls back to SQL automatically.
+    try
+    {
+        var openSearch = scope.ServiceProvider.GetRequiredService<OpenSearchService>();
+        await openSearch.EnsureIndicesAsync();
+        if (openSearch.IsConfigured)
+            Console.WriteLine("[OpenSearch] Indices ready.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[OpenSearch] Index ensure skipped: {ex.Message}");
+    }
 }
 
 // One-time bulk catalogue import (`dotnet run -- import-music [--path <dir>] [--dry-run]`).
@@ -938,6 +956,22 @@ if (args.Contains("backfill-search-text"))
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var n = await NotSpotify.Api.Services.SearchTextBackfill.RunAsync(db, force: true);
     Console.WriteLine($"[SearchText] Recomputed {n} row(s).");
+    return;
+}
+
+// Full OpenSearch reindex (`dotnet run -- reindex-search`).
+// Drops + recreates all NS indices, then bulk-indexes every track/artist/album/playlist/
+// music-video from Postgres. Run this after provisioning a new OpenSearch domain, after
+// the first deploy that adds OpenSearch, or whenever the index gets out of sync.
+// Requires OpenSearch:Endpoint to be set in user-secrets or environment variables.
+if (args.Contains("reindex-search"))
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    // Ensure SearchText blobs are up-to-date before indexing into ES.
+    await NotSpotify.Api.Services.SearchTextBackfill.RunAsync(db, force: false);
+    var openSearch = scope.ServiceProvider.GetRequiredService<OpenSearchService>();
+    await openSearch.BulkReindexAsync(db);
     return;
 }
 

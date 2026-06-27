@@ -75,9 +75,15 @@ export function usePointerMenu(): PointerMenuController {
     // it never closes. Treat a just-closed menu as the toggle-off.
     if (Date.now() - closedAtRef.current < 300) return
     setCoords({ x, y })
+    // Double rAF ensures React has committed the coordinate update (and the
+    // portal MenuButton is in the DOM at the correct position) before we fire
+    // the programmatic click. A single rAF can race with React's commit in
+    // deeply-nested or overflow-scrolled containers like the now-playing panel.
     requestAnimationFrame(() => {
-      hiddenBtnRef.current?.click()
-      bindScrollClose()
+      requestAnimationFrame(() => {
+        hiddenBtnRef.current?.click()
+        bindScrollClose()
+      })
     })
   }, [bindScrollClose])
 

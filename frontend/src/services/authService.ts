@@ -46,13 +46,13 @@ export const authService = {
     return res.data
   },
 
-  async forgotPassword(email: string): Promise<{ message: string; resetUrl?: string | null }> {
-    const res = await api.post<{ message: string; resetUrl?: string | null }>('/auth/forgot-password', { email })
+  async forgotPassword(email: string): Promise<{ message: string; code: string; resetUrl?: string | null }> {
+    const res = await api.post<{ message: string; code: string; resetUrl?: string | null }>('/auth/forgot-password', { email })
     return res.data
   },
 
-  async resetPassword(email: string, token: string, newPassword: string): Promise<void> {
-    await api.post('/auth/reset-password', { email, token, newPassword })
+  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+    await api.post('/auth/reset-password', { email, code, newPassword })
   },
 
   async externalProviders(): Promise<ExternalAuthProviders> {

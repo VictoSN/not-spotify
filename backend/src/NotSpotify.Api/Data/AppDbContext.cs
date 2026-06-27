@@ -52,6 +52,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<UserAccountPreference> UserAccountPreferences => Set<UserAccountPreference>();
     public DbSet<DeletedPlaylist> DeletedPlaylists => Set<DeletedPlaylist>();
+    public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {

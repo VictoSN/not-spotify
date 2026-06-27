@@ -11,20 +11,22 @@ export function ResetPasswordPage() {
   useDocumentTitle('Set a new password')
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const email = params.get('email') ?? ''
-  const token = params.get('token') ?? ''
+  const emailFromUrl = params.get('email') ?? ''
+  const codeFromUrl = params.get('code') ?? ''
 
+  const [email, setEmail] = useState(emailFromUrl)
+  const [code, setCode] = useState(codeFromUrl)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const linkValid = Boolean(email && token)
+  const canSubmit = Boolean(email.trim() && code.trim() && password && confirm)
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (loading) return
+    if (loading || !canSubmit) return
     setError(null)
     if (password.length < 8) {
       setError('Password must be at least 8 characters.')
@@ -34,14 +36,18 @@ export function ResetPasswordPage() {
       setError('Passwords do not match.')
       return
     }
+    if (code.trim().length !== 6 || !/^\d{6}$/.test(code.trim())) {
+      setError('Please enter a valid 6-digit code.')
+      return
+    }
     setLoading(true)
     try {
-      await authService.resetPassword(email, token, password)
+      await authService.resetPassword(email.trim(), code.trim(), password)
       notify.success('Password updated. Please log in with your new password.')
       navigate('/login', { replace: true })
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'This reset link is invalid or has expired. Request a new one.')
+      setError(msg ?? 'Invalid or expired code. Request a new one.')
     } finally {
       setLoading(false)
     }
@@ -57,63 +63,87 @@ export function ResetPasswordPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
           <h1 className="text-4xl font-black leading-tight text-primary">Set a new password</h1>
-          {linkValid && <p className="mt-3 text-sm font-medium text-secondary">Choose a new password for {email}.</p>}
+          <p className="mt-3 text-sm font-medium text-secondary">
+            Enter the 6-digit code sent to your email and choose a new password.
+          </p>
         </div>
 
-        {!linkValid ? (
-          <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-4 text-center">
-            <p className="text-sm text-red-400">This reset link is missing information or has expired.</p>
-            <Link to="/forgot-password" className="mt-3 inline-flex text-sm font-black text-primary transition-colors hover:text-accent">
-              Request a new reset link
-            </Link>
+        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-primary">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              placeholder="you@example.com"
+            />
           </div>
-        ) : (
-          <form onSubmit={onSubmit} className="flex flex-col gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-primary">New password</label>
-              <div className="relative">
-                <input
-                  type={showPw ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 pr-11 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
-                  placeholder="At least 8 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-secondary"
-                  tabIndex={-1}
-                  aria-label={showPw ? 'Hide password' : 'Show password'}
-                >
-                  {showPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-semibold text-primary">Confirm new password</label>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-primary">6-digit reset code</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              required
+              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-center text-2xl font-black tracking-[0.3em] text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              placeholder="000000"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-primary">New password</label>
+            <div className="relative">
               <input
                 type={showPw ? 'text' : 'password'}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
-                placeholder="Re-enter your new password"
+                className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 pr-11 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+                placeholder="At least 8 characters"
               />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-secondary"
+                tabIndex={-1}
+                aria-label={showPw ? 'Hide password' : 'Show password'}
+              >
+                {showPw ? <EyeSlashIcon className="h-5 w-5" /> : <EyeIcon className="h-5 w-5" />}
+              </button>
             </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-primary">Confirm new password</label>
+            <input
+              type={showPw ? 'text' : 'password'}
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              required
+              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              placeholder="Re-enter your new password"
+            />
+          </div>
 
-            {error && (
-              <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
+          {error && (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          )}
 
-            <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
-              {loading ? <Spinner size="sm" /> : 'Update password'}
-            </Button>
-          </form>
-        )}
+          <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading || !canSubmit}>
+            {loading ? <Spinner size="sm" /> : 'Update password'}
+          </Button>
+        </form>
+
+        <div className="mt-8 text-center">
+          <Link to="/forgot-password" className="text-sm font-semibold text-secondary transition-colors hover:text-primary">
+            Request a new code
+          </Link>
+        </div>
       </div>
     </div>
   )

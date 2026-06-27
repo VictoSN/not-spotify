@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { ArrowLeftIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { Link, useNavigate } from 'react-router-dom'
+import { ArrowLeftIcon, MusicalNoteIcon, KeyIcon } from '@heroicons/react/24/outline'
 import { authService } from '@/services/authService'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { Button } from '@/components/ui/Button'
@@ -8,9 +8,11 @@ import { Spinner } from '@/components/ui/Spinner'
 
 export function ForgotPasswordPage() {
   useDocumentTitle('Reset your password')
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  const [code, setCode] = useState<string | null>(null)
   const [devLink, setDevLink] = useState<string | null>(null)
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -18,18 +20,22 @@ export function ForgotPasswordPage() {
     if (!email.trim() || loading) return
     setLoading(true)
     setMessage(null)
+    setCode(null)
     setDevLink(null)
     try {
       const res = await authService.forgotPassword(email.trim())
       setMessage(res.message)
-      // In development the backend has no mailer, so it returns the link directly.
+      setCode(res.code)
       if (res.resetUrl) setDevLink(res.resetUrl)
     } catch {
-      // Match the backend's non-enumerating behavior: never reveal whether the email exists.
-      setMessage('If an account exists for that email, a password reset link has been created.')
+      setMessage('If an account exists for that email, a 6-digit code has been generated.')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleUseCode = () => {
+    if (code) navigate(`/reset-password?email=${encodeURIComponent(email.trim())}&code=${code}`)
   }
 
   return (
@@ -43,16 +49,26 @@ export function ForgotPasswordPage() {
           <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
           <h1 className="text-4xl font-black leading-tight text-primary">Reset your password</h1>
           <p className="mt-3 text-sm font-medium text-secondary">
-            Enter the email for your account and we'll create a link to set a new password.
+            Enter the email for your account and we'll generate a 6-digit code to reset your password.
           </p>
         </div>
 
         {message ? (
           <div className="rounded-md border border-accent/30 bg-accent-dim/30 px-4 py-4">
             <p className="text-sm font-medium text-primary">{message}</p>
+            {code && (
+              <div className="mt-4 rounded-md bg-elevated p-4 text-center">
+                <KeyIcon className="mx-auto mb-2 h-6 w-6 text-accent" />
+                <p className="text-xs font-semibold uppercase tracking-widest text-secondary">Your reset code</p>
+                <p className="mt-1 text-3xl font-black tracking-[0.3em] text-primary">{code}</p>
+                <Button size="lg" className="mt-4 w-full" onClick={handleUseCode}>
+                  Use this code to reset password
+                </Button>
+              </div>
+            )}
             {devLink && (
               <div className="mt-3 border-t border-elevated/60 pt-3">
-                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">🔧 Dev only — no mailer configured</p>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">🔧 Dev fallback link</p>
                 <Link to={devLink.replace(/^https?:\/\/[^/]+/, '')} className="break-all text-sm font-semibold text-accent hover:underline">
                   Open reset link →
                 </Link>
@@ -73,7 +89,7 @@ export function ForgotPasswordPage() {
               />
             </div>
             <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
-              {loading ? <Spinner size="sm" /> : 'Send reset link'}
+              {loading ? <Spinner size="sm" /> : 'Send reset code'}
             </Button>
           </form>
         )}

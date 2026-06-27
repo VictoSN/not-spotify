@@ -153,6 +153,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const currentContextType = usePlayerStore((s) => s.currentContextType)
   const currentContextId = usePlayerStore((s) => s.currentContextId)
+  const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const startContext = usePlayContextGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
@@ -180,6 +181,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const libraryDragActive = useDragStore(
     (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum || !!s.draggedVideo || !!s.draggedPodcast,
   )
+  const handlePrimaryNavigationClick = (event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement | null
+    if (target?.closest('a[href]')) setKaraokeOpen(false)
+  }
 
   // True for the duration of an expand/minimize. Hover-only chrome (the collapse
   // icon, the title nudge) is suppressed while this is set so it can't flicker in
@@ -698,6 +703,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         {...libraryDrop.dropProps}
         style={frameStyle}
         className={frameClass}
+        onClickCapture={handlePrimaryNavigationClick}
       >
         <button
           onClick={() => setWidth(DEFAULT_W)}
@@ -756,6 +762,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       {...libraryDrop.dropProps}
       style={frameStyle}
       className={frameClass}
+      onClickCapture={handlePrimaryNavigationClick}
     >
       <div
         onContextMenu={handleLibraryBlankContextMenu}

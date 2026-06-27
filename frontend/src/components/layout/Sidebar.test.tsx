@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Sidebar } from './Sidebar'
 import { useAuthStore } from '@/stores/authStore'
 import { useLibraryStore } from '@/stores/libraryStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { useRatingStore } from '@/stores/ratingStore'
 import { useUiStore } from '@/stores/uiStore'
 import type { MusicVideo } from '@/types/musicVideo'
@@ -15,6 +16,7 @@ vi.stubGlobal('ResizeObserver', ResizeObserverStub)
 
 const originalAuthState = useAuthStore.getState()
 const originalLibraryState = useLibraryStore.getState()
+const originalPlayerState = usePlayerStore.getState()
 const originalRatingState = useRatingStore.getState()
 const originalUiState = useUiStore.getState()
 const createPlaylistMock = vi.fn(async () => ({ id: 'created-playlist' }))
@@ -45,6 +47,7 @@ describe('Sidebar saved media navigation', () => {
     window.localStorage.clear()
     createPlaylistMock.mockClear()
     useAuthStore.setState({ isAuthenticated: true })
+    usePlayerStore.setState({ isKaraokeOpen: false })
     useUiStore.setState({ libraryExpanded: false })
     useRatingStore.setState({ loadFromBackend: vi.fn(async () => {}) })
     useLibraryStore.setState({
@@ -61,6 +64,7 @@ describe('Sidebar saved media navigation', () => {
     act(() => {
       useAuthStore.setState(originalAuthState, true)
       useLibraryStore.setState(originalLibraryState, true)
+      usePlayerStore.setState(originalPlayerState, true)
       useRatingStore.setState(originalRatingState, true)
       useUiStore.setState(originalUiState, true)
     })
@@ -71,11 +75,16 @@ describe('Sidebar saved media navigation', () => {
     expect(screen.getByRole('status', { name: 'current route' })).toHaveTextContent(route)
 
   it('navigates saved MV and podcast rows in the expanded list layout', () => {
+    usePlayerStore.setState({ isKaraokeOpen: true })
     renderSidebar()
     fireEvent.click(screen.getByRole('link', { name: new RegExp(video.title) }))
     expectRoute(`/videos/${video.id}`)
+    expect(usePlayerStore.getState().isKaraokeOpen).toBe(false)
+
+    usePlayerStore.setState({ isKaraokeOpen: true })
     fireEvent.click(screen.getByRole('link', { name: new RegExp(podcast.title) }))
     expectRoute(`/podcasts/${podcast.id}`)
+    expect(usePlayerStore.getState().isKaraokeOpen).toBe(false)
   })
 
   it('keeps saved MV and podcast navigation working in the minimized rail', () => {

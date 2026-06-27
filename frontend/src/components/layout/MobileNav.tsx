@@ -11,6 +11,7 @@ import {
   UserCircleIcon as UserSolid,
 } from '@heroicons/react/24/solid'
 import { useAuthStore } from '@/stores/authStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
 import { cn } from '@/utils/cn'
 import { useTranslation } from '@/i18n/useTranslation'
@@ -35,6 +36,9 @@ export function MobileNav() {
   const { isAuthenticated, user } = useAuthStore()
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
+
+  const closeKaraoke = () => setKaraokeOpen(false)
 
   return (
     <nav
@@ -48,6 +52,7 @@ export function MobileNav() {
             key={to}
             to={to}
             end={exact}
+            onClick={closeKaraoke}
             className={({ isActive }) =>
               cn(
                 'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-wide transition-colors',
@@ -70,7 +75,10 @@ export function MobileNav() {
 
         {/* Profile / Login tab */}
         <button
-          onClick={() => navigate(isAuthenticated ? '/profile' : '/login')}
+          onClick={() => {
+            closeKaraoke()
+            navigate(isAuthenticated ? '/profile' : '/login')
+          }}
           className={cn(
             'flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] font-semibold tracking-wide transition-colors',
             location.pathname.startsWith('/profile') || location.pathname.startsWith('/account')

@@ -185,13 +185,16 @@ export function TopBar() {
 
   const submitSearch = (value = searchValue) => {
     const q = value.trim()
+    setKaraokeOpen(false)
     setShowSearchPanel(false)
     if (q) navigate(`/search?q=${encodeURIComponent(q)}`)
     else navigate('/search')
   }
 
+  const closeKaraoke = () => setKaraokeOpen(false)
+
   const goHome = () => {
-    setKaraokeOpen(false)
+    closeKaraoke()
     navigate('/')
   }
 
@@ -213,6 +216,7 @@ export function TopBar() {
   }
 
   const handleBrowseClick = () => {
+    closeKaraoke()
     setSearchValue('')
     setShowSearchPanel(false)
     navigate('/search')
@@ -245,6 +249,7 @@ export function TopBar() {
   }
 
   const openSuggestion = (path: string) => {
+    closeKaraoke()
     setShowSearchPanel(false)
     navigate(path)
   }
@@ -590,7 +595,7 @@ export function TopBar() {
   if (!isAuthenticated) {
     return (
       <header data-tauri-drag-region className="sticky top-0 z-50 grid h-14 shrink-0 grid-cols-[1fr_minmax(0,560px)_1fr] items-center gap-4 bg-base/90 px-4 backdrop-blur-xl md:h-14">
-        <Link to="/" onClick={() => setKaraokeOpen(false)} className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
+        <Link to="/" onClick={closeKaraoke} className="flex items-center justify-self-start shrink-0" aria-label={t('topbar.brandHome')}>
           <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
         </Link>
 
@@ -654,16 +659,17 @@ export function TopBar() {
 
         <div className="flex min-w-0 items-center justify-end gap-3 text-sm font-bold text-secondary lg:gap-5">
           <div className="hidden items-center gap-5 2xl:flex">
-            <Link to="/premium" className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.premium')}</Link>
+            <Link to="/premium" onClick={closeKaraoke} className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.premium')}</Link>
             <InstallAppButton className="whitespace-nowrap transition-colors hover:text-primary" />
-            <Link to="/support" className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.support')}</Link>
+            <Link to="/support" onClick={closeKaraoke} className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.support')}</Link>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
-          <Link to="/signup" className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-primary md:block">
+          <Link to="/signup" onClick={closeKaraoke} className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-primary md:block">
             {t('topbar.signUp')}
           </Link>
           <Link
             to="/login"
+            onClick={closeKaraoke}
             className="shrink-0 whitespace-nowrap rounded-full bg-primary px-4 py-2 text-xs font-bold text-page transition-transform hover:scale-105 active:scale-95 md:px-6 md:py-3 md:text-sm"
           >
             {t('topbar.logIn')}
@@ -677,7 +683,7 @@ export function TopBar() {
   return (
     <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-14 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
-      <Link to="/" onClick={() => setKaraokeOpen(false)} className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
+      <Link to="/" onClick={closeKaraoke} className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
       </Link>
 
@@ -753,7 +759,7 @@ export function TopBar() {
       {/* Free-user account links */}
       {user?.capabilities?.unlimitedPlayback === false && (
         <div className="hidden shrink-0 items-center gap-4 text-sm font-bold text-secondary sm:flex">
-          <Link to="/premium" className="transition-colors hover:text-primary">
+          <Link to="/premium" onClick={closeKaraoke} className="transition-colors hover:text-primary">
             {t('topbar.premium')}
           </Link>
           <InstallAppButton className="transition-colors hover:text-primary" />

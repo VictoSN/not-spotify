@@ -288,7 +288,7 @@ so the effect never fires and the lyrics stay open. Only `toggleKaraoke` (the ly
 
 - [x] Clicking the top-left **home** button and the **logo** closes the lyrics/karaoke view, even when already on that route. (`TopBar` now calls `setKaraokeOpen(false)` from both home controls before navigating.)
 - [x] Keep the existing close-on-route-change behaviour for all other navigation. (`AppShell`'s route-change effect remains in place.)
-- [ ] (Optional, Spotify-parity) any primary navigation click closes the lyrics view.
+- [x] (Optional, Spotify-parity) any primary navigation click closes the lyrics view. (`TopBar`, `MobileNav`, and authenticated `Sidebar` link navigation now close karaoke on click.)
 
 Likely files: `frontend/src/components/layout/AppShell.tsx` (`setKaraokeOpen`, the
 route-change effect), `frontend/src/components/layout/TopBar.tsx` (home button + logo

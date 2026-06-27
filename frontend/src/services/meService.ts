@@ -49,6 +49,39 @@ export interface UpdateProfilePayload {
   country?: string
 }
 
+export interface AccountPreferences {
+  allowPersonalizedAds: boolean
+  blockAlcoholAds: boolean
+  blockGamblingAds: boolean
+  emailProductUpdates: boolean
+  emailSecurityAlerts: boolean
+}
+
+export interface DeletedPlaylist {
+  id: string
+  originalPlaylistId: string
+  name: string
+  description: string | null
+  trackCount: number
+  deletedAt: string
+  expiresAt: string
+}
+
+export interface LoginMethods {
+  hasPassword: boolean
+  externalProviders: {
+    google: { enabled: boolean; configured: boolean; available: boolean }
+    facebook: { enabled: boolean; configured: boolean; available: boolean }
+    apple: { enabled: boolean; configured: boolean; available: boolean }
+  }
+}
+
+export interface RedeemResult {
+  code: string
+  message: string
+  user: User | null
+}
+
 export const meService = {
   async updateProfile(payload: UpdateProfilePayload): Promise<User> {
     const res = await api.patch<User>('/me/profile', payload)
@@ -130,5 +163,39 @@ export const meService = {
   async exportData(): Promise<unknown> {
     const res = await api.get<unknown>('/me/export')
     return res.data
+  },
+
+  async getAccountPreferences(): Promise<AccountPreferences> {
+    const res = await api.get<AccountPreferences>('/me/account-preferences')
+    return res.data
+  },
+
+  async updateAccountPreferences(payload: AccountPreferences): Promise<AccountPreferences> {
+    const res = await api.put<AccountPreferences>('/me/account-preferences', payload)
+    return res.data
+  },
+
+  async getLoginMethods(): Promise<LoginMethods> {
+    const res = await api.get<LoginMethods>('/me/login-methods')
+    return res.data
+  },
+
+  async redeem(code: string): Promise<RedeemResult> {
+    const res = await api.post<RedeemResult>('/me/redeem', { code })
+    return res.data
+  },
+
+  async getDeletedPlaylists(): Promise<DeletedPlaylist[]> {
+    const res = await api.get<DeletedPlaylist[]>('/me/deleted-playlists')
+    return res.data
+  },
+
+  async restoreDeletedPlaylist(id: string) {
+    const res = await api.post(`/me/deleted-playlists/${id}/restore`)
+    return res.data
+  },
+
+  async deleteAccount(confirmation: string): Promise<void> {
+    await api.delete('/me/account', { data: { confirmation } })
   },
 }

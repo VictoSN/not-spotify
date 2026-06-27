@@ -40,6 +40,14 @@ public class AdsController : ControllerBase
         var settings = await _db.AdSettings.OrderBy(x => x.UpdatedAt).FirstOrDefaultAsync(ct);
         if (settings is not null && !settings.IsEnabled) return NoContent();
 
+        var userIdRaw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        var personalize = true;
+        if (Guid.TryParse(userIdRaw, out var userId))
+        {
+            var pref = await _db.UserAccountPreferences.AsNoTracking().FirstOrDefaultAsync(p => p.UserId == userId, ct);
+            personalize = pref?.AllowPersonalizedAds ?? true;
+        }
+
         var market = (country ?? User.FindFirstValue("country"))?.Trim().ToUpperInvariant();
         var now = DateTime.UtcNow;
 
@@ -47,7 +55,9 @@ public class AdsController : ControllerBase
             .Where(a => a.IsActive
                 && (a.StartsAt == null || a.StartsAt <= now)
                 && (a.EndsAt == null || a.EndsAt >= now)
-                && (a.Country == null || market == null || a.Country == market))
+                && (personalize
+                    ? (a.Country == null || market == null || a.Country == market)
+                    : a.Country == null))
             .ToListAsync(ct);
 
         if (candidates.Count == 0) return NoContent();

@@ -86,7 +86,7 @@ public class ChatControllerTests
         Assert.Equal("chat_message", notification.Type);
         Assert.Equal("Someone sent you a message", notification.Title);
         Assert.Equal("hey there", notification.Body);
-        Assert.Equal($"/messages/{me}", notification.LinkUrl);
+        Assert.Equal($"/messages?u={me}", notification.LinkUrl);
 
         // A "ChatMessage" push went to both the recipient and the sender's own group.
         proxy.Verify(

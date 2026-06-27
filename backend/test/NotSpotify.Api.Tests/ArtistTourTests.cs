@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NotSpotify.Api.Controllers;
@@ -26,7 +27,7 @@ public class ArtistTourTests
 
         return new MeController(db, TestHelpers.NewMapper(), users.Object,
             new Mock<IStorageService>().Object, lyrics, NullLogger<MeController>.Instance, waveforms,
-            TestHelpers.NewNotifications(db))
+            TestHelpers.NewNotifications(db), new ConfigurationBuilder().Build())
             .AsUser(me.Id, "Artist");
     }
 

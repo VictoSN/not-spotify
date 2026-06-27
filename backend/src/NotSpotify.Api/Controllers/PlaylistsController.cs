@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -283,9 +284,32 @@ public class PlaylistsController : ControllerBase
     [Authorize]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct = default)
     {
-        var p = await _db.Playlists.FirstOrDefaultAsync(x => x.Id == id, ct);
+        var p = await _db.Playlists
+            .Include(x => x.PlaylistTracks)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
         if (p is null) return NotFound();
         if (p.OwnerId != CurrentUserId()) return StatusCode(StatusCodes.Status403Forbidden);
+
+        var snapshotTracks = p.PlaylistTracks
+            .OrderBy(pt => pt.Position)
+            .Select(pt => new { pt.TrackId, pt.Position })
+            .ToList();
+        _db.DeletedPlaylists.Add(new DeletedPlaylist
+        {
+            Id = Guid.NewGuid(),
+            OriginalPlaylistId = p.Id,
+            UserId = p.OwnerId,
+            Name = p.Name,
+            Description = p.Description,
+            CoverUrl = p.CoverUrl,
+            CoverKey = p.CoverKey,
+            IsPublic = p.IsPublic,
+            Visibility = p.Visibility,
+            Rules = p.Rules,
+            TracksJson = JsonSerializer.Serialize(snapshotTracks),
+            DeletedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+        });
 
         _db.Playlists.Remove(p);
         await _db.SaveChangesAsync(ct);

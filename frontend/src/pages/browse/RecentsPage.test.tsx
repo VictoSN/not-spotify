@@ -1,4 +1,5 @@
 import React from 'react'
+import { act } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,7 +36,7 @@ const track = (id: string): Track =>
     durationMs: 180_000,
     audioUrl: `audio/${id}.mp3`,
     artist: { id: `artist-${id}`, name: 'Artist', imageUrl: null },
-    album: { id: `album-${id}`, title: 'Album', coverUrl: '', releaseDate: '2020-01-01', type: 'album' },
+    album: { id: `album-${id}`, title: 'Album', coverUrl: `/covers/${id}.jpg`, releaseDate: '2020-01-01', type: 'album' },
     genres: [],
     playCount: 0,
     ratingCount: 0,
@@ -55,41 +56,58 @@ const originalAuthState = useAuthStore.getState()
 const originalLibraryState = useLibraryStore.getState()
 const originalRatingState = useRatingStore.getState()
 
-function renderRecents() {
-  return render(
+async function renderRecents() {
+  const result = render(
     <MemoryRouter initialEntries={['/recents']}>
       <RecentsPage />
     </MemoryRouter>,
   )
+  await act(async () => {
+    await Promise.resolve()
+    await Promise.resolve()
+  })
+  return result
+}
+
+async function fireAndFlush(action: () => void) {
+  await act(async () => {
+    action()
+    await Promise.resolve()
+    await Promise.resolve()
+  })
 }
 
 describe('RecentsPage context menu', () => {
   beforeEach(() => {
-    useAuthStore.setState({ isAuthenticated: true })
-    useLibraryStore.setState({ likedTrackIds: new Set() })
-    useRatingStore.setState({ getAggregate: () => ({ ratingCount: 0, averageRating: 0 }) })
+    act(() => {
+      useAuthStore.setState({ isAuthenticated: true })
+      useLibraryStore.setState({ likedTrackIds: new Set() })
+      useRatingStore.setState({ getAggregate: () => ({ ratingCount: 0, averageRating: 0 }) })
+    })
     vi.spyOn(meService, 'getHistory').mockResolvedValue(history)
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
-    useAuthStore.setState(originalAuthState, true)
-    useLibraryStore.setState(originalLibraryState, true)
-    useRatingStore.setState(originalRatingState, true)
+    act(() => {
+      useAuthStore.setState(originalAuthState, true)
+      useLibraryStore.setState(originalLibraryState, true)
+      useRatingStore.setState(originalRatingState, true)
+    })
   })
 
   it('opens the track menu when a Recents row is right-clicked', async () => {
-    renderRecents()
+    await renderRecents()
 
     const titleLink = await screen.findByRole('link', { name: 'Track recent-1' })
     const row = titleLink.closest('.group')!
-    fireEvent.contextMenu(row, { clientX: 120, clientY: 80 })
+    await fireAndFlush(() => fireEvent.contextMenu(row, { clientX: 120, clientY: 80 }))
 
     await waitFor(() => expect(screen.getByText('Go to artist')).toBeInTheDocument())
   })
 
   it('keeps the ⋯ menu trigger available on Recents rows', async () => {
-    renderRecents()
+    await renderRecents()
 
     expect(await screen.findByRole('button', { name: 'More options' })).toBeInTheDocument()
   })

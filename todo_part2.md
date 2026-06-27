@@ -151,7 +151,7 @@ Tests (this session):
 - [x] Backend: extend `RecommendationEndpointsTests` so a track's genre/mix assignment is asserted (reproduce #1, then prove fixed). `DailyMixes_OnlyIncludesTracksWhoseArtistIsDominatedByThatGenre` — a pop act's stray rock-tagged track must not appear in the Rock mix while the genuine rock act's tracks do. Fails against the old top-2 rule, passes after the plurality fix.
 - [x] Frontend: "Show all" resolves to a playlist/track-list route, not a `/search?q=` URL. `GenreDetailPage.test.tsx` — renders the discover showcases and asserts the row "Show all" → `/new-releases` and cards → `/new-releases` / `/recommended-tracks` (never `/search`), plus data-level assertions over `curatedBrowseCategories` and `getBrowseFallbackRows`.
 
-> Note: making the backend test suite compile required adding the `NotificationService` arg to two stale `MeController` test call sites (`ArtistTourTests.cs`, `MeExportControllerTests.cs`) — a pre-existing break unrelated to Phase 4. The full backend suite is now green except `ChatControllerTests.Send_ToFriend_PersistsMessageAndPushesRealtime` (pre-existing: notification deep-link is `/messages?u=<id>` but the test still expects `/messages/<id>`). The 4 failing frontend `libraryStore` follow/unfollow tests are the open Phase 13 regression.
+> Note: making the backend test suite compile required adding the `NotificationService` arg to two stale `MeController` test call sites (`ArtistTourTests.cs`, `MeExportControllerTests.cs`) — a pre-existing break unrelated to Phase 4. The stale `ChatControllerTests.Send_ToFriend_PersistsMessageAndPushesRealtime` deep-link assertion now matches the live `/messages?u=<id>` route, and the full backend suite is green.
 
 ---
 
@@ -192,14 +192,26 @@ Decisions per row (commit `22f0809d`):
 - [x] **Friend activity** (master + 4 sub-toggles) — implemented end-to-end. Backend `NotifyAsync` calls added to `ChatController.Send` (`chat_message`) and `MeController.SavePlaylist` (`playlist_saved`); `new_follower` and `jam_invite` were already wired. Poller filters by enabled sub-toggles.
 - [x] **Friend activity (image's other 3 rows)** — removed: "send me a song" / "likes my playlist" / "starts listening live" have no backend endpoint to hook into, and the closest equivalent ("joins my session") is exposed as the existing `jam_invite`.
 - [x] **Push notifications (real OS-level Web Push)** — backend `WebPush` package + `WebPushService`, VAPID keys stored in user-secrets, `PushSubscriptions` table created via the raw-SQL guard pattern, new `PushController` (`vapid-public-key` / `subscribe` / `unsubscribe` / `test`). `NotificationService.NotifyAsync` and the two bulk paths (repost, new-release) now also call `_push.SendToUserAsync` so every in-app notification fires a real OS push to every subscribed browser. Frontend `services/webPush.ts` handles subscribe/unsubscribe + the SW `push` + `notificationclick` handlers render & route the alert. Settings shows a "Push notifications" toggle with a "Send test" button. **Note:** the SW is only registered in production builds (`registerSW.ts` skips dev) — for browser verification run `npm run build && npm run preview` (port 4173).
+- [x] **Account page greyed-out rows** — implemented or routed, separately from app Settings:
+  - [x] Recover playlists — playlist deletes now create 30-day `DeletedPlaylist` snapshots; Account can list and restore them.
+  - [x] Manage members — handled by the existing `PlanMembersCard` when the user owns/joins/has an invite for a Duo/Family plan; the static row now clearly points at that live card.
+  - [x] Payment history / saved cards — enabled for Premium via the existing Stripe billing portal.
+  - [x] Redeem — Account can redeem `NOTSPOTIFY30` / `PREMIUM30` / `WELCOME30` into a 30-day individual Premium trial.
+  - [x] Manage apps / Edit login methods — Account opens a live login-methods panel showing password status and configured external providers, with connect links for available providers and the existing Change password flow.
+  - [x] Delete account — Account can permanently delete the current user after typing `DELETE`; backend revokes sessions, removes the user via Identity, and clears the refresh cookie.
+  - [x] Ad preferences — new per-user account preferences persist ad/email settings; `/ads/next` respects `allowPersonalizedAds=false` by serving untargeted ads only.
+  - [x] Notification settings / Account privacy / App support — routed to their implemented `/settings` or `/support` destinations.
 
 Likely files: `frontend/src/pages/SettingsPage.tsx`, `frontend/src/pages/AccountSettingsPage.tsx`,
 `frontend/src/i18n/translations.ts` (the "coming soon" strings).
 Touched in this phase: also `frontend/src/services/notifications.ts` (new), `frontend/src/hooks/useAutostart.ts` (new), `frontend/src/stores/playerStore.ts`, `frontend/src/stores/libraryStore.ts`, `frontend/src/services/artistService.ts`, `frontend/src/App.tsx`, `frontend/src-tauri/*`, `backend/src/NotSpotify.Api/Controllers/ArtistsController.cs`, `backend/src/NotSpotify.Api/Controllers/ChatController.cs`, `backend/src/NotSpotify.Api/Controllers/MeController.cs`.
 
 Tests (this session):
-- [ ] For each newly-implemented setting: a test that the control persists/applies its value.
+- [x] For each newly-implemented setting: a test that the control persists/applies its value. Added focused frontend coverage in `SettingsPage.test.tsx` for theme, language, streaming quality, Data Saver, normalize volume, compact library, autoplay, crossfade, private listening, notification permission/sub-toggles, and media-cache clearing.
+- [x] Account settings greyed-out regression: `AccountSettingsPage.test.tsx` asserts the formerly greyed rows open functional panels, implemented account destinations route to `/settings` or `/support`, and ad/redeem actions call their services.
+- [x] Backend account settings regression: `AccountSettingsControllerTests` covers account preferences + ad targeting, redeeming a Premium trial code, and deleting/restoring a playlist snapshot.
 - Live-verified end-to-end via curl: follow→`new_release` (Justin Bieber), follow→`new_follower`, chat→`chat_message`, save→`playlist_saved` all landed in the recipient's `/notifications` feed.
+- Verified after this audit: `cd frontend && npm test` (212 tests, no React/image warnings after test cleanup); `cd frontend && npx tsc --noEmit`; `cd backend && dotnet test` (252 tests). Fixed the stale chat notification deep-link assertion to match the live `/messages?u=<id>` route.
 
 ---
 
@@ -308,8 +320,8 @@ A focused pass after the feature phases to lock in behaviour and catch regressio
 - [ ] Recommendation/genre + "Show all" routing. Consolidates Phase 4.
 - [ ] Clickability/context-menu regressions: Home playlist/mix rows navigate correctly; empty-space right-click opens create actions without stealing media right-clicks. Consolidates Phase 15.
 - [ ] Playlist add-track hover affordance: the in-cover plus action works with mouse, keyboard, and existing add-song flows. Consolidates Phase 16.
-- [ ] Run full suites green: `cd frontend && npm test` and `cd backend && dotnet test`.
-- [ ] `npx tsc --noEmit` clean.
+- [x] Run full suites green: `cd frontend && npm test` and `cd backend && dotnet test`. (Verified after warning cleanup: frontend 212 tests, backend 252 tests.)
+- [x] `npx tsc --noEmit` clean.
 
 ---
 

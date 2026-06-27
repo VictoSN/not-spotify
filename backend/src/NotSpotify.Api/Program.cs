@@ -852,6 +852,45 @@ using (var scope = app.Services.CreateScope())
         ON CONFLICT (""Key"") DO NOTHING;
     ");
 
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""UserAccountPreferences"" (
+            ""UserId"" uuid NOT NULL,
+            ""AllowPersonalizedAds"" boolean NOT NULL DEFAULT true,
+            ""BlockAlcoholAds"" boolean NOT NULL DEFAULT false,
+            ""BlockGamblingAds"" boolean NOT NULL DEFAULT false,
+            ""EmailProductUpdates"" boolean NOT NULL DEFAULT true,
+            ""EmailSecurityAlerts"" boolean NOT NULL DEFAULT true,
+            ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_UserAccountPreferences"" PRIMARY KEY (""UserId""),
+            CONSTRAINT ""FK_UserAccountPreferences_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS ""DeletedPlaylists"" (
+            ""Id"" uuid NOT NULL,
+            ""OriginalPlaylistId"" uuid NOT NULL,
+            ""UserId"" uuid NOT NULL,
+            ""Name"" character varying(200) NOT NULL,
+            ""Description"" text NULL,
+            ""CoverUrl"" text NULL,
+            ""CoverKey"" text NULL,
+            ""IsPublic"" boolean NOT NULL,
+            ""Visibility"" character varying(20) NOT NULL DEFAULT 'public',
+            ""Rules"" text NULL,
+            ""TracksJson"" jsonb NOT NULL DEFAULT '[]'::jsonb,
+            ""DeletedAt"" timestamp with time zone NOT NULL,
+            ""ExpiresAt"" timestamp with time zone NOT NULL,
+            CONSTRAINT ""PK_DeletedPlaylists"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_DeletedPlaylists_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS ""IX_DeletedPlaylists_UserId_DeletedAt""
+            ON ""DeletedPlaylists""(""UserId"", ""DeletedAt"");
+        CREATE INDEX IF NOT EXISTS ""IX_DeletedPlaylists_ExpiresAt""
+            ON ""DeletedPlaylists""(""ExpiresAt"");
+    ");
+
     await DbSeeder.SeedAsync(scope.ServiceProvider);
     await RepairKnownInstrumentalLyricsAsync(db);
 

@@ -50,6 +50,8 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<TourDateTrack> TourDateTracks => Set<TourDateTrack>();
     public DbSet<PlanMembership> PlanMemberships => Set<PlanMembership>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<UserAccountPreference> UserAccountPreferences => Set<UserAccountPreference>();
+    public DbSet<DeletedPlaylist> DeletedPlaylists => Set<DeletedPlaylist>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -623,6 +625,28 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.HasKey(x => x.Key);
             e.Property(x => x.Key).HasMaxLength(160);
             e.Property(x => x.Value).HasMaxLength(4000);
+        });
+
+        b.Entity<UserAccountPreference>(e =>
+        {
+            e.HasKey(x => x.UserId);
+            e.HasOne(x => x.User)
+                .WithOne()
+                .HasForeignKey<UserAccountPreference>(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<DeletedPlaylist>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Name).HasMaxLength(200);
+            e.Property(x => x.Visibility).HasMaxLength(20);
+            e.Property(x => x.TracksJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.UserId, x.DeletedAt });
+            e.HasIndex(x => x.ExpiresAt);
         });
     }
 }

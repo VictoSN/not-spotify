@@ -38,6 +38,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
 import { notify } from '@/utils/toast'
+import type { AccountPreferences, DeletedPlaylist, LoginMethods } from '@/services/meService'
 
 interface ArtistApplication {
   id: string
@@ -61,11 +62,15 @@ interface RowProps {
   onClick?: () => void
   external?: boolean
   disabled?: boolean
+  disabledReason?: string
 }
 
-function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled }: RowProps) {
+function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, disabledReason }: RowProps) {
+  const description = disabled && disabledReason ? disabledReason : sub
   const inner = (
     <div
+      aria-disabled={disabled || undefined}
+      title={disabledReason}
       className={cn(
         'flex items-center gap-4 px-4 transition-colors',
         'min-h-[60px] py-3',
@@ -77,7 +82,7 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled }:
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold leading-tight text-white">{label}</p>
-        {sub && <p className="mt-0.5 truncate text-[12px] text-[#b3b3b3]">{sub}</p>}
+        {description && <p className="mt-0.5 truncate text-[12px] text-[#b3b3b3]">{description}</p>}
       </div>
       {external ? (
         <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-[#b3b3b3]" />
@@ -87,7 +92,7 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled }:
     </div>
   )
 
-  if (to) return <Link to={to}>{inner}</Link>
+  if (to && !disabled) return <Link to={to}>{inner}</Link>
   return (
     <button type="button" onClick={onClick} disabled={disabled} className="block w-full text-left">
       {inner}
@@ -123,6 +128,14 @@ export function AccountSettingsPage() {
   const [applySample, setApplySample] = useState('')
   const [applyBusy, setApplyBusy] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
+  const [panel, setPanel] = useState<'recover' | 'redeem' | 'apps' | 'ads' | 'delete' | null>(null)
+  const [panelBusy, setPanelBusy] = useState(false)
+  const [panelError, setPanelError] = useState<string | null>(null)
+  const [deletedPlaylists, setDeletedPlaylists] = useState<DeletedPlaylist[]>([])
+  const [loginMethods, setLoginMethods] = useState<LoginMethods | null>(null)
+  const [prefs, setPrefs] = useState<AccountPreferences | null>(null)
+  const [redeemCode, setRedeemCode] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState('')
 
   const isArtist = user?.roles?.includes('Artist')
 
@@ -216,6 +229,110 @@ export function AccountSettingsPage() {
     }
   }
 
+  const errMsg = (err: unknown, fallback: string) =>
+    (err as { response?: { data?: { message?: string; errors?: string[] } } })?.response?.data?.errors?.join(' ')
+      ?? (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      ?? fallback
+
+  const openRecover = async () => {
+    setPanel('recover')
+    setPanelError(null)
+    setPanelBusy(true)
+    try {
+      setDeletedPlaylists(await meService.getDeletedPlaylists())
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not load deleted playlists.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const restorePlaylist = async (id: string) => {
+    setPanelBusy(true)
+    setPanelError(null)
+    try {
+      await meService.restoreDeletedPlaylist(id)
+      setDeletedPlaylists((rows) => rows.filter((p) => p.id !== id))
+      notify.success('Playlist restored.')
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not restore that playlist.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const openLoginMethods = async () => {
+    setPanel('apps')
+    setPanelError(null)
+    setPanelBusy(true)
+    try {
+      setLoginMethods(await meService.getLoginMethods())
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not load login methods.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const openAdPreferences = async () => {
+    setPanel('ads')
+    setPanelError(null)
+    setPanelBusy(true)
+    try {
+      setPrefs(await meService.getAccountPreferences())
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not load ad preferences.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const savePrefs = async () => {
+    if (!prefs) return
+    setPanelBusy(true)
+    setPanelError(null)
+    try {
+      setPrefs(await meService.updateAccountPreferences(prefs))
+      notify.success('Account preferences saved.')
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not save preferences.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const redeem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPanelBusy(true)
+    setPanelError(null)
+    try {
+      const result = await meService.redeem(redeemCode)
+      if (result.user) useAuthStore.getState().setUser(result.user)
+      notify.success(result.message)
+      setRedeemCode('')
+      setPanel(null)
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not redeem that code.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
+  const deleteAccount = async () => {
+    setPanelBusy(true)
+    setPanelError(null)
+    try {
+      await meService.deleteAccount(deleteConfirm)
+      ;(window as { __authToken?: string }).__authToken = undefined
+      useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false, isLoading: false })
+      window.location.assign('/login')
+    } catch (err) {
+      setPanelError(errMsg(err, 'Could not delete your account.'))
+    } finally {
+      setPanelBusy(false)
+    }
+  }
+
   if (!user) return null
 
   const isPremium = (subscription?.plan ?? user.plan) === 'premium'
@@ -287,6 +404,7 @@ export function AccountSettingsPage() {
             type="button"
             onClick={openPortal}
             disabled={busy || !isPremium}
+            title={isPremium ? undefined : 'Upgrade to Premium before managing a saved payment method.'}
             className={cn(
               'flex flex-1 flex-col items-center justify-center gap-2 rounded-[4px] bg-[#282828] px-4 py-5 text-center transition-colors',
               isPremium ? 'hover:bg-[#323232] cursor-pointer' : 'opacity-40 cursor-default',
@@ -303,7 +421,7 @@ export function AccountSettingsPage() {
       {/* Account */}
       <Section title="Account">
         <SettingRow icon={UserIcon} label="Edit personal info" to="/profile?edit=1" />
-        <SettingRow icon={ArrowPathIcon} label="Recover playlists" disabled />
+        <SettingRow icon={ArrowPathIcon} label="Recover playlists" sub="Restore playlists deleted in the last 30 days" onClick={openRecover} />
       </Section>
 
       {/* Subscription */}
@@ -315,8 +433,17 @@ export function AccountSettingsPage() {
           onClick={isPremium ? openPortal : undefined}
           external={isPremium}
           disabled={!isPremium}
+          disabledReason="Upgrade to Premium before managing a subscription."
         />
-        <SettingRow icon={UsersIcon} label="Manage members" disabled />
+        <SettingRow
+          icon={UsersIcon}
+          label="Manage members"
+          sub={isPremium ? 'View shared-plan seats and invites below' : 'Upgrade to Duo or Family to share Premium'}
+          onClick={() => {
+            if (!isPremium) navigate('/premium')
+            else document.getElementById('plan-members-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }}
+        />
         {isPremium && (
           <SettingRow
             icon={XCircleIcon}
@@ -327,25 +454,39 @@ export function AccountSettingsPage() {
       </Section>
 
       {/* Plan members (self-hides when N/A) */}
-      <div className="mt-5">
+      <div id="plan-members-card" className="mt-5">
         <PlanMembersCard />
       </div>
 
       {/* Payment */}
       <Section title="Payment">
-        <SettingRow icon={DocumentTextIcon} label="Payment history" disabled />
-        <SettingRow icon={CreditCardIcon} label="Saved payment cards" disabled />
-        <SettingRow icon={GiftIcon} label="Redeem" disabled />
+        <SettingRow
+          icon={DocumentTextIcon}
+          label="Payment history"
+          onClick={isPremium ? openPortal : undefined}
+          external={isPremium}
+          disabled={!isPremium}
+          disabledReason="Payment history is available from the billing portal after upgrading to Premium."
+        />
+        <SettingRow
+          icon={CreditCardIcon}
+          label="Saved payment cards"
+          onClick={isPremium ? openPortal : undefined}
+          external={isPremium}
+          disabled={!isPremium}
+          disabledReason="Saved cards are managed by Stripe after upgrading to Premium."
+        />
+        <SettingRow icon={GiftIcon} label="Redeem" sub="Redeem a NotSpotify trial or gift code" onClick={() => { setPanel('redeem'); setPanelError(null) }} />
       </Section>
 
       {/* Security and privacy */}
       <Section title="Security and privacy">
         <SettingRow icon={LockClosedIcon} label="Change password" onClick={() => setShowChangePw(true)} />
-        <SettingRow icon={PuzzlePieceIcon} label="Manage apps" disabled />
-        <SettingRow icon={BellIcon} label="Notification settings" disabled />
-        <SettingRow icon={EyeIcon} label="Account privacy" disabled />
-        <SettingRow icon={KeyIcon} label="Edit login methods" disabled />
-        <SettingRow icon={TrashIcon} label="Delete account" disabled />
+        <SettingRow icon={PuzzlePieceIcon} label="Manage apps" sub="Review available connected sign-in providers" onClick={openLoginMethods} />
+        <SettingRow icon={BellIcon} label="Notification settings" to="/settings" />
+        <SettingRow icon={EyeIcon} label="Account privacy" to="/settings" />
+        <SettingRow icon={KeyIcon} label="Edit login methods" sub="Password and social sign-in options" onClick={openLoginMethods} />
+        <SettingRow icon={TrashIcon} label="Delete account" sub="Permanently delete your account and personal data" onClick={() => { setPanel('delete'); setPanelError(null) }} />
         <SettingRow
           icon={ArrowDownTrayIcon}
           label="Download your data"
@@ -466,16 +607,111 @@ export function AccountSettingsPage() {
 
       {/* Advertising */}
       <Section title="Advertising">
-        <SettingRow icon={MegaphoneIcon} label="Ad preferences" disabled />
+        <SettingRow icon={MegaphoneIcon} label="Ad preferences" sub="Control personalized ad targeting" onClick={openAdPreferences} />
       </Section>
 
       {/* Help */}
       <Section title="Help">
         <SettingRow icon={QuestionMarkCircleIcon} label="Spotify support" to="/support" />
-        <SettingRow icon={ShieldCheckIcon} label="App support" disabled />
+        <SettingRow icon={ShieldCheckIcon} label="App support" to="/support" />
       </Section>
 
       <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
+      {panel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-[6px] bg-[#282828] p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-white">
+                {panel === 'recover' && 'Recover playlists'}
+                {panel === 'redeem' && 'Redeem code'}
+                {panel === 'apps' && 'Login methods'}
+                {panel === 'ads' && 'Ad preferences'}
+                {panel === 'delete' && 'Delete account'}
+              </h2>
+              <button type="button" onClick={() => setPanel(null)} className="rounded-full px-3 py-1 text-sm font-bold text-[#b3b3b3] hover:text-white">Close</button>
+            </div>
+            {panelError && <p className="mb-3 rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{panelError}</p>}
+
+            {panel === 'recover' && (
+              <div className="space-y-3">
+                {panelBusy && <p className="text-sm text-[#b3b3b3]">Loading...</p>}
+                {!panelBusy && deletedPlaylists.length === 0 && <p className="text-sm text-[#b3b3b3]">No recoverable playlists right now.</p>}
+                {deletedPlaylists.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 rounded bg-[#1f1f1f] p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-white">{p.name}</p>
+                      <p className="text-xs text-[#b3b3b3]">{p.trackCount} tracks - recoverable until {formatDate(p.expiresAt)}</p>
+                    </div>
+                    <button type="button" disabled={panelBusy} onClick={() => void restorePlaylist(p.id)} className="rounded-full bg-white px-4 py-1.5 text-xs font-bold text-black disabled:opacity-50">Restore</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {panel === 'redeem' && (
+              <form onSubmit={redeem} className="space-y-4">
+                <p className="text-sm text-[#b3b3b3]">Enter a NotSpotify gift or trial code. Try NOTSPOTIFY30 for a 30-day Premium trial.</p>
+                <input value={redeemCode} onChange={(e) => setRedeemCode(e.target.value)} placeholder="NOTSPOTIFY30" className="w-full rounded bg-[#3a3a3a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-white/30" />
+                <button type="submit" disabled={panelBusy || !redeemCode.trim()} className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black disabled:opacity-50">Redeem</button>
+              </form>
+            )}
+
+            {panel === 'apps' && (
+              <div className="space-y-3">
+                {panelBusy && <p className="text-sm text-[#b3b3b3]">Loading...</p>}
+                {loginMethods && (
+                  <>
+                    <p className="text-sm text-[#b3b3b3]">Password sign-in is {loginMethods.hasPassword ? 'enabled' : 'not set for this account'}.</p>
+                    {(['google', 'facebook', 'apple'] as const).map((provider) => {
+                      const state = loginMethods.externalProviders[provider]
+                      const label = provider[0].toUpperCase() + provider.slice(1)
+                      return (
+                        <div key={provider} className="flex items-center justify-between rounded bg-[#1f1f1f] p-3">
+                          <div>
+                            <p className="text-sm font-bold text-white">{label}</p>
+                            <p className="text-xs text-[#b3b3b3]">{state.available ? 'Available for sign-in' : state.configured ? 'Disabled by admin' : 'Not configured'}</p>
+                          </div>
+                          {state.available && <a href={`${import.meta.env.VITE_API_URL}/auth/external/${provider}?mode=popup&returnUrl=${encodeURIComponent(window.location.origin)}`} className="rounded-full border border-[#b3b3b3] px-3 py-1 text-xs font-bold text-white hover:border-white">Connect</a>}
+                        </div>
+                      )
+                    })}
+                    <button type="button" onClick={() => setShowChangePw(true)} className="mt-2 rounded-full bg-white px-4 py-1.5 text-xs font-bold text-black">Change password</button>
+                  </>
+                )}
+              </div>
+            )}
+
+            {panel === 'ads' && prefs && (
+              <div className="space-y-3">
+                {([
+                  ['allowPersonalizedAds', 'Allow personalized ads', 'Use account country and campaign targeting to pick more relevant ads.'],
+                  ['blockAlcoholAds', 'Reduce alcohol ads', 'Avoid alcohol-themed campaigns where possible.'],
+                  ['blockGamblingAds', 'Reduce gambling ads', 'Avoid gambling-themed campaigns where possible.'],
+                  ['emailProductUpdates', 'Product update emails', 'Receive occasional product announcements.'],
+                  ['emailSecurityAlerts', 'Security emails', 'Receive security and account access alerts.'],
+                ] as const).map(([key, label, sub]) => (
+                  <label key={key} className="flex items-center justify-between gap-4 rounded bg-[#1f1f1f] p-3">
+                    <span>
+                      <span className="block text-sm font-bold text-white">{label}</span>
+                      <span className="block text-xs text-[#b3b3b3]">{sub}</span>
+                    </span>
+                    <input type="checkbox" checked={prefs[key]} onChange={(e) => setPrefs({ ...prefs, [key]: e.target.checked })} className="h-5 w-5 accent-[#1db954]" />
+                  </label>
+                ))}
+                <button type="button" disabled={panelBusy} onClick={savePrefs} className="rounded-full bg-white px-5 py-2 text-sm font-bold text-black disabled:opacity-50">Save preferences</button>
+              </div>
+            )}
+
+            {panel === 'delete' && (
+              <div className="space-y-4">
+                <p className="text-sm text-[#b3b3b3]">This permanently deletes your NotSpotify account, playlists, library, social data, and active sessions. This cannot be undone.</p>
+                <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE" className="w-full rounded bg-[#3a3a3a] px-3 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-red-300" />
+                <button type="button" disabled={panelBusy || deleteConfirm.trim().toUpperCase() !== 'DELETE'} onClick={deleteAccount} className="rounded-full bg-red-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">Delete account</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

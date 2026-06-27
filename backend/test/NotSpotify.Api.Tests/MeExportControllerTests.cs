@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NotSpotify.Api.Controllers;
@@ -23,7 +24,7 @@ public class MeExportControllerTests
 
         return new MeController(db, new MediaMapper(storage.Object), users.Object,
             storage.Object, lyrics, NullLogger<MeController>.Instance, waveforms,
-            TestHelpers.NewNotifications(db))
+            TestHelpers.NewNotifications(db), new ConfigurationBuilder().Build())
             .AsUser(me.Id);
     }
 

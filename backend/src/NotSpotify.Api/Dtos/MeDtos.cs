@@ -58,3 +58,40 @@ public class PlaylistCoverUploadRequest
 public record RateTrackRequest([Required, Range(1, 5)] int Rating);
 
 public record TrackRatingResultDto(int RatingCount, double AverageRating, int MyRating);
+
+public record AccountPreferencesDto(
+    bool AllowPersonalizedAds,
+    bool BlockAlcoholAds,
+    bool BlockGamblingAds,
+    bool EmailProductUpdates,
+    bool EmailSecurityAlerts
+);
+
+public record UpdateAccountPreferencesRequest(
+    bool AllowPersonalizedAds,
+    bool BlockAlcoholAds,
+    bool BlockGamblingAds,
+    bool EmailProductUpdates,
+    bool EmailSecurityAlerts
+);
+
+public record DeletedPlaylistDto(
+    Guid Id,
+    Guid OriginalPlaylistId,
+    string Name,
+    string? Description,
+    int TrackCount,
+    DateTime DeletedAt,
+    DateTime ExpiresAt
+);
+
+public record LoginMethodsDto(
+    bool HasPassword,
+    ExternalProvidersResponse ExternalProviders
+);
+
+public record RedeemRequest([Required, StringLength(80, MinimumLength = 3)] string Code);
+
+public record RedeemResultDto(string Code, string Message, UserDto? User);
+
+public record DeleteAccountRequest([Required] string Confirmation);

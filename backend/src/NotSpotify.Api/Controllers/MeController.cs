@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ public class MeController : ControllerBase
     private readonly ILogger<MeController> _logger;
     private readonly AudioWaveformService _waveforms;
     private readonly NotificationService _notifications;
+    private readonly IConfiguration _config;
 
     public MeController(
         AppDbContext db,
@@ -39,7 +41,8 @@ public class MeController : ControllerBase
         LyricsService lyrics,
         ILogger<MeController> logger,
         AudioWaveformService waveforms,
-        NotificationService notifications)
+        NotificationService notifications,
+        IConfiguration config)
     {
         _db = db;
         _mapper = mapper;
@@ -49,6 +52,7 @@ public class MeController : ControllerBase
         _logger = logger;
         _waveforms = waveforms;
         _notifications = notifications;
+        _config = config;
     }
 
     private Guid? CurrentUserId()
@@ -86,6 +90,61 @@ public class MeController : ControllerBase
             .OrderBy(tg => tg.Genre.Name)
             .Select(tg => new { tg.GenreId, tg.Genre.Name, tg.Genre.Slug }),
     };
+
+    private static AccountPreferencesDto ToDto(UserAccountPreference pref) => new(
+        pref.AllowPersonalizedAds,
+        pref.BlockAlcoholAds,
+        pref.BlockGamblingAds,
+        pref.EmailProductUpdates,
+        pref.EmailSecurityAlerts
+    );
+
+    private async Task<UserAccountPreference> GetOrCreatePreferencesAsync(Guid userId, CancellationToken ct)
+    {
+        var pref = await _db.UserAccountPreferences.FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (pref is not null) return pref;
+
+        pref = new UserAccountPreference { UserId = userId, UpdatedAt = DateTime.UtcNow };
+        _db.UserAccountPreferences.Add(pref);
+        await _db.SaveChangesAsync(ct);
+        return pref;
+    }
+
+    private ExternalProvidersResponse ExternalProviders()
+    {
+        static ExternalAuthProviderDto State(IConfiguration config, string provider, bool defaultEnabled, bool configured)
+        {
+            var enabled = bool.TryParse(config[$"AuthExternal:{provider}:Enabled"], out var modern)
+                ? modern
+                : defaultEnabled;
+            return new ExternalAuthProviderDto(enabled, configured, enabled && configured);
+        }
+
+        var googleConfigured = !string.IsNullOrEmpty(_config["Authentication:Google:ClientId"])
+            && !string.IsNullOrEmpty(_config["Authentication:Google:ClientSecret"]);
+        var facebookConfigured = !string.IsNullOrEmpty(_config["Authentication:Facebook:AppId"])
+            && !string.IsNullOrEmpty(_config["Authentication:Facebook:AppSecret"]);
+
+        return new ExternalProvidersResponse(
+            State(_config, "google", true, googleConfigured),
+            State(_config, "facebook", false, facebookConfigured),
+            new ExternalAuthProviderDto(false, false, false)
+        );
+    }
+
+    private record DeletedPlaylistTrack(Guid TrackId, int Position);
+
+    private static DeletedPlaylistDto ToDto(DeletedPlaylist row)
+    {
+        var count = 0;
+        try
+        {
+            count = JsonSerializer.Deserialize<List<DeletedPlaylistTrack>>(row.TracksJson)?.Count ?? 0;
+        }
+        catch { /* corrupt snapshot — still show the playlist itself */ }
+
+        return new DeletedPlaylistDto(row.Id, row.OriginalPlaylistId, row.Name, row.Description, count, row.DeletedAt, row.ExpiresAt);
+    }
 
     [HttpGet("export")]
     public async Task<IActionResult> Export(CancellationToken ct = default)
@@ -325,6 +384,173 @@ public class MeController : ControllerBase
         };
 
         return Ok(export);
+    }
+
+    [HttpGet("account-preferences")]
+    public async Task<ActionResult<AccountPreferencesDto>> GetAccountPreferences(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        return Ok(ToDto(await GetOrCreatePreferencesAsync(me.Value, ct)));
+    }
+
+    [HttpPut("account-preferences")]
+    public async Task<ActionResult<AccountPreferencesDto>> UpdateAccountPreferences([FromBody] UpdateAccountPreferencesRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var pref = await GetOrCreatePreferencesAsync(me.Value, ct);
+        pref.AllowPersonalizedAds = req.AllowPersonalizedAds;
+        pref.BlockAlcoholAds = req.BlockAlcoholAds;
+        pref.BlockGamblingAds = req.BlockGamblingAds;
+        pref.EmailProductUpdates = req.EmailProductUpdates;
+        pref.EmailSecurityAlerts = req.EmailSecurityAlerts;
+        pref.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+        return Ok(ToDto(pref));
+    }
+
+    [HttpGet("login-methods")]
+    public async Task<ActionResult<LoginMethodsDto>> LoginMethods(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        return Ok(new LoginMethodsDto(await _users.HasPasswordAsync(user), ExternalProviders()));
+    }
+
+    [HttpPost("redeem")]
+    public async Task<ActionResult<RedeemResultDto>> Redeem([FromBody] RedeemRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var code = req.Code.Trim().ToUpperInvariant().Replace(" ", "");
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        if (code is not ("NOTSPOTIFY30" or "PREMIUM30" or "WELCOME30"))
+            return BadRequest(new { message = "That code is not valid." });
+
+        if (user.Plan == "premium")
+            return Conflict(new { message = "This account already has Premium." });
+
+        user.Plan = "premium";
+        user.PlanTier = "individual";
+        user.StripeSubscriptionStatus = "trialing";
+        user.StripeBillingInterval = "monthly";
+        user.StripeCurrentPeriodEnd = DateTime.UtcNow.AddDays(30);
+        user.StripeCancelAtPeriodEnd = true;
+        await _users.UpdateAsync(user);
+
+        var roles = await _users.GetRolesAsync(user);
+        return Ok(new RedeemResultDto(code, "Premium trial redeemed for 30 days.", _mapper.ToUserDto(user, roles)));
+    }
+
+    [HttpGet("deleted-playlists")]
+    public async Task<ActionResult<IEnumerable<DeletedPlaylistDto>>> DeletedPlaylists(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var now = DateTime.UtcNow;
+        var rows = await _db.DeletedPlaylists
+            .AsNoTracking()
+            .Where(p => p.UserId == me.Value && p.ExpiresAt > now)
+            .OrderByDescending(p => p.DeletedAt)
+            .ToListAsync(ct);
+
+        return Ok(rows.Select(ToDto));
+    }
+
+    [HttpPost("deleted-playlists/{id:guid}/restore")]
+    public async Task<ActionResult<PlaylistDto>> RestoreDeletedPlaylist(Guid id, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var row = await _db.DeletedPlaylists.FirstOrDefaultAsync(p => p.Id == id && p.UserId == me.Value, ct);
+        if (row is null) return NotFound();
+        if (row.ExpiresAt <= DateTime.UtcNow) return StatusCode(StatusCodes.Status410Gone, new { message = "This deleted playlist can no longer be recovered." });
+
+        var playlist = new Playlist
+        {
+            Id = Guid.NewGuid(),
+            Name = row.Name,
+            Description = row.Description,
+            CoverUrl = row.CoverUrl,
+            CoverKey = row.CoverKey,
+            IsPublic = row.IsPublic,
+            Visibility = row.Visibility,
+            Rules = row.Rules,
+            OwnerId = me.Value,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
+
+        var tracks = new List<DeletedPlaylistTrack>();
+        try
+        {
+            tracks = JsonSerializer.Deserialize<List<DeletedPlaylistTrack>>(row.TracksJson) ?? [];
+        }
+        catch { /* restore the playlist shell if the snapshot was malformed */ }
+
+        var trackIds = tracks.Select(t => t.TrackId).Distinct().ToList();
+        var existing = trackIds.Count == 0
+            ? new HashSet<Guid>()
+            : (await _db.Tracks.Where(t => trackIds.Contains(t.Id)).Select(t => t.Id).ToListAsync(ct)).ToHashSet();
+
+        foreach (var t in tracks.Where(t => existing.Contains(t.TrackId)).OrderBy(t => t.Position))
+        {
+            playlist.PlaylistTracks.Add(new PlaylistTrack
+            {
+                PlaylistId = playlist.Id,
+                TrackId = t.TrackId,
+                Position = t.Position,
+                AddedByUserId = me.Value,
+            });
+        }
+
+        _db.Playlists.Add(playlist);
+        _db.DeletedPlaylists.Remove(row);
+        await _db.SaveChangesAsync(ct);
+
+        var loaded = await _db.Playlists
+            .Include(p => p.Owner)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Artist)
+            .Include(p => p.PlaylistTracks).ThenInclude(pt => pt.Track).ThenInclude(t => t.Album)
+            .FirstAsync(p => p.Id == playlist.Id, ct);
+        return Ok(await _mapper.ToDtoAsync(loaded, ct, isOwner: true, isSaved: false));
+    }
+
+    [HttpDelete("account")]
+    public async Task<IActionResult> DeleteAccount([FromBody] DeleteAccountRequest req, CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+        if (!string.Equals(req.Confirmation.Trim(), "DELETE", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Type DELETE to confirm account deletion." });
+
+        var user = await _users.FindByIdAsync(me.Value.ToString());
+        if (user is null) return NotFound();
+
+        var avatarKey = user.AvatarKey;
+        var tokens = await _db.RefreshTokens.Where(t => t.UserId == user.Id).ToListAsync(ct);
+        foreach (var token in tokens) token.RevokedAt ??= DateTime.UtcNow;
+
+        var result = await _users.DeleteAsync(user);
+        if (!result.Succeeded)
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+
+        if (!string.IsNullOrWhiteSpace(avatarKey))
+            await _storage.DeleteAsync(avatarKey, ct);
+
+        Response.Cookies.Delete("rt", new CookieOptions { Path = "/auth" });
+        return NoContent();
     }
 
     [HttpPatch("profile")]

@@ -340,10 +340,10 @@ Goal: following/unfollowing should work consistently from artist pages, search r
 menus, and profile/social surfaces; the visible state should update optimistically and persist
 after refresh.
 
-- [ ] Reproduce where follow/unfollow is failing: artist follow (`/artists/{id}/follow`), user/profile follow (`/users/{id}/follow`), or frontend state sync.
-- [ ] Fix the broken path while preserving optimistic update + rollback semantics.
-- [ ] Ensure follow state refreshes correctly in `libraryStore`, artist detail, search dropdown/page rows, and any Follow buttons.
-- [ ] Guest clicks still open the auth prompt instead of firing a failing request.
+- [x] Reproduce where follow/unfollow is failing: the 4 `libraryStore.test.ts` follow/unfollow tests failed because `followArtist`/`unfollowArtist` fired real API calls (unmocked) that reverted optimistic state. Auth gate was also missing from the store methods (safety net) and `NowPlayingPanel.tsx` (the only UI follow surface lacking a guest check).
+- [x] Fix the broken path while preserving optimistic update + rollback semantics: added auth gate to `libraryStore.followArtist`/`unfollowArtist` (like `registerVideoPlay`); added auth gate to `NowPlayingPanel.toggleFollow`; replaced `ExecuteUpdateAsync` in `ArtistsController.Follow`/`Unfollow` with tracked-entity updates so EF InMemory tests work.
+- [x] Ensure follow state refreshes correctly — all UI surfaces already auth-gated (verified: ArtistMenu, TopBar, SearchPage, ArtistProfilePage, UserProfilePage, FollowListModal); `NowPlayingPanel` was the sole missing gate (fixed).
+- [x] Guest clicks still open the auth prompt instead of firing a failing request — confirmed on all surfaces; store-level auth gate provides safety net.
 
 Likely files: `frontend/src/stores/libraryStore.ts`, `frontend/src/services/artistService.ts`,
 `frontend/src/services/friendService.ts`, `frontend/src/pages/ArtistDetailPage.tsx`,
@@ -352,8 +352,8 @@ backend `backend/src/NotSpotify.Api/Controllers/ArtistsController.cs`,
 `backend/src/NotSpotify.Api/Controllers/UsersController.cs`, `backend/src/NotSpotify.Api/Models/UserFollow.cs`.
 
 Tests (this session):
-- [ ] Frontend: follow button toggles to Following, unfollow toggles back, and failed API calls revert state.
-- [ ] Backend: follow/unfollow endpoint is idempotent and returns success for the current authenticated user.
+- [x] Frontend: follow button toggles to Following, unfollow toggles back, and failed API calls revert state. (9 total — 4 guest/local, 4 authenticated success/failure/rollback, 1 logout reset; all green.)
+- [x] Backend: follow/unfollow endpoint is idempotent and returns success for the current authenticated user. (9 new `ArtistFollowTests` — follow idempotent, unfollow idempotent, guest 401, not-found 404, no-owner no-op, following list; all green.)
 
 ---
 

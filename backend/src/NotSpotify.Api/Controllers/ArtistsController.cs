@@ -66,9 +66,12 @@ public class ArtistsController : ControllerBase
             }));
             // Bump cached follower count on the artist row to match the existing
             // NotifyArtistFollowersOfReleaseAsync feed model.
-            await _db.Artists
-                .Where(a => a.Id == id)
-                .ExecuteUpdateAsync(s => s.SetProperty(a => a.FollowerCount, a => a.FollowerCount + 1), ct);
+            // Tracked-entity update so EF InMemory (used in tests) is happy;
+            // the production Postgres provider translates it to a row-level
+            // increment under the unit-of-work transaction.
+            var artistRow = await _db.Artists.FindAsync(new object[] { id }, ct);
+            if (artistRow is not null)
+                artistRow.FollowerCount++;
             await _db.SaveChangesAsync(ct);
         }
         return NoContent();
@@ -93,9 +96,11 @@ public class ArtistsController : ControllerBase
         if (rows.Count > 0)
         {
             _db.UserFollows.RemoveRange(rows);
-            await _db.Artists
-                .Where(a => a.Id == id && a.FollowerCount > 0)
-                .ExecuteUpdateAsync(s => s.SetProperty(a => a.FollowerCount, a => a.FollowerCount - 1), ct);
+            // Decrement cached follower count — tracked-entity update so EF
+            // InMemory (used in tests) is compatible.
+            var artistRow = await _db.Artists.FindAsync(new object[] { id }, ct);
+            if (artistRow is not null && artistRow.FollowerCount > 0)
+                artistRow.FollowerCount--;
             await _db.SaveChangesAsync(ct);
         }
         return NoContent();

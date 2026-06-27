@@ -22,6 +22,7 @@ import type { MusicVideo } from '@/types/musicVideo'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
 import { videoService } from '@/services/videoService'
@@ -121,6 +122,8 @@ export function NowPlayingPanel() {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const { likedTrackIds, likeTrack, unlikeTrack, followedArtistIds, followArtist, unfollowArtist } = useLibraryStore()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const openAuthPrompt = useAuthPromptStore((s) => s.open)
 
   const [artistData, setArtistData] = useState<ArtistData | null>(null)
   const [albumData, setAlbumData] = useState<AlbumData | null>(null)
@@ -395,6 +398,10 @@ export function NowPlayingPanel() {
   }
   const toggleFollow = () => {
     if (!artist) return
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: t('detail.followArtistPrompt'), imageUrl: artist.imageUrl })
+      return
+    }
     if (isFollowing) unfollowArtist(artist.id)
     else followArtist(artist)
   }

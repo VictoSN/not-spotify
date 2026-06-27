@@ -158,6 +158,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const newIds = new Set([...prevIds, artist.id])
     set({ followedArtists: newArtists, followedArtistIds: newIds })
     localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    // Auth gate: skip API call for guests; components gate too, but the
+    // store shouldn't fire a guaranteed-401 for an unauthenticated user.
+    if (!useAuthStore.getState().isAuthenticated) return
     try {
       await artistService.follow(artist.id)
     } catch {
@@ -175,6 +178,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     const newArtists = prev.filter((a) => a.id !== artistId)
     set({ followedArtists: newArtists, followedArtistIds: newIds })
     localStorage.setItem('ns-followed-artists', JSON.stringify(newArtists))
+    // Auth gate: skip API call for guests (see followArtist).
+    if (!useAuthStore.getState().isAuthenticated) return
     try {
       await artistService.unfollow(artistId)
     } catch {

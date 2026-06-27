@@ -5,7 +5,6 @@ import type { MusicVideo } from '@/types/musicVideo'
 import { trackService } from '@/services/trackService'
 import { adService } from '@/services/adService'
 import { useAuthStore } from './authStore'
-import { useLibraryStore } from './libraryStore'
 
 // Fire-and-forget play tracking. We dedupe within a short window so seeking/re-clicking
 // the current track doesn't spam /me/plays. Module-scoped because it's an HTTP throttle,
@@ -30,20 +29,6 @@ function recordPlay(trackId: string) {
   if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
   lastRecordedAt.set(trackId, now)
   trackService.recordPlay(trackId).catch(() => { })
-}
-
-/**
- * Independently playing a music video registers it in the user's library so it
- * surfaces in Your Library / the left sidebar — the MV analogue of an audio play
- * landing in recents (there's no server video-history endpoint, and savedVideos
- * is most-recent-first, so it doubles as the recents ordering). Auth-gated like
- * recordPlay since the library only exists for signed-in users; saveVideo dedupes,
- * so replaying an already-saved video is a no-op. This is a local library action,
- * not server play history, so private listening doesn't suppress it.
- */
-function registerVideoPlay(video: MusicVideo) {
-  if (!useAuthStore.getState().isAuthenticated) return
-  useLibraryStore.getState().saveVideo(video)
 }
 
 function isFreeUser(): boolean {
@@ -352,9 +337,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       videoCurrentTime: 0,
       videoDuration: video.durationMs > 0 ? video.durationMs / 1000 : 0,
     })
-    // Register the MV in the library so it shows up in the sidebar / Your Library,
-    // the same way an audio play lands in recents.
-    registerVideoPlay(video)
   },
 
   playContext: (context, tracks, startIndex = 0) => {

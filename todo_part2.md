@@ -67,7 +67,7 @@ Goal: when an MV is played independently (not as the video for an audio track) i
 behaves like its own track — it registers in recents/library and drives the dedicated
 music-video now-playing panel instead of the audio one.
 
-- [x] Playing an MV registers it where audio tracks register (recents + saved library), so it appears in the left sidebar / Your Library. `playerStore.playVideo` now calls `registerVideoPlay` → `libraryStore.saveVideo` (auth-gated like `recordPlay`). There's no server video-history endpoint, and `savedVideos` is most-recent-first, so the saved library doubles as the recents ordering.
+- [ ] Playing an MV registers it where audio tracks register (recents + saved library), so it appears in the left sidebar / Your Library.
 - [x] An independently-played MV shows the **music-video** now-playing right panel, not the audio `NowPlayingPanel`.
 - [x] Confirm `playbackMode === 'video'` is set/cleared correctly on independent MV play vs. an audio track that merely *has* a video.
 - [x] No "song + ad" / "audio + MV audio" double-playback when switching between an MV and an audio track (coordinate with Phase 4).
@@ -81,8 +81,8 @@ Likely files: `frontend/src/stores/playerStore.ts` (`playVideo`, `playbackMode`,
 `frontend/src/components/layout/Sidebar.tsx` (library rows for `kind: 'video'`).
 
 Tests (this session):
-- [x] `playerStore` unit test: `playVideo()` sets `playbackMode = 'video'` and records the MV in recents/library; playing an audio track resets it. (`playerStore.test.ts` — plus a guest case proving the library side effect is auth-gated.)
-- [x] Selector/logic test that the dedicated MV panel is chosen when `playbackMode === 'video'`. (Extracted `selectNowPlayingPanel` into `components/player/nowPlayingPanel.ts`, used by `AppShell`; tested in `nowPlayingPanel.test.ts`.)
+- [ ] `playerStore` unit test: `playVideo()` sets `playbackMode = 'video'` and records the MV in recents/library; playing an audio track resets it.
+- [ ] Selector/logic test that the dedicated MV panel is chosen when `playbackMode === 'video'`.
 
 ---
 

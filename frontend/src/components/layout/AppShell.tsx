@@ -7,7 +7,6 @@ import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNav } from './MobileNav'
 import { NowPlayingPanel } from '@/components/player/NowPlayingPanel'
 import { MusicVideoNowPlayingPanel } from '@/components/player/MusicVideoNowPlayingPanel'
-import { selectNowPlayingPanel } from '@/components/player/nowPlayingPanel'
 import { SocialPanel } from '@/components/friends/SocialPanel'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
 import { PictureInPicturePlayer } from '@/components/player/PictureInPicturePlayer'
@@ -156,7 +155,7 @@ export function AppShell() {
         {/* Right rail on desktop, responsive overlay on smaller screens. */}
         {isAuthenticated && (
           socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && (
-            selectNowPlayingPanel(playbackMode) === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
+            playbackMode === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
           )
         )}
       </div>

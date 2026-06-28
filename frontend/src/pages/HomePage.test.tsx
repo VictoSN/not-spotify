@@ -137,7 +137,8 @@ describe('Home media interactions', () => {
     )
 
     const videoFilter = await screen.findByRole('button', { name: 'Music Video' })
-    expect(videoFilter).toHaveClass('h-8', 'px-3', 'py-1', 'text-sm', 'font-normal', 'bg-elevated')
+    expect(videoFilter).toHaveClass('h-8', 'px-3', 'py-1', 'text-sm', 'font-normal', 'text-primary', 'bg-primary/10')
+    expect(screen.getByRole('button', { name: 'All' })).toHaveClass('text-primary', 'bg-primary/20')
     for (const container of [screen.getByTestId('home-filter-content'), screen.getByTestId('home-main-content')]) {
       expect(container).toHaveClass('px-4', 'sm:px-6', 'lg:px-8', '2xl:px-10')
     }
@@ -185,7 +186,7 @@ describe('Home media interactions', () => {
     )
 
     const playlistLink = screen.getByRole('link', { name: 'Home Playlist' })
-    expect(playlistLink).toHaveClass('bg-elevated', 'hover:bg-surface')
+    expect(playlistLink).toHaveClass('bg-primary/10', 'hover:bg-primary/20', 'backdrop-blur-sm')
     fireEvent.contextMenu(playlistLink, {
       clientX: 120,
       clientY: 80,

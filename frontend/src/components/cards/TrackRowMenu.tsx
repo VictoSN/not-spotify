@@ -619,6 +619,22 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
               )}
             </div>
 
+            {isAuthenticated && currentPlaylistId && (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={async (event) => {
+                    stop(event)
+                    if (await handleRemoveFromPlaylist(currentPlaylistId)) close()
+                  }}
+                  className={itemClass}
+                >
+                  <MinusCircleIcon className="h-4 w-4" />
+                  Remove from this playlist
+                </button>
+              </MenuItem>
+            )}
+
             {/* Other owned playlists containing this track keep the removable flyout. */}
             {isAuthenticated && playlistsWithTrack.length > 0 && (
               <div

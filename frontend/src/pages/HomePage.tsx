@@ -27,7 +27,6 @@ import { usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
-import { AppFooter } from '@/components/common/AppFooter'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -469,7 +468,6 @@ export function HomePage() {
           </section>
         )}
       </div>
-      <AppFooter />
     </div>
   )
 }

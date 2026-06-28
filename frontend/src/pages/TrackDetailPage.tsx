@@ -24,7 +24,6 @@ import { AlbumCard } from '@/components/cards/AlbumCard'
 import { CommentSection } from '@/components/comments/CommentSection'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
-import { AppFooter } from '@/components/common/AppFooter'
 import { Avatar } from '@/components/ui/Avatar'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
@@ -383,7 +382,6 @@ export function TrackDetailPage() {
           onSeek={handleSeek}
         />
       </div>
-      <AppFooter />
     </div>
   )
 }

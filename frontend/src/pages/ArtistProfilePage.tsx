@@ -23,7 +23,6 @@ import { ArtistBadgesDialog } from '@/components/common/ArtistBadgesDialog'
 import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
-import { AppFooter } from '@/components/common/AppFooter'
 import { NowPlayingBars } from '@/components/common/NowPlayingBars'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { ShareIcon } from '@/components/common/ShareIcon'
@@ -381,7 +380,6 @@ export function ArtistProfilePage() {
             </button>
           </section>
         )}
-        <AppFooter />
       </div>
     </div>
   )

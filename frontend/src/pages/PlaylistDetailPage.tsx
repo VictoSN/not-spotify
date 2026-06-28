@@ -700,7 +700,7 @@ export function PlaylistDetailPage() {
                 <input
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="h-10 rounded border border-secondary/30 bg-surface px-3 text-sm text-primary outline-none transition-colors focus:border-primary/60"
+                  className="h-10 rounded border border-primary/20 bg-surface px-3 text-sm text-primary outline-none transition-colors focus:border-primary/60"
                   autoFocus
                   required
                 />
@@ -775,7 +775,7 @@ export function PlaylistDetailPage() {
                   type="button"
                   onClick={() => void handleModalVisibilityToggle()}
                   disabled={busy}
-                  className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-secondary/60 px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-elevated disabled:opacity-50"
+                  className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-primary/60 px-4 text-sm font-semibold transition-colors hover:border-primary hover:bg-primary/5 disabled:opacity-50"
                 >
                   {currentVisibility() === 'private' ? (
                     <GlobeAltIcon className="h-4 w-4" />

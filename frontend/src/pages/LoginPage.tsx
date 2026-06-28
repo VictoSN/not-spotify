@@ -23,7 +23,7 @@ interface FormValues {
   password: string
 }
 
-const inputClass = 'h-12 w-full rounded border border-secondary/60 bg-elevated px-3 text-sm font-semibold text-primary placeholder:text-secondary outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+const inputClass = 'h-12 w-full rounded border border-secondary bg-elevated px-3 text-sm font-semibold text-primary placeholder:text-muted outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
 const labelClass = 'mb-2 block text-sm font-bold text-primary'
 const primaryButtonClass = 'mt-2 flex h-12 w-full items-center justify-center rounded-full bg-accent px-8 text-sm font-bold text-black transition-transform hover:scale-[1.02] hover:bg-accent/80 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70'
 const showDevShortcuts = import.meta.env.DEV && import.meta.env.VITE_SHOW_DEV_SHORTCUTS === 'true'
@@ -81,7 +81,7 @@ export function LoginPage() {
   ]
 
   return (
-    <div className="relative min-h-screen bg-base px-6 py-8 text-primary">
+    <div className="relative min-h-screen bg-page px-6 py-8 text-primary">
       <Link to="/" className="absolute left-6 top-8 inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
         <ArrowLeftIcon className="h-4 w-4" />
         {t('auth.backHome')}
@@ -180,9 +180,9 @@ export function LoginPage() {
         )}
 
         <div className="my-6 flex w-full items-center gap-4">
-          <div className="h-px flex-1 bg-elevated" />
+          <div className="h-px flex-1 bg-primary/15" />
           <span className="text-sm font-bold text-primary">{t('auth.or')}</span>
-          <div className="h-px flex-1 bg-elevated" />
+          <div className="h-px flex-1 bg-primary/15" />
         </div>
 
         <SocialAuthButtons

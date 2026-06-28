@@ -19,7 +19,7 @@ export function SettingsShell() {
   return (
     <div className="flex h-full flex-col bg-page text-primary">
       {/* Black top header matching Spotify account page */}
-      <header className="sticky top-0 z-20 h-16 shrink-0 bg-base">
+      <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
         <div className="mx-auto flex h-full max-w-[960px] items-center px-6">
           {/* Logo */}
           <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Home">
@@ -35,19 +35,19 @@ export function SettingsShell() {
             >
               Premium plans
             </Link>
-            <span className="text-[13px] font-semibold text-secondary cursor-default">Support</span>
-            <span className="text-[13px] font-semibold text-secondary cursor-default">Download</span>
+            <span className="cursor-default text-[13px] font-semibold text-secondary">Support</span>
+            <span className="cursor-default text-[13px] font-semibold text-secondary">Download</span>
           </nav>
 
           {/* Right side */}
           <div className="ml-auto flex items-center gap-0">
             {/* Vertical divider */}
-            <div className="mr-5 h-5 w-px bg-secondary/30 hidden sm:block" />
+            <div className="mr-5 hidden h-5 w-px bg-primary/15 sm:block" />
 
             {/* Profile */}
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors hover:bg-elevated"
+              className="flex items-center gap-2 rounded-full px-2 py-1.5 transition-colors hover:bg-primary/10"
             >
               <Avatar src={user?.avatarUrl} alt={user?.name ?? 'User'} size="sm" round />
               <span className="hidden text-[13px] font-semibold text-primary sm:block">

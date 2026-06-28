@@ -340,7 +340,7 @@ export function AccountSettingsPage() {
   const renews = subscription?.currentPeriodEnd ?? user.subscriptionCurrentPeriodEnd
 
   return (
-    <div className="pb-12">
+    <div className="account-settings-page pb-12">
       {/* Search bar */}
       <div className="relative mb-4">
         <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />

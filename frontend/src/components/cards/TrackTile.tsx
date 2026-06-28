@@ -36,6 +36,7 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    if (e.button !== 0) return
     if (isTrackSurfaceActive) {
       if (isPlaying) pause()
       else resume()

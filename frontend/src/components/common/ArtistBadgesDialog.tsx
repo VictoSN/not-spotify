@@ -23,14 +23,14 @@ export function ArtistBadgesDialog({ open, onClose }: ArtistBadgesDialogProps) {
             <button
               type="button"
               onClick={onClose}
-              className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-elevated hover:text-primary"
+              className="-mr-1 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
               aria-label={t('common.close')}
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
           </div>
 
-          <div className="mt-5 rounded-md bg-elevated/60 p-4">
+          <div className="mt-5 rounded-md bg-primary/10 p-4">
             <div className="flex items-start gap-3">
               <CheckBadgeIcon className="mt-0.5 h-7 w-7 shrink-0 text-accent" />
               <div className="min-w-0">

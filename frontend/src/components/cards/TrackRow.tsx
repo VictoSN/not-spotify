@@ -72,7 +72,8 @@ export function TrackRow({
     }
   }, [track.id, track.ratingCount, track.averageRating, seedAggregate])
 
-  const handlePlay = () => {
+  const handlePlay = (e: React.MouseEvent) => {
+    if (e.button !== 0) return
     if (isCurrentInRowContext) {
       if (isPlaying) pause()
       else resume()

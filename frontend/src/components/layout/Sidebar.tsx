@@ -1756,11 +1756,39 @@ function FolderGroup({
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
   const count = folder.itemKeys.length
+
+  // Close the folder menu on any outside click (incl. outside the sidebar) or
+  // Escape — consistent with the playlist/album menus. A `fixed inset-0` overlay
+  // can't do this because the sidebar's transformed ancestor clips it (bug 25).
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [menuOpen])
 
   return (
     <div>
-      <div className="group/folder relative">
+      <div
+        className="group/folder relative"
+        onContextMenu={(e) => {
+          // Right-click opens the same menu (parity with playlists/albums).
+          if (renaming) return
+          e.preventDefault()
+          setMenuOpen(true)
+        }}
+      >
         {renaming ? (
           <div className={cn('flex items-center rounded-md', compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2')}>
             <span className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -1821,7 +1849,7 @@ function FolderGroup({
                 )}
               </div>
             </button>
-            <div className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
+            <div ref={menuRef} className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
@@ -1836,8 +1864,6 @@ function FolderGroup({
                 <EllipsisHorizontalIcon className="h-4 w-4" />
               </button>
               {menuOpen && (
-                <>
-                  <div className="fixed inset-0 z-[990]" onClick={() => setMenuOpen(false)} />
                   <div role="menu" className="absolute right-0 top-full z-[1000] mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
                     <button
                       onClick={() => {
@@ -1858,7 +1884,6 @@ function FolderGroup({
                       <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.deleteFolder')}
                     </button>
                   </div>
-                </>
               )}
             </div>
           </>

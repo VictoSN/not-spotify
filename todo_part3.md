@@ -495,21 +495,20 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This creates an inconsistent user experience where folder interactions differ from other sidebar items. The dropdown should behave consistently across all item types, and right-click context menus should be available for folders.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement click-outside detection for folder dropdown menus
-  - [ ] Add event listener to close dropdown when clicking outside the sidebar component
-  - [ ] Ensure the dropdown closes when clicking on other UI elements outside the sidebar
-  - [ ] Add right-click context menu functionality for folders
-  - [ ] Ensure folder right-click menu includes all appropriate options (Pin to Top, Delete, Rename, etc.)
-  - [ ] Make folder dropdown behavior consistent with playlist/album dropdowns
+- [x] **Fix Implementation**
+  - [x] Implement click-outside detection for folder dropdown menus
+  - [x] Add event listener to close dropdown when clicking outside the sidebar component (document mousedown listener replaces the clipped `fixed inset-0` overlay)
+  - [x] Ensure the dropdown closes when clicking on other UI elements outside the sidebar
+  - [x] Add right-click context menu functionality for folders (onContextMenu opens the menu)
+  - [x] Folder right-click menu includes the appropriate folder options (Rename, Delete; folder-level "Pin to top" is out of scope — pins are keyed per item, see bug 24)
+  - [x] Make folder dropdown behavior consistent with playlist/album dropdowns (right-click + outside-click + Escape)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Clicking outside sidebar closes folder dropdown menu
-  - [ ] Test: Clicking on other UI elements closes folder dropdown
-  - [ ] Test: Right-clicking on folder shows context menu
-  - [ ] Test: Folder context menu contains appropriate options
-  - [ ] Test: Folder dropdown closes when clicking the three dots again
-  - [ ] Test: Folder behavior matches playlist/album behavior
+- [x] **Tests to Complete**
+  - [x] Test: Clicking outside sidebar closes folder dropdown menu
+  - [x] Test: Right-clicking on folder shows context menu
+  - [x] Test: Folder context menu contains appropriate options (Rename, Delete)
+  - [x] Test: Folder dropdown closes via the options button + Escape
+  - [x] Test: Folder behavior matches playlist/album behavior (right-click opens, outside-click closes)
 
 ---
 

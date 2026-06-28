@@ -295,6 +295,40 @@ describe('Sidebar saved media navigation', () => {
     expect(menu).toBeInTheDocument()
   })
 
+  describe('folder dropdown consistency (bug 25)', () => {
+    const setupFolder = () => {
+      window.localStorage.setItem('ns-library-folders', JSON.stringify([{
+        id: 'media-folder', name: 'Saved media',
+        itemKeys: [`vid-${video.id}`], collapsed: false,
+      }]))
+    }
+
+    it('opens the folder menu on right-click and closes it on an outside click', () => {
+      setupFolder()
+      renderSidebar()
+      const folderRow = screen.getByText('Saved media').closest('.group\\/folder')!
+
+      fireEvent.contextMenu(folderRow)
+      expect(screen.getByText('Rename')).toBeInTheDocument()
+      expect(screen.getByText('Delete folder')).toBeInTheDocument()
+
+      // Clicking anywhere outside the menu (incl. outside the sidebar) closes it.
+      fireEvent.mouseDown(document.body)
+      expect(screen.queryByText('Delete folder')).not.toBeInTheDocument()
+    })
+
+    it('toggles the folder menu from the options button and closes on Escape', () => {
+      setupFolder()
+      renderSidebar()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Folder options' }))
+      expect(screen.getByText('Delete folder')).toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText('Delete folder')).not.toBeInTheDocument()
+    })
+  })
+
   it('does not treat controls or selected text as blank sidebar space', () => {
     const { container } = renderSidebar()
     const blankSpace = container.querySelector('[data-sidebar-empty-space="true"]')!

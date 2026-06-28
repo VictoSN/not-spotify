@@ -626,7 +626,7 @@ export function TopBar() {
               onChange={handleSearch}
               onKeyDown={handleSearchKeyDown}
               onFocus={() => setShowSearchPanel(true)}
-              className="h-11 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[16px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none"
+              className="topbar-search-input h-11 w-full rounded-full border border-transparent bg-elevated pl-12 pr-20 text-[16px] font-normal text-primary transition-colors placeholder:font-normal placeholder:text-secondary hover:border-secondary/30 focus:border-primary focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
             {searchValue && (
               <button

@@ -352,17 +352,17 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This inconsistency breaks the visual language of the application. The search bar should look the same regardless of authentication status.
 
-- [ ] **Fix Implementation**
-  - [ ] Set explicit background color for search bar
-  - [ ] Use white background for ALL users (guest and logged in)
-  - [ ] Ensure consistency across all themes and states
+- [x] **Fix Implementation**
+  - [x] Root cause: the guest TopBar search input was missing the `topbar-search-input` class, so the light-mode white-background rule (index.css) never applied — it stayed `bg-elevated` (#edf1ef), which nearly vanishes on the bar's `bg-base`. The logged-in input already had the class.
+  - [x] Use white background for ALL users — added `topbar-search-input` (+ matching `focus:ring-2 focus:ring-accent/50`) to the guest input so both code paths share one styling
+  - [x] Ensure consistency across all themes and states (dark unaffected — the rule is `html[data-theme="light"]` scoped; both inputs already used `bg-elevated` in dark)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Guest user sees white search bar background
-  - [ ] Test: Logged in user sees white search bar background
-  - [ ] Test: Background is consistent in light theme
-  - [ ] Test: Background is consistent in dark theme
-  - [ ] Test: Background doesn't change after login/logout
+- [x] **Tests to Complete**
+  - [x] Test: Guest user sees white search bar background (verified in preview: computed `background-color` = rgb(255,255,255) in light mode for the guest `pr-20` input)
+  - [x] Test: Logged in user sees white search bar background (already had the class — unchanged)
+  - [x] Test: Background is consistent in light theme (both now white)
+  - [x] Test: Background is consistent in dark theme (both `bg-elevated`; light-only rule doesn't apply)
+  - [x] Test: Background doesn't change after login/logout (identical styling on both header variants)
 
 ---
 

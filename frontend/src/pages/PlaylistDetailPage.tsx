@@ -502,7 +502,7 @@ export function PlaylistDetailPage() {
             {' · '}
             {formatNumber(playlist.followerCount)} likes
             {' · '}
-            {tracks.length} songs, {formatMs(tracks.reduce((sum, pt) => sum + (pt.track.durationMs ?? 0), 0))}
+            {tracks.length} songs, {formatMs(tracks.reduce((sum, pt) => sum + (pt.durationMs ?? 0), 0))}
           </p>
           {playlist.smartRules && (
             <div className="mt-3 flex flex-wrap gap-2 text-xs">

@@ -33,7 +33,6 @@ import type { Album } from '@/types/album'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist } from '@/types/playlist'
-import { PlaylistCover } from '@/components/cards/PlaylistCover'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumMenu, type AlbumMenuHandle } from '@/components/cards/AlbumMenu'
 import { ArtistMenu, type ArtistMenuHandle } from '@/components/cards/ArtistMenu'
@@ -1339,11 +1338,9 @@ function LibraryArtwork({
   }
 
   if (item.kind === 'playlist' && item.playlist) {
-    // Only use the explicit cover URL — don't fall back to track mosaic in the
-    // sidebar. Sidebar-created playlists deliberately keep the default icon until
-    // the user uploads a cover. The detail page handles the mosaic fallback.
-    // WHY IS THE SIDEBAR MINIMIZE SLIDE ANIMATION IS SO JANKY? Because the PlaylistCover component is a motion.div, and it animates its scale on mount. The sidebar minimize animation is also a scale transform, so the two transforms fight each other. The solution is to not animate the PlaylistCover at all in the sidebar.
-    return <PlaylistCover coverUrl={item.playlist.coverUrl} name={item.playlist.name} />
+    // Keep the sidebar fallback static so artwork transforms cannot compete with
+    // the sidebar's own expand/minimize transition.
+    return <MusicalNoteIcon className={cn('text-secondary', grid ? 'h-8 w-8' : 'h-5 w-5')} />
   }
 
   if (item.kind === 'artist') {

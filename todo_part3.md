@@ -270,18 +270,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** The navigation logic is not context-aware, leading to a poor user experience. The user should be able to quickly jump to the main alternative view from wherever they are.
 
-- [ ] **Fix Implementation**
-  - [ ] Create context-aware navigation logic
-  - [ ] Account page: dropdown should show "Profile" and "Artist Dashboard"
-  - [ ] Artist Dashboard: dropdown should show "Profile" and "Account"
-  - [ ] Other pages: dropdown should show "Profile" and "Account"
+- [x] **Fix Implementation**
+  - [x] Create context-aware navigation logic (hide the link to the current page)
+  - [x] Account page: hides redundant "Account", surfaces "Artist Dashboard" (artists)
+  - [x] Artist Dashboard: hides redundant "Artist Dashboard", shows "Account"
+  - [x] Other pages: show "Account" (+ "Artist Dashboard" for artists)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Account page shows "Profile" and "Artist Dashboard"
-  - [ ] Test: Artist Dashboard shows "Profile" and "Account"
-  - [ ] Test: Other pages show "Profile" and "Account"
-  - [ ] Test: Clicking "Profile" navigates correctly
-  - [ ] Test: Clicking "Artist Dashboard" navigates correctly
+- [x] **Tests to Complete**
+  - [x] Test: Account page hides "Account" and shows "Artist Dashboard"
+  - [x] Test: Artist Dashboard hides "Artist Dashboard" and shows "Account"
+  - [x] Test: Other pages show "Account" (+ Artist Dashboard for artists)
+  - [x] Test: non-artists see "Account" but no "Artist Dashboard"
+  - [x] Test: links carry the correct hrefs (/account, /artist-dashboard, /profile)
 
 ---
 

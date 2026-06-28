@@ -350,7 +350,7 @@ export function MessagesPage() {
               <button
                 type="submit"
                 disabled={!draft.trim()}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-black transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
                 aria-label="Send"
               >
                 <PaperAirplaneIcon className="h-5 w-5" />

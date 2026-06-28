@@ -238,7 +238,7 @@ export function LibraryPage() {
             </label>
             <label className="grid gap-1 text-xs font-semibold text-secondary">
               Minimum rating
-              <select value={smartRating} onChange={(e) => setSmartRating(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none">
+              <select value={smartRating} onChange={(e) => setSmartRating(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent">
                 <option value="">Any rating</option>
                 <option value="3">3+ stars</option>
                 <option value="4">4+ stars</option>
@@ -251,7 +251,7 @@ export function LibraryPage() {
             </label>
             <label className="grid gap-1 text-xs font-semibold text-secondary">
               Added recently
-              <select value={smartDays} onChange={(e) => setSmartDays(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none">
+              <select value={smartDays} onChange={(e) => setSmartDays(e.target.value)} className="h-10 rounded-md bg-elevated px-3 text-sm text-primary outline-none focus:ring-1 focus:ring-accent">
                 <option value="">Any time</option>
                 <option value="7">Last 7 days</option>
                 <option value="30">Last 30 days</option>

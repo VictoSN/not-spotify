@@ -1603,7 +1603,7 @@ export function ArtistDashboardPage() {
                             type="file"
                             accept="audio/*"
                             onChange={handleAudioChange}
-                            className="text-xs text-secondary file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-white hover:file:bg-accent-dark"
+                            className="text-xs text-secondary file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-black hover:file:bg-accent-dark"
                           />
                           {trackDuration > 0 && (
                             <span className="text-xs text-muted">{fmtDuration(trackDuration)}</span>
@@ -1640,7 +1640,7 @@ export function ArtistDashboardPage() {
                                   }
                                   className={`rounded-full px-3 py-1 text-xs font-semibold transition-all active:scale-95 ${
                                     selected
-                                      ? 'bg-accent text-white'
+                                      ? 'bg-accent text-black'
                                       : 'bg-elevated text-secondary hover:text-primary'
                                   }`}
                                 >

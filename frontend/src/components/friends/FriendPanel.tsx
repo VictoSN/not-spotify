@@ -152,7 +152,7 @@ function PendingRequests() {
             onClick={() => void handle(req.id, 'accept')}
             disabled={busyId === req.id}
             aria-label="Accept"
-            className="w-7 h-7 flex items-center justify-center rounded-full bg-accent text-white hover:bg-accent/80 transition-colors disabled:opacity-50"
+            className="w-7 h-7 flex items-center justify-center rounded-full bg-accent text-black hover:bg-accent/80 transition-colors disabled:opacity-50"
           >
             <CheckIcon className="w-4 h-4" />
           </button>

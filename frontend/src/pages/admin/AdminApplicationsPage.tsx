@@ -74,7 +74,7 @@ export function AdminApplicationsPage() {
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-full text-sm font-semibold capitalize transition-colors ${
               filter === f
-                ? 'bg-accent text-white'
+                ? 'bg-accent text-black'
                 : 'bg-elevated text-secondary hover:text-primary'
             }`}
           >

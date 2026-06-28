@@ -133,7 +133,7 @@ export function JamInviteModal({ hostId, hostName, onClose }: Props) {
               <button
                 type="button"
                 onClick={() => void sendInvite(friend.userId, friend.name)}
-                className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-white hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
+                className="flex items-center gap-1.5 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-black hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
                 disabled={sent[friend.userId] || sending[friend.userId]}
                 aria-label={`Invite ${friend.name} to Jam`}
               >

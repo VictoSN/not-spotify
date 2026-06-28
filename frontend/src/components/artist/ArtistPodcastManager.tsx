@@ -414,7 +414,7 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                       type="file"
                       accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.webm,.weba"
                       onChange={(e) => setEpisodeForm((f) => ({ ...f, file: e.target.files?.[0] ?? null }))}
-                      className="w-full rounded-lg bg-elevated px-3 py-2 text-sm text-secondary file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-white"
+                      className="w-full rounded-lg bg-elevated px-3 py-2 text-sm text-secondary file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-black"
                       required
                     />
                   </label>

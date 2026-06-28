@@ -72,7 +72,7 @@ export function AdminApprovalsPage() {
             key={f}
             onClick={() => setFilter(f)}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold capitalize transition-colors ${
-              filter === f ? 'bg-accent text-white' : 'bg-elevated text-secondary hover:text-primary'
+              filter === f ? 'bg-accent text-black' : 'bg-elevated text-secondary hover:text-primary'
             }`}
           >
             {f}

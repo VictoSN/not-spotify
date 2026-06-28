@@ -277,7 +277,7 @@ export function HomePage() {
             </div>
             <Link
               to="/premium"
-              className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+              className="shrink-0 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-sm font-bold text-black transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
             >
               <SparklesIcon className="h-4 w-4" />
               {t('home.promo.seePlans')}

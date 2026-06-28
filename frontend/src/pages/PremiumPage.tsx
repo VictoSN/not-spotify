@@ -493,7 +493,7 @@ export function PremiumPage() {
                 <button
                   type="button"
                   onClick={scrollToPlans}
-                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-white transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-black transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
                 >
                   Upgrade
                 </button>

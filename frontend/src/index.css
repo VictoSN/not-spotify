@@ -654,6 +654,20 @@ html[data-theme="light"] .account-settings-page [class*="divide-[#333333]"] > :n
   animation: search-skeleton-shimmer 1.15s ease-in-out infinite;
 }
 
+/* Light mode: the translucent-white shimmer is invisible on the light dropdown
+   surface, so the loading skeleton reads as blank. Swap to a dark-tinted wash
+   that has contrast against the near-white `bg-elevated`. */
+html[data-theme="light"] .search-skeleton-shimmer {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(17, 24, 20, 0.06) 0%,
+      rgba(17, 24, 20, 0.14) 48%,
+      rgba(17, 24, 20, 0.06) 100%
+    );
+  background-size: 220% 100%;
+}
+
 @keyframes auth-overlay-in {
   from {
     opacity: 0;

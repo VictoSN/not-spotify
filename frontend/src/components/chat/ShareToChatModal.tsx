@@ -168,7 +168,7 @@ export function ShareToChatModal({ payload, track, onClose }: Props) {
                       'inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95',
                       sent
                         ? 'cursor-default bg-elevated text-secondary'
-                        : 'bg-accent text-white hover:scale-105',
+                        : 'bg-accent text-black hover:scale-105',
                     )}
                   >
                     {sent ? (

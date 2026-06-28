@@ -350,7 +350,7 @@ export function AdminAlbumsListPage() {
         ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-              tab === t ? 'bg-accent text-white' : 'bg-elevated text-secondary hover:text-primary'
+              tab === t ? 'bg-accent text-black' : 'bg-elevated text-secondary hover:text-primary'
             }`}>
             {label}
           </button>

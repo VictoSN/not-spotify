@@ -459,8 +459,11 @@ html[data-theme="light"] .account-settings-page [class*="divide-[#333333]"] > :n
 .ns-bleed-scroll {
   overflow-x: clip;
 }
+/* Each direct child bleeds 14px right (under the scrollbar thumb) but keeps its
+   own content-box at 100% via padding-right so rounded corners aren't clipped. */
 .ns-bleed-scroll > * {
   width: calc(100% + 14px);
+  padding-right: 14px;
 }
 /* Firefox only — it ignores ::-webkit-* and needs the standard properties.
    Scoped via -moz-appearance so it never disables the WebKit styling above in

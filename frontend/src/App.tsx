@@ -1,9 +1,7 @@
 import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from '@/router'
-import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
-import { Spinner } from '@/components/ui/Spinner'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
 import { AppToaster } from '@/components/ui/AppToaster'
 import { ConfirmProvider } from '@/components/common/ConfirmDialog'
@@ -62,16 +60,7 @@ export default function App() {
 
   // Hold the first paint until the cookie session is resolved, so a logged-in
   // refresh never flashes the logged-out chrome (and protected routes don't bounce).
-  if (isInitializing) {
-    return (
-      <div className="flex h-screen flex-col bg-base">
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6">
-          <SpotifyMark className="h-12 w-12" />
-          <Spinner size="lg" />
-        </div>
-      </div>
-    )
-  }
+  if (isInitializing) return null
 
   return (
     <ConfirmProvider>

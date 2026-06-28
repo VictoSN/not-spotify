@@ -76,6 +76,7 @@ const COMPACT_LIBRARY_KEY = 'ns-pref-compact'
 
 type Filter = 'all' | 'playlists' | 'artists' | 'albums'
 type Sort = 'recents' | 'recentlyAdded' | 'alpha' | 'creator' | 'custom'
+type ViewMode = 'list' | 'list-compact' | 'grid' | 'grid-compact'
 
 const SORT_OPTIONS: { key: Sort; tKey: string }[] = [
   { key: 'recents', tKey: 'sort.recents' },
@@ -114,12 +115,16 @@ function getInitialWidth(): number {
   return stored <= RAIL ? RAIL : Math.min(Math.max(stored, MIN_W), MAX_W)
 }
 
-function getInitialCompactLibrary(): boolean {
-  if (typeof window === 'undefined') return false
+function getInitialViewMode(): ViewMode {
+  if (typeof window === 'undefined') return 'list'
+  const v = window.localStorage.getItem('ns-library-view')
+  if (v === 'list' || v === 'list-compact' || v === 'grid' || v === 'grid-compact') return v
+  // Migrate legacy compact flag
   try {
-    return JSON.parse(window.localStorage.getItem(COMPACT_LIBRARY_KEY) ?? 'false') === true
+    const compact = JSON.parse(window.localStorage.getItem(COMPACT_LIBRARY_KEY) ?? 'false') === true
+    return compact ? 'list-compact' : 'list'
   } catch {
-    return false
+    return 'list'
   }
 }
 
@@ -166,10 +171,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [sort, setSort] = useState<Sort>('recents')
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() =>
-    typeof window !== 'undefined' && window.localStorage.getItem('ns-library-view') === 'grid' ? 'grid' : 'list',
-  )
-  const [compactLibrary, setCompactLibrary] = useState(getInitialCompactLibrary)
+  const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
   const [pinned, setPinned] = useState<Set<string>>(getPinnedSet)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
@@ -216,7 +218,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     setLibraryMinimizing(false)
   }, [setLibraryMinimizing])
 
-  const setView = (v: 'list' | 'grid') => {
+  const setView = (v: ViewMode) => {
     setViewMode(v)
     try {
       window.localStorage.setItem('ns-library-view', v)
@@ -226,7 +228,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   }
 
   const collapsed = width <= RAIL
-  const grid = libraryExpanded || viewMode === 'grid'
+  const isGrid = viewMode === 'grid' || viewMode === 'grid-compact'
+  const listCompact = viewMode === 'list-compact'
+  const gridCompact = viewMode === 'grid-compact'
+  const compactLibrary = listCompact || gridCompact
+  const grid = isGrid
   const compactLibraryHeader = !libraryExpanded && width < 340
   const compactCreateButton = compactLibraryHeader
   const handleLibraryBodyScroll = (event: UIEvent<HTMLDivElement>) => {
@@ -250,19 +256,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     window.localStorage.setItem(STORAGE_KEY, String(width))
   }, [width])
 
-  useEffect(() => {
-    const syncFromStorage = () => setCompactLibrary(getInitialCompactLibrary())
-    const handlePrefChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ key?: string; value?: unknown }>).detail
-      if (detail?.key === COMPACT_LIBRARY_KEY) setCompactLibrary(detail.value === true)
-    }
-    window.addEventListener('storage', syncFromStorage)
-    window.addEventListener('ns-pref-change', handlePrefChange)
-    return () => {
-      window.removeEventListener('storage', syncFromStorage)
-      window.removeEventListener('ns-pref-change', handlePrefChange)
-    }
-  }, [])
 
   // Keep pinned items in step across tabs/views (the toggle lives on each row).
   useEffect(() => {
@@ -942,7 +935,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             aria-expanded={sortMenuOpen}
           >
             {t(SORT_OPTIONS.find((o) => o.key === sort)?.tKey ?? 'sort.recents')}
-            {viewMode === 'grid' ? <Squares2X2Icon className="w-4 h-4" /> : <ListBulletIcon className="w-4 h-4" />}
+            {isGrid ? <Squares2X2Icon className="w-4 h-4" /> : <ListBulletIcon className="w-4 h-4" />}
           </button>
           {sortMenuOpen && (
             <>
@@ -961,25 +954,60 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 ))}
                 <div className="my-1 border-t border-secondary/10" />
                 <p className="px-3 pb-1 pt-1 text-xs font-normal text-secondary">{t('sidebar.viewAs')}</p>
-                <div className="flex items-center gap-1 px-2 pb-2">
-                  <button
-                    onClick={() => { setView('list'); setSortMenuOpen(false) }}
-                    className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-normal transition-colors',
-                      viewMode === 'list' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
-                    )}
-                  >
-                    <ListBulletIcon className="h-4 w-4" /> {t('sidebar.view.list')}
-                  </button>
-                  <button
-                    onClick={() => { setView('grid'); setSortMenuOpen(false) }}
-                    className={cn(
-                      'flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-normal transition-colors',
-                      viewMode === 'grid' ? 'bg-surface text-primary' : 'text-secondary hover:text-primary',
-                    )}
-                  >
-                    <Squares2X2Icon className="h-4 w-4" /> {t('sidebar.view.grid')}
-                  </button>
+                <div className="flex items-center gap-0.5 mx-2 mb-2 p-1 rounded-md bg-surface">
+                  {(
+                    [
+                      {
+                        v: 'list-compact' as ViewMode,
+                        label: t('sidebar.view.listCompact'),
+                        icon: (
+                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                            <path d="M15.5 13.5H.5V12h15zm0-4.75H.5v-1.5h15zm0-4.75H.5V2.5h15z" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        v: 'list' as ViewMode,
+                        label: t('sidebar.view.list'),
+                        icon: (
+                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                            <path d="M15 14.5H5V13h10zm0-5.75H5v-1.5h10zM15 3H5V1.5h10zM3 3H1V1.5h2zm0 11.5H1V13h2zm0-5.75H1v-1.5h2z" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        v: 'grid-compact' as ViewMode,
+                        label: t('sidebar.view.gridCompact'),
+                        icon: (
+                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                            <path d="M1 1h3v3H1zm0 5.5h3v3H1zM4 12H1v3h3zM6.5 1h3v3h-3zm3 5.5h-3v3h3zm-3 5.5h3v3h-3zM15 1h-3v3h3zm-3 5.5h3v3h-3zm3 5.5h-3v3h3z" />
+                          </svg>
+                        ),
+                      },
+                      {
+                        v: 'grid' as ViewMode,
+                        label: t('sidebar.view.grid'),
+                        icon: (
+                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
+                            <path d="M1 1h6v6H1zm1.5 1.5v3h3v-3zM1 9h6v6H1zm1.5 1.5v3h3v-3zM9 1h6v6H9zm1.5 1.5v3h3v-3zM9 9h6v6H9zm1.5 1.5v3h3v-3z" />
+                          </svg>
+                        ),
+                      },
+                    ]
+                  ).map(({ v, icon, label }) => (
+                    <button
+                      key={v}
+                      onClick={() => { setView(v); setSortMenuOpen(false) }}
+                      aria-label={label}
+                      className={cn(
+                        'spotify-tooltip-anchor relative flex flex-1 items-center justify-center rounded-md py-2 transition-colors',
+                        viewMode === v ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary',
+                      )}
+                    >
+                      {icon}
+                      <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </>
@@ -1010,7 +1038,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 key={folder.id}
                 folder={folder}
                 contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
-                compact={compactLibrary}
+                compact={listCompact}
                 isNowPlaying={isNowPlaying}
                 renaming={renamingFolderId === folder.id}
                 renameValue={renameValue}
@@ -1036,9 +1064,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div
             className={cn(
               'grid',
-              compactLibrary ? 'gap-0.5' : 'gap-1',
+              gridCompact ? 'gap-0.5' : 'gap-1',
               libraryExpanded
-                ? compactLibrary
+                ? gridCompact
                   ? '[grid-template-columns:repeat(auto-fill,minmax(128px,1fr))] gap-3 p-2'
                   : '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2'
                 : 'grid-cols-2',
@@ -1052,22 +1080,26 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   className={({ isActive }) =>
                     cn(
                       'group/row block rounded-md transition-colors',
-                      compactLibrary ? 'p-1.5' : 'p-2',
+                      gridCompact ? 'p-1.5' : 'p-2',
                       isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                     )
                   }
                 >
                   <div className={cn(
                     'relative aspect-square w-full rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center overflow-hidden',
-                    compactLibrary ? 'mb-1.5' : 'mb-2',
+                    !gridCompact && 'mb-2',
                   )}>
-                    <HeartIcon className={cn('text-white', compactLibrary ? 'h-6 w-6' : 'h-8 w-8')} />
+                    <HeartIcon className={cn('text-white', gridCompact ? 'h-6 w-6' : 'h-8 w-8')} />
                     <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                   </div>
-                  <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
-                  <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
-                    {t('sidebar.likedSongsSub', { n: likedSongs.length })}
-                  </p>
+                  {!gridCompact && (
+                    <>
+                      <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                      <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
+                        {t('sidebar.likedSongsSub', { n: likedSongs.length })}
+                      </p>
+                    </>
+                  )}
                 </NavLink>
               </TrackDropZone>
             )}
@@ -1079,7 +1111,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               >
                 <LibraryGridCard
                   item={item}
-                  compact={compactLibrary}
+                  compact={gridCompact}
                   nowPlaying={isNowPlaying(item)}
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
                   onPlay={() => playLibraryItem(item)}
@@ -1111,15 +1143,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   className={({ isActive }) =>
                     cn(
                       'group/row flex items-center rounded-md transition-colors',
-                      compactLibrary ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
+                      listCompact ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
                       isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
                     )
                   }
                 >
-                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-600 to-indigo-300">
-                    <HeartIcon className="h-5 w-5 text-white" />
-                    <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
-                  </div>
+                  {!listCompact && (
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-purple-600 to-indigo-300">
+                      <HeartIcon className="h-5 w-5 text-white" />
+                      <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
+                    </div>
+                  )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
                     <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
@@ -1137,7 +1171,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               >
                 <LibraryListRow
                   item={item}
-                  compact={compactLibrary}
+                  compact={listCompact}
                   nowPlaying={isNowPlaying(item)}
                   pinned={pinned.has(item.key)}
                   onPlay={() => playLibraryItem(item)}
@@ -1495,7 +1529,7 @@ function LibraryListRow({
     <div
       className={cn(
         'group/row relative',
-        compact ? '[--sidebar-pin-left:68px]' : '[--sidebar-pin-left:76px]',
+        compact ? '[--sidebar-pin-left:40px]' : '[--sidebar-pin-left:76px]',
       )}
       onContextMenu={handleContextMenu}
     >
@@ -1504,22 +1538,24 @@ function LibraryListRow({
         className={({ isActive }) =>
           cn(
             'flex items-center rounded-md transition-colors',
-            compact ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
+            compact ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-1.5',
             isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
           )
         }
       >
-        <div
-          className={cn(
-            'relative h-12 w-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
-            item.round ? 'rounded-full' : 'rounded-md',
-          )}
-        >
-          <LibraryArtwork item={item} compact={compact} />
-          {item.playable && (
-            <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
-          )}
-        </div>
+        {!compact && (
+          <div
+            className={cn(
+              'relative h-12 w-12 shrink-0 overflow-hidden bg-elevated flex items-center justify-center',
+              item.round ? 'rounded-full' : 'rounded-md',
+            )}
+          >
+            <LibraryArtwork item={item} compact={false} />
+            {item.playable && (
+              <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
+            )}
+          </div>
+        )}
         <div className="min-w-0 flex-1 pr-14">
           <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
             {item.name}
@@ -1618,7 +1654,7 @@ function LibraryGridCard({
         <div
           className={cn(
             'relative aspect-square w-full overflow-hidden bg-elevated flex items-center justify-center',
-            compact ? 'mb-1.5' : 'mb-2',
+            !compact && 'mb-2',
             item.round ? 'rounded-full' : 'rounded-md',
           )}
         >
@@ -1627,10 +1663,14 @@ function LibraryGridCard({
             <LibraryPlayButton label={item.name} context={{ type: item.kind as PlayContextType, id: item.id }} onStart={onPlay} />
           )}
         </div>
-        <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-          {item.name}
-        </p>
-        <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">{item.subtitle}</p>
+        {!compact && (
+          <>
+            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {item.name}
+            </p>
+            <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">{item.subtitle}</p>
+          </>
+        )}
       </NavLink>
       {children}
       {menuPlaylist && <PlaylistRowMenu ref={playlistMenuRef} playlist={menuPlaylist} />}

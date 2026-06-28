@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
-import { MusicalNoteIcon } from '@heroicons/react/24/solid'
 import { router } from '@/router'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { Spinner } from '@/components/ui/Spinner'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
@@ -66,7 +66,7 @@ export default function App() {
     return (
       <div className="flex h-screen flex-col bg-base">
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6">
-          <MusicalNoteIcon className="h-12 w-12 text-accent" />
+          <SpotifyMark className="h-12 w-12" />
           <Spinner size="lg" />
         </div>
       </div>

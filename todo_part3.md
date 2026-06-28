@@ -252,14 +252,16 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is another dead UI element. It's unclear what a search on an account page would do, making it seem broken and unprofessional.
 
-- [ ] **Fix Implementation**
-  - [ ] Remove search bar from Account page entirely
-  - [ ] Or implement search function to filter through account settings if desired
+- [x] **Fix Implementation**
+  - [x] Implemented live search that filters account settings by row label/sub (case-insensitive, partial)
+  - [x] Matching a section title shows the whole section; otherwise only matching rows show
+  - [x] Added a "No results" empty state; top plan card hides while searching
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Search bar is completely removed
-  - [ ] Test: No dead UI elements remain
-  - [ ] Test: Layout adjusts correctly after removal
+- [x] **Tests to Complete**
+  - [x] Test: typing filters to matching rows (partial, case-insensitive)
+  - [x] Test: section-title match shows the full section
+  - [x] Test: no matches shows the empty state
+  - [x] Test: clearing the query restores all settings
 
 ---
 
@@ -425,14 +427,17 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 ---
 
 ## Bug #22: Home Page - Dynamic Hue Should Only Apply to Top Playlist Tiles
+**Issue:** The dynamic hue coloring (based on artwork) is being applied to all playlist tiles on the Home page, but it should only apply to the top playlist tiles.
 
-Fix Implementation
+**Explanation:** This creates visual inconsistency and can make lower-priority playlists appear more prominent than they should be. The dynamic hue effect should be reserved for featured/top content.
 
-- [x] Restrict dynamic hue coloring to only the top playlist tiles on the Home page
+- [x] **Fix Implementation**
+  - [x] Restrict dynamic hue coloring to only the top playlist tiles on the Home page
 
-Tests to Complete
-
-- [x] Test: Top Home playlist tiles use artwork-based hue
+- [x] **Tests to Complete**
+  - [x] Test: Top Home playlist tiles use artwork-based hue
+  - [x] Test: Non-top playlist tiles use default styling
+  - [x] Test: Dynamic hue doesn't bleed into other sections
 
 ---
 
@@ -485,8 +490,122 @@ Tests to Complete
 
 ---
 
+## Bug #25: Left Sidebar - Folder Dropdown Menu Inconsistencies
+**Issue:** When clicking the three dots on a folder in the left sidebar, the dropdown menu doesn't close when clicking outside the sidebar. Additionally, right-clicking on a folder doesn't show the dropdown menu at all, unlike playlists/albums.
+
+**Explanation:** This creates an inconsistent user experience where folder interactions differ from other sidebar items. The dropdown should behave consistently across all item types, and right-click context menus should be available for folders.
+
+- [ ] **Fix Implementation**
+  - [ ] Implement click-outside detection for folder dropdown menus
+  - [ ] Add event listener to close dropdown when clicking outside the sidebar component
+  - [ ] Ensure the dropdown closes when clicking on other UI elements outside the sidebar
+  - [ ] Add right-click context menu functionality for folders
+  - [ ] Ensure folder right-click menu includes all appropriate options (Pin to Top, Delete, Rename, etc.)
+  - [ ] Make folder dropdown behavior consistent with playlist/album dropdowns
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Clicking outside sidebar closes folder dropdown menu
+  - [ ] Test: Clicking on other UI elements closes folder dropdown
+  - [ ] Test: Right-clicking on folder shows context menu
+  - [ ] Test: Folder context menu contains appropriate options
+  - [ ] Test: Folder dropdown closes when clicking the three dots again
+  - [ ] Test: Folder behavior matches playlist/album behavior
+
+---
+
+## Bug #26: Left Sidebar - Drag and Drop Repositioning Not Working
+**Issue:** Playlists, folders, and other items in the left sidebar cannot be dragged and dropped to reposition them.
+
+**Explanation:** This is a significant UX limitation that prevents users from organizing their sidebar content according to their preferences. The ability to reorder items is a standard feature in modern applications and its absence creates a frustrating experience.
+
+- [ ] **Fix Implementation**
+  - [ ] Implement drag-and-drop functionality for all sidebar items (playlists, folders, albums, etc.)
+  - [ ] Add drag handles or make entire items draggable
+  - [ ] Create visual feedback during drag (ghost elements, drop zones, etc.)
+  - [ ] Persist the new order to database or local storage
+  - [ ] Ensure order is maintained after page refresh
+  - [ ] Handle edge cases (dragging into folders, between sections, etc.)
+  - [ ] Ensure drag-and-drop works in both minimized and maximized sidebar states
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Can drag playlist to new position in sidebar
+  - [ ] Test: Can drag folder to new position
+  - [ ] Test: Can drag album to new position
+  - [ ] Test: Visual feedback appears during drag
+  - [ ] Test: New order persists after refresh
+  - [ ] Test: Drag-and-drop works in minimized sidebar
+  - [ ] Test: Drag-and-drop works in maximized sidebar
+
+---
+
+## Bug #27: Daily Mix - Missing Right-Click Context Menu
+**Issue:** Daily Mix items in the left sidebar don't have any right-click functionality to show a dropdown menu.
+
+**Explanation:** This creates an inconsistent experience where users expect to be able to right-click on any sidebar item for additional options. Daily Mix is a core feature, and lacking context menu options limits user control.
+
+- [ ] **Fix Implementation**
+  - [ ] Add right-click context menu functionality to Daily Mix items
+  - [ ] Include appropriate options (Play, Add to Queue, Pin to Top, etc.)
+  - [ ] Ensure menu behavior matches other sidebar items
+  - [ ] Add visual feedback when hovering/right-clicking
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Right-click on Daily Mix shows context menu
+  - [ ] Test: Menu contains expected options
+  - [ ] Test: Menu options work correctly (play, queue, pin, etc.)
+  - [ ] Test: Menu closes when clicking outside
+  - [ ] Test: Menu behavior matches other sidebar items
+
+---
+
+## Bug #28: Chat Functionality - Messaging After Unfriending
+**Issue:** When a user befriends and chats with someone, then unfriends them, they can still send messages to that person. There is also no disclaimer indicating the user has been unfriended.
+
+**Explanation:** This is a significant social feature bug. Once a user unfriends someone, the chat should be locked with no ability to send messages. Users should be clearly informed that they have unfriended this person and that messaging is no longer possible.
+
+- [ ] **Fix Implementation**
+  - [ ] Implement chat locking mechanism when friendship is terminated
+  - [ ] Add validation on message send to check if users are still friends
+  - [ ] Display clear disclaimer: "You have unfriended this person. You cannot send messages."
+  - [ ] Disable message input field for unfriended chats
+  - [ ] Add visual indicator (lock icon, grayed out UI) showing chat is locked
+  - [ ] Ensure re-friending restores chat functionality
+
+- [ ] **Tests to Complete**
+  - [ ] Test: After unfriending, chat input is disabled
+  - [ ] Test: Disclaimer appears in chat window
+  - [ ] Test: Can't send messages after unfriending
+  - [ ] Test: Re-friending restores chat functionality
+  - [ ] Test: Visual indicators clearly show locked state
+  - [ ] Test: Mobile and desktop views show locked state correctly
+
+---
+
+## Bug #29: Account Page - Pop-up Close Behavior
+**Issue:** In the Account page, when clicking 'Edit Login Methods' and then clicking outside the pop-up, it does not close. This behavior should be checked and applied to all other pop-ups in the application.
+
+**Explanation:** Consistent pop-up behavior is crucial for good UX. Users expect to be able to dismiss pop-ups by clicking outside them. The current behavior is inconsistent and frustrating.
+
+- [ ] **Fix Implementation**
+  - [ ] Add click-outside detection for Edit Login Methods pop-up
+  - [ ] Ensure pop-up closes when clicking outside the modal
+  - [ ] Apply the same click-outside behavior to ALL pop-ups in the app
+  - [ ] Include common pop-ups: settings, redemption, member management, etc.
+  - [ ] Test pop-ups in all pages (Account, Settings, Premium, etc.)
+  - [ ] Ensure click-outside doesn't interfere with pop-up internal interactions
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Edit Login Methods pop-up closes when clicking outside
+  - [ ] Test: All pop-ups across the app close when clicking outside
+  - [ ] Test: Clicking inside pop-up doesn't close it
+  - [ ] Test: Escape key also closes pop-ups (bonus)
+  - [ ] Test: Click-outside works in both light and dark themes
+  - [ ] Test: Click-outside works on mobile and desktop viewports
+
+---
+
 ## Final Checklist Before Marking All Tasks Complete
-- [ ] All 24 bugs have been fixed
+- [ ] All 29 bugs have been fixed
 - [ ] All tests for each bug have passed
 - [ ] No new bugs have been introduced
 - [ ] Code has been committed with descriptive messages
@@ -494,5 +613,3 @@ Tests to Complete
 - [ ] Feature works in both light and dark themes
 - [ ] Feature works on mobile and desktop viewports
 - [ ] All dead/duplicate UI elements have been removed
-
----

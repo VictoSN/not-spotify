@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Children, cloneElement, isValidElement, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useConfirm } from '@/hooks/useConfirm'
@@ -107,13 +107,41 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// `searchTerms` is read by filterSection (not rendered) so a section whose body
+// isn't made of SettingRows (e.g. the Artist forms) can still be matched/hidden.
+function Section({ title, children }: { title: string; children: React.ReactNode; searchTerms?: string }) {
   return (
     <section className="mt-5 overflow-hidden rounded-[4px] bg-elevated">
       <h2 className="px-4 pb-3 pt-5 text-[22px] font-bold text-primary">{title}</h2>
       <div className="divide-y divide-primary/10">{children}</div>
     </section>
   )
+}
+
+/** Lowercased searchable text for a SettingRow element, or null for non-row children. */
+function rowSearchText(child: React.ReactNode): string | null {
+  if (!isValidElement(child)) return null
+  const props = child.props as Partial<RowProps>
+  if (typeof props.label !== 'string') return null
+  return `${props.label} ${props.sub ?? ''}`.toLowerCase()
+}
+
+/**
+ * Filters a <Section> against the account search query. Returns the section
+ * unchanged when the query is empty or matches the section title/searchTerms
+ * (whole section shown), a clone limited to matching rows when only some rows
+ * match, or null when nothing in the section matches.
+ */
+function filterSection(section: React.ReactElement, query: string): React.ReactElement | null {
+  if (!query) return section
+  const { title, children, searchTerms } = section.props as {
+    title: string
+    children: React.ReactNode
+    searchTerms?: string
+  }
+  if (title.toLowerCase().includes(query) || searchTerms?.toLowerCase().includes(query)) return section
+  const matching = Children.toArray(children).filter((c) => rowSearchText(c)?.includes(query))
+  return matching.length ? cloneElement(section, undefined, matching) : null
 }
 
 export function AccountSettingsPage() {
@@ -128,6 +156,7 @@ export function AccountSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [showChangePw, setShowChangePw] = useState(false)
   const [showPlanMembers, setShowPlanMembers] = useState(false)
+  const [search, setSearch] = useState('')
 
   // Artist application state
   const [artistApp, setArtistApp] = useState<ArtistApplication | null | undefined>(undefined)
@@ -352,6 +381,18 @@ export function AccountSettingsPage() {
   const billingInterval = subscription?.interval ?? user.subscriptionInterval
   const renews = subscription?.currentPeriodEnd ?? user.subscriptionCurrentPeriodEnd
 
+  // Live search: `show()` filters each section against the query and tracks how
+  // many remain visible so we can render a "No results" state. Because all the
+  // sections and the no-results node are siblings of one element, show() runs in
+  // source order before the no-results check is evaluated.
+  const query = search.trim().toLowerCase()
+  let visibleSections = 0
+  const show = (section: React.ReactElement) => {
+    const filtered = filterSection(section, query)
+    if (filtered) visibleSections += 1
+    return filtered
+  }
+
   return (
     <div className="account-settings-page pb-12">
       {/* Search bar */}
@@ -359,12 +400,15 @@ export function AccountSettingsPage() {
         <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-secondary" />
         <input
           type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search account or help articles"
           className="h-[46px] w-full rounded-[4px] bg-elevated pl-11 pr-4 text-[14px] text-primary placeholder:text-secondary outline-none focus:ring-1 focus:ring-primary/20 border border-transparent focus:border-primary/20"
         />
       </div>
 
-      {/* Top plan cardbox grid */}
+      {/* Top plan cardbox grid (hidden while searching so results stand alone) */}
+      {!query && (
       <div className="flex gap-2">
         {/* Left: plan card (~70%) */}
         <div className="flex-[7] rounded-[4px] bg-elevated p-5">
@@ -428,16 +472,20 @@ export function AccountSettingsPage() {
           </button>
         </div>
       </div>
+      )}
 
-      {error && <p className="mt-3 text-[13px] font-semibold text-red-400">{error}</p>}
+      {!query && error && <p className="mt-3 text-[13px] font-semibold text-red-400">{error}</p>}
 
       {/* Account */}
+      {show(
       <Section title="Account">
         <SettingRow icon={UserIcon} label="Edit personal info" to="/profile?edit=1" />
         <SettingRow icon={ArrowPathIcon} label="Recover playlists" sub="Restore playlists deleted in the last 30 days" onClick={openRecover} />
       </Section>
+      )}
 
       {/* Subscription */}
+      {show(
       <Section title="Subscription">
         <SettingRow icon={SparklesIcon} label="Available subscriptions" to="/premium" />
         <SettingRow
@@ -466,16 +514,20 @@ export function AccountSettingsPage() {
           />
         )}
       </Section>
+      )}
 
-      {/* Plan members (self-hides when N/A) */}
-      <div
-        id="plan-members-card"
-        className={cn('mt-5', (!subscriptionLoaded || (canManageMembers && !showPlanMembers)) && 'hidden')}
-      >
-        <PlanMembersCard />
-      </div>
+      {/* Plan members (self-hides when N/A; hidden during search) */}
+      {!query && (
+        <div
+          id="plan-members-card"
+          className={cn('mt-5', (!subscriptionLoaded || (canManageMembers && !showPlanMembers)) && 'hidden')}
+        >
+          <PlanMembersCard />
+        </div>
+      )}
 
       {/* Payment */}
+      {show(
       <Section title="Payment">
         <SettingRow
           icon={DocumentTextIcon}
@@ -495,8 +547,10 @@ export function AccountSettingsPage() {
         />
         <SettingRow icon={GiftIcon} label="Redeem" sub="Redeem a NotSpotify trial or gift code" onClick={() => { setPanel('redeem'); setPanelError(null) }} />
       </Section>
+      )}
 
       {/* Security and privacy */}
+      {show(
       <Section title="Security and privacy">
         <SettingRow icon={LockClosedIcon} label="Change password" onClick={() => setShowChangePw(true)} />
         <SettingRow icon={BellIcon} label="Notification settings" to="/settings" />
@@ -511,9 +565,11 @@ export function AccountSettingsPage() {
         />
         <SettingRow icon={ArrowRightOnRectangleIcon} label="Sign out everywhere" onClick={signOutEverywhere} />
       </Section>
+      )}
 
       {/* Artist */}
-      <Section title="Artist">
+      {show(
+      <Section title="Artist" searchTerms="artist dashboard become an artist apply application publish music">
         {isArtist ? (
           <SettingRow
             icon={CheckCircleIcon}
@@ -620,16 +676,25 @@ export function AccountSettingsPage() {
           </div>
         ) : null}
       </Section>
+      )}
 
       {/* Advertising */}
+      {show(
       <Section title="Advertising">
         <SettingRow icon={MegaphoneIcon} label="Ad preferences" sub="Control personalized ad targeting" onClick={openAdPreferences} />
       </Section>
+      )}
 
       {/* Help */}
+      {show(
       <Section title="Help">
         <SettingRow icon={QuestionMarkCircleIcon} label="Spotify support" to="/support" />
       </Section>
+      )}
+
+      {query && visibleSections === 0 && (
+        <p className="mt-8 text-center text-sm text-secondary">No account settings match &ldquo;{search.trim()}&rdquo;.</p>
+      )}
 
       <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
       {panel && (

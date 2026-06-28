@@ -152,6 +152,33 @@ describe('AccountSettingsPage account feature rows', () => {
     expect(screen.getByRole('link', { name: /Spotify support/ })).toHaveAttribute('href', '/support')
   })
 
+  it('live-filters settings rows from the search bar', async () => {
+    await renderAccount()
+    const searchBox = screen.getByPlaceholderText('Search account or help articles')
+
+    // Partial, case-insensitive match keeps matching rows and drops the rest.
+    await act(async () => { fireEvent.change(searchBox, { target: { value: 'REDEEM' } }) })
+    expect(screen.getByText('Redeem')).toBeInTheDocument()
+    expect(screen.queryByText('Notification settings')).not.toBeInTheDocument()
+    expect(screen.queryByText('Spotify support')).not.toBeInTheDocument()
+
+    // Matching a section title shows the whole section.
+    await act(async () => { fireEvent.change(searchBox, { target: { value: 'security' } }) })
+    expect(screen.getByText('Change password')).toBeInTheDocument()
+    expect(screen.getByText('Delete account')).toBeInTheDocument()
+
+    // No matches shows the empty state.
+    await act(async () => { fireEvent.change(searchBox, { target: { value: 'zzzzz' } }) })
+    expect(screen.getByText(/No account settings match/)).toBeInTheDocument()
+    expect(screen.queryByText('Redeem')).not.toBeInTheDocument()
+
+    // Clearing restores every section.
+    await act(async () => { fireEvent.change(searchBox, { target: { value: '' } }) })
+    expect(screen.getByText('Redeem')).toBeInTheDocument()
+    expect(screen.getByText('Notification settings')).toBeInTheDocument()
+    expect(screen.queryByText(/No account settings match/)).not.toBeInTheDocument()
+  })
+
   it('opens member management for Family plans', async () => {
     billingServiceMock.getSubscription.mockResolvedValue({ plan: 'premium', tier: 'family', status: 'active', interval: 'monthly', currentPeriodEnd: null, cancelAtPeriodEnd: false })
     planServiceMock.getOverview.mockResolvedValue({

@@ -17,6 +17,7 @@ import { notify } from '@/utils/toast'
 import { ShareIcon } from '@/components/common/ShareIcon'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { MediaMenuShell, MediaMenuDivider, MediaMenuItem } from './MediaMenuShell'
+import { PinIcon, usePinned } from './PinMenuItem'
 
 interface VideoMenuProps {
   video: MusicVideo
@@ -40,6 +41,7 @@ export const VideoMenu = forwardRef<VideoMenuHandle, VideoMenuProps>(function Vi
   const saveVideo = useLibraryStore((s) => s.saveVideo)
   const unsaveVideo = useLibraryStore((s) => s.unsaveVideo)
   const isSaved = savedVideoIds.has(video.id)
+  const [pinned, togglePin] = usePinned(`vid-${video.id}`)
 
   const handleToggleSave = () => {
     if (!isAuthenticated) {
@@ -105,6 +107,14 @@ export const VideoMenu = forwardRef<VideoMenuHandle, VideoMenuProps>(function Vi
             label="Share"
             onClick={() => { void handleShare(); close() }}
           />
+
+          {isSaved && (
+            <MediaMenuItem
+              icon={<PinIcon className={pinned ? 'w-4 h-4 text-accent' : 'w-4 h-4'} />}
+              label={pinned ? 'Unpin' : 'Pin to top'}
+              onClick={() => { togglePin(); close() }}
+            />
+          )}
 
           <MediaMenuDivider />
 

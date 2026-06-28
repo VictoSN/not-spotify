@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
@@ -63,6 +63,8 @@ import {
   setFolderCollapsed,
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
+import { getPinnedKeys, PINNED_EVENT } from '@/utils/pinnedLibrary'
+import { PinIcon } from '@/components/cards/PinMenuItem'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -190,6 +192,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
   const [playHistory, setPlayHistory] = useState(getPlayHistory)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
+  const [pinnedKeys, setPinnedKeys] = useState<string[]>(getPinnedKeys)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -285,6 +288,18 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener(PLAY_HISTORY_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  // Pinned items float to the top of the library; keep in step with the row
+  // menus' Pin/Unpin actions (and other tabs) via PINNED_EVENT.
+  useEffect(() => {
+    const sync = () => setPinnedKeys(getPinnedKeys())
+    window.addEventListener(PINNED_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(PINNED_EVENT, sync)
       window.removeEventListener('storage', sync)
     }
   }, [])
@@ -485,8 +500,23 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
     else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
+
+    // Float pinned items to the top, in pin order (most-recently pinned first),
+    // while preserving the active sort for everything else. Stable so unpinned
+    // rows keep their relative order.
+    if (pinnedKeys.length > 0) {
+      const pinRank = new Map(pinnedKeys.map((k, i) => [k, i]))
+      list = [...list].sort((a, b) => {
+        const ra = pinRank.has(a.key) ? pinRank.get(a.key)! : Infinity
+        const rb = pinRank.has(b.key) ? pinRank.get(b.key)! : Infinity
+        return ra - rb
+      })
+    }
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, pinnedKeys, t])
+
+  const pinnedSet = useMemo(() => new Set(pinnedKeys), [pinnedKeys])
+  const pinnedCount = useMemo(() => items.filter((i) => pinnedSet.has(i.key)).length, [items, pinnedSet])
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
@@ -740,15 +770,21 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           >
             <HeartIcon className="w-5 h-5 text-white" />
           </Link>
-          {items.map((item) => (
-            <CollapsedLibraryItem
-              key={item.key}
-              item={item}
-              compact={compactLibrary}
-              video={videoFor(item)}
-              podcast={podcastFor(item)}
-            />
-          ))}
+          {items.map((item, i) => {
+            // Pinned items lead the rail; a hairline separates them from the rest.
+            const showPinDivider = pinnedCount > 0 && i === pinnedCount - 1 && i < items.length - 1
+            return (
+              <Fragment key={item.key}>
+                <CollapsedLibraryItem
+                  item={item}
+                  compact={compactLibrary}
+                  video={videoFor(item)}
+                  podcast={podcastFor(item)}
+                />
+                {showPinDivider && <div aria-hidden className="my-1 h-px w-8 shrink-0 bg-secondary/25" />}
+              </Fragment>
+            )
+          })}
         </div>
 
         {libraryDrop.isOver && (
@@ -1123,6 +1159,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   item={item}
                   compact={gridCompact}
                   nowPlaying={isNowPlaying(item)}
+                  pinned={pinnedSet.has(item.key)}
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
@@ -1196,6 +1233,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   compact={listCompact}
                   expanded={libraryExpanded}
                   nowPlaying={isNowPlaying(item)}
+                  pinned={pinnedSet.has(item.key)}
                   onPlay={() => playLibraryItem(item)}
                   onNavigate={() => { if (libraryExpanded) setLibraryExpanded(false) }}
                   menuPlaylist={playlistFor(item)}
@@ -1449,6 +1487,7 @@ function LibraryListRow({
   compact,
   expanded = false,
   nowPlaying,
+  pinned = false,
   children,
   onPlay,
   onNavigate,
@@ -1462,6 +1501,7 @@ function LibraryListRow({
   compact: boolean
   expanded?: boolean
   nowPlaying: boolean
+  pinned?: boolean
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onNavigate?: () => void
@@ -1519,8 +1559,9 @@ function LibraryListRow({
         )}
         <div className={cn('min-w-0 flex-1', expanded ? 'flex items-center' : 'pr-14')}>
           <div className="min-w-0 flex-1">
-            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-              {item.name}
+            <p className={cn('flex items-center gap-1.5 text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {pinned && <PinIcon className="h-3 w-3 shrink-0 text-accent" />}
+              <span className="truncate">{item.name}</span>
             </p>
             <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
               {item.subtitle}
@@ -1569,6 +1610,7 @@ function LibraryGridCard({
   item,
   compact,
   nowPlaying,
+  pinned = false,
   onNavigate,
   children,
   onPlay,
@@ -1581,6 +1623,7 @@ function LibraryGridCard({
   item: LibItem
   compact: boolean
   nowPlaying: boolean
+  pinned?: boolean
   onNavigate: () => void
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
@@ -1633,8 +1676,9 @@ function LibraryGridCard({
         </div>
         {!compact && (
           <>
-            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-              {item.name}
+            <p className={cn('flex items-center gap-1.5 text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {pinned && <PinIcon className="h-3 w-3 shrink-0 text-accent" />}
+              <span className="truncate">{item.name}</span>
             </p>
             <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">{item.subtitle}</p>
           </>

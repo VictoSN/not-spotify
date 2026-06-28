@@ -28,6 +28,7 @@ import {
 } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { ShareIcon } from '@/components/common/ShareIcon'
+import { PinMenuItem } from './PinMenuItem'
 
 interface AlbumMenuProps {
   album: Album
@@ -212,6 +213,9 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                   Share
                 </button>
               </MenuItem>
+
+              {/* Pin floats this album to the top of the library sidebar. */}
+              {isSaved && <PinMenuItem itemKey={`al-${album.id}`} onAfter={close} />}
 
               <div className="my-1 h-px bg-secondary/20" />
 

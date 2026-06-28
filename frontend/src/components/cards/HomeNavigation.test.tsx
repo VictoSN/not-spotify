@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlaylistCard } from './PlaylistCard'
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
+import { isPinned } from '@/utils/pinnedLibrary'
 import type { Playlist } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import type { MusicVideo } from '@/types/musicVideo'
@@ -69,7 +70,7 @@ const mix: DailyMix = {
   title: 'Clickable Daily Mix Fifteen',
   subtitle: 'Daily Mix',
   color: '#1db954',
-  tracks: [],
+  tracks: [track],
 }
 
 const video: MusicVideo = {
@@ -100,9 +101,18 @@ function renderCards(children: React.ReactNode) {
 
 describe('Home card navigation', () => {
   beforeEach(() => {
+    window.localStorage.clear()
     useAuthStore.setState({ isAuthenticated: true })
     useLibraryStore.setState({ savedPlaylists: [], savedVideoIds: new Set() })
     useHueStore.setState({ hoverColor: null, lastCoverColor: null })
+    usePlayerStore.setState({
+      currentTrack: null,
+      currentContextType: null,
+      currentContextId: null,
+      queue: [],
+      queueIndex: -1,
+      isPlaying: false,
+    })
   })
 
   afterEach(() => {
@@ -174,5 +184,45 @@ describe('Home card navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: `More options for ${video.title}` }))
     expect(await screen.findByText('Play video')).toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'current route' })).toHaveTextContent('/')
+  })
+
+  it('opens the Daily Mix context menu with the expected actions and closes outside', async () => {
+    renderCards(<MixTile mix={mix} />)
+    const tile = screen.getByText(mix.title).closest('.group')!
+
+    fireEvent.contextMenu(tile, { clientX: 120, clientY: 80 })
+
+    expect(await screen.findByRole('menuitem', { name: 'Play mix' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Add to queue' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Pin to top' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Share' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Open Daily Mix' })).toBeInTheDocument()
+
+    fireEvent.pointerDown(document.body)
+    fireEvent.mouseDown(document.body)
+    fireEvent.click(document.body)
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Play mix' })).not.toBeInTheDocument())
+  })
+
+  it('plays, queues, and pins a Daily Mix from its context menu', async () => {
+    renderCards(<MixTile mix={mix} />)
+    const tile = screen.getByText(mix.title).closest('.group')!
+    const openMenu = () => fireEvent.contextMenu(tile, { clientX: 120, clientY: 80 })
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Add to queue' }))
+    expect(usePlayerStore.getState().queue.map((queued) => queued.id)).toEqual([track.id])
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Pin to top' }))
+    expect(isPinned(`mix-${mix.id}`)).toBe(true)
+
+    openMenu()
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Play mix' }))
+    expect(usePlayerStore.getState()).toMatchObject({
+      currentContextType: 'mix',
+      currentContextId: mix.id,
+      currentTrack: expect.objectContaining({ id: track.id }),
+    })
   })
 })

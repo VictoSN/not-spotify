@@ -545,18 +545,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This creates an inconsistent experience where users expect to be able to right-click on any sidebar item for additional options. Daily Mix is a core feature, and lacking context menu options limits user control.
 
-- [ ] **Fix Implementation**
-  - [ ] Add right-click context menu functionality to Daily Mix items
-  - [ ] Include appropriate options (Play, Add to Queue, Pin to Top, etc.)
-  - [ ] Ensure menu behavior matches other sidebar items
-  - [ ] Add visual feedback when hovering/right-clicking
+- [x] **Fix Implementation**
+  - [x] Add right-click context menu functionality to Daily Mix items
+  - [x] Include appropriate options (Play, Add to Queue, Pin to Top, etc.)
+  - [x] Ensure menu behavior matches other media items
+  - [x] Add visual feedback when hovering/right-clicking
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Right-click on Daily Mix shows context menu
-  - [ ] Test: Menu contains expected options
-  - [ ] Test: Menu options work correctly (play, queue, pin, etc.)
-  - [ ] Test: Menu closes when clicking outside
-  - [ ] Test: Menu behavior matches other sidebar items
+- [x] **Tests to Complete**
+  - [x] Test: Right-click on Daily Mix shows context menu
+  - [x] Test: Menu contains expected options
+  - [x] Test: Menu options work correctly (play, queue, pin, etc.)
+  - [x] Test: Menu closes when clicking outside
+  - [x] Test: Menu behavior matches other media items
 
 ---
 

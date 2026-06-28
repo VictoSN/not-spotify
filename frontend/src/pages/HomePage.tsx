@@ -37,6 +37,7 @@ import { MixTile } from '@/components/cards/MixTile'
 import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
+import { getPinnedKeys, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import {
   PODCAST_DND_MIME,
   VIDEO_DND_MIME,
@@ -77,6 +78,7 @@ export function HomePage() {
   const [popularArtists, setPopularArtists] = useState<Artist[]>([])
   const [popularInCountry, setPopularInCountry] = useState<Track[]>([])
   const [dailyMixes, setDailyMixes] = useState<DailyMix[]>([])
+  const [pinnedKeys, setPinnedKeys] = useState(getPinnedKeys)
   const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
   const [musicVideos, setMusicVideos] = useState<MusicVideo[]>([])
   const [loading, setLoading] = useState(true)
@@ -157,10 +159,29 @@ export function HomePage() {
 
   useEffect(() => () => setHoverColor(null), [setHoverColor])
 
+  useEffect(() => {
+    const syncPinned = () => setPinnedKeys(getPinnedKeys())
+    window.addEventListener(PINNED_EVENT, syncPinned)
+    window.addEventListener('storage', syncPinned)
+    return () => {
+      window.removeEventListener(PINNED_EVENT, syncPinned)
+      window.removeEventListener('storage', syncPinned)
+    }
+  }, [])
+
   // Home's own filter ("All / Music / Podcasts") — lives in the page content, not
   // the global header. 'music' hides podcasts; 'podcasts' shows only podcasts.
   const [homeFilter, setHomeFilter] = useState<HomeFilter>('all')
   const { showMusic, showPodcasts, showVideos } = getHomeFilterVisibility(homeFilter)
+  const pinnedOrder = new Map(pinnedKeys.map((key, index) => [key, index]))
+  const orderedDailyMixes = [...dailyMixes].sort((left, right) => {
+    const leftOrder = pinnedOrder.get(`mix-${left.id}`)
+    const rightOrder = pinnedOrder.get(`mix-${right.id}`)
+    if (leftOrder == null && rightOrder == null) return 0
+    if (leftOrder == null) return 1
+    if (rightOrder == null) return -1
+    return leftOrder - rightOrder
+  })
 
   const getGreeting = () => {
     const h = new Date().getHours()
@@ -326,7 +347,7 @@ export function HomePage() {
           <section className="mb-6">
             <SectionHeader title={t('home.section.madeForYou')} variant="home" />
             <HorizontalScroller bleedRight>
-              {dailyMixes.map((mix) => (
+              {orderedDailyMixes.map((mix) => (
                 <MixTile key={mix.id} mix={mix} flush />
               ))}
             </HorizontalScroller>

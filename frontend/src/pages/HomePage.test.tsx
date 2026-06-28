@@ -10,6 +10,7 @@ import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist } from '@/types/playlist'
+import type { DailyMix } from '@/services/trackService'
 
 class ResizeObserverStub {
   observe() {}
@@ -39,6 +40,8 @@ const mockVideo = vi.hoisted(() => ({
   createdAt: '2026-01-01T00:00:00Z',
 }))
 
+const dailyMixesMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as DailyMix[])))
+
 vi.mock('@/services/trackService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/trackService')>()
   return {
@@ -49,7 +52,7 @@ vi.mock('@/services/trackService', async (importOriginal) => {
       getRecents: vi.fn(() => Promise.resolve([])),
       getMostLiked: vi.fn(() => Promise.resolve([])),
       getNewMusic: vi.fn(() => Promise.resolve([])),
-      getDailyMixes: vi.fn(() => Promise.resolve([])),
+      getDailyMixes: dailyMixesMock,
       getPopularInCountry: vi.fn(() => Promise.resolve([])),
     },
   }
@@ -112,6 +115,11 @@ const playlist: Playlist = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
+const dailyMixes: DailyMix[] = [
+  { id: 'mix-first', title: 'First Daily Mix', subtitle: 'Daily Mix', color: '#1db954', tracks: [] },
+  { id: 'mix-second', title: 'Second Daily Mix', subtitle: 'Daily Mix', color: '#6b4ce6', tracks: [] },
+]
+
 function dataTransfer() {
   return {
     effectAllowed: '',
@@ -122,6 +130,8 @@ function dataTransfer() {
 
 describe('Home media interactions', () => {
   beforeEach(() => {
+    window.localStorage.clear()
+    dailyMixesMock.mockResolvedValue([])
     usePlayerStore.setState({ currentContextType: null, currentContextId: null, isPlaying: false })
     useDragStore.setState({
       draggedTrack: null,
@@ -241,5 +251,25 @@ describe('Home media interactions', () => {
 
     expect(screen.getByRole('img', { name: 'Now playing' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: `Pause ${playlist.name}` })).toHaveClass('h-12', 'w-12')
+  })
+
+  it('moves a Daily Mix to the front immediately when it is pinned', async () => {
+    dailyMixesMock.mockResolvedValue(dailyMixes)
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    const first = await screen.findByText('First Daily Mix')
+    const second = await screen.findByText('Second Daily Mix')
+    expect(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.contextMenu(second.closest('.group')!, { clientX: 140, clientY: 90 })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Pin to top' }))
+
+    await waitFor(() => {
+      expect(second.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
   })
 })

@@ -34,7 +34,7 @@ public class BillingController : ControllerBase
     public async Task<ActionResult<IEnumerable<BillingPlanDto>>> Plans(CancellationToken ct = default)
     {
         var plans = new List<BillingPlanDto>();
-        foreach (var info in StripeBillingService.Catalogue)
+        foreach (var info in StripeBillingService.AvailableCatalogue)
             plans.Add(await BuildPlanAsync(info, _stripe.PriceIdForPlan(info.Plan) ?? string.Empty, ct));
         return Ok(plans);
     }
@@ -51,6 +51,7 @@ public class BillingController : ControllerBase
 
         return Ok(new BillingSubscriptionDto(
             user.Plan,
+            user.PlanTier,
             user.StripeSubscriptionStatus,
             user.StripeBillingInterval,
             user.StripeCurrentPeriodEnd,
@@ -68,6 +69,8 @@ public class BillingController : ControllerBase
         // Prefer the new `plan` key; fall back to the legacy `interval` field.
         var plan = StripeBillingService.PlanFor(req.Plan ?? req.Interval);
         if (plan is null) return BadRequest(new { message = "Unknown plan. Use monthly, yearly, duo, family or student." });
+        if (plan.UnavailableReason is not null)
+            return BadRequest(new { message = plan.UnavailableReason });
 
         var priceId = _stripe.PriceIdForPlan(plan.Plan);
         if (priceId is null) return BadRequest(new { message = $"Stripe price id for the {plan.Plan} plan is not configured." });

@@ -192,7 +192,7 @@ export function AccountSettingsPage() {
     try {
       await billingService.cancelSubscription()
       await useAuthStore.getState().refreshToken()
-      setSubscription({ plan: 'free', status: 'canceled', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })
+      setSubscription({ plan: 'free', tier: 'individual', status: 'canceled', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })
     } catch (err) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
       setError(msg ?? 'Could not cancel subscription. Please try again.')

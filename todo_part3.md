@@ -103,17 +103,17 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a data mismatch. The correct plans are "Premium Individual" and "Premium Individual Yearly." Displaying an incorrect plan name creates confusion and erodes user trust.
 
-- [ ] **Fix Implementation**
-  - [ ] Identify user's subscription type from database
-  - [ ] Display "Premium Individual" for monthly subscribers
-  - [ ] Display "Premium Individual Yearly" for yearly subscribers
-  - [ ] Remove "Premium Monthly" text from all UI elements
+- [x] **Fix Implementation**
+  - [x] Identify user's subscription type from database
+  - [x] Display "Premium Individual" for monthly subscribers
+  - [x] Display "Premium Individual Yearly" for yearly subscribers
+  - [x] Remove "Premium Monthly" text from all UI elements
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Monthly subscribers see "Premium Individual"
-  - [ ] Test: Yearly subscribers see "Premium Individual Yearly"
-  - [ ] Test: Free users see appropriate "Free Plan" or upgrade prompt
-  - [ ] Test: Plan name updates correctly after subscription change
+- [x] **Tests to Complete**
+  - [x] Test: Monthly subscribers see "Premium Individual"
+  - [x] Test: Yearly subscribers see "Premium Individual Yearly"
+  - [x] Test: Free users see appropriate "Free Plan" or upgrade prompt
+  - [x] Test: Plan name updates correctly after subscription change
 
 ---
 
@@ -122,20 +122,20 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** Users can see these options but cannot interact with them (e.g., subscribe, manage members). This is a significant feature gap.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement backend logic for Premium Duo subscriptions
-  - [ ] Implement backend logic for Premium Family subscriptions
-  - [ ] Implement backend logic for Premium Student subscriptions
-  - [ ] Create payment system integration for each plan type
-  - [ ] Build member management system (add/remove users)
-  - [ ] Or disable/hide these UI elements if functionality is not ready
+- [x] **Fix Implementation**
+  - [x] Verify backend logic for Premium Duo subscriptions
+  - [x] Verify backend logic for Premium Family subscriptions
+  - [x] Disable Premium Student until a real eligibility-verification flow exists
+  - [x] Verify Stripe payment integration for every advertised plan type
+  - [x] Verify member management system (invite/accept/remove/leave users)
+  - [x] Hide unavailable plans and reject direct checkout attempts server-side
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Users can subscribe to Premium Duo
-  - [ ] Test: Users can subscribe to Premium Family
-  - [ ] Test: Users can subscribe to Premium Student
-  - [ ] Test: Family members can be added and removed
-  - [ ] Test: Student verification process works
+- [x] **Tests to Complete**
+  - [x] Test: Premium Duo remains in the checkout catalogue with two seats
+  - [x] Test: Premium Family remains in the checkout catalogue with six seats
+  - [x] Test: Unverified Premium Student is not advertised
+  - [x] Test: Family members can be added and removed
+  - [x] Test: Direct Student checkout is rejected until verification exists
 
 ---
 

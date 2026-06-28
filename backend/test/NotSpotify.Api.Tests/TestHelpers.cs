@@ -83,8 +83,16 @@ internal static class TestHelpers
     public static PlaylistsController NewPlaylistsController(AppDbContext db)
     {
         var storage = NewStorageMock();
-        var audio = new AudioDownloadService(storage.Object, new Mock<IHttpClientFactory>().Object);
-        return new PlaylistsController(db, new MediaMapper(storage.Object), storage.Object, audio, new SmartPlaylistService(db));
+        var httpFactory = new Mock<IHttpClientFactory>().Object;
+        var audio = new AudioDownloadService(storage.Object, httpFactory);
+        return new PlaylistsController(
+            db,
+            new MediaMapper(storage.Object),
+            storage.Object,
+            audio,
+            new SmartPlaylistService(db),
+            httpFactory,
+            NullLogger<PlaylistsController>.Instance);
     }
 
     /// <summary>

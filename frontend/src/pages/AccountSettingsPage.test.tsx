@@ -32,7 +32,7 @@ const meServiceMock = vi.hoisted(() => ({
 
 vi.mock('@/services/billingService', () => ({
   billingService: {
-    getSubscription: vi.fn(() => Promise.resolve({ plan: 'free', status: 'active', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })),
+    getSubscription: vi.fn(() => Promise.resolve({ plan: 'free', tier: 'individual', status: 'active', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })),
     createPortalSession: vi.fn(),
     cancelSubscription: vi.fn(),
   },

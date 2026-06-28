@@ -36,6 +36,50 @@ public class BillingTests
         Assert.Null(StripeBillingService.PlanFor("garbage"));
     }
 
+    [Fact]
+    public void Catalogue_UsesCorrectIndividualLabels_AndOnlyExposesReadyPlans()
+    {
+        Assert.Equal("Premium Individual", StripeBillingService.PlanFor("monthly")?.Label);
+        Assert.Equal("Premium Individual Yearly", StripeBillingService.PlanFor("yearly")?.Label);
+        Assert.Null(StripeBillingService.PlanFor("duo")?.UnavailableReason);
+        Assert.Null(StripeBillingService.PlanFor("family")?.UnavailableReason);
+        Assert.Equal("Student verification is not available yet.", StripeBillingService.PlanFor("student")?.UnavailableReason);
+        Assert.DoesNotContain(StripeBillingService.AvailableCatalogue, p => p.Plan == "student");
+        Assert.Contains(StripeBillingService.AvailableCatalogue, p => p.Plan == "duo");
+        Assert.Contains(StripeBillingService.AvailableCatalogue, p => p.Plan == "family");
+        Assert.DoesNotContain(StripeBillingService.Catalogue, p => p.Label == "Premium Monthly");
+    }
+
+    [Fact]
+    public async Task Checkout_RejectsStudentPlanUntilVerificationExists()
+    {
+        await using var db = TestHelpers.NewDb();
+        var userId = Guid.NewGuid();
+        db.Users.Add(new ApplicationUser
+        {
+            Id = userId,
+            Name = "student",
+            Email = "student@test",
+            UserName = "student@test",
+        });
+        await db.SaveChangesAsync();
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Stripe:SecretKey"] = "sk_test",
+                ["Stripe:StudentPriceId"] = "price_student",
+            })
+            .Build();
+        var controller = new BillingController(db, new StripeBillingService(new HttpClient(), config)).AsUser(userId);
+
+        var result = await controller.CheckoutSession(new NotSpotify.Api.Dtos.CreateCheckoutSessionRequest("student"));
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("verification", badRequest.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Null(db.Users.Single().StripeCustomerId);
+    }
+
     // ── Seat release (cancel / downgrade) ───────────────────────────────────────
 
     [Fact]

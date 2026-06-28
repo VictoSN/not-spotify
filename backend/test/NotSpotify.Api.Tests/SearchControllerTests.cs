@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging.Abstractions;
 using NotSpotify.Api.Controllers;
 using NotSpotify.Api.Dtos;
+using NotSpotify.Api.Services;
 using Xunit;
 
 namespace NotSpotify.Api.Tests;
@@ -17,6 +19,11 @@ namespace NotSpotify.Api.Tests;
 /// </summary>
 public class SearchControllerTests
 {
+    private static SearchController NewController(NotSpotify.Api.Data.AppDbContext db) => new(
+        db,
+        TestHelpers.NewMapper(),
+        new OpenSearchService(new OpenSearchOptions(), NullLogger<OpenSearchService>.Instance));
+
     [Fact]
     public async Task Search_EmptyQuery_ReturnsAllEmptyBuckets()
     {
@@ -24,7 +31,7 @@ public class SearchControllerTests
         db.SeedTrack("Something"); // present in catalogue but must not be returned for a blank query
         await db.SaveChangesAsync();
 
-        var result = await new SearchController(db, TestHelpers.NewMapper()).Search("");
+        var result = await NewController(db).Search("");
 
         var dto = Assert.IsType<SearchResultsDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Empty(dto.Tracks);
@@ -40,7 +47,7 @@ public class SearchControllerTests
     {
         await using var db = TestHelpers.NewDb();
 
-        var result = await new SearchController(db, TestHelpers.NewMapper()).Search("   ");
+        var result = await NewController(db).Search("   ");
 
         var dto = Assert.IsType<SearchResultsDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Empty(dto.Tracks);

@@ -18,6 +18,7 @@ export interface BillingPlan {
 
 export interface BillingSubscription {
   plan: 'free' | 'premium'
+  tier: 'individual' | 'duo' | 'family' | 'student'
   status: string | null
   interval: 'monthly' | 'yearly' | null
   currentPeriodEnd: string | null

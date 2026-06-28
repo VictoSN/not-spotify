@@ -125,7 +125,7 @@ public record UpsertMoodTagRequest(
     int SortOrder = 0
 );
 
-public record UserRefDto(Guid Id, string Name, string? AvatarUrl);
+public record UserRefDto(Guid Id, string Name, string? AvatarUrl, Guid? ArtistId = null);
 
 public record PlaylistTrackDto(TrackDto Track, DateTime AddedAt, UserRefDto AddedBy);
 

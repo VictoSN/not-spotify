@@ -23,7 +23,7 @@ public class MediaMapper
         => new(a.Id, a.Title, ResolveImage(a.CoverKey, a.CoverUrl) ?? string.Empty, a.ReleaseDate, a.Type);
 
     public UserRefDto ToRef(ApplicationUser u)
-        => new(u.Id, u.Name, ResolveImage(u.AvatarKey, u.AvatarUrl));
+        => new(u.Id, u.Name, ResolveImage(u.AvatarKey, u.AvatarUrl), u.ArtistId);
 
     public UserDto ToUserDto(ApplicationUser u, IEnumerable<string> roles)
     {

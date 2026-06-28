@@ -22,4 +22,5 @@ export interface UserRef {
   id: string
   name: string
   avatarUrl: string | null
+  artistId?: string | null
 }

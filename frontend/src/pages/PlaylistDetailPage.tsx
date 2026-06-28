@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { useConfirm } from '@/hooks/useConfirm'
 import { PlayIcon, PauseIcon, ClockIcon, CheckCircleIcon } from '@heroicons/react/24/solid'
@@ -489,11 +489,20 @@ export function PlaylistDetailPage() {
           </h1>
           {playlist.description && <p className="text-secondary text-sm mb-2">{playlist.description}</p>}
           <p className="text-xs text-secondary">
-            <span className="font-semibold text-primary">{playlist.owner.name}</span>
+            {playlist.owner.artistId ? (
+              <Link
+                to={`/artist/${playlist.owner.artistId}`}
+                className="font-semibold text-primary hover:underline"
+              >
+                {playlist.owner.name}
+              </Link>
+            ) : (
+              <span className="font-semibold text-primary">{playlist.owner.name}</span>
+            )}
             {' · '}
             {formatNumber(playlist.followerCount)} likes
             {' · '}
-            {tracks.length} songs, {formatMs(playlist.totalDurationMs)}
+            {tracks.length} songs, {formatMs(tracks.reduce((sum, pt) => sum + (pt.track.durationMs ?? 0), 0))}
           </p>
           {playlist.smartRules && (
             <div className="mt-3 flex flex-wrap gap-2 text-xs">

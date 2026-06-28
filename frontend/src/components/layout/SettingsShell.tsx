@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ChartBarSquareIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -13,8 +13,15 @@ export function SettingsShell() {
   const { user, logout } = useAuthStore()
   const isMobile = useIsMobile()
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  // Context-aware menu (bug 14): hide the link to the page we're already on so
+  // the alternative view (Account <-> Artist Dashboard) is surfaced instead.
+  const isArtist = user?.roles?.includes('Artist') ?? false
+  const onAccountPage = location.pathname === '/account'
+  const onArtistDashboard = location.pathname === '/artist-dashboard'
 
   useEffect(() => {
     if (!menuOpen) return
@@ -90,14 +97,26 @@ export function SettingsShell() {
                   <UserCircleIcon className="h-4 w-4 shrink-0 text-secondary" />
                   Profile
                 </Link>
-                <Link
-                  to="/account"
-                  onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
-                >
-                  <Cog6ToothIcon className="h-4 w-4 shrink-0 text-secondary" />
-                  Account
-                </Link>
+                {!onAccountPage && (
+                  <Link
+                    to="/account"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <Cog6ToothIcon className="h-4 w-4 shrink-0 text-secondary" />
+                    Account
+                  </Link>
+                )}
+                {isArtist && !onArtistDashboard && (
+                  <Link
+                    to="/artist-dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <ChartBarSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
+                    Artist Dashboard
+                  </Link>
+                )}
                 <div className="my-1 border-t border-primary/10" />
                 <button
                   type="button"

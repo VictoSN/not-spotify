@@ -90,10 +90,6 @@ export function TopBar() {
   const currentQuery = searchParams.get('q') ?? ''
   const isArtist = user?.roles?.includes('Artist') ?? false
   const isBrowse = location.pathname === '/search' && currentQuery.trim().length === 0
-  // Context-aware account menu: hide the link to the page we're already on so the
-  // alternative view (Account <-> Artist Dashboard) is surfaced instead (bug 14).
-  const onAccountPage = location.pathname === '/account'
-  const onArtistDashboard = location.pathname === '/artist-dashboard'
 
   const [showMenu, setShowMenu] = useState(false)
   const [showSearchPanel, setShowSearchPanel] = useState(false)
@@ -812,16 +808,14 @@ export function TopBar() {
           <>
             <div className="fixed inset-0 z-[990]" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
-              {!onAccountPage && (
-                <Link
-                  to="/account"
-                  onClick={() => setShowMenu(false)}
-                  className={userMenuItemClass}
-                >
-                  {t('topbar.account')}
-                  <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-                </Link>
-              )}
+              <Link
+                to="/account"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.account')}
+                <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
+              </Link>
               <Link
                 to="/premium"
                 onClick={() => setShowMenu(false)}
@@ -870,7 +864,7 @@ export function TopBar() {
 
               <div className="my-1 border-t border-secondary/10" />
 
-              {isArtist && !onArtistDashboard && (
+              {isArtist && (
                 <Link
                   to="/artist-dashboard"
                   onClick={() => setShowMenu(false)}

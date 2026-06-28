@@ -13,13 +13,22 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="not-spotify" />
     <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <!-- Apply persisted theme before paint to avoid a flash of the wrong theme -->
+    <!-- Apply theme before paint to avoid a flash of the wrong theme.
+         A saved choice wins; otherwise fall back to the device's setting so
+         guests open in their system light/dark mode (bug 21). -->
     <script>
       (function () {
         try {
           var t = localStorage.getItem('ns-theme');
-          document.documentElement.dataset.theme =
-            t === 'light' || t === 'dark' ? t : 'dark';
+          if (t === 'light' || t === 'dark') {
+            document.documentElement.dataset.theme = t;
+          } else {
+            document.documentElement.dataset.theme =
+              window.matchMedia &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          }
         } catch (e) {
           document.documentElement.dataset.theme = 'dark';
         }

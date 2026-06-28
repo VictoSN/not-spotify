@@ -158,6 +158,51 @@ describe('SettingsPage implemented preferences', () => {
     expect(window.localStorage.getItem('ns-notif-friend-chat')).toBe('false')
   })
 
+  async function openSearch() {
+    await fireAndFlush(() => fireEvent.click(screen.getByRole('button', { name: 'Search settings' })))
+    return screen.getByLabelText('Search settings') as HTMLInputElement
+  }
+
+  it('filters settings as the user types and is case-insensitive / partial', async () => {
+    await renderSettings()
+    const input = await openSearch()
+
+    // "theme" → keeps the Theme control, drops unrelated rows.
+    await fireAndFlush(() => fireEvent.change(input, { target: { value: 'theme' } }))
+    expect(screen.getByLabelText('Theme')).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Private listening' })).not.toBeInTheDocument()
+
+    // Case-insensitive: "THEME" behaves the same.
+    await fireAndFlush(() => fireEvent.change(input, { target: { value: 'THEME' } }))
+    expect(screen.getByLabelText('Theme')).toBeInTheDocument()
+
+    // Partial match: "priv" surfaces "Private listening".
+    await fireAndFlush(() => fireEvent.change(input, { target: { value: 'priv' } }))
+    expect(screen.getByRole('switch', { name: 'Private listening' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Theme')).not.toBeInTheDocument()
+  })
+
+  it('shows a "No results found" state for non-matching queries', async () => {
+    await renderSettings()
+    const input = await openSearch()
+
+    await fireAndFlush(() => fireEvent.change(input, { target: { value: 'zzzzqqqq' } }))
+    expect(screen.getByText(/No results found/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Theme')).not.toBeInTheDocument()
+  })
+
+  it('restores all settings when the search is cleared', async () => {
+    await renderSettings()
+    const input = await openSearch()
+
+    await fireAndFlush(() => fireEvent.change(input, { target: { value: 'theme' } }))
+    expect(screen.queryByRole('switch', { name: 'Private listening' })).not.toBeInTheDocument()
+
+    await fireAndFlush(() => fireEvent.click(screen.getByRole('button', { name: 'Clear settings search' })))
+    expect(screen.getByLabelText('Theme')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Private listening' })).toBeInTheDocument()
+  })
+
   it('reads and clears browser media cache usage', async () => {
     await renderSettings()
 

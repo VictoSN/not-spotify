@@ -20,18 +20,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a critical UX failure, as users rely on this feature to navigate complex settings menus. Without it, the user experience is significantly degraded.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement search filter logic that iterates through setting items and their labels
-  - [ ] Create real-time filtering mechanism that shows only items matching the query as the user types
-  - [ ] Ensure the search is responsive and filters results in real-time
-  - [ ] Add "No results found" state when no settings match the query
+- [x] **Fix Implementation**
+  - [x] Implement search filter logic that iterates through setting items and their labels
+  - [x] Create real-time filtering mechanism that shows only items matching the query as the user types
+  - [x] Ensure the search is responsive and filters results in real-time
+  - [x] Add "No results found" state when no settings match the query
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Type "theme" in settings search - should show only theme-related settings
-  - [ ] Test: Type gibberish text - should show "No results found" message
-  - [ ] Test: Clear search input - should restore all settings items
-  - [ ] Test: Search is case-insensitive (e.g., "THEME" vs "theme")
-  - [ ] Test: Search works with partial matches (e.g., "acc" shows "account" items)
+- [x] **Tests to Complete**
+  - [x] Test: Type "theme" in settings search - should show only theme-related settings
+  - [x] Test: Type gibberish text - should show "No results found" message
+  - [x] Test: Clear search input - should restore all settings items
+  - [x] Test: Search is case-insensitive (e.g., "THEME" vs "theme")
+  - [x] Test: Search works with partial matches (e.g., "acc" shows "account" items)
 
 ---
 

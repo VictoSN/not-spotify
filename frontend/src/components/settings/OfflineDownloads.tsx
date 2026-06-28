@@ -20,8 +20,11 @@ function formatBytes(bytes: number): string {
 /**
  * Settings panel listing tracks saved for offline playback, with per-track
  * remove and a clear-all. Renders nothing when offline storage is unsupported.
+ *
+ * `searchText` is unused at runtime — it exists so the Settings page search can
+ * read keywords off this self-rendering section via its element props.
  */
-export function OfflineDownloads() {
+export function OfflineDownloads({ searchText: _searchText }: { searchText?: string } = {}) {
   const [entries, setEntries] = useState<OfflineEntry[]>(() => listOffline())
   const [total, setTotal] = useState(() => offlineTotalBytes())
 

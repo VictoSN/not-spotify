@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Children, createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { ArrowTopRightOnSquareIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useThemeStore } from '@/stores/themeStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useLocaleStore } from '@/stores/localeStore'
@@ -31,6 +31,42 @@ import {
   unsubscribeFromPush,
 } from '@/services/webPush'
 import { cn } from '@/utils/cn'
+
+/**
+ * Lowercased, trimmed settings-search query shared with every <Section>/<Row>.
+ * Empty string means "no search active" → render everything normally.
+ */
+const SettingsSearchContext = createContext('')
+
+/**
+ * Recursively gather the user-visible text of a settings node so it can be
+ * matched against the search query. We only pull the props that hold real,
+ * human-readable labels (`title`/`label`/`sub`) plus an optional `searchText`
+ * escape hatch for self-rendering sections (e.g. OfflineDownloads), then recurse
+ * into children so nested rows are searchable too.
+ */
+function collectSearchText(node: React.ReactNode): string {
+  if (node == null || typeof node === 'boolean') return ''
+  if (typeof node === 'string' || typeof node === 'number') return ` ${node}`
+  if (Array.isArray(node)) return node.map(collectSearchText).join('')
+  if (isValidElement(node)) {
+    const props = node.props as Record<string, unknown>
+    let text = ''
+    for (const key of ['title', 'label', 'sub', 'searchText']) {
+      const v = props[key]
+      if (typeof v === 'string') text += ` ${v}`
+    }
+    if (props.children != null) text += collectSearchText(props.children as React.ReactNode)
+    return text
+  }
+  return ''
+}
+
+/** True when the node's searchable text contains the (already-lowercased) query. */
+function nodeMatchesQuery(node: React.ReactNode, query: string): boolean {
+  if (!query) return true
+  return collectSearchText(node).toLowerCase().includes(query)
+}
 
 /** Tiny localStorage-backed preference (no effects → lint-clean). */
 function usePref<T>(key: string, initial: T): [T, (v: T) => void] {
@@ -123,10 +159,22 @@ function Select({
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const query = useContext(SettingsSearchContext)
+
+  // When the section title itself matches, keep every row; otherwise narrow down
+  // to just the rows whose own labels match so a search lands on exact controls.
+  const visibleChildren = useMemo(() => {
+    if (!query) return children
+    if (title.toLowerCase().includes(query)) return children
+    return Children.toArray(children).filter((child) => nodeMatchesQuery(child, query))
+  }, [children, query, title])
+
+  if (query && Children.count(visibleChildren) === 0) return null
+
   return (
     <section className="border-t border-elevated/40 py-6 first:border-t-0">
       <h2 className="mb-2 text-xl font-bold text-primary">{title}</h2>
-      <div className="divide-y divide-elevated/20">{children}</div>
+      <div className="divide-y divide-elevated/20">{visibleChildren}</div>
     </section>
   )
 }
@@ -201,6 +249,11 @@ function useMediaCacheUsage() {
 
 export function SettingsPage() {
   const { t } = useTranslation()
+  // Settings search: filters sections/rows live as the user types (see Section).
+  const [search, setSearch] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const query = search.trim().toLowerCase()
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const { theme, setTheme } = useThemeStore()
   const language = useLocaleStore((s) => s.language)
   const setLanguage = useLocaleStore((s) => s.setLanguage)
@@ -357,14 +410,10 @@ export function SettingsPage() {
   const qualityLabel = (key: string, base: string) =>
     key === 'auto' ? `${base} · Adaptive` : `${base} · ~${QUALITY_KBPS[key] ?? 320} kbps`
 
-  return (
-    <div className="mx-auto max-w-3xl px-6 py-6">
-      <div className="mb-2 flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-primary">{t('settings.title')}</h1>
-        <MagnifyingGlassIcon className="h-5 w-5 text-secondary" />
-      </div>
-
-      <Section title={t('settings.account')}>
+  // All settings sections in render order. Collected as an array so the search
+  // box can filter them as a group and detect the empty ("No results") state.
+  const sections: React.ReactNode[] = [
+      <Section key="account" title={t('settings.account')}>
         <Row
           label={t('settings.account.edit')}
           sub={t('settings.account.editSub')}
@@ -378,9 +427,9 @@ export function SettingsPage() {
             </Link>
           }
         />
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.appearance')}>
+      <Section key="appearance" title={t('settings.appearance')}>
         <Row
           label={t('settings.theme')}
           sub={t('settings.theme.sub')}
@@ -420,9 +469,9 @@ export function SettingsPage() {
             </div>
           }
         />
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.language')}>
+      <Section key="language" title={t('settings.language')}>
         <Row
           label={t('settings.language.choose')}
           sub={t('settings.language.sub')}
@@ -435,9 +484,9 @@ export function SettingsPage() {
             />
           }
         />
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.audio')}>
+      <Section key="audio" title={t('settings.audio')}>
         <Row
           label={t('settings.audio.streaming')}
           badge={
@@ -481,17 +530,17 @@ export function SettingsPage() {
           sub={t('settings.audio.normalizeSub')}
           control={<Switch label={t('settings.audio.normalize')} checked={normalizeVolume} onChange={setNormalizeVolume} />}
         />
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.library')}>
+      <Section key="library" title={t('settings.library')}>
         <Row
           label={t('settings.library.compact')}
           sub={t('settings.library.compactSub')}
           control={<Switch label={t('settings.library.compact')} checked={compactLibrary} onChange={setCompactLibrary} />}
         />
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.display')}>
+      <Section key="display" title={t('settings.display')}>
         <Row
           label={t('settings.display.nowPlaying')}
           sub={t('settings.display.nowPlayingSub')}
@@ -517,9 +566,9 @@ export function SettingsPage() {
             }
           />
         )}
-      </Section>
+      </Section>,
 
-      <Section title={t('settings.playback')}>
+      <Section key="playback" title={t('settings.playback')}>
         <Row
           label={t('settings.playback.autoplay')}
           control={<Switch label={t('settings.playback.autoplay')} checked={autoplay} onChange={setAutoplay} />}
@@ -542,12 +591,12 @@ export function SettingsPage() {
             />
           }
         />
-      </Section>
+      </Section>,
 
-      <OfflineDownloads />
+      <OfflineDownloads key="offline" searchText="offline downloads available offline" />,
 
-      {notifSupported && (
-        <Section title="Notifications">
+      notifSupported && (
+        <Section key="notifications" title="Notifications">
           <Row
             label="Allow notifications"
             sub={
@@ -652,9 +701,9 @@ export function SettingsPage() {
             </div>
           )}
         </Section>
-      )}
+      ),
 
-      <Section title="Privacy">
+      <Section key="privacy" title="Privacy">
         <Row
           label="Private listening"
           sub={
@@ -670,10 +719,10 @@ export function SettingsPage() {
             />
           }
         />
-      </Section>
+      </Section>,
 
-      {mediaCache.supported && (
-        <Section title="Storage and cache">
+      mediaCache.supported && (
+        <Section key="storage" title="Storage and cache">
           <Row
             label="Media cache"
             sub={
@@ -693,15 +742,80 @@ export function SettingsPage() {
             }
           />
         </Section>
-      )}
+      ),
 
-      <Section title="About">
+      <Section key="about" title="About">
         <Row
           label="NotSpotify"
           sub="React, ASP.NET Core, and Tauri desktop shell."
           control={<span className="text-sm font-semibold text-secondary">0.1.0</span>}
         />
-      </Section>
+      </Section>,
+  ]
+
+  const visibleSections = query
+    ? sections.filter((node) => nodeMatchesQuery(node, query))
+    : sections
+  const noResults = query !== '' && visibleSections.filter(Boolean).length === 0
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-6">
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold text-primary">{t('settings.title')}</h1>
+        {searchOpen ? (
+          <div className="relative flex items-center">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-3 h-4 w-4 text-secondary" />
+            <input
+              ref={searchInputRef}
+              type="search"
+              aria-label="Search settings"
+              placeholder="Search settings"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setSearch('')
+                  setSearchOpen(false)
+                }
+              }}
+              className="w-56 rounded-full border border-secondary/30 bg-elevated py-1.5 pl-9 pr-9 text-sm text-primary outline-none transition-colors focus:border-accent"
+            />
+            <button
+              type="button"
+              aria-label="Clear settings search"
+              onClick={() => {
+                setSearch('')
+                setSearchOpen(false)
+              }}
+              className="absolute right-2 rounded-full p-1 text-secondary transition-colors hover:text-primary"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            aria-label="Search settings"
+            onClick={() => {
+              setSearchOpen(true)
+              requestAnimationFrame(() => searchInputRef.current?.focus())
+            }}
+            className="rounded-full p-1.5 text-secondary transition-colors hover:text-primary"
+          >
+            <MagnifyingGlassIcon className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+
+      <SettingsSearchContext.Provider value={query}>
+        {noResults ? (
+          <p className="py-16 text-center text-sm text-secondary">
+            No results found for “{search.trim()}”.
+          </p>
+        ) : (
+          visibleSections
+        )}
+      </SettingsSearchContext.Provider>
     </div>
   )
 }

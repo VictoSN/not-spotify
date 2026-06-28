@@ -26,6 +26,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useRatingStore } from '@/stores/ratingStore'
 import { useTranslation } from '@/i18n/useTranslation'
+import { recordPlay, getPlayHistory, PLAY_HISTORY_EVENT } from '@/utils/playHistory'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
@@ -103,6 +104,8 @@ interface LibItem {
   playable: boolean
   /** ISO date string for "Date added" column in expanded list view. */
   addedAt?: string
+  /** ISO date string for "Played" column — recorded locally on play. */
+  playedAt?: string
 }
 
 interface SidebarProps {
@@ -186,6 +189,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
+  const [playHistory, setPlayHistory] = useState(getPlayHistory)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
@@ -277,6 +281,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     window.addEventListener('storage', sync)
     return () => {
       window.removeEventListener(FOLDERS_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  useEffect(() => {
+    const sync = () => setPlayHistory(getPlayHistory())
+    window.addEventListener(PLAY_HISTORY_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(PLAY_HISTORY_EVENT, sync)
       window.removeEventListener('storage', sync)
     }
   }, [])
@@ -392,6 +406,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   // ── Build the library list ──────────────────────────────────────
   const items = useMemo<LibItem[]>(() => {
+    const history = playHistory
     const playlists: LibItem[] = savedPlaylists.map((p) => ({
       key: `pl-${p.id}`,
       id: p.id,
@@ -407,6 +422,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       acceptsTracks: !!p.isOwner,
       playable: true,
       addedAt: p.createdAt,
+      playedAt: history[`playlist:${p.id}`],
     }))
     const albums: LibItem[] = savedAlbums.map((a) => ({
       key: `al-${a.id}`,
@@ -419,6 +435,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       to: `/album/${a.id}`,
       acceptsTracks: false,
       playable: true,
+      playedAt: history[`album:${a.id}`],
     }))
     const artists: LibItem[] = followedArtists.map((a) => ({
       key: `ar-${a.id}`,
@@ -431,6 +448,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       to: `/artist/${a.id}`,
       acceptsTracks: false,
       playable: true,
+      playedAt: history[`artist:${a.id}`],
     }))
     // Videos + podcasts are saved client-side and surface in the default ("all")
     // view only. They're navigate-only — opening the row goes to the page where
@@ -474,7 +492,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
     else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, t])
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
@@ -507,20 +525,20 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           const full = await playlistService.getById(item.id)
           tracks = (full.tracks ?? []).map((row) => row.track)
         }
-        if (tracks.length > 0) startContext({ type: 'playlist', id: item.id }, tracks)
+        if (tracks.length > 0) { if (startContext({ type: 'playlist', id: item.id }, tracks)) recordPlay('playlist', item.id) }
         else notify.info('No tracks in this playlist yet')
         return
       }
 
       if (item.kind === 'album') {
         const tracks = await trackService.getByAlbum(item.id)
-        if (tracks.length > 0) startContext({ type: 'album', id: item.id }, tracks)
+        if (tracks.length > 0) { if (startContext({ type: 'album', id: item.id }, tracks)) recordPlay('album', item.id) }
         else notify.info('No tracks available for this release yet')
         return
       }
 
       const tracks = await artistService.getTopTracks(item.id, 20)
-      if (tracks.length > 0) startContext({ type: 'artist', id: item.id }, tracks)
+      if (tracks.length > 0) { if (startContext({ type: 'artist', id: item.id }, tracks)) recordPlay('artist', item.id) }
       else notify.info('No tracks available for this artist yet')
     } catch {
       notify.error("Couldn't start playback")
@@ -1135,7 +1153,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 <div className="flex flex-1 items-center">
                   <span className="flex-1 text-xs font-normal text-secondary">{t('sidebar.col.title')}</span>
                   <span className="w-1/4 shrink-0 text-center text-xs font-normal text-secondary">{t('sidebar.col.dateAdded')}</span>
-                  <span className="w-1/5 shrink-0 text-right text-xs font-normal text-secondary">{t('sidebar.col.played')}</span>
+                  <span className="w-1/5 shrink-0 pr-4 text-right text-xs font-normal text-secondary">{t('sidebar.col.played')}</span>
                 </div>
               </div>
             )}
@@ -1167,7 +1185,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     {libraryExpanded && (
                       <>
                         <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">—</span>
-                        <span className="w-1/5 shrink-0 text-right text-[13px] text-secondary">—</span>
+                        <span className="w-1/5 shrink-0 pr-4 text-right text-[13px] text-secondary">—</span>
                       </>
                     )}
                   </div>
@@ -1186,6 +1204,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   expanded={libraryExpanded}
                   nowPlaying={isNowPlaying(item)}
                   onPlay={() => playLibraryItem(item)}
+                  onNavigate={() => { if (libraryExpanded) setLibraryExpanded(false) }}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}
@@ -1440,6 +1459,7 @@ function LibraryListRow({
   nowPlaying,
   children,
   onPlay,
+  onNavigate,
   menuPlaylist,
   menuAlbum,
   menuArtist,
@@ -1452,6 +1472,7 @@ function LibraryListRow({
   nowPlaying: boolean
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
+  onNavigate?: () => void
   menuPlaylist?: Playlist
   menuAlbum?: Album
   menuArtist?: Artist
@@ -1482,6 +1503,7 @@ function LibraryListRow({
     >
       <NavLink
         to={item.to}
+        onClick={onNavigate}
         className={({ isActive }) =>
           cn(
             'flex items-center rounded-md transition-colors',
@@ -1517,7 +1539,9 @@ function LibraryListRow({
               <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">
                 {item.addedAt ? relativeDate(item.addedAt) : '—'}
               </span>
-              <span className="w-1/5 shrink-0 text-right text-[13px] text-secondary">—</span>
+              <span className="w-1/5 shrink-0 pr-4 text-right text-[13px] text-secondary">
+                {item.playedAt ? relativeDate(item.playedAt) : '—'}
+              </span>
             </>
           )}
         </div>

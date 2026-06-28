@@ -144,6 +144,35 @@ describe('AccountSettingsPage account feature rows', () => {
     expect(screen.getByPlaceholderText('Type DELETE')).toBeInTheDocument()
   })
 
+  // Bug 29: pop-ups must dismiss on outside click and Escape, not only the Close button.
+  it('closes the login-methods pop-up when clicking the backdrop', async () => {
+    await renderAccount()
+
+    await clickAndFlush(screen.getByRole('button', { name: /Edit login methods/ }))
+    expect(await screen.findByText('Password sign-in is enabled.')).toBeInTheDocument()
+
+    // Clicking inside the panel must NOT close it.
+    await clickAndFlush(screen.getByText('Password sign-in is enabled.'))
+    expect(screen.getByText('Password sign-in is enabled.')).toBeInTheDocument()
+
+    // Clicking the backdrop (the dialog wrapper itself) closes the pop-up.
+    await clickAndFlush(screen.getByRole('dialog'))
+    expect(screen.queryByText('Password sign-in is enabled.')).not.toBeInTheDocument()
+  })
+
+  it('closes the login-methods pop-up when pressing Escape', async () => {
+    await renderAccount()
+
+    await clickAndFlush(screen.getByRole('button', { name: /Edit login methods/ }))
+    expect(await screen.findByText('Password sign-in is enabled.')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.keyDown(document, { key: 'Escape' })
+      await Promise.resolve()
+    })
+    expect(screen.queryByText('Password sign-in is enabled.')).not.toBeInTheDocument()
+  })
+
   it('routes account rows that already have implemented destinations', async () => {
     await renderAccount()
 

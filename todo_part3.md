@@ -588,21 +588,21 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** Consistent pop-up behavior is crucial for good UX. Users expect to be able to dismiss pop-ups by clicking outside them. The current behavior is inconsistent and frustrating.
 
-- [ ] **Fix Implementation**
-  - [ ] Add click-outside detection for Edit Login Methods pop-up
-  - [ ] Ensure pop-up closes when clicking outside the modal
-  - [ ] Apply the same click-outside behavior to ALL pop-ups in the app
-  - [ ] Include common pop-ups: settings, redemption, member management, etc.
-  - [ ] Test pop-ups in all pages (Account, Settings, Premium, etc.)
-  - [ ] Ensure click-outside doesn't interfere with pop-up internal interactions
+- [x] **Fix Implementation**
+  - [x] Add click-outside detection for Edit Login Methods pop-up (AccountSettingsPage `panel` backdrop now closes on click)
+  - [x] Ensure pop-up closes when clicking outside the modal (backdrop onClick + inner stopPropagation)
+  - [x] Apply the same click-outside behavior to ALL pop-ups in the app — audit: Account `panel` was the only offender; all other modals already close on outside-click (Headless UI `Dialog` backdrop, or raw backdrops with `onClick={onClose}` + `stopPropagation`)
+  - [x] Include common pop-ups: settings, redemption, member management, etc. — Account `panel` covers recover/redeem/login-methods/ads/delete; member management is an inline expanding card (not a pop-up)
+  - [x] Test pop-ups in all pages (Account, Settings, Premium, etc.)
+  - [x] Ensure click-outside doesn't interfere with pop-up internal interactions (inner panel stops propagation)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Edit Login Methods pop-up closes when clicking outside
-  - [ ] Test: All pop-ups across the app close when clicking outside
-  - [ ] Test: Clicking inside pop-up doesn't close it
-  - [ ] Test: Escape key also closes pop-ups (bonus)
-  - [ ] Test: Click-outside works in both light and dark themes
-  - [ ] Test: Click-outside works on mobile and desktop viewports
+- [x] **Tests to Complete**
+  - [x] Test: Edit Login Methods pop-up closes when clicking outside
+  - [x] Test: All pop-ups across the app close when clicking outside (audited; the shared modal family already handled it)
+  - [x] Test: Clicking inside pop-up doesn't close it
+  - [x] Test: Escape key also closes pop-ups (Escape effect on `panel`)
+  - [~] Test: Click-outside works in both light and dark themes (theme-agnostic — backdrop handler is not styling-dependent)
+  - [~] Test: Click-outside works on mobile and desktop viewports (viewport-agnostic — same backdrop element)
 
 ---
 

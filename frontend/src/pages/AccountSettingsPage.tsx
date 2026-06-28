@@ -187,6 +187,14 @@ export function AccountSettingsPage() {
       .catch(() => setArtistApp(null))
   }, [])
 
+  // Bug 29: dismiss the panel pop-up with the Escape key (click-outside is handled on the backdrop).
+  useEffect(() => {
+    if (!panel) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanel(null) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [panel])
+
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault()
     setApplyBusy(true)
@@ -698,8 +706,16 @@ export function AccountSettingsPage() {
 
       <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />
       {panel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-[6px] bg-elevated p-6 shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => setPanel(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="w-full max-w-lg rounded-[6px] bg-elevated p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-xl font-bold text-primary">
                 {panel === 'recover' && 'Recover playlists'}

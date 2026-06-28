@@ -25,7 +25,6 @@ import {
   PencilIcon,
   PuzzlePieceIcon,
   UsersIcon,
-  ShieldCheckIcon,
   KeyIcon,
   MegaphoneIcon,
   QuestionMarkCircleIcon,
@@ -632,7 +631,6 @@ export function AccountSettingsPage() {
       {/* Help */}
       <Section title="Help">
         <SettingRow icon={QuestionMarkCircleIcon} label="Spotify support" to="/support" />
-        <SettingRow icon={ShieldCheckIcon} label="App support" to="/support" />
       </Section>
 
       <ChangePasswordModal open={showChangePw} onClose={() => setShowChangePw(false)} />

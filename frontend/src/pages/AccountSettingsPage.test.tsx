@@ -146,7 +146,7 @@ describe('AccountSettingsPage account feature rows', () => {
 
     expect(screen.getByRole('link', { name: /Notification settings/ })).toHaveAttribute('href', '/settings')
     expect(screen.getByRole('link', { name: /Account privacy/ })).toHaveAttribute('href', '/settings')
-    expect(screen.getByRole('link', { name: /App support/ })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: /Spotify support/ })).toHaveAttribute('href', '/support')
   })
 
   it('opens member management for Family plans', async () => {

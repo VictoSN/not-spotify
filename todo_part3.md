@@ -204,15 +204,15 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a redundant UI element that clutters the interface. Having two buttons that do the same thing is unnecessary and confusing.
 
-- [ ] **Fix Implementation**
-  - [ ] Remove "App Support" button entirely
-  - [ ] Keep only "Spotify Support" button
-  - [ ] Ensure "Spotify Support" navigates correctly
+- [x] **Fix Implementation**
+  - [x] Remove "App Support" button entirely
+  - [x] Keep only "Spotify Support" button
+  - [x] Ensure "Spotify Support" navigates correctly
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Only one help button appears ("Spotify Support")
-  - [ ] Test: "App Support" button is completely removed from UI
-  - [ ] Test: "Spotify Support" button functions correctly
+- [x] **Tests to Complete**
+  - [x] Test: Only one help button appears ("Spotify Support")
+  - [x] Test: "App Support" button is completely removed from UI
+  - [x] Test: "Spotify Support" button functions correctly
 
 ---
 

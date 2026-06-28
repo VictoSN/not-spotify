@@ -1,30 +1,35 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+// Links whose target is a real page in this app use a router `to`. The corporate
+// pages we don't (and shouldn't) reimplement — careers, newsroom, developer
+// portal, etc. — point at Spotify's real sites and open in a new tab. A `to`
+// starting with http(s):// is treated as external by <FooterLink>.
 const columns = [
   {
     title: 'Company',
     links: [
       { label: 'About', to: '/about' },
-      { label: 'Jobs', to: '/support' },
-      { label: 'For the Record', to: '/support' },
+      { label: 'Jobs', to: 'https://www.lifeatspotify.com/' },
+      { label: 'For the Record', to: 'https://newsroom.spotify.com/' },
     ],
   },
   {
     title: 'Communities',
     links: [
-      { label: 'For Artists', to: '/artist-dashboard' },
-      { label: 'Developers', to: '/support' },
-      { label: 'Advertising', to: '/support' },
-      { label: 'Investors', to: '/support' },
-      { label: 'Vendors', to: '/support' },
+      { label: 'For Artists', to: 'https://artists.spotify.com/' },
+      { label: 'Developers', to: 'https://developer.spotify.com/' },
+      { label: 'Advertising', to: 'https://ads.spotify.com/' },
+      { label: 'Investors', to: 'https://investors.spotify.com/' },
+      { label: 'Vendors', to: 'https://www.spotifyforvendors.com/' },
     ],
   },
   {
     title: 'Useful links',
     links: [
       { label: 'Support', to: '/support' },
-      { label: 'Free Mobile App', to: '/support' },
-      { label: 'Popular by Country', to: '/search' },
+      { label: 'Free Mobile App', to: 'https://www.spotify.com/download/' },
+      { label: 'Popular', to: '/charts' },
       { label: 'Import your music', to: '/uploads' },
     ],
   },
@@ -42,12 +47,28 @@ const columns = [
 
 const legalLinks = [
   { label: 'Legal', to: '/legal' },
-  { label: 'Safety & Privacy Center', to: '/privacy' },
+  { label: 'Safety & Privacy Center', to: 'https://www.spotify.com/safetyandprivacy/' },
   { label: 'Privacy Policy', to: '/privacy' },
-  { label: 'Cookies', to: '/legal' },
-  { label: 'About Ads', to: '/legal' },
-  { label: 'Accessibility', to: '/about' },
+  { label: 'Cookies', to: 'https://www.spotify.com/legal/cookies-policy/' },
+  { label: 'About Ads', to: 'https://www.spotify.com/legal/privacy-policy/' },
+  { label: 'Accessibility', to: 'https://www.spotify.com/accessibility/' },
 ]
+
+/** Renders an external Spotify link (new tab) for http(s) targets, otherwise an in-app router link. */
+function FooterLink({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
+  if (/^https?:\/\//.test(to)) {
+    return (
+      <a href={to} target="_blank" rel="noreferrer" className={className}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link to={to} className={className}>
+      {children}
+    </Link>
+  )
+}
 
 function InstagramIcon() {
   return (
@@ -85,9 +106,9 @@ export function AppFooter() {
             <ul className="space-y-2.5">
               {column.links.map((link) => (
                 <li key={link.label}>
-                  <Link to={link.to} className="text-sm text-secondary transition-colors hover:text-primary hover:underline">
+                  <FooterLink to={link.to} className="text-sm text-secondary transition-colors hover:text-primary hover:underline">
                     {link.label}
-                  </Link>
+                  </FooterLink>
                 </li>
               ))}
             </ul>
@@ -117,9 +138,9 @@ export function AppFooter() {
       <div className="mt-10 flex flex-col gap-6 border-t border-primary/10 pt-8 text-xs text-secondary sm:flex-row sm:items-center sm:justify-between">
         <nav className="flex flex-wrap gap-x-5 gap-y-3" aria-label="Legal">
           {legalLinks.map(({ label, to }) => (
-            <Link key={label} to={to} className="transition-colors hover:text-primary">
+            <FooterLink key={label} to={to} className="transition-colors hover:text-primary">
               {label}
-            </Link>
+            </FooterLink>
           ))}
         </nav>
         <p className="shrink-0">© 2026 not-spotify</p>

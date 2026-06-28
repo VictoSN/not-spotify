@@ -138,7 +138,7 @@ export function ArtistTourManager({ tracks }: Props) {
         </div>
         {!showForm && (
           <Button onClick={openCreate} className="shrink-0">
-            <PlusCircleIcon className="mr-1.5 h-5 w-5" /> Add show
+            <PlusCircleIcon className="mr-1.5 h-5 w-5" /> Add Event
           </Button>
         )}
       </div>
@@ -196,7 +196,7 @@ export function ArtistTourManager({ tracks }: Props) {
             </label>
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add show'}</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : editingId ? 'Save changes' : 'Add Event'}</Button>
             <Button type="button" variant="secondary" onClick={resetForm} disabled={saving}>Cancel</Button>
           </div>
         </form>

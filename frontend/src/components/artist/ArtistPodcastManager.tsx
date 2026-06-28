@@ -399,7 +399,7 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                     />
                   </label>
                   <label className="text-sm">
-                    <span className="mb-1 block text-secondary">Duration seconds</span>
+                    <span className="mb-1 block text-secondary">Duration (auto-detected)</span>
                     <input
                       type="number"
                       min={1}
@@ -413,7 +413,21 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                     <input
                       type="file"
                       accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.flac,.webm,.weba"
-                      onChange={(e) => setEpisodeForm((f) => ({ ...f, file: e.target.files?.[0] ?? null }))}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null
+                        setEpisodeForm((f) => ({ ...f, file }))
+                        if (file) {
+                          const audio = new Audio()
+                          const url = URL.createObjectURL(file)
+                          audio.onloadedmetadata = () => {
+                            if (isFinite(audio.duration)) {
+                              setEpisodeForm((f) => ({ ...f, durationSeconds: Math.round(audio.duration) }))
+                            }
+                            URL.revokeObjectURL(url)
+                          }
+                          audio.src = url
+                        }
+                      }}
                       className="w-full rounded-lg bg-elevated px-3 py-2 text-sm text-secondary file:mr-3 file:rounded-full file:border-0 file:bg-accent file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-black"
                       required
                     />

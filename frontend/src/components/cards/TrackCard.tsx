@@ -93,20 +93,15 @@ export function TrackCard({ track, queue }: TrackCardProps) {
           </Link>
         </p>
       </div>
-      <div
-        className="flex shrink-0 items-center gap-2"
-        onClick={(e) => e.stopPropagation()}
+      <span className="text-xs text-muted flex-shrink-0">{formatMs(track.durationMs)}</span>
+      <button
+        onClick={handleLike}
+        className={`transition-opacity ${isLiked ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
+        aria-label={isLiked ? 'Unlike' : 'Like'}
       >
-        <span className="text-xs text-muted">{formatMs(track.durationMs)}</span>
-        <button
-          onClick={handleLike}
-          className={`transition-opacity ${isLiked ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}
-          aria-label={isLiked ? 'Unlike' : 'Like'}
-        >
-          <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4 text-secondary hover:text-primary" />
-        </button>
-        <TrackRowMenu track={track} ref={menuTriggerRef} />
-      </div>
+        <AnimatedLikeIcon liked={isLiked} className="w-4 h-4" heartClassName="w-4 h-4 text-secondary hover:text-primary" />
+      </button>
+      <TrackRowMenu track={track} ref={menuTriggerRef} />
     </div>
   )
 }

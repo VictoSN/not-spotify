@@ -370,6 +370,14 @@ html[data-theme="light"] .account-settings-page [class*="divide-[#333333]"] > :n
   border-color: color-mix(in srgb, var(--c-primary) 12%, transparent) !important;
 }
 
+/* Warning/error messages (e.g. the redeem-code feedback) use light-red Tailwind
+   utilities that read on the dark surface but vanish against the light theme.
+   Darken them to a high-contrast red so they stay legible (WCAG) in light mode. */
+html[data-theme="light"] .account-settings-page [class*="text-red-300"],
+html[data-theme="light"] .account-settings-page [class*="text-red-400"] {
+  color: #c0202a !important;
+}
+
 @property --sidebar-scrollbar-opacity {
   syntax: '<number>';
   inherits: true;

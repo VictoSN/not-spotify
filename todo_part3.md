@@ -184,18 +184,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a classic accessibility and theming bug. The text becomes invisible, rendering the warning completely useless. Users cannot see error messages.
 
-- [ ] **Fix Implementation**
-  - [ ] Set explicit text color for all warning/error messages
-  - [ ] Use high-contrast error color (e.g., standard error red) that works on light backgrounds
-  - [ ] Ensure color is visible on both light and dark backgrounds
-  - [ ] Test color accessibility (WCAG compliance for contrast ratio)
+- [x] **Fix Implementation**
+  - [x] Set explicit text color for all warning/error messages
+  - [x] Use high-contrast error color (e.g., standard error red) that works on light backgrounds
+  - [x] Ensure color is visible on both light and dark backgrounds
+  - [x] Test color accessibility (WCAG compliance for contrast ratio)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Warning is visible in light mode
-  - [ ] Test: Warning is visible in dark mode
-  - [ ] Test: Warning uses appropriate error color
-  - [ ] Test: Warning text is readable with proper contrast ratio
-  - [ ] Test: Warning appears immediately when needed
+- [x] **Tests to Complete**
+  - [x] Test: Warning is visible in light mode
+  - [x] Test: Warning is visible in dark mode
+  - [x] Test: Warning uses appropriate error color
+  - [x] Test: Warning text is readable with proper contrast ratio
+  - [x] Test: Warning appears immediately when needed
 
 ---
 

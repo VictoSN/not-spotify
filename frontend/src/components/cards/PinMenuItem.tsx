@@ -23,14 +23,14 @@ export function usePinned(itemKey: string): [boolean, () => boolean] {
   return [pinned, () => togglePinned(itemKey)]
 }
 
-/** The little pushpin glyph used by the pin menu item and pinned-row badges. */
+/**
+ * Spotify-style tilted pushpin glyph, used by the pin menu item and the
+ * pinned-row badge that sits on the subtitle line.
+ */
 export function PinIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" className={className} fill="currentColor">
-      <path
-        d="M5.25 1.5h5.5v1.2L9.6 3.85v3.1l1.65 1.65v1.15H8.6v4.75H7.4V9.75H4.75V8.6L6.4 6.95v-3.1L5.25 2.7V1.5Z"
-        transform="rotate(45 8 8)"
-      />
+      <path d="M10.591 1.058a.75.75 0 0 1 1.061 0l3.29 3.29a.75.75 0 0 1 0 1.061l-.708.708a3.75 3.75 0 0 1-4.27.721l-1.98 1.98a1.75 1.75 0 0 1 0 2.475l-.707.707a.75.75 0 0 1-1.061 0L4.06 12l-2.53 2.53a.75.75 0 1 1-1.06-1.06L3 10.939 1.518 9.457a.75.75 0 0 1 0-1.06l.707-.708a1.75 1.75 0 0 1 2.475 0l1.98-1.98a3.75 3.75 0 0 1 .721-4.27l.708-.708z" />
     </svg>
   )
 }

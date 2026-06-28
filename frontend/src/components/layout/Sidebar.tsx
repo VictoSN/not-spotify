@@ -1559,12 +1559,12 @@ function LibraryListRow({
         )}
         <div className={cn('min-w-0 flex-1', expanded ? 'flex items-center' : 'pr-14')}>
           <div className="min-w-0 flex-1">
-            <p className={cn('flex items-center gap-1.5 text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-              {pinned && <PinIcon className="h-3 w-3 shrink-0 text-accent" />}
-              <span className="truncate">{item.name}</span>
+            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {item.name}
             </p>
-            <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
-              {item.subtitle}
+            <p className="mt-0.5 flex items-center gap-1 text-[13px] font-normal leading-tight text-secondary">
+              {pinned && <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />}
+              <span className="truncate">{item.subtitle}</span>
             </p>
           </div>
           {expanded && (
@@ -1676,11 +1676,13 @@ function LibraryGridCard({
         </div>
         {!compact && (
           <>
-            <p className={cn('flex items-center gap-1.5 text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-              {pinned && <PinIcon className="h-3 w-3 shrink-0 text-accent" />}
-              <span className="truncate">{item.name}</span>
+            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {item.name}
             </p>
-            <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">{item.subtitle}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-[13px] font-normal leading-tight text-secondary">
+              {pinned && <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />}
+              <span className="truncate">{item.subtitle}</span>
+            </p>
           </>
         )}
       </NavLink>

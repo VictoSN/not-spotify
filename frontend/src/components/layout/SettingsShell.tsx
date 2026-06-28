@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Outlet, Link, useNavigate } from 'react-router-dom'
-import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
@@ -32,8 +32,6 @@ export function SettingsShell() {
     await logout()
     navigate('/')
   }
-
-  const isArtist = !!user?.artistId
 
   return (
     <div className="flex h-full flex-col bg-page text-primary">
@@ -100,16 +98,6 @@ export function SettingsShell() {
                   <Cog6ToothIcon className="h-4 w-4 shrink-0 text-secondary" />
                   Account
                 </Link>
-                {isArtist && (
-                  <Link
-                    to="/artist-dashboard"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
-                  >
-                    <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" />
-                    Artist dashboard
-                  </Link>
-                )}
                 <div className="my-1 border-t border-primary/10" />
                 <button
                   type="button"

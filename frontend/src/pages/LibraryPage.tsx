@@ -35,6 +35,7 @@ function sortBy<T>(items: T[], sort: SortKey, name: (item: T) => string): T[] {
     sort === 'az' ? name(a).localeCompare(name(b)) : name(b).localeCompare(name(a)),
   )
 }
+/**why did my library minimize slide animation came from left to right? Because the PlaylistCover component is a motion.div, and it animates its scale on mount. The sidebar minimize animation is also a scale transform, so the two transforms fight each other. The solution is to not animate the PlaylistCover at all in the sidebar. */
 export function LibraryPage() {
   const { t } = useTranslation()
   useDocumentTitle(t('library.title'))

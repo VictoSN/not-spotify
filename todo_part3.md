@@ -424,23 +424,15 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 ---
 
-## Bug #22: Main Page - Dynamic Background Colouring Issue for Podcasts/Music Videos
-**Issue:** The dynamic background coloring feature (which extracts a dominant color from the album art) only works for music tracks. It fails to function when viewing a podcast or a music video.
+## Bug #22: Home Page - Dynamic Hue Should Only Apply to Top Playlist Tiles
 
-**Explanation:** This creates a jarring visual experience when switching between different types of content, breaking the immersive design language.
+Fix Implementation
 
-- [ ] **Fix Implementation**
-  - [ ] Adapt color extraction logic to work for all content types
-  - [ ] Handle artwork for podcasts (cover art)
-  - [ ] Handle artwork for music videos (thumbnail)
-  - [ ] Implement fallback color if no artwork is found
+[]Restrict dynamic hue coloring to only the top playlist tiles on the Home page
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Dynamic background works for music tracks
-  - [ ] Test: Dynamic background works for podcasts
-  - [ ] Test: Dynamic background works for music videos
-  - [ ] Test: Fallback color is used when no artwork is available
-  - [ ] Test: Background color transitions smoothly between tracks
+Tests to Complete
+
+[]Test: Top Home playlist tiles use artwork-based hue
 
 ---
 

@@ -10,17 +10,20 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDragStore } from '@/stores/dragStore'
 import { ARTIST_DND_MIME, setArtistDragImage } from '@/utils/trackDnd'
+import { cn } from '@/utils/cn'
 import { ArtistMenu, type ArtistMenuHandle } from './ArtistMenu'
 import { CardPlayButton } from './CardPlayButton'
 
 interface ArtistCardProps {
   artist: Artist
   flush?: boolean
+  /** Fill a responsive grid cell instead of using the standard carousel width. */
+  fluid?: boolean
   /** Render the name bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
   boldTitle?: boolean
 }
 
-export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistCardProps) {
+export function ArtistCard({ artist, flush = false, fluid = false, boldTitle = false }: ArtistCardProps) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'artist', id: artist.id })
@@ -53,7 +56,10 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
 
   return (
     <div
-      className="group relative flex-shrink-0 w-40 sm:w-44 transition-opacity"
+      className={cn(
+        'group relative min-w-0 transition-opacity',
+        fluid ? 'w-full' : 'w-40 flex-shrink-0 sm:w-44',
+      )}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'copy'

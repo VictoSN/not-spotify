@@ -93,6 +93,7 @@ export function ArtistProfilePage() {
 
   const isFollowing = followedArtistIds.has(artist.id)
   const heroHue = derivedHeroHue ?? 'hsl(210 7% 24%)'
+  const aboutImage = artist.headerImageUrl ?? artist.imageUrl
   const artistPick = albums[0] ?? null
   const visibleTopTracks = popularExpanded ? topTracks : topTracks.slice(0, 5)
   const toggleFollow = () => {
@@ -358,25 +359,47 @@ export function ArtistProfilePage() {
           </section>
         )}
 
-        {/* Bio */}
+        {/* About — intentionally follows On Tour; this app has no merch section. */}
         {artist.bio && (
-          <section className="px-6 mb-8">
+          <section className="mb-10 px-6">
             <SectionHeader title={t('detail.about')} />
             <button
               type="button"
               onClick={() => setBioOpen(true)}
-              className="relative block w-full overflow-hidden rounded-xl bg-surface p-6 text-left transition-colors hover:bg-elevated/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-page"
+              className="group relative block aspect-[16/9] min-h-[320px] w-full max-w-4xl overflow-hidden rounded-lg bg-surface text-left shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-page"
               aria-label={t('artist.bio.open', { name: artist.name })}
+              style={{ backgroundColor: heroHue, color: '#ffffff' }}
             >
-              {artist.headerImageUrl && (
+              {aboutImage && (
                 <img
-                  src={artist.headerImageUrl}
+                  src={aboutImage}
                   alt=""
-                  className="absolute inset-0 w-full h-full object-cover opacity-10"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02] motion-reduce:transition-none"
                 />
               )}
-              <p className="text-secondary leading-relaxed relative z-10">{artist.bio}</p>
-              <p className="text-xs text-muted mt-4 relative z-10">{t('detail.followers', { n: formatNumber(artist.followerCount) })}</p>
+              <span
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.72) 32%, rgba(0,0,0,0.12) 72%, rgba(0,0,0,0.04) 100%)' }}
+              />
+              <span className="absolute inset-x-0 bottom-0 z-10 block p-6 sm:p-8" style={{ color: '#ffffff' }}>
+                <span className="mb-3 block text-sm font-black sm:text-base" style={{ color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9)' }}>
+                  {t('detail.monthlyListeners', { n: formatNumber(artist.monthlyListeners) })}
+                </span>
+                <span
+                  data-testid="artist-about-bio"
+                  className="max-w-2xl text-sm font-semibold leading-relaxed sm:text-base"
+                  style={{
+                    color: 'rgba(255,255,255,0.96)',
+                    display: '-webkit-box',
+                    WebkitBoxOrient: 'vertical',
+                    WebkitLineClamp: 3,
+                    overflow: 'hidden',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.9)',
+                  }}
+                >
+                  {artist.bio}
+                </span>
+              </span>
             </button>
           </section>
         )}

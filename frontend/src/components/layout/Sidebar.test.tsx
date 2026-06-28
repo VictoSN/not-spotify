@@ -105,6 +105,42 @@ describe('Sidebar saved media navigation', () => {
     expectRoute(`/podcasts/${podcast.id}`)
   })
 
+  it('uses three columns throughout the final ten percent of the sidebar drag range', () => {
+    window.localStorage.setItem('ns-library-view', 'grid')
+    window.localStorage.setItem('ns-sidebar-width', '406')
+    const { container, unmount } = renderSidebar()
+
+    expect(container.querySelector('.grid.grid-cols-3')).toBeInTheDocument()
+
+    unmount()
+    window.localStorage.setItem('ns-sidebar-width', '405')
+    const standard = renderSidebar()
+    expect(standard.container.querySelector('.grid.grid-cols-2')).toBeInTheDocument()
+  })
+
+  it('keeps the Recents icon aligned and synchronized with the selected view', () => {
+    renderSidebar()
+
+    const viewMenu = screen.getByRole('button', { name: 'Recents' })
+    expect(viewMenu).toHaveClass('h-8', 'items-center', 'gap-2', 'leading-none')
+    expect(viewMenu.querySelector('[data-library-view-icon="list"]')).toBeInTheDocument()
+
+    const selections = [
+      ['Compact list', 'list-compact'],
+      ['Compact grid', 'grid-compact'],
+      ['Grid', 'grid'],
+      ['List', 'list'],
+    ] as const
+
+    for (const [label, mode] of selections) {
+      fireEvent.click(viewMenu)
+      fireEvent.click(screen.getByRole('button', { name: label }))
+
+      expect(viewMenu.querySelector(`[data-library-view-icon="${mode}"]`)).toBeInTheDocument()
+      expect(window.localStorage.getItem('ns-library-view')).toBe(mode)
+    }
+  })
+
   it('keeps saved MV and podcast navigation working inside a library folder', () => {
     window.localStorage.setItem('ns-library-folders', JSON.stringify([{
       id: 'media-folder', name: 'Saved media',

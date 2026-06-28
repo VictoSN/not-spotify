@@ -40,33 +40,60 @@ export function AboutPage() {
   return (
     <InfoPageLayout title="About">
       <p>
-        not-spotify is a full-stack music-streaming demo built to explore what a modern listening
-        experience looks like end to end — discovery, playback, playlists, social listening, and a
-        creator-facing artist dashboard. It is an educational project, not a commercial service, and
-        it is not affiliated with Spotify AB.
+        not-spotify is a non-commercial academic parody inspired by familiar music-streaming
+        interfaces. It was created solely as a CLOUD course assignment, technical demonstration,
+        and lighthearted meme. It is not an official Spotify product and is not affiliated with,
+        sponsored by, or endorsed by Spotify AB.
       </p>
-      <Section heading="What it is">
+
+      <Section heading="Development team">
         <p>
-          A React and TypeScript front end backed by an ASP.NET Core API, with Supabase for data and
-          Stripe for subscription billing. The catalogue, recommendations, and stats are all wired to
-          real services so the app behaves like a production product rather than a static mockup.
+          The three primary developers of this project are <strong className="text-primary">Stanlie Lin</strong>,{' '}
+          <strong className="text-primary">Marvind Meydie Lincoln</strong>, and{' '}
+          <strong className="text-primary">Victoria Suwita Nanda</strong>. Together, we designed and
+          implemented the application to demonstrate cloud architecture, full-stack development,
+          media playback, social features, and modern interface design.
         </p>
       </Section>
-      <Section heading="What you can do">
-        <ul className="list-disc space-y-1 pl-5">
-          <li>Stream music, build playlists, and follow artists.</li>
-          <li>See what friends are playing and share tracks in chat.</li>
-          <li>Upgrade to Premium for higher quality, downloads, and ad-free listening.</li>
-          <li>Publish and manage releases from the artist dashboard.</li>
-        </ul>
-      </Section>
-      <Section heading="Get in touch">
+
+      <Section heading="Academic and parody purpose">
         <p>
-          Questions or feedback? Visit the{' '}
+          This project exists for private educational evaluation and portfolio demonstration. It is
+          not intended for commercial operation, public music distribution, or use as a substitute
+          for a licensed streaming service. It is not a cracked or modified Spotify website, does
+          not bypass subscriptions or digital-rights controls, and is not designed to provide
+          unauthorized access to paid services.
+        </p>
+      </Section>
+
+      <Section heading="Copyright and media notice">
+        <p>
+          Spotify and all other third-party names, trademarks, logos, artist identities, recordings,
+          artwork, and related materials remain the property of their respective owners. The project
+          team does not claim ownership of third-party material and respects the rights of creators,
+          performers, publishers, and copyright holders.
+        </p>
+        <p>
+          To the best of our knowledge, media used in this assignment was obtained lawfully through
+          purchases or legitimate providers and is included only for the limited educational
+          demonstration of the application. We do not intend to sell, sublicense, redistribute, or
+          facilitate unauthorized downloads of copyrighted media. Anyone deploying or extending this
+          project must use only content they have permission or a valid licence to use.
+        </p>
+        <p>
+          Educational or non-commercial status does not by itself grant permission to use copyrighted
+          material. Where permission or licensing is required, it must be obtained from the relevant
+          rights holder.
+        </p>
+      </Section>
+
+      <Section heading="Questions and takedown requests">
+        <p>
+          If you are a rights holder and believe material has been included in error, please visit the{' '}
           <Link to="/support" className="text-primary underline hover:no-underline">
             Support center
           </Link>{' '}
-          to browse help articles or contact the team.
+          to contact the team. We will review reasonable notices and remove material when appropriate.
         </p>
       </Section>
     </InfoPageLayout>

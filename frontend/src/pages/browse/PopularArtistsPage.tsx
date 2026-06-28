@@ -20,9 +20,12 @@ export function PopularArtistsPage() {
       ) : artists.length === 0 ? (
         <p className="text-secondary">No artists yet.</p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div
+          data-testid="popular-artists-grid"
+          className="grid [grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-4 gap-y-7"
+        >
           {artists.map((a) => (
-            <ArtistCard key={a.id} artist={a} />
+            <ArtistCard key={a.id} artist={a} fluid />
           ))}
         </div>
       )}

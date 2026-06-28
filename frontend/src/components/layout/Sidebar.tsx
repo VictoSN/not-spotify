@@ -8,8 +8,6 @@ import {
   PlusIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
-  ListBulletIcon,
-  Squares2X2Icon,
   CheckIcon,
   FolderIcon,
   FolderPlusIcon,
@@ -71,6 +69,7 @@ const RAIL = 72
 const DEFAULT_W = 300
 const MIN_W = 280 // narrowest expanded width before snapping to the rail
 const MAX_W = 420
+const THREE_COLUMN_W = MIN_W + (MAX_W - MIN_W) * 0.9 // final 10% of the drag range (406–420px)
 const SNAP_THRESHOLD = 220 // drag below this → collapse to the icon rail
 const STORAGE_KEY = 'ns-sidebar-width'
 const COMPACT_LIBRARY_KEY = 'ns-pref-compact'
@@ -78,6 +77,28 @@ const COMPACT_LIBRARY_KEY = 'ns-pref-compact'
 type Filter = 'all' | 'playlists' | 'artists' | 'albums'
 type Sort = 'recents' | 'recentlyAdded' | 'alpha' | 'creator' | 'custom'
 type ViewMode = 'list' | 'list-compact' | 'grid' | 'grid-compact'
+
+const LIBRARY_VIEW_ICON_PATH: Record<ViewMode, string> = {
+  'list-compact': 'M15.5 13.5H.5V12h15zm0-4.75H.5v-1.5h15zm0-4.75H.5V2.5h15z',
+  list: 'M15 14.5H5V13h10zm0-5.75H5v-1.5h10zM15 3H5V1.5h10zM3 3H1V1.5h2zm0 11.5H1V13h2zm0-5.75H1v-1.5h2z',
+  'grid-compact': 'M1 1h3v3H1zm0 5.5h3v3H1zM4 12H1v3h3zM6.5 1h3v3h-3zm3 5.5h-3v3h3zm-3 5.5h3v3h-3zM15 1h-3v3h3zm-3 5.5h3v3h-3zm3 5.5h-3v3h3z',
+  grid: 'M1 1h6v6H1zm1.5 1.5v3h3v-3zM1 9h6v6H1zm1.5 1.5v3h3v-3zM9 1h6v6H9zm1.5 1.5v3h3v-3zM9 9h6v6H9zm1.5 1.5v3h3v-3z',
+}
+
+function LibraryViewIcon({ mode }: { mode: ViewMode }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      data-library-view-icon={mode}
+      className="block h-4 w-4 shrink-0"
+      fill="currentColor"
+      shapeRendering="geometricPrecision"
+    >
+      <path d={LIBRARY_VIEW_ICON_PATH[mode]} />
+    </svg>
+  )
+}
 
 const SORT_OPTIONS: { key: Sort; tKey: string }[] = [
   { key: 'recents', tKey: 'sort.recents' },
@@ -247,6 +268,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const gridCompact = viewMode === 'grid-compact'
   const compactLibrary = listCompact || gridCompact
   const grid = isGrid
+  const maxDraggedLibraryGrid = !libraryExpanded && width >= THREE_COLUMN_W
   const compactLibraryHeader = !libraryExpanded && width < 340
   const compactCreateButton = compactLibraryHeader
   const handleLibraryBodyScroll = (event: UIEvent<HTMLDivElement>) => {
@@ -975,13 +997,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         <div className="relative shrink-0">
           <button
             onClick={() => setSortMenuOpen((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-normal text-secondary hover:text-primary hover:scale-105 active:scale-95 transition-all px-1"
+            className="flex h-8 items-center gap-2 px-1 text-xs font-normal leading-none text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
             title={t('sidebar.sort')}
             aria-haspopup="menu"
             aria-expanded={sortMenuOpen}
           >
             {t(SORT_OPTIONS.find((o) => o.key === sort)?.tKey ?? 'sort.recents')}
-            {isGrid ? <Squares2X2Icon className="w-4 h-4" /> : <ListBulletIcon className="w-4 h-4" />}
+            <LibraryViewIcon mode={viewMode} />
           </button>
           {sortMenuOpen && (
             <>
@@ -1006,38 +1028,22 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                       {
                         v: 'list-compact' as ViewMode,
                         label: t('sidebar.view.listCompact'),
-                        icon: (
-                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
-                            <path d="M15.5 13.5H.5V12h15zm0-4.75H.5v-1.5h15zm0-4.75H.5V2.5h15z" />
-                          </svg>
-                        ),
+                        icon: <LibraryViewIcon mode="list-compact" />,
                       },
                       {
                         v: 'list' as ViewMode,
                         label: t('sidebar.view.list'),
-                        icon: (
-                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
-                            <path d="M15 14.5H5V13h10zm0-5.75H5v-1.5h10zM15 3H5V1.5h10zM3 3H1V1.5h2zm0 11.5H1V13h2zm0-5.75H1v-1.5h2z" />
-                          </svg>
-                        ),
+                        icon: <LibraryViewIcon mode="list" />,
                       },
                       {
                         v: 'grid-compact' as ViewMode,
                         label: t('sidebar.view.gridCompact'),
-                        icon: (
-                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
-                            <path d="M1 1h3v3H1zm0 5.5h3v3H1zM4 12H1v3h3zM6.5 1h3v3h-3zm3 5.5h-3v3h3zm-3 5.5h3v3h-3zM15 1h-3v3h3zm-3 5.5h3v3h-3zm3 5.5h-3v3h3z" />
-                          </svg>
-                        ),
+                        icon: <LibraryViewIcon mode="grid-compact" />,
                       },
                       {
                         v: 'grid' as ViewMode,
                         label: t('sidebar.view.grid'),
-                        icon: (
-                          <svg viewBox="0 0 16 16" className="h-4 w-4" fill="currentColor">
-                            <path d="M1 1h6v6H1zm1.5 1.5v3h3v-3zM1 9h6v6H1zm1.5 1.5v3h3v-3zM9 1h6v6H9zm1.5 1.5v3h3v-3zM9 9h6v6H9zm1.5 1.5v3h3v-3z" />
-                          </svg>
-                        ),
+                        icon: <LibraryViewIcon mode="grid" />,
                       },
                     ]
                   ).map(({ v, icon, label }) => (
@@ -1115,7 +1121,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 ? gridCompact
                   ? '[grid-template-columns:repeat(auto-fill,minmax(128px,1fr))] gap-3 p-2'
                   : '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2'
-                : 'grid-cols-2',
+                : maxDraggedLibraryGrid
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2',
             )}
           >
             {showLiked && (

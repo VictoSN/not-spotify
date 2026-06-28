@@ -6,9 +6,16 @@ import { AboutPage, LegalPage, PrivacyPolicyPage } from './InfoPages'
 import { AppFooter } from '@/components/common/AppFooter'
 
 describe('Footer legal/info pages (bug #23)', () => {
-  it('About page loads with its heading', () => {
+  it('About page identifies the team and clearly states its academic, non-distribution purpose', () => {
     render(<MemoryRouter><AboutPage /></MemoryRouter>)
     expect(screen.getByRole('heading', { level: 1, name: 'About' })).toBeInTheDocument()
+    expect(screen.getByText('Stanlie Lin')).toBeInTheDocument()
+    expect(screen.getByText('Marvind Meydie Lincoln')).toBeInTheDocument()
+    expect(screen.getByText('Victoria Suwita Nanda')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Copyright and media notice' })).toBeInTheDocument()
+    expect(screen.getByText(/not a cracked or modified Spotify website/i)).toBeInTheDocument()
+    expect(screen.getByText(/obtained lawfully through purchases or legitimate providers/i)).toBeInTheDocument()
+    expect(screen.getByText(/non-commercial status does not by itself grant permission/i)).toBeInTheDocument()
   })
 
   it('Legal page loads with its heading', () => {

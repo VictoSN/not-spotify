@@ -470,7 +470,6 @@ export function HomePage() {
           </section>
         )}
       </div>
-      <AppFooter />
     </div>
   )
 }

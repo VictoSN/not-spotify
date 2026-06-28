@@ -19,7 +19,6 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
-import { AppFooter } from '@/components/common/AppFooter'
 import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { formatMs } from '@/utils/formatTime'
@@ -294,7 +293,6 @@ export function AlbumDetailPage() {
           </HorizontalScroller>
         </section>
       )}
-      <AppFooter />
     </div>
   )
 }

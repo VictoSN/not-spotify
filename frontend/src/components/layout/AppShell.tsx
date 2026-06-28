@@ -24,6 +24,7 @@ import { useFriendPolling } from '@/hooks/useFriendPolling'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useJamSocket } from '@/hooks/useJamSocket'
 import { JamBar } from '@/components/jam/JamBar'
+import { AppFooter } from '@/components/common/AppFooter'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
 import { cn } from '@/utils/cn'
@@ -152,6 +153,9 @@ export function AppShell() {
             className={`scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-clip ${karaokeVisible ? 'hidden' : ''}`}
           >
             <Outlet />
+            {/* Global footer — sits at the bottom of every routed page's scroll
+                content (Spotify-style), so individual pages don't render their own. */}
+            <AppFooter />
           </div>
           {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} flushRight={isHomeRoute} />}
           {karaokeVisible && (

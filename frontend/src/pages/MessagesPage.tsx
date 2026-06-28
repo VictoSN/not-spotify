@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { PaperAirplaneIcon, ChatBubbleLeftRightIcon, CheckIcon } from '@heroicons/react/24/outline'
+import { PaperAirplaneIcon, ChatBubbleLeftRightIcon, CheckIcon, LockClosedIcon } from '@heroicons/react/24/outline'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { useChatStore } from '@/stores/chatStore'
@@ -50,6 +50,7 @@ export function MessagesPage() {
   const isLoading = useChatStore((s) => s.isLoading)
   const { fetchConversations, openThread, closeThread, sendMessage, loadOlder, markRead } = useChatStore()
   const friends = useFriendStore((s) => s.friends)
+  const friendsLoaded = useFriendStore((s) => s.friendsLoaded)
   const activity = useFriendStore((s) => s.activity)
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
 
@@ -106,13 +107,19 @@ export function MessagesPage() {
         })()
       : null)
 
+  // Bug 28: once a friendship ends, the conversation history stays visible but the
+  // chat is locked — no sending. We only trust this verdict after the friends list
+  // has actually loaded, so a real friend never flashes "unfriended" on first paint.
+  const isFriend = activeUserId ? friends.some((f) => f.userId === activeUserId) : false
+  const chatLocked = Boolean(activeUserId) && friendsLoaded && !isFriend
+
   const select = (userId: string) => {
     setSearchParams({ u: userId }, { replace: true })
   }
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!activeUserId || !draft.trim()) return
+    if (!activeUserId || !draft.trim() || chatLocked) return
     sendMessage(activeUserId, draft)
     setDraft('')
   }
@@ -338,24 +345,36 @@ export function MessagesPage() {
               )}
             </div>
 
-            {/* Composer */}
-            <form onSubmit={submit} className="flex items-center gap-2 border-t border-elevated/40 px-4 py-3">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder={`Message ${activePartner.name}`}
-                maxLength={4000}
-                className="h-11 flex-1 rounded-full border border-transparent bg-elevated px-4 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-accent/60"
-              />
-              <button
-                type="submit"
-                disabled={!draft.trim()}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-black transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
-                aria-label="Send"
+            {/* Composer — locked once the friendship ends (bug 28) */}
+            {chatLocked ? (
+              <div
+                role="alert"
+                className="flex items-center justify-center gap-2.5 border-t border-elevated/40 bg-elevated/30 px-4 py-4 text-center"
               >
-                <PaperAirplaneIcon className="h-5 w-5" />
-              </button>
-            </form>
+                <LockClosedIcon className="h-4 w-4 shrink-0 text-secondary" />
+                <p className="text-sm text-secondary">
+                  You&rsquo;re no longer friends with {activePartner.name}. You cannot send messages unless you add them again.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={submit} className="flex items-center gap-2 border-t border-elevated/40 px-4 py-3">
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder={`Message ${activePartner.name}`}
+                  maxLength={4000}
+                  className="h-11 flex-1 rounded-full border border-transparent bg-elevated px-4 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-accent/60"
+                />
+                <button
+                  type="submit"
+                  disabled={!draft.trim()}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-black transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
+                  aria-label="Send"
+                >
+                  <PaperAirplaneIcon className="h-5 w-5" />
+                </button>
+              </form>
+            )}
           </>
         )}
       </section>

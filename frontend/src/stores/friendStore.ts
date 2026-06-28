@@ -9,6 +9,8 @@ interface FriendState {
   activity: FriendActivity[]
   suggestions: FriendSuggestion[]
   isLoading: boolean
+  /** True once the friends list has been fetched at least once this session. */
+  friendsLoaded: boolean
   lastActivityFetch: number
 
   fetchFriends: () => Promise<void>
@@ -30,13 +32,14 @@ export const useFriendStore = create<FriendState>((set, get) => ({
   activity: [],
   suggestions: [],
   isLoading: false,
+  friendsLoaded: false,
   lastActivityFetch: 0,
 
   fetchFriends: async () => {
     set({ isLoading: true })
     try {
       const friends = await friendService.getFriends()
-      set({ friends })
+      set({ friends, friendsLoaded: true })
     } catch {
       // silently ignore — network blip or backend not yet live
     } finally {
@@ -117,6 +120,7 @@ useAuthStore.subscribe((state, prev) => {
     activity: [],
     suggestions: [],
     isLoading: false,
+    friendsLoaded: false,
     lastActivityFetch: 0,
   })
 })

@@ -1357,7 +1357,8 @@ function LibraryArtwork({
   return <MusicalNoteIcon className={cn('text-secondary', grid ? 'h-8 w-8' : 'h-5 w-5')} />
 }
 
-function libraryInitials(name: string) {
+function libraryInitials(name: string | undefined | null) {
+  if (!name) return '?'
   const words = name.trim().split(/\s+/).filter(Boolean)
   if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase()
   return (words[0] ?? '?').slice(0, 2).toUpperCase()

@@ -237,10 +237,10 @@ export function HomePage() {
               key={f.key}
               onClick={() => setHomeFilter(f.key)}
               className={cn(
-                'flex h-8 shrink-0 items-center rounded-full px-3 py-1 text-sm font-normal transition-all active:scale-95',
+                'flex h-8 shrink-0 items-center rounded-full px-3 py-1 text-sm font-normal text-primary backdrop-blur-sm transition-all active:scale-95',
                 homeFilter === f.key
-                  ? 'bg-primary text-page'
-                  : 'bg-elevated text-secondary hover:bg-surface hover:text-primary backdrop-blur-sm',
+                  ? 'bg-primary/20'
+                  : 'bg-primary/10 hover:bg-primary/20',
               )}
               aria-pressed={homeFilter === f.key}
             >
@@ -524,7 +524,7 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           }
         }}
         onMouseLeave={() => setHoverColor(null)}
-        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-elevated transition-colors hover:bg-surface"
+        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-primary/10 backdrop-blur-sm transition-colors hover:bg-primary/20"
       >
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
           {playlist.coverUrl ? (

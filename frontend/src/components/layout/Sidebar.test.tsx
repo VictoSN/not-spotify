@@ -161,6 +161,22 @@ describe('Sidebar saved media navigation', () => {
     expect(container.querySelector('aside')).toHaveClass('z-30')
   })
 
+  it('keeps the library slide transition active while expanding and minimizing', () => {
+    const { container } = renderSidebar()
+    const sidebar = container.querySelector('aside')!
+
+    expect(sidebar).toHaveStyle({ flexGrow: '0' })
+    expect(sidebar).toHaveClass('library-sidebar-motion')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Your Library' }))
+    expect(sidebar).toHaveStyle({ flexGrow: '1' })
+    expect(sidebar).toHaveClass('library-sidebar-motion')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize Your Library' }))
+    expect(sidebar).toHaveStyle({ flexGrow: '0' })
+    expect(sidebar).toHaveClass('library-sidebar-motion')
+  })
+
   it('opens the create context menu from the Your Library header and title', () => {
     const { container } = renderSidebar()
     const header = container.querySelector('[data-sidebar-header-space="true"]')!

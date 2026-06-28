@@ -6,6 +6,7 @@ import { trackService } from '@/services/trackService'
 import { adService } from '@/services/adService'
 import { useAuthStore } from './authStore'
 import { useLibraryStore } from './libraryStore'
+import { recordPlay as recordContextPlay } from '@/utils/playHistory'
 
 // Fire-and-forget play tracking. We dedupe within a short window so seeking/re-clicking
 // the current track doesn't spam /me/plays. Module-scoped because it's an HTTP throttle,
@@ -383,6 +384,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTime: 0,
     })
     recordPlay(track.id)
+    // Record the *context* (playlist/album/artist/…) into local play history so
+    // the sidebar's "Played" column reflects playback started from anywhere in
+    // the app, not just rows played directly from the sidebar.
+    recordContextPlay(context.type, context.id)
   },
 
   pause: () => set({ isPlaying: false }),

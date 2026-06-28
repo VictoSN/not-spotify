@@ -130,6 +130,29 @@ describe('Sidebar saved media navigation', () => {
     expectRoute('/library')
   })
 
+  it('shows the recorded "Played" timestamp for items, and a dash when never played', () => {
+    // Recent play recorded for the playlist; the album has never been played.
+    window.localStorage.setItem('ns-play-history', JSON.stringify({ 'playlist:pl-played': new Date().toISOString() }))
+    useUiStore.setState({ libraryExpanded: true })
+    useLibraryStore.setState({
+      savedPlaylists: [{
+        id: 'pl-played', name: 'Played Playlist', coverUrl: null, isOwner: true,
+        owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [],
+      }] as never,
+      savedAlbums: [{
+        id: 'al-cold', title: 'Cold Album', type: 'album', coverUrl: null,
+        artist: { id: 'ar1', name: 'Artist' },
+      }] as never,
+    })
+    renderSidebar()
+
+    const playedRow = screen.getByRole('link', { name: /Played Playlist/ }).closest('.group\\/row')!
+    expect(playedRow).toHaveTextContent('Today')
+
+    const coldRow = screen.getByRole('link', { name: /Cold Album/ }).closest('.group\\/row')!
+    expect(coldRow).toHaveTextContent('—')
+  })
+
   it('opens the create menu only on blank library space and reuses both create actions', async () => {
     const { container } = renderSidebar()
     const blankSpace = container.querySelector('[data-sidebar-empty-space="true"]')!

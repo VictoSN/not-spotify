@@ -464,6 +464,16 @@ describe('playerStore — playback context', () => {
     expect(s.queue.map((t) => t.id)).toEqual(['a', 'b', 'c'])
   })
 
+  it('playContext() records the context into local play history (sidebar "Played" column)', () => {
+    setPremium()
+    window.localStorage.removeItem('ns-play-history')
+    usePlayerStore.getState().playContext({ type: 'playlist', id: 'pl42' }, [track('a')])
+    const history = JSON.parse(window.localStorage.getItem('ns-play-history') ?? '{}')
+    expect(history['playlist:pl42']).toBeTruthy()
+    // Stored as an ISO timestamp the sidebar formats with relativeDate().
+    expect(() => new Date(history['playlist:pl42']).toISOString()).not.toThrow()
+  })
+
   it('play() (a standalone pick) clears any previous context', () => {
     setPremium()
     usePlayerStore.getState().playContext({ type: 'album', id: 'al1' }, [track('a'), track('b')])

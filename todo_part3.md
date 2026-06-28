@@ -60,19 +60,19 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a missing data-fetching or display logic issue. The UI element exists but is not populated with the relevant metadata from the user's listening history. Without this feature, users lose visibility into their listening patterns and recency of engagement.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement backend logic to fetch last played timestamp for songs/artists/playlists/albums
-  - [ ] Create database query to retrieve listening history for each item
-  - [ ] Store last played timestamp in appropriate data structure
-  - [ ] Display "Played" column data when sidebar is maximized
-  - [ ] Format timestamps in human-readable format (e.g., "2 hours ago", "Yesterday", "Never")
+- [x] **Fix Implementation**
+  - [x] Implement backend logic to fetch last played timestamp for songs/artists/playlists/albums
+  - [x] Create database query to retrieve listening history for each item
+  - [x] Store last played timestamp in appropriate data structure
+  - [x] Display "Played" column data when sidebar is maximized
+  - [x] Format timestamps in human-readable format (e.g., "2 hours ago", "Yesterday", "Never")
 
-- [ ] **Tests to Complete**
-  - [ ] Test: "Played" column displays correct timestamp for recently played songs
-  - [ ] Test: "Played" column updates after playing a new track
-  - [ ] Test: "Played" column shows "Never" for items never played
-  - [ ] Test: "Played" column is hidden when sidebar is minimized
-  - [ ] Test: Sorting by "Played" column works correctly
+- [x] **Tests to Complete**
+  - [x] Test: "Played" column displays correct timestamp for recently played songs
+  - [x] Test: "Played" column updates after playing a new track
+  - [x] Test: "Played" column shows "Never" for items never played
+  - [x] Test: "Played" column is hidden when sidebar is minimized
+  - [x] Test: Sorting by "Played" column works correctly
 
 ---
 

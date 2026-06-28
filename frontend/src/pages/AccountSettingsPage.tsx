@@ -63,9 +63,11 @@ interface RowProps {
   external?: boolean
   disabled?: boolean
   disabledReason?: string
+  expanded?: boolean
+  controls?: string
 }
 
-function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, disabledReason }: RowProps) {
+function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, disabledReason, expanded, controls }: RowProps) {
   const description = disabled && disabledReason ? disabledReason : sub
   const inner = (
     <div
@@ -94,7 +96,14 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
 
   if (to && !disabled) return <Link to={to}>{inner}</Link>
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className="block w-full text-left">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-expanded={expanded}
+      aria-controls={controls}
+      className="block w-full text-left"
+    >
       {inner}
     </button>
   )
@@ -115,10 +124,12 @@ export function AccountSettingsPage() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
   const [downloadBusy, setDownloadBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showChangePw, setShowChangePw] = useState(false)
+  const [showPlanMembers, setShowPlanMembers] = useState(false)
 
   // Artist application state
   const [artistApp, setArtistApp] = useState<ArtistApplication | null | undefined>(undefined)
@@ -140,7 +151,10 @@ export function AccountSettingsPage() {
   const isArtist = user?.roles?.includes('Artist')
 
   useEffect(() => {
-    billingService.getSubscription().then(setSubscription).catch(() => setSubscription(null))
+    billingService.getSubscription()
+      .then(setSubscription)
+      .catch(() => setSubscription(null))
+      .finally(() => setSubscriptionLoaded(true))
     api.get<ArtistApplication>('/me/artist-application')
       .then((r) => setArtistApp(r.data))
       .catch(() => setArtistApp(null))
@@ -336,6 +350,7 @@ export function AccountSettingsPage() {
   if (!user) return null
 
   const isPremium = (subscription?.plan ?? user.plan) === 'premium'
+  const canManageMembers = isPremium && (subscription?.tier === 'duo' || subscription?.tier === 'family')
   const billingInterval = subscription?.interval ?? user.subscriptionInterval
   const renews = subscription?.currentPeriodEnd ?? user.subscriptionCurrentPeriodEnd
 
@@ -435,15 +450,16 @@ export function AccountSettingsPage() {
           disabled={!isPremium}
           disabledReason="Upgrade to Premium before managing a subscription."
         />
-        <SettingRow
-          icon={UsersIcon}
-          label="Manage members"
-          sub={isPremium ? 'View shared-plan seats and invites below' : 'Upgrade to Duo or Family to share Premium'}
-          onClick={() => {
-            if (!isPremium) navigate('/premium')
-            else document.getElementById('plan-members-card')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }}
-        />
+        {canManageMembers && (
+          <SettingRow
+            icon={UsersIcon}
+            label="Manage members"
+            sub="View, invite, or remove members from your shared plan"
+            onClick={() => setShowPlanMembers((shown) => !shown)}
+            expanded={showPlanMembers}
+            controls="plan-members-card"
+          />
+        )}
         {isPremium && (
           <SettingRow
             icon={XCircleIcon}
@@ -454,7 +470,10 @@ export function AccountSettingsPage() {
       </Section>
 
       {/* Plan members (self-hides when N/A) */}
-      <div id="plan-members-card" className="mt-5">
+      <div
+        id="plan-members-card"
+        className={cn('mt-5', (!subscriptionLoaded || (canManageMembers && !showPlanMembers)) && 'hidden')}
+      >
         <PlanMembersCard />
       </div>
 

@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom'
 import { PlusCircleIcon } from '@heroicons/react/24/outline'
 import { CheckCircleIcon, SparklesIcon, StarIcon } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
-import { useHueStore } from '@/stores/hueStore'
 import { usePlayerStore } from '@/stores/playerStore'
-import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
@@ -30,8 +28,6 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'playlist', id: playlist.id })
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
-  const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const { savedPlaylists, savePlaylist, unsavePlaylist } = useLibraryStore()
   const isSaved = savedPlaylists.some((p) => p.id === playlist.id)
   const menuTriggerRef = useRef<PlaylistRowMenuHandle>(null)
@@ -71,21 +67,6 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
   return (
     <Link
       to={`/playlist/${playlist.id}`}
-      onMouseEnter={() => {
-        if (playlist.coverUrl) {
-          getDominantColor(playlist.coverUrl).then((c) => {
-            if (c) {
-              setHoverColor(c)
-              setLastCoverColor(c)
-            }
-          })
-        } else {
-          // No cover — show a neutral grey so the hero doesn't snap to an
-          // unrelated colour from the last playing track.
-          setHoverColor('hsl(0 0% 33%)')
-        }
-      }}
-      onMouseLeave={() => setHoverColor(null)}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
       className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
     >

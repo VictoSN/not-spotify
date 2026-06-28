@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom'
 import type { Artist } from '@/types/artist'
 import { artistService } from '@/services/artistService'
 import { formatNumber } from '@/utils/formatNumber'
-import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlayerStore } from '@/stores/playerStore'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDragStore } from '@/stores/dragStore'
-import { useHueStore } from '@/stores/hueStore'
 import { ARTIST_DND_MIME, setArtistDragImage } from '@/utils/trackDnd'
 import { ArtistMenu, type ArtistMenuHandle } from './ArtistMenu'
 import { CardPlayButton } from './CardPlayButton'
@@ -29,8 +27,6 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setDraggedArtist = useDragStore((s) => s.setDraggedArtist)
-  const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const menuTriggerRef = useRef<ArtistMenuHandle>(null)
   const [loading, setLoading] = useState(false)
 
@@ -75,10 +71,6 @@ export function ArtistCard({ artist, flush = false, boldTitle = false }: ArtistC
         e.preventDefault()
         menuTriggerRef.current?.openAt(e.clientX, e.clientY)
       }}
-      onMouseEnter={() => {
-        if (artist.imageUrl) getDominantColor(artist.imageUrl).then((c) => { if (c) { setHoverColor(c); setLastCoverColor(c) } })
-      }}
-      onMouseLeave={() => setHoverColor(null)}
     >
       <Link
         to={`/artist/${artist.id}`}

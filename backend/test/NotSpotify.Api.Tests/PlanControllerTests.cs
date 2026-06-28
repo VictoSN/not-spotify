@@ -176,4 +176,35 @@ public class PlanControllerTests
         Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Empty(db.PlanMemberships);
     }
+
+    [Fact]
+    public async Task Invite_AsFamilyOwner_CreatesNormalizedPendingSeat()
+    {
+        await using var db = TestHelpers.NewDb();
+        var ownerId = Guid.NewGuid();
+        db.Users.Add(FamilyOwner(ownerId));
+        await db.SaveChangesAsync();
+
+        var result = await NewController(db, ownerId).Invite(new InvitePlanMemberRequest("  Friend@Example.com  "));
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        var seat = Assert.Single(db.PlanMemberships);
+        Assert.Equal("friend@example.com", seat.InvitedEmail);
+        Assert.Equal("invited", seat.Status);
+        Assert.Null(seat.MemberId);
+    }
+
+    [Fact]
+    public async Task Invite_WithMalformedEmail_ReturnsBadRequest()
+    {
+        await using var db = TestHelpers.NewDb();
+        var ownerId = Guid.NewGuid();
+        db.Users.Add(FamilyOwner(ownerId));
+        await db.SaveChangesAsync();
+
+        var result = await NewController(db, ownerId).Invite(new InvitePlanMemberRequest("person@"));
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Empty(db.PlanMemberships);
+    }
 }

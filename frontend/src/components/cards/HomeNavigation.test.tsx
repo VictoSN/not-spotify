@@ -9,6 +9,7 @@ import { HomeVideoTile } from '@/pages/HomePage'
 import { useAuthStore } from '@/stores/authStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useHueStore } from '@/stores/hueStore'
 import type { Playlist } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import type { MusicVideo } from '@/types/musicVideo'
@@ -101,6 +102,7 @@ describe('Home card navigation', () => {
   beforeEach(() => {
     useAuthStore.setState({ isAuthenticated: true })
     useLibraryStore.setState({ savedPlaylists: [], savedVideoIds: new Set() })
+    useHueStore.setState({ hoverColor: null, lastCoverColor: null })
   })
 
   afterEach(() => {
@@ -127,6 +129,35 @@ describe('Home card navigation', () => {
     expect(route()).toHaveTextContent(`/mix/${mix.id}`)
     fireEvent.click(screen.getByText(track.title))
     expect(route()).toHaveTextContent(`/track/${track.id}`)
+  })
+
+  it('animates only the track tile background on hover', () => {
+    renderCards(<TrackTile track={track} />)
+
+    expect(screen.getByTestId('track-tile-hover-background')).toHaveClass(
+      'transition-[opacity,transform]',
+      'group-hover:scale-100',
+      'group-hover:opacity-100',
+    )
+    expect(screen.getByRole('img', { name: track.title })).not.toHaveClass(
+      'transition-transform',
+      'group-hover:scale-105',
+    )
+  })
+
+  it('does not change the Home hue from regular playlist or track cards', () => {
+    renderCards(
+      <>
+        <PlaylistCard playlist={playlist} />
+        <TrackTile track={track} />
+      </>,
+    )
+
+    fireEvent.mouseEnter(screen.getByText(playlist.name).closest('.group')!)
+    fireEvent.mouseEnter(screen.getByText(track.title).closest('.group')!)
+
+    expect(useHueStore.getState().hoverColor).toBeNull()
+    expect(useHueStore.getState().lastCoverColor).toBeNull()
   })
 
   it('does not navigate when nested play or menu controls are clicked', async () => {

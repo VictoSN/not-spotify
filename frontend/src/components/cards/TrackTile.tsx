@@ -2,8 +2,6 @@ import { useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
-import { useHueStore } from '@/stores/hueStore'
-import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
@@ -26,8 +24,6 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
   const { currentTrack, isPlaying, pause, resume, currentContextType } = usePlayerStore()
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
-  const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const isCurrent = currentTrack?.id === track.id
@@ -62,15 +58,18 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
         e.currentTarget.style.opacity = ''
       }}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
-      onMouseEnter={() => getDominantColor(track.album.coverUrl).then((c) => { if (c) { setHoverColor(c); setLastCoverColor(c) } })}
-      onMouseLeave={() => setHoverColor(null)}
     >
       <Link
         to={`/track/${track.id}`}
         draggable={false}
-        className={`block rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
+        className={`relative isolate block overflow-hidden rounded-lg ${flush ? 'p-3' : 'p-3'}`}
       >
-        <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
+        <span
+          aria-hidden="true"
+          data-testid="track-tile-hover-background"
+          className="pointer-events-none absolute inset-0 z-0 scale-[0.97] rounded-lg bg-surface opacity-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transform-none motion-reduce:transition-none group-hover:scale-100 group-hover:opacity-100"
+        />
+        <div className="relative z-10 aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
           <img src={track.album.coverUrl} alt={track.title} draggable={false} className="w-full h-full object-cover" />
           <CardPlayButton
             onClick={handlePlay}
@@ -79,8 +78,8 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
             ariaLabel={isTrackSurfaceActive && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
           />
         </div>
-        <p className={`text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
-        <p className="text-xs text-secondary mt-0.5 truncate">
+        <p className={`relative z-10 text-sm ${boldTitle ? 'font-semibold' : 'font-normal'} truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>{track.title}</p>
+        <p className="relative z-10 text-xs text-secondary mt-0.5 truncate">
           <span
             role="link"
             tabIndex={0}

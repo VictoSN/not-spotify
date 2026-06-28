@@ -1,10 +1,11 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { HomePage, HomePodcastTile, HomeQuickPlaylist, HomeVideoTile, getHomeFilterVisibility } from './HomePage'
 import { useDragStore } from '@/stores/dragStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useHueStore } from '@/stores/hueStore'
 import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
@@ -17,6 +18,13 @@ class ResizeObserverStub {
 }
 
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+
+const dominantColorMock = vi.hoisted(() => vi.fn(() => Promise.resolve('hsl(280 42% 38%)')))
+
+vi.mock('@/hooks/useDominantColor', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/useDominantColor')>()),
+  getDominantColor: dominantColorMock,
+}))
 
 const mockVideo = vi.hoisted(() => ({
   id: 'video-1',
@@ -122,6 +130,7 @@ describe('Home media interactions', () => {
       draggedVideo: null,
       draggedPodcast: null,
     })
+    useHueStore.setState({ hoverColor: null, lastCoverColor: null })
   })
 
   it('maps the Music Video filter to video-only content', () => {
@@ -197,6 +206,24 @@ describe('Home media interactions', () => {
     const menuItem = await screen.findByRole('menuitem', { name: 'Add to queue' })
     expect(menuItem).toBeInTheDocument()
     fireEvent.click(menuItem)
+  })
+
+  it('uses artwork hue only when hovering a top quick-access playlist', async () => {
+    render(
+      <MemoryRouter>
+        <HomeQuickPlaylist playlist={playlist} />
+      </MemoryRouter>,
+    )
+
+    const playlistLink = screen.getByRole('link', { name: 'Home Playlist' })
+    fireEvent.mouseEnter(playlistLink)
+
+    await waitFor(() => expect(useHueStore.getState().hoverColor).toBe('hsl(280 42% 38%)'))
+    expect(dominantColorMock).toHaveBeenCalledWith('/playlist.jpg')
+    expect(useHueStore.getState().lastCoverColor).toBe('hsl(280 42% 38%)')
+
+    fireEvent.mouseLeave(playlistLink)
+    expect(useHueStore.getState().hoverColor).toBeNull()
   })
 
   it('shows a visualizer for the active playlist and uses the larger play control', () => {

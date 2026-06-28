@@ -1,3 +1,4 @@
+using System.Net.Mail;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -123,7 +124,9 @@ public class PlanController : ControllerBase
             return BadRequest(new { message = "Your plan doesn't include extra members. Switch to Duo or Family to invite people." });
 
         var email = Normalize(req.Email ?? string.Empty);
-        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+        if (string.IsNullOrWhiteSpace(email)
+            || !MailAddress.TryCreate(email, out var parsedEmail)
+            || !string.Equals(parsedEmail.Address, email, StringComparison.OrdinalIgnoreCase))
             return BadRequest(new { message = "Enter a valid email address." });
         if (email == Normalize(me.Email ?? string.Empty))
             return BadRequest(new { message = "You can't invite yourself." });

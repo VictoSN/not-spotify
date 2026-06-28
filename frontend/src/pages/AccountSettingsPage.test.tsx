@@ -30,12 +30,22 @@ const meServiceMock = vi.hoisted(() => ({
   deleteAccount: vi.fn(() => Promise.resolve()),
 }))
 
+const billingServiceMock = vi.hoisted(() => ({
+  getSubscription: vi.fn(),
+  createPortalSession: vi.fn(),
+  cancelSubscription: vi.fn(),
+}))
+
+const planServiceMock = vi.hoisted(() => ({
+  getOverview: vi.fn(),
+  invite: vi.fn(),
+  acceptInvite: vi.fn(),
+  declineInvite: vi.fn(),
+  removeMember: vi.fn(),
+}))
+
 vi.mock('@/services/billingService', () => ({
-  billingService: {
-    getSubscription: vi.fn(() => Promise.resolve({ plan: 'free', tier: 'individual', status: 'active', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })),
-    createPortalSession: vi.fn(),
-    cancelSubscription: vi.fn(),
-  },
+  billingService: billingServiceMock,
 }))
 
 vi.mock('@/services/meService', () => ({
@@ -43,9 +53,7 @@ vi.mock('@/services/meService', () => ({
 }))
 
 vi.mock('@/services/planService', () => ({
-  planService: {
-    getOverview: vi.fn(() => Promise.resolve(null)),
-  },
+  planService: planServiceMock,
 }))
 
 vi.mock('@/services/api', () => ({
@@ -86,6 +94,8 @@ async function clickAndFlush(element: HTMLElement) {
 describe('AccountSettingsPage account feature rows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    billingServiceMock.getSubscription.mockResolvedValue({ plan: 'free', tier: 'individual', status: 'active', interval: null, currentPeriodEnd: null, cancelAtPeriodEnd: false })
+    planServiceMock.getOverview.mockResolvedValue(null)
     act(() => {
       useAuthStore.setState({
         isAuthenticated: true,
@@ -137,6 +147,51 @@ describe('AccountSettingsPage account feature rows', () => {
     expect(screen.getByRole('link', { name: /Notification settings/ })).toHaveAttribute('href', '/settings')
     expect(screen.getByRole('link', { name: /Account privacy/ })).toHaveAttribute('href', '/settings')
     expect(screen.getByRole('link', { name: /App support/ })).toHaveAttribute('href', '/support')
+  })
+
+  it('opens member management for Family plans', async () => {
+    billingServiceMock.getSubscription.mockResolvedValue({ plan: 'premium', tier: 'family', status: 'active', interval: 'monthly', currentPeriodEnd: null, cancelAtPeriodEnd: false })
+    planServiceMock.getOverview.mockResolvedValue({
+      tier: 'family',
+      maxMembers: 6,
+      isOwner: true,
+      isMember: false,
+      planOwner: null,
+      mySeatId: null,
+      seatsUsed: 1,
+      seatsTotal: 6,
+      members: [],
+      incomingInvites: [],
+    })
+    act(() => {
+      useAuthStore.setState({ user: { ...useAuthStore.getState().user!, plan: 'premium' } })
+    })
+
+    await renderAccount()
+
+    const manage = await screen.findByRole('button', { name: /Manage members/ })
+    const membersHeading = await screen.findByText('Plan members')
+    const membersPanel = document.getElementById('plan-members-card')!
+    expect(manage).toHaveAttribute('aria-expanded', 'false')
+    expect(membersPanel).toHaveClass('hidden')
+
+    await clickAndFlush(manage)
+
+    expect(manage).toHaveAttribute('aria-expanded', 'true')
+    expect(membersPanel).not.toHaveClass('hidden')
+    expect(membersHeading).toBeVisible()
+    expect(screen.getByPlaceholderText('Invite by email…')).toBeVisible()
+  })
+
+  it('hides member management for Individual plans', async () => {
+    billingServiceMock.getSubscription.mockResolvedValue({ plan: 'premium', tier: 'individual', status: 'active', interval: 'monthly', currentPeriodEnd: null, cancelAtPeriodEnd: false })
+    act(() => {
+      useAuthStore.setState({ user: { ...useAuthStore.getState().user!, plan: 'premium' } })
+    })
+
+    await renderAccount()
+
+    expect(screen.queryByRole('button', { name: /Manage members/ })).not.toBeInTheDocument()
   })
 
   it('persists ad preference edits and redeem submissions', async () => {

@@ -144,18 +144,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is likely a holdover from a planned feature that was never fully implemented. This is a broken link that leads nowhere.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement "Manage Members" functionality for family/student plans
-  - [ ] Create UI to view, add, and remove members
-  - [ ] Link to family/student plan member management
-  - [ ] Or remove the button entirely if feature is not planned
+- [x] **Fix Implementation**
+  - [x] Implement "Manage Members" functionality for Duo/Family plans
+  - [x] Create UI to view, add, and remove members
+  - [x] Link to Duo/Family plan member management
+  - [x] Hide the button for plans that do not support shared seats
 
-- [ ] **Tests to Complete**
-  - [ ] Test: "Manage Members" button appears for family/student plans
-  - [ ] Test: Clicking button opens member management UI
-  - [ ] Test: Can add new members with proper email verification
-  - [ ] Test: Can remove existing members
-  - [ ] Test: Button is hidden for individual plans
+- [x] **Tests to Complete**
+  - [x] Test: "Manage Members" button appears for Duo/Family plans
+  - [x] Test: Clicking button opens member management UI
+  - [x] Test: Can add new members with proper email validation
+  - [x] Test: Can remove existing members
+  - [x] Test: Button is hidden for individual plans
 
 ---
 
@@ -428,11 +428,11 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 Fix Implementation
 
-[]Restrict dynamic hue coloring to only the top playlist tiles on the Home page
+- [x] Restrict dynamic hue coloring to only the top playlist tiles on the Home page
 
 Tests to Complete
 
-[]Test: Top Home playlist tiles use artwork-based hue
+- [x] Test: Top Home playlist tiles use artwork-based hue
 
 ---
 

@@ -233,6 +233,76 @@ describe('Sidebar saved media navigation', () => {
     expect(pinned).toContain('pl-a')
   })
 
+  describe('drag-and-drop reordering (bug 26)', () => {
+    const twoPlaylists = () => {
+      useLibraryStore.setState({
+        savedPlaylists: [
+          { id: 'a', name: 'Alpha', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+          { id: 'b', name: 'Beta', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-02T00:00:00Z', tracks: [] },
+        ] as never,
+        savedVideos: [], savedPodcasts: [],
+      })
+    }
+
+    // jsdom drag events don't carry a real DataTransfer; this mimics the bits we use.
+    const makeDataTransfer = () => {
+      const store: Record<string, string> = {}
+      return {
+        effectAllowed: '', dropEffect: '',
+        setData: (type: string, val: string) => { store[type] = String(val) },
+        getData: (type: string) => store[type] ?? '',
+        get types() { return Object.keys(store) },
+      }
+    }
+
+    const rowFor = (name: RegExp) => screen.getByRole('link', { name }).closest('.group\\/row')!
+
+    it('reorders a playlist by drag-and-drop, persists the order, and switches to Custom sort', () => {
+      twoPlaylists()
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      // Drag Alpha and drop it onto the lower half of Beta → Alpha lands after Beta.
+      fireEvent.dragStart(rowFor(/Alpha/), { dataTransfer: dt })
+      fireEvent.dragOver(rowFor(/Beta/), { dataTransfer: dt, clientY: 50 })
+      fireEvent.drop(rowFor(/Beta/), { dataTransfer: dt, clientY: 50 })
+
+      expect(JSON.parse(window.localStorage.getItem('ns-library-order') ?? '[]')).toEqual(['pl-b', 'pl-a'])
+      expect(window.localStorage.getItem('ns-library-sort')).toBe('custom')
+
+      const alpha = screen.getByRole('link', { name: /Alpha/ })
+      const beta = screen.getByRole('link', { name: /Beta/ })
+      expect(beta.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('also reorders from the minimized rail', () => {
+      twoPlaylists()
+      window.localStorage.setItem('ns-sidebar-width', '72') // minimized rail
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      const alphaRail = screen.getByRole('link', { name: 'Alpha' }).closest('.group\\/row')!
+      const betaRail = screen.getByRole('link', { name: 'Beta' }).closest('.group\\/row')!
+      fireEvent.dragStart(alphaRail, { dataTransfer: dt })
+      fireEvent.dragOver(betaRail, { dataTransfer: dt, clientY: 50 })
+      fireEvent.drop(betaRail, { dataTransfer: dt, clientY: 50 })
+
+      expect(JSON.parse(window.localStorage.getItem('ns-library-order') ?? '[]')).toEqual(['pl-b', 'pl-a'])
+    })
+
+    it('restores the saved custom order on reload', () => {
+      twoPlaylists()
+      // Simulate a previous session: Beta before Alpha, custom sort persisted.
+      window.localStorage.setItem('ns-library-order', JSON.stringify(['pl-b', 'pl-a']))
+      window.localStorage.setItem('ns-library-sort', 'custom')
+      renderSidebar()
+
+      const alpha = screen.getByRole('link', { name: /Alpha/ })
+      const beta = screen.getByRole('link', { name: /Beta/ })
+      expect(beta.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+  })
+
   it('opens the create menu only on blank library space and reuses both create actions', async () => {
     const { container } = renderSidebar()
     const blankSpace = container.querySelector('[data-sidebar-empty-space="true"]')!

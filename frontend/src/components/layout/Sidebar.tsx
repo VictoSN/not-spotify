@@ -62,6 +62,13 @@ import {
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
 import { getPinnedKeys, PINNED_EVENT } from '@/utils/pinnedLibrary'
+import {
+  getCustomOrder,
+  setCustomOrder,
+  reorderKeys,
+  LIBRARY_ORDER_EVENT,
+  LIBRARY_REORDER_MIME,
+} from '@/utils/libraryOrder'
 import { PinIcon } from '@/components/cards/PinMenuItem'
 import { cn } from '@/utils/cn'
 
@@ -154,6 +161,16 @@ function getInitialViewMode(): ViewMode {
   }
 }
 
+const SORT_STORAGE_KEY = 'ns-library-sort'
+
+function getInitialSort(): Sort {
+  if (typeof window === 'undefined') return 'recents'
+  const s = window.localStorage.getItem(SORT_STORAGE_KEY)
+  return s === 'recents' || s === 'recentlyAdded' || s === 'alpha' || s === 'creator' || s === 'custom'
+    ? s
+    : 'recents'
+}
+
 function relativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const days = Math.floor(diff / 86400000)
@@ -207,13 +224,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   const [width, setWidth] = useState(getInitialWidth)
   const [filter, setFilter] = useState<Filter>('all')
-  const [sort, setSort] = useState<Sort>('recents')
+  const [sort, setSort] = useState<Sort>(getInitialSort)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
   const [playHistory, setPlayHistory] = useState(getPlayHistory)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
   const [pinnedKeys, setPinnedKeys] = useState<string[]>(getPinnedKeys)
+  const [customOrder, setCustomOrderState] = useState<string[]>(getCustomOrder)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -325,6 +343,27 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       window.removeEventListener('storage', sync)
     }
   }, [])
+
+  // Manual ("Custom" sort) ordering set by drag-reorder; kept in step across
+  // tabs/instances via LIBRARY_ORDER_EVENT, like the pinned keys above.
+  useEffect(() => {
+    const sync = () => setCustomOrderState(getCustomOrder())
+    window.addEventListener(LIBRARY_ORDER_EVENT, sync)
+    window.addEventListener('storage', sync)
+    return () => {
+      window.removeEventListener(LIBRARY_ORDER_EVENT, sync)
+      window.removeEventListener('storage', sync)
+    }
+  }, [])
+
+  // Persist the chosen sort so a drag-reordered ("custom") library survives reload.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, sort)
+    } catch {
+      /* ignore */
+    }
+  }, [sort])
 
   // ── Drag to resize ──────────────────────────────────────────────
   const [dragging, setDragging] = useState(false)
@@ -522,6 +561,12 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
     else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
+    else if (sort === 'custom' && customOrder.length > 0) {
+      // Manual drag order. Items absent from the saved order (e.g. newly added)
+      // keep their default position by sorting to the end, stably.
+      const rank = new Map(customOrder.map((k, i) => [k, i]))
+      list = [...list].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity))
+    }
 
     // Float pinned items to the top, in pin order (most-recently pinned first),
     // while preserving the active sort for everything else. Stable so unpinned
@@ -535,7 +580,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       })
     }
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, pinnedKeys, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, pinnedKeys, customOrder, t])
 
   const pinnedSet = useMemo(() => new Set(pinnedKeys), [pinnedKeys])
   const pinnedCount = useMemo(() => items.filter((i) => pinnedSet.has(i.key)).length, [items, pinnedSet])
@@ -617,6 +662,20 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const foldersActive = filter === 'all' && !query.trim()
   const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
   const hasFolderSection = foldersActive && folders.length > 0
+
+  // Drag-reorder: move `fromKey` before/after `toKey` over the currently shown
+  // flat list, persist the new order, and switch to the Custom sort so it sticks.
+  // Only offered in the default view (no filter/search) to keep the saved order
+  // complete. Pins still float to the top afterwards (composed in `items`).
+  // Reorder over the full item list (works for both the expanded list/grid and
+  // the minimized rail; folder-grouped rows keep their slots and are simply
+  // filtered into folders when expanded).
+  const reorderEnabled = foldersActive
+  const reorderLibrary = (fromKey: string, toKey: string, before: boolean) => {
+    const next = reorderKeys(items.map((i) => i.key), fromKey, toKey, before)
+    setCustomOrder(next)
+    if (sort !== 'custom') setSort('custom')
+  }
 
   const handleCreateFolder = () => {
     const folder = createFolder()
@@ -802,6 +861,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   compact={compactLibrary}
                   video={videoFor(item)}
                   podcast={podcastFor(item)}
+                  onReorder={reorderEnabled ? reorderLibrary : undefined}
                 />
                 {showPinDivider && <div aria-hidden className="my-1 h-px w-8 shrink-0 bg-secondary/25" />}
               </Fragment>
@@ -1169,6 +1229,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   nowPlaying={isNowPlaying(item)}
                   pinned={pinnedSet.has(item.key)}
                   onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                  onReorder={reorderEnabled ? reorderLibrary : undefined}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
@@ -1244,6 +1305,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   pinned={pinnedSet.has(item.key)}
                   onPlay={() => playLibraryItem(item)}
                   onNavigate={() => { if (libraryExpanded) setLibraryExpanded(false) }}
+                  onReorder={reorderEnabled ? reorderLibrary : undefined}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}
@@ -1407,12 +1469,15 @@ function CollapsedLibraryItem({
   compact,
   video,
   podcast,
+  onReorder,
 }: {
   item: LibItem
   compact: boolean
   video?: MusicVideo
   podcast?: PodcastSummary
+  onReorder?: (fromKey: string, toKey: string, before: boolean) => void
 }) {
+  const { dragProps, indicator } = useReorderDrag(item.key, onReorder)
   const videoMenuRef = useRef<VideoMenuHandle>(null)
   const podcastMenuRef = useRef<PodcastMenuHandle>(null)
   const handleContextMenu = video
@@ -1422,11 +1487,13 @@ function CollapsedLibraryItem({
       : undefined
 
   return (
-    <div className="group/row relative" onContextMenu={handleContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu} {...dragProps}>
+      {indicator}
       <Link
         to={item.to}
         title={item.name}
         aria-label={item.name}
+        draggable={false}
         className={cn(
           'flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-elevated transition-transform hover:scale-105',
           item.round ? 'rounded-full' : 'rounded-md',
@@ -1489,6 +1556,66 @@ function LibraryPlayButton({
   )
 }
 
+/**
+ * HTML5 drag-reorder for a sidebar item. Uses a dedicated MIME so it never
+ * collides with the content save-drops; the drop target reads the dragged key
+ * straight off `dataTransfer` (no shared state needed). Returns props to spread
+ * on the row root plus a drop-position indicator. Inert when `onReorder` is
+ * absent (e.g. while searching/filtering or for rows inside folders).
+ */
+function useReorderDrag(
+  itemKey: string,
+  onReorder?: (fromKey: string, toKey: string, before: boolean) => void,
+) {
+  const [over, setOver] = useState<null | 'before' | 'after'>(null)
+  if (!onReorder) return { dragProps: {} as React.HTMLAttributes<HTMLElement>, indicator: null }
+
+  const isReorder = (e: React.DragEvent) => e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)
+
+  const dragProps: React.HTMLAttributes<HTMLElement> & { draggable: boolean } = {
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData(LIBRARY_REORDER_MIME, itemKey)
+      e.dataTransfer.setData('text/plain', itemKey)
+      e.dataTransfer.effectAllowed = 'move'
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (!isReorder(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      e.dataTransfer.dropEffect = 'move'
+      const rect = e.currentTarget.getBoundingClientRect()
+      setOver(e.clientY < rect.top + rect.height / 2 ? 'before' : 'after')
+    },
+    onDragLeave: (e: React.DragEvent) => {
+      if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+      setOver(null)
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!isReorder(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      const fromKey = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
+      const before = over !== 'after'
+      setOver(null)
+      if (fromKey && fromKey !== itemKey) onReorder(fromKey, itemKey, before)
+    },
+    onDragEnd: () => setOver(null),
+  }
+
+  const indicator = over ? (
+    <div
+      aria-hidden="true"
+      className={cn(
+        'pointer-events-none absolute inset-x-1 z-30 h-0.5 rounded bg-accent',
+        over === 'before' ? 'top-0' : 'bottom-0',
+      )}
+    />
+  ) : null
+
+  return { dragProps, indicator }
+}
+
 /** A library row in list layout (used by the flat list + inside folders). */
 function LibraryListRow({
   item,
@@ -1499,6 +1626,7 @@ function LibraryListRow({
   children,
   onPlay,
   onNavigate,
+  onReorder,
   menuPlaylist,
   menuAlbum,
   menuArtist,
@@ -1513,12 +1641,14 @@ function LibraryListRow({
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   onNavigate?: () => void
+  onReorder?: (fromKey: string, toKey: string, before: boolean) => void
   menuPlaylist?: Playlist
   menuAlbum?: Album
   menuArtist?: Artist
   menuVideo?: MusicVideo
   menuPodcast?: PodcastSummary
 }) {
+  const { dragProps, indicator } = useReorderDrag(item.key, onReorder)
   // Playlists get the Spotify-style pointer menu; other rows keep the ⋯ behaviour.
   const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
   const albumMenuRef = useRef<AlbumMenuHandle>(null)
@@ -1540,10 +1670,13 @@ function LibraryListRow({
     <div
       className="group/row relative"
       onContextMenu={handleContextMenu}
+      {...dragProps}
     >
+      {indicator}
       <NavLink
         to={item.to}
         onClick={onNavigate}
+        draggable={false}
         className={({ isActive }) =>
           cn(
             'flex items-center rounded-md transition-colors',
@@ -1620,6 +1753,7 @@ function LibraryGridCard({
   nowPlaying,
   pinned = false,
   onNavigate,
+  onReorder,
   children,
   onPlay,
   menuPlaylist,
@@ -1633,6 +1767,7 @@ function LibraryGridCard({
   nowPlaying: boolean
   pinned?: boolean
   onNavigate: () => void
+  onReorder?: (fromKey: string, toKey: string, before: boolean) => void
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   menuPlaylist?: Playlist
@@ -1641,6 +1776,7 @@ function LibraryGridCard({
   menuVideo?: MusicVideo
   menuPodcast?: PodcastSummary
 }) {
+  const { dragProps, indicator } = useReorderDrag(item.key, onReorder)
   const playlistMenuRef = useRef<PlaylistRowMenuHandle>(null)
   const albumMenuRef = useRef<AlbumMenuHandle>(null)
   const artistMenuRef = useRef<ArtistMenuHandle>(null)
@@ -1658,10 +1794,12 @@ function LibraryGridCard({
             ? (e: React.MouseEvent) => openMenuAtPointer(e, podcastMenuRef)
             : undefined
   return (
-    <div className="group/row relative" onContextMenu={handleContextMenu}>
+    <div className="group/row relative" onContextMenu={handleContextMenu} {...dragProps}>
+      {indicator}
       <NavLink
         to={item.to}
         onClick={onNavigate}
+        draggable={false}
         className={({ isActive }) =>
           cn(
             'block rounded-md transition-colors',

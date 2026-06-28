@@ -766,6 +766,9 @@ export function TopBar() {
         </div>
       )}
 
+      {/* Notifications bell — desktop only */}
+      <NotificationBell />
+
       {/* Messages — red badge shows unread count */}
       <button
         onClick={() => {
@@ -787,13 +790,6 @@ export function TopBar() {
           </span>
         )}
       </button>
-
-      {/* Notifications bell — desktop only */}
-      <NotificationBell />
-
-      {/* Friend activity feed toggle — desktop only */}
-
-      {/* Friends panel toggle — desktop only */}
 
       {/* Right: user menu */}
       <div className="relative">

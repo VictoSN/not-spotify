@@ -25,7 +25,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useRatingStore } from '@/stores/ratingStore'
-import { getPinnedSet, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import { useTranslation } from '@/i18n/useTranslation'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
@@ -102,6 +101,8 @@ interface LibItem {
   acceptsTracks: boolean
   /** Whether this row exposes an inline play button (videos/podcasts are navigate-only). */
   playable: boolean
+  /** ISO date string for "Date added" column in expanded list view. */
+  addedAt?: string
 }
 
 interface SidebarProps {
@@ -126,6 +127,19 @@ function getInitialViewMode(): ViewMode {
   } catch {
     return 'list'
   }
+}
+
+function relativeDate(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const days = Math.floor(diff / 86400000)
+  if (days < 1) return 'Today'
+  if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks} week${weeks === 1 ? '' : 's'} ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months} month${months === 1 ? '' : 's'} ago`
+  const years = Math.floor(days / 365)
+  return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
 function albumKindLabel(type: Album['type']): string {
@@ -172,7 +186,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
-  const [pinned, setPinned] = useState<Set<string>>(getPinnedSet)
   const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
@@ -256,17 +269,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     window.localStorage.setItem(STORAGE_KEY, String(width))
   }, [width])
 
-
-  // Keep pinned items in step across tabs/views (the toggle lives on each row).
-  useEffect(() => {
-    const sync = () => setPinned(getPinnedSet())
-    window.addEventListener(PINNED_EVENT, sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener(PINNED_EVENT, sync)
-      window.removeEventListener('storage', sync)
-    }
-  }, [])
 
   // Keep folders in step (created/edited from the row + folder menus).
   useEffect(() => {
@@ -404,6 +406,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       to: `/playlist/${p.id}`,
       acceptsTracks: !!p.isOwner,
       playable: true,
+      addedAt: p.createdAt,
     }))
     const albums: LibItem[] = savedAlbums.map((a) => ({
       key: `al-${a.id}`,
@@ -470,12 +473,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
     else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
-    // Pinned items float to the top, keeping their order among the rest.
-    if (pinned.size) {
-      list = [...list.filter((i) => pinned.has(i.key)), ...list.filter((i) => !pinned.has(i.key))]
-    }
     return list
-  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, pinned, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, t])
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
@@ -1120,14 +1119,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   menuArtist={artistFor(item)}
                   menuVideo={videoFor(item)}
                   menuPodcast={podcastFor(item)}
-                >
-                  <RowOverlay
-                    variant="grid"
-                    itemKey={item.key}
-                    pinned={pinned.has(item.key)}
-                    showPin
-                  />
-                </LibraryGridCard>
+                />
+
               </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
@@ -1136,6 +1129,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </div>
         ) : (
           <>
+            {libraryExpanded && (
+              <div className="mb-1 flex items-center gap-3 border-b border-secondary/10 px-4 pb-1">
+                {!listCompact && <div className="w-12 shrink-0" />}
+                <div className="flex flex-1 items-center">
+                  <span className="flex-1 text-xs font-normal text-secondary">{t('sidebar.col.title')}</span>
+                  <span className="w-1/4 shrink-0 text-center text-xs font-normal text-secondary">{t('sidebar.col.dateAdded')}</span>
+                  <span className="w-1/5 shrink-0 text-right text-xs font-normal text-secondary">{t('sidebar.col.played')}</span>
+                </div>
+              </div>
+            )}
             {showLiked && (
               <TrackDropZone accepts onDropTrack={dropTrackOnLiked}>
                 <NavLink
@@ -1154,11 +1157,19 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                       <LibraryPlayButton label={t('sidebar.likedSongs')} context={{ type: 'liked', id: 'liked' }} onStart={playLikedSongs} />
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
-                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
-                      {t('sidebar.likedSongsSub', { n: likedSongs.length })}
-                    </p>
+                  <div className={cn('min-w-0 flex-1', libraryExpanded && 'flex items-center')}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-normal leading-tight text-primary">{t('sidebar.likedSongs')}</p>
+                      <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
+                        {t('sidebar.likedSongsSub', { n: likedSongs.length })}
+                      </p>
+                    </div>
+                    {libraryExpanded && (
+                      <>
+                        <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">—</span>
+                        <span className="w-1/5 shrink-0 text-right text-[13px] text-secondary">—</span>
+                      </>
+                    )}
                   </div>
                 </NavLink>
               </TrackDropZone>
@@ -1172,22 +1183,15 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 <LibraryListRow
                   item={item}
                   compact={listCompact}
+                  expanded={libraryExpanded}
                   nowPlaying={isNowPlaying(item)}
-                  pinned={pinned.has(item.key)}
                   onPlay={() => playLibraryItem(item)}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}
                   menuVideo={videoFor(item)}
                   menuPodcast={podcastFor(item)}
-                >
-                  <RowOverlay
-                    variant="list"
-                    itemKey={item.key}
-                    pinned={pinned.has(item.key)}
-                    showPin
-                  />
-                </LibraryListRow>
+                />
               </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
@@ -1287,60 +1291,6 @@ function TrackDropZone({
   )
 }
 
-function PinButton({
-  itemKey,
-  pinned,
-  variant,
-}: {
-  itemKey: string
-  pinned: boolean
-  variant: 'list' | 'grid'
-}) {
-  const { t } = useTranslation()
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        // Sibling of the NavLink, but guard against any bubbling to be safe.
-        e.preventDefault()
-        e.stopPropagation()
-        togglePinned(itemKey)
-      }}
-      aria-label={pinned ? t('sidebar.unpinAria') : t('sidebar.pinAria')}
-      aria-pressed={pinned}
-      title={pinned ? t('sidebar.unpin') : t('sidebar.pin')}
-      className={cn(
-        'absolute z-10 rounded-full p-1.5 transition-all hover:scale-110 active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-        // Sits just left of the row's ⋯ menu button.
-        variant === 'list'
-          ? pinned
-            ? 'bottom-[9px] left-[var(--sidebar-pin-left)] p-0'
-            : 'right-9 top-1/2 -translate-y-1/2'
-          : 'right-11 top-2 bg-page/70 backdrop-blur-sm',
-        pinned
-          ? 'text-accent opacity-100'
-          : 'text-secondary opacity-0 hover:text-primary group-hover/row:opacity-100',
-      )}
-    >
-      <PinIcon className="h-4 w-4" />
-    </button>
-  )
-}
-
-/** Pin (if shown) + the ⋯ "move to folder" menu, overlaid on a library row. */
-function RowOverlay({
-  variant,
-  itemKey,
-  pinned,
-  showPin,
-}: {
-  variant: 'list' | 'grid'
-  itemKey: string
-  pinned: boolean
-  showPin: boolean
-}) {
-  return showPin ? <PinButton itemKey={itemKey} pinned={pinned} variant={variant} /> : null
-}
 
 function LibraryArtwork({
   item,
@@ -1486,8 +1436,8 @@ function LibraryPlayButton({
 function LibraryListRow({
   item,
   compact,
+  expanded = false,
   nowPlaying,
-  pinned = false,
   children,
   onPlay,
   menuPlaylist,
@@ -1498,8 +1448,8 @@ function LibraryListRow({
 }: {
   item: LibItem
   compact: boolean
+  expanded?: boolean
   nowPlaying: boolean
-  pinned?: boolean
   children?: React.ReactNode
   onPlay: () => void | Promise<void>
   menuPlaylist?: Playlist
@@ -1527,10 +1477,7 @@ function LibraryListRow({
             : undefined
   return (
     <div
-      className={cn(
-        'group/row relative',
-        compact ? '[--sidebar-pin-left:40px]' : '[--sidebar-pin-left:76px]',
-      )}
+      className="group/row relative"
       onContextMenu={handleContextMenu}
     >
       <NavLink
@@ -1556,18 +1503,23 @@ function LibraryListRow({
             )}
           </div>
         )}
-        <div className="min-w-0 flex-1 pr-14">
-          <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
-            {item.name}
-          </p>
-          <p
-            className={cn(
-              'mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary',
-              pinned && 'pl-5',
-            )}
-          >
-            {item.subtitle}
-          </p>
+        <div className={cn('min-w-0 flex-1', expanded ? 'flex items-center' : 'pr-14')}>
+          <div className="min-w-0 flex-1">
+            <p className={cn('truncate text-sm font-normal leading-tight', nowPlaying ? 'text-accent' : 'text-primary')}>
+              {item.name}
+            </p>
+            <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
+              {item.subtitle}
+            </p>
+          </div>
+          {expanded && (
+            <>
+              <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">
+                {item.addedAt ? relativeDate(item.addedAt) : '—'}
+              </span>
+              <span className="w-1/5 shrink-0 text-right text-[13px] text-secondary">—</span>
+            </>
+          )}
         </div>
       </NavLink>
       {children}
@@ -1860,14 +1812,7 @@ function FolderGroup({
                 menuArtist={artistFor(item)}
                 menuVideo={videoFor(item)}
                 menuPodcast={podcastFor(item)}
-              >
-                <RowOverlay
-                  variant="list"
-                  itemKey={item.key}
-                  pinned={false}
-                  showPin={false}
-                />
-              </LibraryListRow>
+              />
             ))
           )}
         </div>
@@ -1876,21 +1821,6 @@ function FolderGroup({
   )
 }
 
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-    >
-      <path
-        d="M5.25 1.5h5.5v1.2L9.6 3.85v3.1l1.65 1.65v1.15H8.6v4.75H7.4V9.75H4.75V8.6L6.4 6.95v-3.1L5.25 2.7V1.5Z"
-        transform="rotate(45 8 8)"
-      />
-    </svg>
-  )
-}
 
 function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
   return (

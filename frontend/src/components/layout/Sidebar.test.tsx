@@ -153,6 +153,50 @@ describe('Sidebar saved media navigation', () => {
     expect(coldRow).toHaveTextContent('—')
   })
 
+  it('floats pinned items to the top and reflects live pin changes', () => {
+    useUiStore.setState({ libraryExpanded: true })
+    useLibraryStore.setState({
+      savedPlaylists: [
+        { id: 'a', name: 'Alpha', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+        { id: 'b', name: 'Beta', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-02T00:00:00Z', tracks: [] },
+      ] as never,
+      savedVideos: [], savedPodcasts: [],
+    })
+    // Beta is pinned → it should lead the list ahead of Alpha.
+    window.localStorage.setItem('ns-library-pinned', JSON.stringify(['pl-b']))
+    renderSidebar()
+
+    const alpha = screen.getByRole('link', { name: /Alpha/ })
+    const beta = screen.getByRole('link', { name: /Beta/ })
+    expect(beta.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    // Re-pin Alpha live: it should now jump ahead of Beta without a remount.
+    act(() => {
+      window.localStorage.setItem('ns-library-pinned', JSON.stringify(['pl-a']))
+      window.dispatchEvent(new CustomEvent('ns-pinned-change'))
+    })
+    expect(alpha.compareDocumentPosition(beta) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('offers Pin to top in a row menu and persists the pin', async () => {
+    useLibraryStore.setState({
+      savedPlaylists: [
+        { id: 'a', name: 'Alpha', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+      ] as never,
+      savedVideos: [], savedPodcasts: [],
+    })
+    renderSidebar()
+
+    const row = screen.getByRole('link', { name: /Alpha/ }).closest('.group\\/row')!
+    fireEvent.contextMenu(row, { clientX: 100, clientY: 80 })
+
+    const pin = await screen.findByText('Pin to top')
+    fireEvent.click(pin)
+
+    const pinned = JSON.parse(window.localStorage.getItem('ns-library-pinned') ?? '[]')
+    expect(pinned).toContain('pl-a')
+  })
+
   it('opens the create menu only on blank library space and reuses both create actions', async () => {
     const { container } = renderSidebar()
     const blankSpace = container.querySelector('[data-sidebar-empty-space="true"]')!

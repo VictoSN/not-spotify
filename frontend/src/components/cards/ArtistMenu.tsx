@@ -27,6 +27,7 @@ import {
 } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
 import { ShareIcon } from '@/components/common/ShareIcon'
+import { PinMenuItem } from './PinMenuItem'
 
 interface ArtistMenuProps {
   artist: Artist
@@ -209,6 +210,9 @@ export const ArtistMenu = forwardRef<ArtistMenuHandle, ArtistMenuProps>(function
                 Share
               </button>
             </MenuItem>
+
+            {/* Pin floats this artist to the top of the library sidebar. */}
+            {isFollowing && <PinMenuItem itemKey={`ar-${artist.id}`} onAfter={close} />}
 
             <div className="my-1 h-px bg-secondary/20" />
 

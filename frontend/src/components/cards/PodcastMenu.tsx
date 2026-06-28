@@ -14,6 +14,7 @@ import { notify } from '@/utils/toast'
 import { ShareIcon } from '@/components/common/ShareIcon'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { MediaMenuShell, MediaMenuDivider, MediaMenuItem } from './MediaMenuShell'
+import { PinIcon, usePinned } from './PinMenuItem'
 
 interface PodcastMenuProps {
   podcast: PodcastSummary
@@ -37,6 +38,7 @@ export const PodcastMenu = forwardRef<PodcastMenuHandle, PodcastMenuProps>(funct
   const savePodcast = useLibraryStore((s) => s.savePodcast)
   const unsavePodcast = useLibraryStore((s) => s.unsavePodcast)
   const isSaved = savedPodcastIds.has(podcast.id)
+  const [pinned, togglePin] = usePinned(`pod-${podcast.id}`)
 
   const handleToggleSave = () => {
     if (!isAuthenticated) {
@@ -82,6 +84,14 @@ export const PodcastMenu = forwardRef<PodcastMenuHandle, PodcastMenuProps>(funct
             label="Share"
             onClick={() => { void handleShare(); close() }}
           />
+
+          {isSaved && (
+            <MediaMenuItem
+              icon={<PinIcon className={pinned ? 'w-4 h-4 text-accent' : 'w-4 h-4'} />}
+              label={pinned ? 'Unpin' : 'Pin to top'}
+              onClick={() => { togglePin(); close() }}
+            />
+          )}
 
           <MediaMenuDivider />
 

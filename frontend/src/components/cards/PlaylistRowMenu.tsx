@@ -23,7 +23,6 @@ import {
 import type { Playlist } from '@/types/playlist'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
-import { isPinned, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import {
   type LibraryFolder,
   getFolders,
@@ -32,6 +31,7 @@ import {
   folderOfItem,
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
+import { PinMenuItem } from './PinMenuItem'
 import { usePointerMenu } from '@/hooks/usePointerMenu'
 import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
@@ -87,19 +87,13 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
     // Self-contained pin/folder state so the menu works wherever a playlist is
     // shown (sidebar rows AND home/middle cards) — keyed by the shared LibItem key.
     const itemKey = `pl-${playlist.id}`
-    const [pinned, setPinned] = useState(() => isPinned(itemKey))
     const [folders, setFolders] = useState<LibraryFolder[]>(getFolders)
     useEffect(() => {
-      const syncPinned = () => setPinned(isPinned(itemKey))
       const syncFolders = () => setFolders(getFolders())
-      window.addEventListener(PINNED_EVENT, syncPinned)
       window.addEventListener(FOLDERS_EVENT, syncFolders)
-      window.addEventListener('storage', syncPinned)
       window.addEventListener('storage', syncFolders)
       return () => {
-        window.removeEventListener(PINNED_EVENT, syncPinned)
         window.removeEventListener(FOLDERS_EVENT, syncFolders)
-        window.removeEventListener('storage', syncPinned)
         window.removeEventListener('storage', syncFolders)
       }
     }, [itemKey])
@@ -427,14 +421,7 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
 
                 <div className="my-1 h-px bg-secondary/20" />
 
-                {isInLibrary && (
-                  <MenuItem>
-                    <button type="button" onClick={(e) => { stop(e); togglePinned(itemKey); close() }} className={itemClass}>
-                      <PinIcon className={pinned ? 'h-4 w-4 text-accent' : 'h-4 w-4'} />
-                      {pinned ? 'Unpin playlist' : 'Pin playlist'}
-                    </button>
-                  </MenuItem>
-                )}
+                {isInLibrary && <PinMenuItem itemKey={itemKey} onAfter={close} />}
                 <MenuItem>
                   <button type="button" onClick={(e) => { stop(e); void handleShare(); close() }} className={itemClass}>
                     <ShareIcon className="h-4 w-4" />
@@ -458,19 +445,3 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
     )
   },
 )
-
-function PinIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      aria-hidden="true"
-      className={className}
-      fill="currentColor"
-    >
-      <path
-        d="M5.25 1.5h5.5v1.2L9.6 3.85v3.1l1.65 1.65v1.15H8.6v4.75H7.4V9.75H4.75V8.6L6.4 6.95v-3.1L5.25 2.7V1.5Z"
-        transform="rotate(45 8 8)"
-      />
-    </svg>
-  )
-}

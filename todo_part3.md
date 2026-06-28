@@ -584,6 +584,13 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 > Note: history stays visible when locked; only sending is blocked. The
 > `friendsLoaded` flag (added to friendStore) prevents a real friend from
 > briefly flashing the locked state before the friends list finishes loading.
+>
+> Backend: `GET /chat/with/{userId}` is no longer friend-gated so the old
+> conversation is still readable after unfriending (re-friending lets you
+> continue where you left off). No privacy leak — the query only returns
+> messages actually exchanged between the two users. `POST` (send) stays
+> friend-gated. Covered by `GetThread_AfterUnfriend_StillReturnsHistory` and
+> `GetThread_ReturnsOnlyMessagesBetweenTheTwoUsers`.
 
 ---
 

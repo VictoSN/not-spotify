@@ -118,8 +118,14 @@ public class ChatController : ControllerBase
     // ── Thread history ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// GET /chat/with/{userId}?before=&amp;limit= — messages between me and a friend,
+    /// GET /chat/with/{userId}?before=&amp;limit= — messages exchanged with another user,
     /// newest page first (client reverses for display). `before` pages backwards.
+    ///
+    /// History is intentionally NOT friend-gated (bug 28): after unfriending you can
+    /// still read the old conversation, and re-friending lets you pick up where you
+    /// left off. There is no privacy leak — the query only ever returns messages that
+    /// were actually exchanged between the two of you. Sending, however, stays
+    /// friend-gated (see Send below).
     /// </summary>
     [HttpGet("with/{userId:guid}")]
     public async Task<ActionResult<IEnumerable<ChatMessageDto>>> GetThread(
@@ -129,8 +135,6 @@ public class ChatController : ControllerBase
         CancellationToken ct = default)
     {
         var me = CurrentUserId();
-        if (!await AreFriends(me, userId, ct))
-            return Forbid();
 
         limit = Math.Clamp(limit, 1, 100);
 

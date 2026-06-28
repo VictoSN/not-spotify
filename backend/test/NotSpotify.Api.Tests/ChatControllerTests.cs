@@ -95,16 +95,47 @@ public class ChatControllerTests
     }
 
     [Fact]
-    public async Task GetThread_NonFriend_ReturnsForbid()
+    public async Task GetThread_AfterUnfriend_StillReturnsHistory()
     {
+        // Bug 28: history is NOT friend-gated. Two users with an existing
+        // conversation but no current friendship (i.e. after unfriending) can
+        // still read the old thread — only sending is blocked.
         await using var db = TestHelpers.NewDb();
         var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
-        var stranger = Guid.NewGuid();
+        var formerFriend = Guid.NewGuid();
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = me, RecipientId = formerFriend, Body = "old message" });
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = formerFriend, RecipientId = me, Body = "old reply" });
+        await db.SaveChangesAsync();
         var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
 
-        var action = await controller.GetThread(stranger);
+        var action = await controller.GetThread(formerFriend);
 
-        Assert.IsType<ForbidResult>(action.Result);
+        var ok = Assert.IsType<OkObjectResult>(action.Result);
+        var messages = Assert.IsAssignableFrom<IEnumerable<ChatMessageDto>>(ok.Value);
+        Assert.Equal(2, messages.Count());
+    }
+
+    [Fact]
+    public async Task GetThread_ReturnsOnlyMessagesBetweenTheTwoUsers()
+    {
+        // No privacy leak: the thread only ever surfaces messages actually
+        // exchanged between the caller and the target, never anyone else's.
+        await using var db = TestHelpers.NewDb();
+        var (hub, _) = TestHelpers.NewHub();
+        var me = Guid.NewGuid();
+        var other = Guid.NewGuid();
+        var unrelated = Guid.NewGuid();
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = me, RecipientId = other, Body = "ours" });
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = unrelated, RecipientId = me, Body = "someone else" });
+        await db.SaveChangesAsync();
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+
+        var action = await controller.GetThread(other);
+
+        var ok = Assert.IsType<OkObjectResult>(action.Result);
+        var messages = Assert.IsAssignableFrom<IEnumerable<ChatMessageDto>>(ok.Value).ToList();
+        Assert.Single(messages);
+        Assert.Equal("ours", messages[0].Body);
     }
 }

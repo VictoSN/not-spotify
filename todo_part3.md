@@ -40,18 +40,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a minor but noticeable UI polish issue. An off-center toggle switch looks unprofessional and broken.
 
-- [ ] **Fix Implementation**
-  - [ ] Apply CSS Flexbox or Grid to perfectly center the thumb element within the track
-  - [ ] Ensure the track's height matches the thumb's diameter
-  - [ ] Use align-items: center or a similar technique
-  - [ ] Verify fix works across all browsers (Chrome, Firefox, Safari, Edge)
+- [x] **Fix Implementation**
+  - [x] Apply CSS Flexbox or Grid to perfectly center the thumb element within the track
+  - [x] Ensure the track's height matches the thumb's diameter
+  - [x] Use align-items: center or a similar technique
+  - [x] Verify fix works across all browsers (Chrome, Firefox, Safari, Edge)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Toggle switch thumb is perfectly centered in both on/off states
-  - [ ] Test: Centering works in both light and dark themes
-  - [ ] Test: Centering works on mobile viewport
-  - [ ] Test: Centering works on desktop viewport
-  - [ ] Test: Clicking on track still toggles correctly
+- [x] **Tests to Complete**
+  - [x] Test: Toggle switch thumb is perfectly centered in both on/off states
+  - [x] Test: Centering works in both light and dark themes
+  - [x] Test: Centering works on mobile viewport
+  - [x] Test: Centering works on desktop viewport
+  - [x] Test: Clicking on track still toggles correctly
 
 ---
 

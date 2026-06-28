@@ -115,9 +115,14 @@ function Switch({
         disabled && 'cursor-not-allowed opacity-50',
       )}
     >
+      {/*
+        Center the thumb vertically with top-1/2 + -translate-y-1/2 so it stays
+        on the track's midline regardless of the 1px border (a fixed top-1 sat
+        1px low). The horizontal slide stays on the X axis via translate-x.
+      */}
       <span
         className={cn(
-          'absolute left-1 top-1 h-4 w-4 rounded-full shadow-sm transition-transform duration-200',
+          'absolute left-1 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full shadow-sm transition-transform duration-200',
           checked ? 'translate-x-5 bg-white' : 'translate-x-0 bg-secondary',
         )}
       />

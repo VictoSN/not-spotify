@@ -203,6 +203,22 @@ describe('SettingsPage implemented preferences', () => {
     expect(screen.getByRole('switch', { name: 'Private listening' })).toBeInTheDocument()
   })
 
+  it('vertically centers the toggle thumb and still toggles on click', async () => {
+    await renderSettings()
+
+    const toggle = screen.getByRole('switch', { name: 'Private listening' })
+    const thumb = toggle.querySelector('span')
+    expect(thumb).not.toBeNull()
+    // Centering is on the Y axis so the 1px track border can't push it off-center.
+    expect(thumb?.className).toContain('top-1/2')
+    expect(thumb?.className).toContain('-translate-y-1/2')
+
+    // Clicking the track (the switch button) still toggles state.
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await fireAndFlush(() => fireEvent.click(toggle))
+    expect(toggle).toHaveAttribute('aria-checked', 'true')
+  })
+
   it('reads and clears browser media cache usage', async () => {
     await renderSettings()
 

@@ -3,9 +3,18 @@ export interface PointerMenuHandle {
   openAt: (x: number, y: number) => void
 }
 
-/** Shared Spotify-like sizing for every pointer/right-click menu panel. */
+/**
+ * Shared Spotify-like sizing for every pointer/right-click menu panel.
+ *
+ * `overflow-visible!` + `max-h-none!` both override inline styles Headless UI's
+ * `anchor` size-middleware injects (`overflow: auto` and a clamped `max-height`).
+ * The overflow override lets the "Add to playlist" flyout escape the panel box;
+ * the max-height override stops the panel from shrinking its `bg-elevated` box
+ * when it flips upward into tight space — without it, the lower items (Share,
+ * etc.) spill out below the background and appear to float (bug #4).
+ */
 export const CONTEXT_MENU_PANEL_CLASS =
-  'z-[1000] w-64 origin-top overflow-visible! rounded-md bg-elevated py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-primary/10 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.5]'
+  'z-[1000] w-64 origin-top overflow-visible! max-h-none! rounded-md bg-elevated py-1.5 text-sm font-normal leading-5 shadow-2xl ring-1 ring-primary/10 focus:outline-none transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 [&_svg]:h-[18px] [&_svg]:w-[18px] [&_svg]:shrink-0 [&_svg]:stroke-[1.5]'
 
 /** Shared row rhythm for pointer/right-click menu actions. */
 export const CONTEXT_MENU_ITEM_CLASS =

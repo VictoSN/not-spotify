@@ -104,6 +104,14 @@ describe('RecentsPage context menu', () => {
     await fireAndFlush(() => fireEvent.contextMenu(row, { clientX: 120, clientY: 80 }))
 
     await waitFor(() => expect(screen.getByText('Go to artist')).toBeInTheDocument())
+
+    // The panel must keep its background box sized to its content even when the
+    // anchor flips it upward (bug #4): overflow-visible! lets the flyout escape,
+    // and max-h-none! stops Headless UI's injected max-height from clipping the
+    // bg so lower items (Share, etc.) can't spill out without a background.
+    const panel = screen.getByText('Go to artist').closest('[role="menu"]')!
+    expect(panel.className).toContain('overflow-visible!')
+    expect(panel.className).toContain('max-h-none!')
   })
 
   it('keeps the ⋯ menu trigger available on Recents rows', async () => {

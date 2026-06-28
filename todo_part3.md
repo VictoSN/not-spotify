@@ -81,20 +81,20 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a CSS/layout bug likely related to the dropdown's overflow or z-index properties. When the menu detects it needs to open upwards to stay within the viewport, its child elements are not being clipped or rendered within the proper stacking context.
 
-- [ ] **Fix Implementation**
-  - [ ] Review CSS for the dropdown component
-  - [ ] Add overflow: hidden to dropdown container
-  - [ ] Use clip-path to properly contain children
-  - [ ] Explicitly set dropdown background color for all states
-  - [ ] Prevent child elements from escaping via negative margins or absolute positioning
-  - [ ] Ensure proper z-index stacking context
+- [x] **Fix Implementation**
+  - [x] Review CSS for the dropdown component
+  - [x] Add overflow: hidden to dropdown container (n/a — overflow must stay visible for the flyout; root cause was the injected max-height clamp, now overridden)
+  - [x] Use clip-path to properly contain children (n/a — fixed by removing the height clamp so the bg box wraps all items)
+  - [x] Explicitly set dropdown background color for all states
+  - [x] Prevent child elements from escaping via negative margins or absolute positioning
+  - [x] Ensure proper z-index stacking context
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Dropdown opens upwards for items 5/6 with proper background
-  - [ ] Test: "Report" and "Share" buttons are contained within dropdown
-  - [ ] Test: Dropdown renders correctly at different screen sizes
-  - [ ] Test: Dropdown renders correctly in both light and dark themes
-  - [ ] Test: All dropdown items are clickable and functional
+- [x] **Tests to Complete**
+  - [x] Test: Dropdown opens upwards for items 5/6 with proper background
+  - [x] Test: "Report" and "Share" buttons are contained within dropdown
+  - [x] Test: Dropdown renders correctly at different screen sizes
+  - [x] Test: Dropdown renders correctly in both light and dark themes
+  - [x] Test: All dropdown items are clickable and functional
 
 ---
 

@@ -38,7 +38,7 @@ export function KaraokeView() {
         <XMarkIcon className="h-5 w-5" />
       </button>
 
-      <div className="mx-auto h-full max-w-3xl px-8 lg:px-12">
+      <div className="mx-auto h-full max-w-5xl px-8 lg:px-12">
         {!lyricsData ? (
           <div className="flex h-full items-center justify-center">
             <Spinner size="md" />

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { HomePage, HomePodcastTile, HomeQuickPlaylist, HomeVideoTile, getHomeFilterVisibility } from './HomePage'
 import { useDragStore } from '@/stores/dragStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
@@ -113,6 +114,7 @@ function dataTransfer() {
 
 describe('Home media interactions', () => {
   beforeEach(() => {
+    usePlayerStore.setState({ currentContextType: null, currentContextId: null, isPlaying: false })
     useDragStore.setState({
       draggedTrack: null,
       draggedArtist: null,
@@ -195,5 +197,22 @@ describe('Home media interactions', () => {
     const menuItem = await screen.findByRole('menuitem', { name: 'Add to queue' })
     expect(menuItem).toBeInTheDocument()
     fireEvent.click(menuItem)
+  })
+
+  it('shows a visualizer for the active playlist and uses the larger play control', () => {
+    usePlayerStore.setState({
+      currentContextType: 'playlist',
+      currentContextId: playlist.id,
+      isPlaying: true,
+    })
+
+    render(
+      <MemoryRouter>
+        <HomeQuickPlaylist playlist={playlist} />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('img', { name: 'Now playing' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: `Pause ${playlist.name}` })).toHaveClass('h-12', 'w-12')
   })
 })

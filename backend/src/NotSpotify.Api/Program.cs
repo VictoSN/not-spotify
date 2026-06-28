@@ -906,6 +906,18 @@ using (var scope = app.Services.CreateScope())
             ON ""DeletedPlaylists""(""UserId"", ""DeletedAt"");
         CREATE INDEX IF NOT EXISTS ""IX_DeletedPlaylists_ExpiresAt""
             ON ""DeletedPlaylists""(""ExpiresAt"");
+
+        CREATE TABLE IF NOT EXISTS ""PromoCodeRedemptions"" (
+            ""Id"" uuid NOT NULL,
+            ""UserId"" uuid NOT NULL,
+            ""Code"" character varying(80) NOT NULL,
+            ""RedeemedAt"" timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_PromoCodeRedemptions"" PRIMARY KEY (""Id""),
+            CONSTRAINT ""FK_PromoCodeRedemptions_AspNetUsers_UserId""
+                FOREIGN KEY (""UserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PromoCodeRedemptions_UserId_Code""
+            ON ""PromoCodeRedemptions""(""UserId"", ""Code"");
     ");
 
     await DbSeeder.SeedAsync(scope.ServiceProvider);

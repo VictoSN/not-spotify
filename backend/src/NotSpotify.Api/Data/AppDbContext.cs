@@ -53,6 +53,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<UserAccountPreference> UserAccountPreferences => Set<UserAccountPreference>();
     public DbSet<DeletedPlaylist> DeletedPlaylists => Set<DeletedPlaylist>();
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
+    public DbSet<PromoCodeRedemption> PromoCodeRedemptions => Set<PromoCodeRedemption>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -648,6 +649,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
             e.Property(x => x.TracksJson).HasColumnType("jsonb");
             e.HasIndex(x => new { x.UserId, x.DeletedAt });
             e.HasIndex(x => x.ExpiresAt);
+        });
+
+        b.Entity<PromoCodeRedemption>(e =>
+        {
+            e.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.Property(x => x.Code).HasMaxLength(80);
+            e.HasIndex(x => new { x.UserId, x.Code }).IsUnique();
         });
     }
 }

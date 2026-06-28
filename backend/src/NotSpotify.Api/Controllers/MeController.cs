@@ -430,22 +430,43 @@ public class MeController : ControllerBase
         if (me is null) return Unauthorized();
 
         var code = req.Code.Trim().ToUpperInvariant().Replace(" ", "");
-        var user = await _users.FindByIdAsync(me.Value.ToString());
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == me.Value, ct);
         if (user is null) return NotFound();
 
         if (code is not ("NOTSPOTIFY30" or "PREMIUM30" or "WELCOME30"))
             return BadRequest(new { message = "That code is not valid." });
 
+        if (await _db.PromoCodeRedemptions.AnyAsync(r => r.UserId == user.Id && r.Code == code, ct))
+            return Conflict(new { message = "This promo code has already been used." });
+
         if (user.Plan == "premium")
             return Conflict(new { message = "This account already has Premium." });
 
+        _db.PromoCodeRedemptions.Add(new PromoCodeRedemption
+        {
+            UserId = user.Id,
+            Code = code,
+            RedeemedAt = DateTime.UtcNow,
+        });
         user.Plan = "premium";
         user.PlanTier = "individual";
         user.StripeSubscriptionStatus = "trialing";
         user.StripeBillingInterval = "monthly";
         user.StripeCurrentPeriodEnd = DateTime.UtcNow.AddDays(30);
         user.StripeCancelAtPeriodEnd = true;
-        await _users.UpdateAsync(user);
+        try
+        {
+            // Persist the audit record and upgrade in one transaction. The unique
+            // index also rejects simultaneous requests that both pass the read check.
+            await _db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            _db.ChangeTracker.Clear();
+            if (await _db.PromoCodeRedemptions.AnyAsync(r => r.UserId == user.Id && r.Code == code, ct))
+                return Conflict(new { message = "This promo code has already been used." });
+            throw;
+        }
 
         var roles = await _users.GetRolesAsync(user);
         return Ok(new RedeemResultDto(code, "Premium trial redeemed for 30 days.", _mapper.ToUserDto(user, roles)));

@@ -154,4 +154,17 @@ describe('AccountSettingsPage account feature rows', () => {
     await clickAndFlush(screen.getByRole('button', { name: 'Redeem' }))
     await waitFor(() => expect(meServiceMock.redeem).toHaveBeenCalledWith('NOTSPOTIFY30'))
   })
+
+  it('shows the one-time redemption error returned by the API', async () => {
+    meServiceMock.redeem.mockRejectedValueOnce({
+      response: { data: { message: 'This promo code has already been used.' } },
+    })
+    await renderAccount()
+
+    await clickAndFlush(screen.getByRole('button', { name: /Redeem/ }))
+    fireEvent.change(screen.getByPlaceholderText('NOTSPOTIFY30'), { target: { value: 'NOTSPOTIFY30' } })
+    await clickAndFlush(screen.getByRole('button', { name: 'Redeem' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This promo code has already been used.')
+  })
 })

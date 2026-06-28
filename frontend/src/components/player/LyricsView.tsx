@@ -151,7 +151,9 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
         <div
           className={cn(
             'flex flex-col items-start',
-            isCard ? 'gap-1 py-3' : isFull ? 'gap-5 py-[30vh]' : 'gap-2 py-6',
+            // Start the opening lines near the top; retain deep bottom padding so
+            // later lines can still be auto-scrolled into the vertical centre.
+            isCard ? 'gap-1 py-3' : isFull ? 'gap-6 pb-[45vh] pt-10' : 'gap-2 py-6',
           )}
         >
           {lines.map((line, i) => (
@@ -161,7 +163,11 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
               onClick={() => seekToLine(line.timeMs)}
               className={cn(
                 'text-left font-bold transition-all duration-300 hover:text-primary',
-                isCard ? 'text-base leading-6' : isFull ? 'text-3xl leading-snug lg:text-4xl' : 'text-2xl leading-9',
+                isCard
+                  ? 'text-base leading-6'
+                  : isFull
+                    ? 'text-[clamp(2.25rem,3.4vw,3rem)] leading-[1.18]'
+                    : 'text-2xl leading-9',
                 i === activeIndex
                   ? 'text-primary scale-[1.02] origin-left'
                   : i < activeIndex
@@ -237,7 +243,7 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
         variant === 'card'
           ? 'max-h-72 overflow-y-auto text-sm leading-7'
           : variant === 'full'
-            ? 'h-full overflow-y-auto scrollbar-hide py-10 text-3xl font-bold leading-snug lg:text-4xl'
+            ? 'h-full overflow-y-auto scrollbar-hide py-10 text-[clamp(2.25rem,3.4vw,3rem)] font-bold leading-[1.18]'
             : 'text-sm leading-8',
       )}
     >

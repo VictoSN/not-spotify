@@ -28,6 +28,7 @@ import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { SectionHeader } from '@/components/common/SectionHeader'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { AppFooter } from '@/components/common/AppFooter'
+import { NowPlayingBars } from '@/components/common/NowPlayingBars'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
 import { PlaylistRowMenu, type PlaylistRowMenuHandle } from '@/components/cards/PlaylistRowMenu'
 import { AlbumCard } from '@/components/cards/AlbumCard'
@@ -534,18 +535,25 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           )}
         </div>
         <span className="flex-1 truncate pr-2 text-base font-semibold text-primary">{playlist.name}</span>
-        <button
-          type="button"
-          onClick={handlePlay}
-          className="mr-3 flex h-10 w-10 shrink-0 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
-          aria-label={isPlayingContext ? `Pause ${playlist.name}` : t('home.playPlaylist', { name: playlist.name })}
-        >
-          {isPlayingContext ? (
-            <PauseIcon className="h-5 w-5 text-white" />
-          ) : (
-            <PlayIcon className="ml-0.5 h-5 w-5 text-white" />
+        <div className="relative mr-3 h-12 w-12 shrink-0">
+          {isActiveContext && (
+            <span className="pointer-events-none absolute inset-0 hidden items-center justify-center opacity-100 transition-opacity duration-150 md:flex md:group-hover:opacity-0">
+              <NowPlayingBars playing={isPlayingContext} className="h-5" />
+            </span>
           )}
-        </button>
+          <button
+            type="button"
+            onClick={handlePlay}
+            className="absolute inset-0 flex h-12 w-12 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
+            aria-label={isPlayingContext ? `Pause ${playlist.name}` : t('home.playPlaylist', { name: playlist.name })}
+          >
+            {isPlayingContext ? (
+              <PauseIcon className="h-6 w-6 text-white" />
+            ) : (
+              <PlayIcon className="ml-0.5 h-6 w-6 text-white" />
+            )}
+          </button>
+        </div>
       </Link>
       <PlaylistRowMenu ref={menuRef} playlist={playlist} />
     </div>

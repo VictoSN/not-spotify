@@ -64,6 +64,7 @@ public class AccountSettingsControllerTests
     {
         await using var db = TestHelpers.NewDb();
         var me = db.AddUser(Guid.NewGuid(), "me");
+        await db.SaveChangesAsync();
         var controller = NewMeController(db, me);
 
         var result = await controller.Redeem(new RedeemRequest("notspotify30"));
@@ -73,6 +74,62 @@ public class AccountSettingsControllerTests
         Assert.Equal("PREMIUM", me.Plan.ToUpperInvariant());
         Assert.Equal("trialing", me.StripeSubscriptionStatus);
         Assert.NotNull(dto!.User);
+        var redemption = Assert.Single(db.PromoCodeRedemptions);
+        Assert.Equal(me.Id, redemption.UserId);
+        Assert.Equal("NOTSPOTIFY30", redemption.Code);
+    }
+
+    [Fact]
+    public async Task Redeem_SameCodeTwice_ReturnsClearConflictEvenAfterDowngrade()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = db.AddUser(Guid.NewGuid(), "me");
+        await db.SaveChangesAsync();
+        var controller = NewMeController(db, me);
+
+        Assert.IsType<OkObjectResult>((await controller.Redeem(new RedeemRequest(" not spotify 30 "))).Result);
+        me.Plan = "free";
+        me.StripeSubscriptionStatus = null;
+        await db.SaveChangesAsync();
+
+        var repeated = await controller.Redeem(new RedeemRequest("NOTSPOTIFY30"));
+
+        var conflict = Assert.IsType<ConflictObjectResult>(repeated.Result);
+        Assert.Contains("already been used", conflict.Value?.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("free", me.Plan);
+        Assert.Single(db.PromoCodeRedemptions);
+    }
+
+    [Fact]
+    public async Task Redeem_SameCode_CanBeUsedOnceByDifferentUsers()
+    {
+        await using var db = TestHelpers.NewDb();
+        var first = db.AddUser(Guid.NewGuid(), "first");
+        var second = db.AddUser(Guid.NewGuid(), "second");
+        await db.SaveChangesAsync();
+
+        Assert.IsType<OkObjectResult>((await NewMeController(db, first).Redeem(new RedeemRequest("notspotify30"))).Result);
+        Assert.IsType<OkObjectResult>((await NewMeController(db, second).Redeem(new RedeemRequest("notspotify30"))).Result);
+
+        Assert.Equal(2, db.PromoCodeRedemptions.Count());
+        Assert.Equal(2, db.PromoCodeRedemptions.Select(r => r.UserId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Redeem_DifferentValidCode_RemainsAvailableAfterFirstTrialEnds()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = db.AddUser(Guid.NewGuid(), "me");
+        await db.SaveChangesAsync();
+        var controller = NewMeController(db, me);
+
+        Assert.IsType<OkObjectResult>((await controller.Redeem(new RedeemRequest("NOTSPOTIFY30"))).Result);
+        me.Plan = "free";
+        me.StripeSubscriptionStatus = null;
+        await db.SaveChangesAsync();
+
+        Assert.IsType<OkObjectResult>((await controller.Redeem(new RedeemRequest("PREMIUM30"))).Result);
+        Assert.Equal(new[] { "NOTSPOTIFY30", "PREMIUM30" }, db.PromoCodeRedemptions.OrderBy(r => r.RedeemedAt).Select(r => r.Code));
     }
 
     [Fact]

@@ -630,7 +630,7 @@ export function AccountSettingsPage() {
               </h2>
               <button type="button" onClick={() => setPanel(null)} className="rounded-full px-3 py-1 text-sm font-bold text-secondary hover:text-primary">Close</button>
             </div>
-            {panelError && <p className="mb-3 rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{panelError}</p>}
+            {panelError && <p role="alert" className="mb-3 rounded bg-red-500/10 px-3 py-2 text-sm text-red-300">{panelError}</p>}
 
             {panel === 'recover' && (
               <div className="space-y-3">

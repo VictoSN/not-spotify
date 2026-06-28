@@ -164,18 +164,18 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a critical business logic and security flaw, allowing users to infinitely abuse a promotional offer. This needs to be fixed urgently.
 
-- [ ] **Fix Implementation**
-  - [ ] Add database field to track which promo codes each user has redeemed
-  - [ ] Check if user has already redeemed notspotify30 before applying
-  - [ ] Reject subsequent attempts with "This promo code has already been used"
-  - [ ] Implement similar checks for all promo codes to prevent general abuse
+- [x] **Fix Implementation**
+  - [x] Add a database redemption record keyed by user and normalized promo code
+  - [x] Check if user has already redeemed notspotify30 before applying
+  - [x] Reject subsequent attempts with "This promo code has already been used"
+  - [x] Implement the same one-use check for every supported in-app promo code
 
-- [ ] **Tests to Complete**
-  - [ ] Test: notspotify30 can be redeemed once by a user
-  - [ ] Test: Second attempt shows error message
-  - [ ] Test: Different users can each redeem once
-  - [ ] Test: Other promo codes are not affected
-  - [ ] Test: Error message is clear and user-friendly
+- [x] **Tests to Complete**
+  - [x] Test: notspotify30 can be redeemed once by a user
+  - [x] Test: Second attempt shows error message
+  - [x] Test: Different users can each redeem once
+  - [x] Test: Other promo codes remain independently redeemable once
+  - [x] Test: Error message is clear and user-friendly
 
 ---
 

@@ -4,7 +4,7 @@ const columns = [
   {
     title: 'Company',
     links: [
-      { label: 'About', to: '/support' },
+      { label: 'About', to: '/about' },
       { label: 'Jobs', to: '/support' },
       { label: 'For the Record', to: '/support' },
     ],
@@ -40,7 +40,14 @@ const columns = [
   },
 ]
 
-const legalLinks = ['Legal', 'Safety & Privacy Center', 'Privacy Policy', 'Cookies', 'About Ads', 'Accessibility']
+const legalLinks = [
+  { label: 'Legal', to: '/legal' },
+  { label: 'Safety & Privacy Center', to: '/privacy' },
+  { label: 'Privacy Policy', to: '/privacy' },
+  { label: 'Cookies', to: '/legal' },
+  { label: 'About Ads', to: '/legal' },
+  { label: 'Accessibility', to: '/about' },
+]
 
 function InstagramIcon() {
   return (
@@ -109,8 +116,8 @@ export function AppFooter() {
 
       <div className="mt-10 flex flex-col gap-6 border-t border-primary/10 pt-8 text-xs text-secondary sm:flex-row sm:items-center sm:justify-between">
         <nav className="flex flex-wrap gap-x-5 gap-y-3" aria-label="Legal">
-          {legalLinks.map((label) => (
-            <Link key={label} to="/support" className="transition-colors hover:text-primary">
+          {legalLinks.map(({ label, to }) => (
+            <Link key={label} to={to} className="transition-colors hover:text-primary">
               {label}
             </Link>
           ))}

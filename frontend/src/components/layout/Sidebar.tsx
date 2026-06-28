@@ -198,8 +198,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [libraryBodyScrolled, setLibraryBodyScrolled] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
   const setLibraryExpanded = useUiStore((s) => s.setLibraryExpanded)
-  const libraryMinimizing = useUiStore((s) => s.libraryMinimizing)
-  const setLibraryMinimizing = useUiStore((s) => s.setLibraryMinimizing)
   const libraryDragActive = useDragStore(
     (s) => !!s.draggedTrack || !!s.draggedArtist || !!s.draggedAlbum || !!s.draggedVideo || !!s.draggedPodcast,
   )
@@ -216,12 +214,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const toggleLibraryExpanded = () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
     setIsLibraryAnimating(true)
-    setLibraryMinimizing(libraryExpanded)
     setLibraryBodyScrolled(false)
     // Slightly longer than the 300ms width transition so the reveal lands after it settles.
     libAnimTimer.current = window.setTimeout(() => {
       setIsLibraryAnimating(false)
-      setLibraryMinimizing(false)
     }, 320)
     setLibraryExpanded(!libraryExpanded)
   }
@@ -231,8 +227,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   }
   useEffect(() => () => {
     if (libAnimTimer.current) window.clearTimeout(libAnimTimer.current)
-    setLibraryMinimizing(false)
-  }, [setLibraryMinimizing])
+  }, [])
 
   const setView = (v: ViewMode) => {
     setViewMode(v)
@@ -612,11 +607,10 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     flexShrink: 0,
   }
   const frameClass = cn(
-    'group/sidebar sidebar-scrollbar-hover-region relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
+    'group/sidebar sidebar-scrollbar-hover-region library-sidebar-motion relative z-30 flex h-full max-h-full min-h-0 min-w-0 flex-col overflow-visible rounded-xl bg-sidebar select-none',
     // Animate width (rail/drag) AND the expand/minimize grow — flex-grow interpolates as a
     // number, so the panel smoothly fills the home area and slides back. Skipped while dragging.
-    !dragging && !libraryMinimizing &&
-      'transition-[flex-basis,flex-grow,opacity,transform] duration-300 ease-out motion-reduce:transition-none',
+    dragging && 'library-sidebar-dragging',
     takeoverHidden ? 'pointer-events-none -translate-x-4 opacity-0' : 'translate-x-0 opacity-100',
   )
 

@@ -131,6 +131,9 @@ describe('AccountSettingsPage account feature rows', () => {
     await clickAndFlush(screen.getByRole('button', { name: /Edit login methods/ }))
     expect(await screen.findByText('Password sign-in is enabled.')).toBeInTheDocument()
     expect(screen.getByText('Google')).toBeInTheDocument()
+    // Facebook and Apple are not supported and must not be listed (bug 12).
+    expect(screen.queryByText('Facebook')).not.toBeInTheDocument()
+    expect(screen.queryByText('Apple')).not.toBeInTheDocument()
     await clickAndFlush(screen.getByRole('button', { name: 'Close' }))
 
     await clickAndFlush(screen.getByRole('button', { name: /Ad preferences/ }))

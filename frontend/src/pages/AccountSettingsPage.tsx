@@ -677,7 +677,8 @@ export function AccountSettingsPage() {
                 {loginMethods && (
                   <>
                     <p className="text-sm text-secondary">Password sign-in is {loginMethods.hasPassword ? 'enabled' : 'not set for this account'}.</p>
-                    {(['google', 'facebook', 'apple'] as const).map((provider) => {
+                    {/* Only Google OAuth is supported; Facebook/Apple are not offered (bug 12). */}
+                    {(['google'] as const).map((provider) => {
                       const state = loginMethods.externalProviders[provider]
                       const label = provider[0].toUpperCase() + provider.slice(1)
                       return (

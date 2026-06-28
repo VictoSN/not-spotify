@@ -236,14 +236,14 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is misleading and can frustrate users who try to use these unsupported methods. Only supported login methods should be displayed.
 
-- [ ] **Fix Implementation**
-  - [ ] Remove Facebook login method from "Edit Login Methods" section
-  - [ ] Remove Apple login method from "Edit Login Methods" section
+- [x] **Fix Implementation**
+  - [x] Remove Facebook login method from "Edit Login Methods" section
+  - [x] Remove Apple login method from "Edit Login Methods" section
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Facebook login option is completely removed
-  - [ ] Test: Apple login option is completely removed
-  - [ ] Test: Only supported login methods are displayed
+- [x] **Tests to Complete**
+  - [x] Test: Facebook login option is completely removed
+  - [x] Test: Apple login option is completely removed
+  - [x] Test: Only supported login methods are displayed
 
 ---
 

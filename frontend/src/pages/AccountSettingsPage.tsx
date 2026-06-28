@@ -23,7 +23,6 @@ import {
   ArrowDownTrayIcon,
   MagnifyingGlassIcon,
   PencilIcon,
-  PuzzlePieceIcon,
   UsersIcon,
   KeyIcon,
   MegaphoneIcon,
@@ -93,7 +92,7 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
     </div>
   )
 
-  if (to && !disabled) return <Link to={to}>{inner}</Link>
+  if (to && !disabled) return <Link to={to} className="block w-full">{inner}</Link>
   return (
     <button
       type="button"
@@ -500,7 +499,6 @@ export function AccountSettingsPage() {
       {/* Security and privacy */}
       <Section title="Security and privacy">
         <SettingRow icon={LockClosedIcon} label="Change password" onClick={() => setShowChangePw(true)} />
-        <SettingRow icon={PuzzlePieceIcon} label="Manage apps" sub="Review available connected sign-in providers" onClick={openLoginMethods} />
         <SettingRow icon={BellIcon} label="Notification settings" to="/settings" />
         <SettingRow icon={EyeIcon} label="Account privacy" to="/settings" />
         <SettingRow icon={KeyIcon} label="Edit login methods" sub="Password and social sign-in options" onClick={openLoginMethods} />

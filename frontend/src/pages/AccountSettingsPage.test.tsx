@@ -128,7 +128,7 @@ describe('AccountSettingsPage account feature rows', () => {
     expect(screen.getByPlaceholderText('NOTSPOTIFY30')).toBeInTheDocument()
     await clickAndFlush(screen.getByRole('button', { name: 'Close' }))
 
-    await clickAndFlush(screen.getByRole('button', { name: /Manage apps/ }))
+    await clickAndFlush(screen.getByRole('button', { name: /Edit login methods/ }))
     expect(await screen.findByText('Password sign-in is enabled.')).toBeInTheDocument()
     expect(screen.getByText('Google')).toBeInTheDocument()
     await clickAndFlush(screen.getByRole('button', { name: 'Close' }))

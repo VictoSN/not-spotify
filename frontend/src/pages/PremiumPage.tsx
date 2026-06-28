@@ -10,26 +10,26 @@ import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
 
 const TIER_LABEL: Record<string, string> = {
-  individual: 'Premium',
+  individual: 'Premium Individual',
   duo: 'Premium Duo',
   family: 'Premium Family',
   student: 'Premium Student',
 }
 
 /** Human label for the plan the user is currently on, e.g. "Premium Family". */
-function planTypeLabel(
+export function planTypeLabel(
   isPremium: boolean,
   overview: PlanOverview | null,
   subscription: BillingSubscription | null,
   fallbackInterval: 'monthly' | 'yearly' | null,
 ): string {
   if (!isPremium) return 'Free plan'
-  const tier = overview?.tier ?? 'individual'
+  const tier = overview?.tier ?? subscription?.tier ?? 'individual'
   if (overview?.isMember) return 'Premium (shared plan member)'
   const base = TIER_LABEL[tier] ?? 'Premium'
   if (tier === 'individual') {
     const interval = subscription?.interval ?? fallbackInterval
-    return interval ? `${base} ${interval === 'yearly' ? 'Yearly' : 'Monthly'}` : base
+    return interval === 'yearly' ? `${base} Yearly` : base
   }
   return base
 }

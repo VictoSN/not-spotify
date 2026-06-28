@@ -25,16 +25,38 @@ public class StripeBillingService
     // rates) so the Premium page always shows a price even when Stripe isn't
     // configured. Keep these in sync with the amounts entered in Stripe and in
     // docs/stripe-setup.md.
-    public sealed record PlanInfo(string Plan, string Tier, int MaxMembers, string Interval, string Label, string? DiscountLabel, string? DisplayPrice = null);
+    public sealed record PlanInfo(
+        string Plan,
+        string Tier,
+        int MaxMembers,
+        string Interval,
+        string Label,
+        string? DiscountLabel,
+        string? DisplayPrice = null,
+        string? UnavailableReason = null);
 
     public static readonly IReadOnlyList<PlanInfo> Catalogue = new[]
     {
-        new PlanInfo("monthly", "individual", 1, "monthly", "Premium Monthly", null,                            "MYR 17.90/month"),
-        new PlanInfo("yearly",  "individual", 1, "yearly",  "Premium Yearly",  "15% cheaper, billed annually",  "MYR 182.90/year"),
+        new PlanInfo("monthly", "individual", 1, "monthly", "Premium Individual",        null,                            "MYR 17.90/month"),
+        new PlanInfo("yearly",  "individual", 1, "yearly",  "Premium Individual Yearly", "15% cheaper, billed annually",  "MYR 182.90/year"),
         new PlanInfo("duo",     "duo",        2, "monthly", "Premium Duo",     "For 2 people",                  "MYR 23.90/month"),
         new PlanInfo("family",  "family",     6, "monthly", "Premium Family",  "Up to 6 people",                "MYR 29.90/month"),
-        new PlanInfo("student", "student",    1, "monthly", "Premium Student", "Discounted for students",       "MYR 8.90/month"),
+        new PlanInfo(
+            "student",
+            "student",
+            1,
+            "monthly",
+            "Premium Student",
+            "Discounted for students",
+            "MYR 8.90/month",
+            "Student verification is not available yet."),
     };
+
+    // Only plans with a complete eligibility flow are advertised to clients.
+    // PlanFor still knows about unavailable keys so direct API attempts receive
+    // an explicit explanation instead of silently creating an unchecked plan.
+    public static IEnumerable<PlanInfo> AvailableCatalogue
+        => Catalogue.Where(plan => plan.UnavailableReason is null);
 
     public static PlanInfo? PlanFor(string? plan)
         => Catalogue.FirstOrDefault(p => string.Equals(p.Plan, NormalizePlan(plan), StringComparison.OrdinalIgnoreCase));

@@ -15,6 +15,7 @@ public record BillingPlanDto(
 
 public record BillingSubscriptionDto(
     string Plan,
+    string Tier,
     string? Status,
     string? Interval,
     DateTime? CurrentPeriodEnd,

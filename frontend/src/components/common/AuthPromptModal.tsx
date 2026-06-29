@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
-import { XMarkIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 
 const EXIT_MS = 180
@@ -68,7 +69,7 @@ export function AuthPromptModal() {
             <img src={imageUrl} alt="" className="aspect-square h-full w-full object-cover" />
           ) : (
             <div className="flex aspect-square h-full w-full items-center justify-center">
-              <MusicalNoteIcon className="h-20 w-20 text-secondary" />
+              <SpotifyMark className="h-40 w-40 text-accent" />
             </div>
           )}
         </div>

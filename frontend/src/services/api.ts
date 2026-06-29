@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
+  timeout: 10_000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -46,7 +47,7 @@ api.interceptors.response.use(
       const res = await axios.post<{ accessToken: string }>(
         `${import.meta.env.VITE_API_URL}/auth/refresh`,
         {},
-        { withCredentials: true },
+        { withCredentials: true, timeout: 10_000 },
       )
       const newToken = res.data.accessToken
       ;(window as { __authToken?: string }).__authToken = newToken

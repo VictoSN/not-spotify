@@ -26,7 +26,7 @@ const IS_DEV = (() => {
   catch { return false }
 })()
 
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 const SHELL_CACHE = `ns-shell-${CACHE_VERSION}`
 const ASSET_CACHE = `ns-assets-${CACHE_VERSION}`
 const OFFLINE_CACHE = 'ns-offline-audio'

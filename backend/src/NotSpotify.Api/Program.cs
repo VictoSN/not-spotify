@@ -272,7 +272,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 var staticContentTypes = new FileExtensionContentTypeProvider();
 staticContentTypes.Mappings[".exe"] = "application/vnd.microsoft.portable-executable";
 staticContentTypes.Mappings[".msi"] = "application/x-msi";

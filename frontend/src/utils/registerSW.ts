@@ -6,6 +6,21 @@
 // Kept tiny and side-effect-isolated so it can be called once from main.tsx.
 let registrationPromise: Promise<ServiceWorkerRegistration | null> | null = null
 
+function isTauriRuntime() {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
+
+async function clearServiceWorkerState() {
+  await Promise.allSettled([
+    navigator.serviceWorker.getRegistrations?.()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister()))) ??
+      Promise.resolve(),
+    window.caches?.keys?.()
+      .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
+      Promise.resolve(),
+  ])
+}
+
 export function serviceWorkerUrl() {
   return import.meta.env.PROD ? '/sw.js' : '/sw.js?mode=dev'
 }
@@ -13,6 +28,11 @@ export function serviceWorkerUrl() {
 export function ensureServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return Promise.resolve(null)
   if (registrationPromise) return registrationPromise
+
+  if (isTauriRuntime()) {
+    registrationPromise = clearServiceWorkerState().then(() => null).catch(() => null)
+    return registrationPromise
+  }
 
   const isDev = !import.meta.env.PROD
   const swUrl = serviceWorkerUrl()
@@ -29,14 +49,7 @@ export function ensureServiceWorkerRegistration(): Promise<ServiceWorkerRegistra
       const RELOAD_FLAG = 'ns-sw-dev-reloaded'
       if (!sessionStorage.getItem(RELOAD_FLAG)) {
         sessionStorage.setItem(RELOAD_FLAG, '1')
-        void Promise.allSettled([
-          navigator.serviceWorker.getRegistrations?.()
-            .then((regs) => Promise.all(regs.map((r) => r.unregister()))) ??
-            Promise.resolve(),
-          window.caches?.keys?.()
-            .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))) ??
-            Promise.resolve(),
-        ]).finally(() => window.location.reload())
+        void clearServiceWorkerState().finally(() => window.location.reload())
         return Promise.resolve(null)
       }
     } else {

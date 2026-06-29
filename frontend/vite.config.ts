@@ -11,6 +11,13 @@ const tauriConf = JSON.parse(
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rolldownOptions: {
+      checks: {
+        invalidAnnotation: false,
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

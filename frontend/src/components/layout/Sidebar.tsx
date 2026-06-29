@@ -689,13 +689,25 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   // Drag-reorder: move `fromKey` before/after `toKey` over the currently shown
   // flat list, persist the new order, and switch to the Custom sort so it sticks.
-  // Only offered in the default view (no filter/search) to keep the saved order
-  // complete. Pins still float to the top afterwards (composed in `items`).
+  // Only offered in the default view (no filter/search) or folder view to keep
+  // the saved order complete. Pins still float to the top afterwards (composed
+  // in `items`).
   // Reorder over the full item list (works for both the expanded list/grid and
   // the minimized rail; folder-grouped rows keep their slots and are simply
   // filtered into folders when expanded).
-  const reorderEnabled = foldersActive
+  const reorderEnabled = foldersActive || !!folderView
   const reorderLibrary = (fromKey: string, toKey: string, before: boolean) => {
+    // In folder view, reorder within the current folder instead of the full list.
+    if (folderView) {
+      reorderItemInFolder(folderView, fromKey, toKey, before)
+      return
+    }
+    // Drag-out of folder: if the dragged item lives inside a folder, remove it
+    // before reordering in the flat list.
+    const currentFolder = folderOfItem(folders, fromKey)
+    if (currentFolder) {
+      removeItemFromFolder(fromKey)
+    }
     const next = reorderKeys(items.map((i) => i.key), fromKey, toKey, before)
     setCustomOrder(next)
     if (sort !== 'custom') setSort('custom')
@@ -2384,6 +2396,18 @@ function FolderGroup({
                   nowPlaying={isNowPlaying(item)}
                   onPlay={() => onPlayItem(item)}
                   onReorder={(fromKey, toKey, before) => {
+                    // Drag INTO folder: source is outside this folder
+                    if (!folder.itemKeys.includes(fromKey)) {
+                      const isFolderKey = fromKey.startsWith(FOLDER_KEY_PREFIX)
+                      if (isFolderKey) {
+                        const ok = addItemToFolderSafely(folder.id, fromKey)
+                        if (!ok) { notify.info(t('sidebar.folderNestingBlocked')); return }
+                      } else {
+                        addItemToFolder(folder.id, fromKey)
+                      }
+                      notify.success(t('sidebar.movedToFolder'))
+                      return
+                    }
                     // Within-folder reorder: both items belong to this folder
                     if (folder.itemKeys.includes(toKey)) {
                       reorderItemInFolder(folder.id, fromKey, toKey, before)

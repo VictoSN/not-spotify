@@ -130,8 +130,6 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
-builder.Services.Configure<PasswordResetEmailOptions>(builder.Configuration.GetSection("PasswordResetEmail"));
-builder.Services.AddScoped<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
 
 builder.Services.AddRateLimiter(options =>
 {

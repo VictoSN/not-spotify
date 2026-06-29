@@ -63,6 +63,7 @@ import {
   setFolderCollapsed,
   addItemToFolder,
   removeItemFromFolder,
+  reorderItemInFolder,
   folderOfItem,
   folderKey,
   addItemToFolderSafely,
@@ -2322,7 +2323,30 @@ function FolderGroup({
         )}
 
       {!folder.collapsed && (
-        <div className="ml-4 border-l border-secondary/10 pl-1">
+        <div
+          className="ml-4 border-l border-secondary/10 pl-1"
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+            e.preventDefault()
+            e.stopPropagation()
+            e.dataTransfer.dropEffect = 'move'
+          }}
+          onDrop={(e) => {
+            if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+            e.preventDefault()
+            e.stopPropagation()
+            const key = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
+            if (!key || folder.itemKeys.includes(key)) return
+            const isFolderKey = key.startsWith(FOLDER_KEY_PREFIX)
+            if (isFolderKey) {
+              const ok = addItemToFolderSafely(folder.id, key)
+              if (!ok) { notify.info(t('sidebar.folderNestingBlocked')); return }
+            } else {
+              addItemToFolder(folder.id, key)
+            }
+            notify.success(t('sidebar.movedToFolder'))
+          }}
+        >
           {subFolders.length === 0 && contents.length === 0 ? (
             <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
           ) : (
@@ -2359,14 +2383,16 @@ function FolderGroup({
                   compact={compact}
                   nowPlaying={isNowPlaying(item)}
                   onPlay={() => onPlayItem(item)}
-                  onReorder={
-                    onItemReorder
-                      ? (fromKey, toKey, before) => {
-                          removeItemFromFolder(fromKey)
-                          onItemReorder(fromKey, toKey, before)
-                        }
-                      : undefined
-                  }
+                  onReorder={(fromKey, toKey, before) => {
+                    // Within-folder reorder: both items belong to this folder
+                    if (folder.itemKeys.includes(toKey)) {
+                      reorderItemInFolder(folder.id, fromKey, toKey, before)
+                      return
+                    }
+                    // Drag out of folder: remove from folder, reorder in flat list
+                    removeItemFromFolder(fromKey)
+                    onItemReorder?.(fromKey, toKey, before)
+                  }}
                   menuPlaylist={playlistFor(item)}
                   menuAlbum={albumFor(item)}
                   menuArtist={artistFor(item)}

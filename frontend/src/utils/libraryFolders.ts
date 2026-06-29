@@ -98,6 +98,28 @@ export function removeItemFromFolder(key: string) {
   save(getFolders().map((f) => (f.itemKeys.includes(key) ? { ...f, itemKeys: f.itemKeys.filter((k) => k !== key) } : f)))
 }
 
+/**
+ * Reorder an item within a folder's itemKeys array — moves `fromKey`
+ * before or after `toKey`. Both keys must already belong to the folder.
+ */
+export function reorderItemInFolder(
+  folderId: string,
+  fromKey: string,
+  toKey: string,
+  before: boolean,
+) {
+  save(
+    getFolders().map((f) => {
+      if (f.id !== folderId || !f.itemKeys.includes(fromKey) || !f.itemKeys.includes(toKey)) return f
+      const keys = f.itemKeys.filter((k) => k !== fromKey)
+      const idx = keys.indexOf(toKey)
+      if (idx === -1) return f
+      keys.splice(before ? idx : idx + 1, 0, fromKey)
+      return { ...f, itemKeys: keys }
+    }),
+  )
+}
+
 /** The id of the folder an item belongs to, or null. */
 export function folderOfItem(folders: LibraryFolder[], key: string): string | null {
   return folders.find((f) => f.itemKeys.includes(key))?.id ?? null

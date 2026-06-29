@@ -299,8 +299,7 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 - [ ] **Tests to Complete**
   - [ ] Test: Download button downloads the correct file
   - [ ] Test: Installer can be downloaded on Windows
-  - [ ] Test: Installer can be downloaded on macOS
-  - [ ] Test: Installer can be downloaded on mobile
+  - [ ] Test: Installer can be downloaded on mobile and tablet view
   - [ ] Test: Downloaded installer can be opened/run
 
 ---
@@ -528,7 +527,7 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
   - [x] Visual feedback during drag (accent drop-position indicator + native drag image)
   - [x] Persist new order to localStorage (`ns-library-order` + `ns-library-sort` = "custom")
   - [x] Order maintained after page refresh (sort persisted, custom order rehydrated)
-  - [~] Edge cases: reordering composes with pins (pinned still float); only in the default view (no filter/search) to keep the saved order complete. NOT included: dragging items *into* folders, and reordering folders themselves (separate ordering store) — see note below.
+  - [x] Edge cases: reordering composes with pins (pinned still float); only in the default view (no filter/search) to keep the saved order complete.
   - [x] Works in both minimized and maximized sidebar states
 
 - [x] **Tests to Complete**
@@ -537,11 +536,19 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
   - [x] Test: New order persists after refresh
   - [x] Test: Drag-and-drop works in minimized sidebar
   - [x] Test: Drag-and-drop works in maximized sidebar
-  - [ ] Test: Can drag folder to new position — NOT done (folder reordering out of scope this pass)
+  - [x] Test: Can drag folder to new position (bug 26 extension — folders share the item keyspace via `fold-<id>` keys)
 
-> Follow-up: folder reordering and dragging items into/out of folders are a
-> separate feature (folders live in their own `libraryFolders` store). Tracked
-> for a later pass; item reordering above is complete and tested.
+### Bug #26 extension (folders are first-class library entries)
+Folders are no longer a separate always-on-top section; they're top-level
+entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
+
+- [x] Grid + compact grid: folder renders as a **square tile with a folder icon**, identical box size to album/playlist tiles (verified in preview: 117×117, matching a playlist card).
+- [x] List: folder row has **no chevron** (just the folder icon); clicking the row toggles its contents inline (verified: aria "Expand/Collapse", inline reveal).
+- [x] Folders are **draggable** like items (`fold-<id>` keys flow through `reorderKeys`/`ns-library-order`); dragging a folder switches to Custom sort and persists.
+- [x] Folders are **not forced to the top** — by default they trail the items and only float up when **pinned** or dragged there.
+- [x] **Pin/Unpin** added to the folder menu (alongside Rename/Delete); pinned folders show the accent pin badge and float to the top with the items.
+- [x] One mixed order + one pinned set shared across folders and items (per product decision).
+- [x] Tests: not-forced-to-top, pin-floats-folder, folder drag-reorder, inline toggle (Sidebar.test.tsx). Existing folder/drag/pin tests still green (24 Sidebar tests).
 
 ---
 
@@ -622,8 +629,91 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 ---
 
+## Bug #30: Remove Supabase Connection
+**Issue:** Supabase is currently being used as a backup database, but it is no longer needed. All Supabase-related code and dependencies should be removed from the project.
+
+**Explanation:** Keeping unused dependencies and code creates technical debt, increases bundle size, and can lead to confusion. Removing Supabase will clean up the codebase and reduce maintenance overhead.
+
+- [ ] **Fix Implementation**
+  - [ ] Search the entire codebase for any references to "supabase" (case-insensitive)
+  - [ ] Remove all Supabase client initialization code
+  - [ ] Remove Supabase configuration files and environment variables
+  - [ ] Remove Supabase dependencies from package.json (e.g., `@supabase/supabase-js`, `@supabase/ssr`, etc.)
+  - [ ] Remove any API routes or backend logic that use Supabase
+  - [ ] Remove any database migration files related to Supabase
+  - [ ] Remove any utility functions or helpers that interact with Supabase
+  - [ ] Ensure the application still functions correctly without Supabase
+  - [ ] Update any documentation that references Supabase
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Application starts without errors after removing Supabase
+  - [ ] Test: All database operations work with the primary database
+  - [ ] Test: No console errors related to missing Supabase client
+  - [ ] Test: Environment variables no longer reference Supabase
+  - [ ] Test: Build process completes successfully
+  - [ ] Test: All existing features work as expected
+
+---
+
+## Bug #31: Folder Dropdown Menu Layering (Z-Index)
+**Issue:** The folder dropdown menu sometimes appears below other elements on the page, making it difficult or impossible to interact with. The dropdown should sit on top of all other UI elements.
+
+**Explanation:** This is a z-index layering issue where the dropdown's stacking context is lower than other elements. Increasing the z-index should ensure the dropdown always appears on top, providing a consistent user experience.
+
+- [ ] **Fix Implementation**
+  - [ ] Identify the CSS class or inline styles controlling the folder dropdown menu
+  - [ ] Increase the z-index value to a high enough number (e.g., z-50 or z-[9999])
+  - [ ] Ensure the dropdown's parent container doesn't have a lower z-index that limits it
+  - [ ] Test the dropdown in various scenarios (scroll, overlap with modals, etc.)
+  - [ ] Apply the fix to all dropdown menus in the sidebar for consistency
+  - [ ] Verify the fix doesn't cause layering issues with other elements (modals, tooltips, etc.)
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Folder dropdown appears above all other elements
+  - [ ] Test: Dropdown is fully clickable and interactive
+  - [ ] Test: Dropdown appears above other sidebar items
+  - [ ] Test: Dropdown appears above main content area
+  - [ ] Test: Dropdown appears above modals and overlays
+  - [ ] Test: Dropdown works correctly in both light and dark themes
+  - [ ] Test: Dropdown works correctly on mobile and desktop viewports
+
+---
+
+## Bug #32: Left Sidebar - Drag and Drop Items into Folders
+**Issue:** Users cannot drag and drop playlists, albums, or other folders into folders in the left sidebar. This functionality exists in the real Spotify and is a core organization feature.
+
+**Explanation:** The ability to organize content into folders is a highly requested feature that improves navigation and content management. Users should be able to drag any sidebar item into a folder to keep their library organized.
+
+- [ ] **Fix Implementation**
+  - [ ] Implement drag-and-drop target detection for folder elements
+  - [ ] Add visual feedback when dragging over a folder (highlight, expand indicator, etc.)
+  - [ ] Create backend logic to move items into folders (update folder_id in database)
+  - [ ] Handle nested folders (folders within folders) - limit to 3 levels deep like Spotify
+  - [ ] Support dropping multiple items simultaneously
+  - [ ] Add ability to drag items out of folders (move to root level)
+  - [ ] Ensure folder contents update in real-time after drop
+  - [ ] Handle edge cases: dragging folder into itself, circular nesting prevention
+  - [ ] Persist folder structure in database
+  - [ ] Ensure drag-and-drop works in both minimized and maximized sidebar states
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Can drag playlist into a folder
+  - [ ] Test: Can drag album into a folder
+  - [ ] Test: Can drag another folder into a folder (nested folders)
+  - [ ] Test: Visual feedback appears when dragging over a folder
+  - [ ] Test: Items appear inside folder after drop
+  - [ ] Test: Can drag items out of a folder
+  - [ ] Test: Folder structure persists after page refresh
+  - [ ] Test: Cannot drag a folder into itself
+  - [ ] Test: Circular nesting prevention works
+  - [ ] Test: Multiple items can be dropped simultaneously
+  - [ ] Test: Drag-and-drop works in minimized sidebar
+  - [ ] Test: Drag-and-drop works in maximized sidebar
+
+---
+
 ## Final Checklist Before Marking All Tasks Complete
-- [ ] All 29 bugs have been fixed
+- [ ] All 32 bugs/features have been fixed
 - [ ] All tests for each bug have passed
 - [ ] No new bugs have been introduced
 - [ ] Code has been committed with descriptive messages
@@ -631,3 +721,6 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 - [ ] Feature works in both light and dark themes
 - [ ] Feature works on mobile and desktop viewports
 - [ ] All dead/duplicate UI elements have been removed
+- [ ] Supabase has been completely removed from the codebase
+- [ ] Folder dropdown menus have proper z-index layering
+- [ ] Drag and drop into folders functionality is fully implemented and tested

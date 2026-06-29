@@ -1,14 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, KeyIcon } from '@heroicons/react/24/outline'
-import { SpotifyMark } from '@/components/common/SpotifyMark'
+import { ArrowLeftIcon, MusicalNoteIcon, KeyIcon } from '@heroicons/react/24/outline'
 import { authService } from '@/services/authService'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
-
-const inputClass = 'h-12 w-full rounded border border-secondary bg-elevated px-3 text-sm font-semibold text-primary placeholder:text-muted outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
-const labelClass = 'mb-2 block text-sm font-bold text-primary'
 
 export function ForgotPasswordPage() {
   useDocumentTitle('Reset your password')
@@ -29,10 +25,10 @@ export function ForgotPasswordPage() {
     try {
       const res = await authService.forgotPassword(email.trim())
       setMessage(res.message)
-      setCode(res.code ?? null)
-      setDevLink(res.resetUrl ?? null)
+      setCode(res.code)
+      if (res.resetUrl) setDevLink(res.resetUrl)
     } catch {
-      setMessage('If an account exists for that email, reset instructions have been sent.')
+      setMessage('If an account exists for that email, a 6-digit code has been generated.')
     } finally {
       setLoading(false)
     }
@@ -43,67 +39,67 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-page px-6 py-8 text-primary">
-      <Link to="/login" className="absolute left-6 top-8 inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
+    <div className="min-h-screen bg-base px-4 py-8 text-primary">
+      <Link to="/login" className="inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
         <ArrowLeftIcon className="h-4 w-4" />
         Back to log in
       </Link>
-
-      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[348px] flex-col items-center pt-[10vh] sm:pt-[9vh]">
-        <div className="flex flex-col items-center text-center">
-          <SpotifyMark className="mb-7 h-9 w-9 text-primary" />
-          <h1 className="text-center text-[2.55rem] font-black leading-[1.05] text-primary sm:text-[2.75rem]">
-            Reset your password
-          </h1>
-          <p className="mt-4 text-sm font-semibold leading-6 text-secondary">
-            Enter your account email and we will send a secure reset link.
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
+          <h1 className="text-4xl font-black leading-tight text-primary">Reset your password</h1>
+          <p className="mt-3 text-sm font-medium text-secondary">
+            Enter the email for your account and we'll generate a 6-digit code to reset your password.
           </p>
         </div>
 
         {message ? (
-          <div className="mt-8 w-full rounded border border-accent/30 bg-accent-dim/30 px-4 py-4">
+          <div className="rounded-md border border-accent/30 bg-accent-dim/30 px-4 py-4">
             <p className="text-sm font-medium text-primary">{message}</p>
             {code && (
-              <div className="mt-4 rounded bg-elevated p-4 text-center">
+              <div className="mt-4 rounded-md bg-elevated p-4 text-center">
                 <KeyIcon className="mx-auto mb-2 h-6 w-6 text-accent" />
-                <p className="text-xs font-semibold uppercase text-secondary">Testing reset code</p>
-                <p className="mt-2 text-3xl font-black tracking-[0.3em] text-primary">{code}</p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-secondary">Your reset code</p>
+                <p className="mt-1 text-3xl font-black tracking-[0.3em] text-primary">{code}</p>
                 <Button size="lg" className="mt-4 w-full" onClick={handleUseCode}>
-                  Continue
+                  Use this code to reset password
                 </Button>
               </div>
             )}
-            {devLink && !code && (
-              <Link to={devLink.replace(/^https?:\/\/[^/]+/, '')} className="mt-4 inline-flex text-sm font-bold text-primary underline transition-colors hover:text-accent">
-                Open reset link
-              </Link>
+            {devLink && (
+              <div className="mt-3 border-t border-elevated/60 pt-3">
+                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-muted">🔧 Dev fallback link</p>
+                <Link to={devLink.replace(/^https?:\/\/[^/]+/, '')} className="break-all text-sm font-semibold text-accent hover:underline">
+                  Open reset link →
+                </Link>
+              </div>
             )}
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="mt-8 flex w-full flex-col gap-4">
+          <form onSubmit={onSubmit} className="flex flex-col gap-4">
             <div>
-              <label className={labelClass}>Email</label>
+              <label className="mb-1 block text-sm font-semibold text-primary">Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className={inputClass}
-                placeholder="email@example.com"
+                className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+                placeholder="you@example.com"
               />
             </div>
             <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading}>
-              {loading ? <Spinner size="sm" /> : 'Send reset link'}
+              {loading ? <Spinner size="sm" /> : 'Send reset code'}
             </Button>
           </form>
         )}
 
-        <div className="mt-10 text-center">
-          <Link to="/login" className="inline-flex text-sm font-black text-primary underline transition-colors hover:text-accent">
+        <div className="mt-8 text-center">
+          <Link to="/login" className="inline-flex text-base font-black text-primary transition-colors hover:text-accent">
             Return to log in
           </Link>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -3,6 +3,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import {
+  ChevronDownIcon,
+  ChevronRightIcon,
   PlusIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
@@ -59,7 +61,7 @@ import {
   setFolderCollapsed,
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
-import { getPinnedKeys, togglePinned, PINNED_EVENT } from '@/utils/pinnedLibrary'
+import { getPinnedKeys, PINNED_EVENT } from '@/utils/pinnedLibrary'
 import {
   getCustomOrder,
   setCustomOrder,
@@ -134,14 +136,6 @@ interface LibItem {
   /** ISO date string for "Played" column — recorded locally on play. */
   playedAt?: string
 }
-
-/** A top-level row in the library: either a saved item or a folder grouping. */
-type LibraryEntry =
-  | { type: 'item'; key: string; item: LibItem }
-  | { type: 'folder'; key: string; folder: LibraryFolder }
-
-/** The pinned/reorder key for a folder, sharing one keyspace with LibItem.key. */
-const folderKey = (id: string) => `fold-${id}`
 
 interface SidebarProps {
   takeoverHidden?: boolean
@@ -666,53 +660,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   // Folders only surface in the default view (no active filter/search), so the
   // flat filtered list stays predictable when searching.
   const foldersActive = filter === 'all' && !query.trim()
+  const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
+  const hasFolderSection = foldersActive && folders.length > 0
+
+  // Drag-reorder: move `fromKey` before/after `toKey` over the currently shown
+  // flat list, persist the new order, and switch to the Custom sort so it sticks.
+  // Only offered in the default view (no filter/search) to keep the saved order
+  // complete. Pins still float to the top afterwards (composed in `items`).
+  // Reorder over the full item list (works for both the expanded list/grid and
+  // the minimized rail; folder-grouped rows keep their slots and are simply
+  // filtered into folders when expanded).
   const reorderEnabled = foldersActive
-
-  // Top-level entries for the expanded list/grid: folders and ungrouped items
-  // share ONE ordered, pinnable, draggable list. Folders are NOT forced to the
-  // top — by default they trail the items, and only float up when pinned or
-  // dragged there (bug 26 extension). Items grouped inside a folder are pulled
-  // out here and rendered nested under their folder instead.
-  const entries = useMemo<LibraryEntry[]>(() => {
-    const visibleItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
-    const itemEntries: LibraryEntry[] = visibleItems.map((i) => ({ type: 'item', key: i.key, item: i }))
-    if (!foldersActive || folders.length === 0) return itemEntries
-
-    const folderEntries: LibraryEntry[] = folders.map((f) => ({ type: 'folder', key: folderKey(f.id), folder: f }))
-    // Default placement: items keep their (already-sorted) order; folders trail.
-    let all: LibraryEntry[] = [...itemEntries, ...folderEntries]
-
-    const nameOf = (e: LibraryEntry) => (e.type === 'folder' ? e.folder.name : e.item.name)
-    const subOf = (e: LibraryEntry) => (e.type === 'folder' ? e.folder.name : e.item.subtitle)
-    if (sort === 'alpha') all = [...all].sort((a, b) => nameOf(a).localeCompare(nameOf(b)))
-    else if (sort === 'creator') all = [...all].sort((a, b) => subOf(a).localeCompare(subOf(b)))
-    else if (sort === 'custom' && customOrder.length > 0) {
-      const rank = new Map(customOrder.map((k, i) => [k, i]))
-      all = [...all].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity))
-    }
-
-    // Pins float to the top (same rule as items), in pin order. Folders pin too.
-    if (pinnedKeys.length > 0) {
-      const pinRank = new Map(pinnedKeys.map((k, i) => [k, i]))
-      all = [...all].sort((a, b) =>
-        (pinRank.has(a.key) ? pinRank.get(a.key)! : Infinity) -
-        (pinRank.has(b.key) ? pinRank.get(b.key)! : Infinity),
-      )
-    }
-    return all
-  }, [items, folders, foldersActive, folderItemKeys, sort, customOrder, pinnedKeys])
-
-  // Drag-reorder over the top-level entry keys (folders + ungrouped items), so a
-  // folder can be dragged among playlists/albums. Persists the new order and
-  // switches to Custom sort so it sticks. Pins still float afterwards.
-  const reorderTopLevel = (fromKey: string, toKey: string, before: boolean) => {
-    const next = reorderKeys(entries.map((e) => e.key), fromKey, toKey, before)
-    setCustomOrder(next)
-    if (sort !== 'custom') setSort('custom')
-  }
-
-  // The minimized rail shows items flat (no folder grouping); it reorders over
-  // the flat item list.
   const reorderLibrary = (fromKey: string, toKey: string, before: boolean) => {
     const next = reorderKeys(items.map((i) => i.key), fromKey, toKey, before)
     setCustomOrder(next)
@@ -1185,6 +1143,35 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
       >
+        {hasFolderSection && (
+          <div className="mb-1 flex flex-col">
+            {folders.map((folder) => (
+              <FolderGroup
+                key={folder.id}
+                folder={folder}
+                contents={folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
+                compact={listCompact}
+                isNowPlaying={isNowPlaying}
+                renaming={renamingFolderId === folder.id}
+                renameValue={renameValue}
+                onRenameChange={setRenameValue}
+                onRenameStart={() => {
+                  setRenamingFolderId(folder.id)
+                  setRenameValue(folder.name)
+                }}
+                onRenameCommit={() => commitRename(folder.id)}
+                onRenameCancel={() => setRenamingFolderId(null)}
+                onPlayItem={playLibraryItem}
+                playlistFor={playlistFor}
+                albumFor={albumFor}
+                artistFor={artistFor}
+                videoFor={videoFor}
+                podcastFor={podcastFor}
+              />
+            ))}
+          </div>
+        )}
+
         {grid ? (
           <div
             className={cn(
@@ -1230,55 +1217,30 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
-            {entries.map((entry) =>
-              entry.type === 'folder' ? (
-                <FolderEntry
-                  key={entry.key}
-                  grid
+            {ungroupedItems.map((item) => (
+              <TrackDropZone
+                key={item.key}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+              >
+                <LibraryGridCard
+                  item={item}
                   compact={gridCompact}
-                  folder={entry.folder}
-                  contents={entry.folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
-                  pinned={pinnedSet.has(entry.key)}
-                  isNowPlaying={isNowPlaying}
-                  renaming={renamingFolderId === entry.folder.id}
-                  renameValue={renameValue}
-                  onRenameChange={setRenameValue}
-                  onRenameStart={() => { setRenamingFolderId(entry.folder.id); setRenameValue(entry.folder.name) }}
-                  onRenameCommit={() => commitRename(entry.folder.id)}
-                  onRenameCancel={() => setRenamingFolderId(null)}
-                  onReorder={reorderEnabled ? reorderTopLevel : undefined}
-                  onPlayItem={playLibraryItem}
-                  onNavigateItem={() => libraryExpanded && setLibraryExpanded(false)}
-                  playlistFor={playlistFor}
-                  albumFor={albumFor}
-                  artistFor={artistFor}
-                  videoFor={videoFor}
-                  podcastFor={podcastFor}
+                  nowPlaying={isNowPlaying(item)}
+                  pinned={pinnedSet.has(item.key)}
+                  onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
+                  onReorder={reorderEnabled ? reorderLibrary : undefined}
+                  onPlay={() => playLibraryItem(item)}
+                  menuPlaylist={playlistFor(item)}
+                  menuAlbum={albumFor(item)}
+                  menuArtist={artistFor(item)}
+                  menuVideo={videoFor(item)}
+                  menuPodcast={podcastFor(item)}
                 />
-              ) : (
-                <TrackDropZone
-                  key={entry.key}
-                  accepts={entry.item.acceptsTracks}
-                  onDropTrack={(track) => dropTrackOnPlaylist(entry.item.id, track)}
-                >
-                  <LibraryGridCard
-                    item={entry.item}
-                    compact={gridCompact}
-                    nowPlaying={isNowPlaying(entry.item)}
-                    pinned={pinnedSet.has(entry.item.key)}
-                    onNavigate={() => libraryExpanded && setLibraryExpanded(false)}
-                    onReorder={reorderEnabled ? reorderTopLevel : undefined}
-                    onPlay={() => playLibraryItem(entry.item)}
-                    menuPlaylist={playlistFor(entry.item)}
-                    menuAlbum={albumFor(entry.item)}
-                    menuArtist={artistFor(entry.item)}
-                    menuVideo={videoFor(entry.item)}
-                    menuPodcast={podcastFor(entry.item)}
-                  />
-                </TrackDropZone>
-              ),
-            )}
-            {entries.length === 0 && !showLiked && (
+
+              </TrackDropZone>
+            ))}
+            {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
           </div>
@@ -1329,56 +1291,30 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
-            {entries.map((entry) =>
-              entry.type === 'folder' ? (
-                <FolderEntry
-                  key={entry.key}
+            {ungroupedItems.map((item) => (
+              <TrackDropZone
+                key={item.key}
+                accepts={item.acceptsTracks}
+                onDropTrack={(track) => dropTrackOnPlaylist(item.id, track)}
+              >
+                <LibraryListRow
+                  item={item}
                   compact={listCompact}
                   expanded={libraryExpanded}
-                  folder={entry.folder}
-                  contents={entry.folder.itemKeys.map((k) => itemByKey.get(k)).filter((i): i is LibItem => !!i)}
-                  pinned={pinnedSet.has(entry.key)}
-                  isNowPlaying={isNowPlaying}
-                  renaming={renamingFolderId === entry.folder.id}
-                  renameValue={renameValue}
-                  onRenameChange={setRenameValue}
-                  onRenameStart={() => { setRenamingFolderId(entry.folder.id); setRenameValue(entry.folder.name) }}
-                  onRenameCommit={() => commitRename(entry.folder.id)}
-                  onRenameCancel={() => setRenamingFolderId(null)}
-                  onReorder={reorderEnabled ? reorderTopLevel : undefined}
-                  onPlayItem={playLibraryItem}
-                  onNavigateItem={() => { if (libraryExpanded) setLibraryExpanded(false) }}
-                  playlistFor={playlistFor}
-                  albumFor={albumFor}
-                  artistFor={artistFor}
-                  videoFor={videoFor}
-                  podcastFor={podcastFor}
+                  nowPlaying={isNowPlaying(item)}
+                  pinned={pinnedSet.has(item.key)}
+                  onPlay={() => playLibraryItem(item)}
+                  onNavigate={() => { if (libraryExpanded) setLibraryExpanded(false) }}
+                  onReorder={reorderEnabled ? reorderLibrary : undefined}
+                  menuPlaylist={playlistFor(item)}
+                  menuAlbum={albumFor(item)}
+                  menuArtist={artistFor(item)}
+                  menuVideo={videoFor(item)}
+                  menuPodcast={podcastFor(item)}
                 />
-              ) : (
-                <TrackDropZone
-                  key={entry.key}
-                  accepts={entry.item.acceptsTracks}
-                  onDropTrack={(track) => dropTrackOnPlaylist(entry.item.id, track)}
-                >
-                  <LibraryListRow
-                    item={entry.item}
-                    compact={listCompact}
-                    expanded={libraryExpanded}
-                    nowPlaying={isNowPlaying(entry.item)}
-                    pinned={pinnedSet.has(entry.item.key)}
-                    onPlay={() => playLibraryItem(entry.item)}
-                    onNavigate={() => { if (libraryExpanded) setLibraryExpanded(false) }}
-                    onReorder={reorderEnabled ? reorderTopLevel : undefined}
-                    menuPlaylist={playlistFor(entry.item)}
-                    menuAlbum={albumFor(entry.item)}
-                    menuArtist={artistFor(entry.item)}
-                    menuVideo={videoFor(entry.item)}
-                    menuPodcast={podcastFor(entry.item)}
-                  />
-                </TrackDropZone>
-              ),
-            )}
-            {entries.length === 0 && !showLiked && (
+              </TrackDropZone>
+            ))}
+            {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
               <p className="text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
             )}
           </>
@@ -1920,19 +1856,11 @@ function LibraryGridCard({
   )
 }
 
-/**
- * A folder as a first-class library entry (bug 26 extension). Renders as a
- * square tile in grid view and a chevron-less row in list view — like an
- * album/playlist — but clicking it toggles its contents inline. It's draggable
- * and pinnable (it shares the items' order/pin keyspace via `fold-<id>` keys).
- */
-function FolderEntry({
+/** A collapsible folder header + its (indented) contents, list-style. */
+function FolderGroup({
   folder,
   contents,
-  grid = false,
   compact,
-  expanded = false,
-  pinned = false,
   isNowPlaying,
   renaming,
   renameValue,
@@ -1940,9 +1868,7 @@ function FolderEntry({
   onRenameStart,
   onRenameCommit,
   onRenameCancel,
-  onReorder,
   onPlayItem,
-  onNavigateItem,
   playlistFor,
   albumFor,
   artistFor,
@@ -1951,10 +1877,7 @@ function FolderEntry({
 }: {
   folder: LibraryFolder
   contents: LibItem[]
-  grid?: boolean
   compact: boolean
-  expanded?: boolean
-  pinned?: boolean
   isNowPlaying: (item: LibItem) => boolean
   renaming: boolean
   renameValue: string
@@ -1962,9 +1885,7 @@ function FolderEntry({
   onRenameStart: () => void
   onRenameCommit: () => void
   onRenameCancel: () => void
-  onReorder?: (fromKey: string, toKey: string, before: boolean) => void
   onPlayItem: (item: LibItem) => void | Promise<void>
-  onNavigateItem?: () => void
   playlistFor: (item: LibItem) => Playlist | undefined
   albumFor: (item: LibItem) => Album | undefined
   artistFor: (item: LibItem) => Artist | undefined
@@ -1975,9 +1896,6 @@ function FolderEntry({
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const count = folder.itemKeys.length
-  const { dragProps, indicator } = useReorderDrag(folderKey(folder.id), onReorder)
-  const open = !folder.collapsed
-  const countLabel = t(count === 1 ? 'sidebar.folderItem' : 'sidebar.folderItems', { n: count })
 
   // Close the folder menu on any outside click (incl. outside the sidebar) or
   // Escape — consistent with the playlist/album menus. A `fixed inset-0` overlay
@@ -1998,216 +1916,142 @@ function FolderEntry({
     }
   }, [menuOpen])
 
-  const toggle = () => setFolderCollapsed(folder.id, !folder.collapsed)
-  const onContextMenu = (e: React.MouseEvent) => {
-    if (renaming) return
-    e.preventDefault()
-    setMenuOpen(true)
-  }
-
-  const renameInput = (
-    <input
-      autoFocus
-      value={renameValue}
-      onChange={(e) => onRenameChange(e.target.value)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') onRenameCommit()
-        else if (e.key === 'Escape') onRenameCancel()
-      }}
-      onBlur={onRenameCommit}
-      aria-label={t('sidebar.folderName')}
-      className="min-w-0 flex-1 rounded border border-accent/60 bg-surface px-1.5 py-1 text-sm font-normal text-primary outline-none"
-    />
-  )
-
-  const menu = (
-    <div ref={menuRef} className={cn('z-20', grid ? 'absolute right-2 top-2' : 'absolute right-1.5 top-1/2 -translate-y-1/2')}>
-      <button
-        type="button"
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen((v) => !v) }}
-        aria-label={t('sidebar.folderOptions')}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        className={cn(
-          'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100',
-          grid && 'bg-black/65 backdrop-blur-sm',
-          menuOpen ? 'opacity-100' : 'opacity-0 group-hover/folder:opacity-100',
-        )}
-      >
-        <EllipsisHorizontalIcon className="h-4 w-4" />
-      </button>
-      {menuOpen && (
-        <div role="menu" className="absolute right-0 top-full z-[1000] mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); togglePinned(folderKey(folder.id)) }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-          >
-            <PinIcon className={cn('h-4 w-4 shrink-0', pinned ? 'text-accent' : 'text-secondary')} />
-            {t(pinned ? 'sidebar.unpin' : 'sidebar.pin')}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onRenameStart() }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-          >
-            <PencilIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.rename')}
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); setMenuOpen(false); deleteFolder(folder.id) }}
-            className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-          >
-            <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.deleteFolder')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-
-  // Nested contents, shown when the folder is open.
-  const nested =
-    contents.length === 0 ? (
-      <p className={cn('text-xs text-secondary', grid ? 'px-1 py-2' : 'px-3 py-2')}>{t('sidebar.folderEmpty')}</p>
-    ) : grid ? (
-      <div
-        className={cn(
-          'grid',
-          gridCompactCols(compact),
-        )}
-      >
-        {contents.map((item) => (
-          <LibraryGridCard
-            key={item.key}
-            item={item}
-            compact={compact}
-            nowPlaying={isNowPlaying(item)}
-            onNavigate={() => onNavigateItem?.()}
-            onPlay={() => onPlayItem(item)}
-            menuPlaylist={playlistFor(item)}
-            menuAlbum={albumFor(item)}
-            menuArtist={artistFor(item)}
-            menuVideo={videoFor(item)}
-            menuPodcast={podcastFor(item)}
-          />
-        ))}
-      </div>
-    ) : (
-      contents.map((item) => (
-        <LibraryListRow
-          key={item.key}
-          item={item}
-          compact={compact}
-          nowPlaying={isNowPlaying(item)}
-          onPlay={() => onPlayItem(item)}
-          onNavigate={onNavigateItem}
-          menuPlaylist={playlistFor(item)}
-          menuAlbum={albumFor(item)}
-          menuArtist={artistFor(item)}
-          menuVideo={videoFor(item)}
-          menuPodcast={podcastFor(item)}
-        />
-      ))
-    )
-
-  // ── Grid: square tile (like album/playlist), contents span full width ──
-  if (grid) {
-    return (
-      <>
-        <div className="group/folder group/row relative" onContextMenu={onContextMenu} {...dragProps}>
-          {indicator}
-          {renaming ? (
-            <div className={cn('block rounded-md', compact ? 'p-1.5' : 'p-2')}>
-              <div className={cn('relative mb-2 flex aspect-square w-full items-center justify-center rounded-md bg-elevated text-secondary')}>
-                <FolderIcon className={compact ? 'h-6 w-6' : 'h-8 w-8'} />
-              </div>
-              {renameInput}
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={toggle}
-                aria-expanded={open}
-                aria-label={t(open ? 'sidebar.collapseFolder' : 'sidebar.expandFolder', { name: folder.name })}
-                className={cn('block w-full rounded-md text-left transition-colors hover:bg-elevated/50', compact ? 'p-1.5' : 'p-2')}
-              >
-                <div className={cn('relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-md bg-elevated text-secondary', !compact && 'mb-2')}>
-                  <FolderIcon className={compact ? 'h-6 w-6' : 'h-8 w-8'} />
-                </div>
-                {!compact && (
-                  <>
-                    <p className="truncate text-sm font-normal leading-tight text-primary">{folder.name}</p>
-                    <p className="mt-0.5 flex items-center gap-1 text-[13px] font-normal leading-tight text-secondary">
-                      {pinned && <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />}
-                      <span className="truncate">{countLabel}</span>
-                    </p>
-                  </>
-                )}
-              </button>
-              {menu}
-            </>
-          )}
-        </div>
-        {open && <div className="col-span-full mb-1 rounded-md bg-elevated/30 p-1">{nested}</div>}
-      </>
-    )
-  }
-
-  // ── List: chevron-less row (like album/playlist), contents indented ──
   return (
     <div>
-      <div className="group/folder group/row relative" onContextMenu={onContextMenu} {...dragProps}>
-        {indicator}
+      <div
+        className="group/folder relative"
+        onContextMenu={(e) => {
+          // Right-click opens the same menu (parity with playlists/albums).
+          if (renaming) return
+          e.preventDefault()
+          setMenuOpen(true)
+        }}
+      >
         {renaming ? (
           <div className={cn('flex items-center rounded-md', compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2')}>
-            <div className={cn('shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary', compact ? 'h-9 w-9' : 'h-12 w-12')}>
+            <span className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <div
+              className={cn(
+                'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
+                compact ? 'h-9 w-9' : 'h-12 w-12',
+              )}
+            >
               <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
             </div>
-            {renameInput}
+            <input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => onRenameChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onRenameCommit()
+                else if (e.key === 'Escape') onRenameCancel()
+              }}
+              onBlur={onRenameCommit}
+              aria-label={t('sidebar.folderName')}
+              className="min-w-0 flex-1 rounded border border-accent/60 bg-surface px-1.5 py-1 text-sm font-normal text-primary outline-none"
+            />
           </div>
         ) : (
           <>
             <button
               type="button"
-              onClick={toggle}
-              aria-expanded={open}
-              aria-label={t(open ? 'sidebar.collapseFolder' : 'sidebar.expandFolder', { name: folder.name })}
-              className={cn('flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50', compact ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-1.5')}
-            >
-              {!compact && (
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-elevated text-secondary">
-                  <FolderIcon className="h-5 w-5" />
-                </div>
+              onClick={() => setFolderCollapsed(folder.id, !folder.collapsed)}
+              aria-expanded={!folder.collapsed}
+              aria-label={t(folder.collapsed ? 'sidebar.expandFolder' : 'sidebar.collapseFolder', {
+                name: folder.name,
+              })}
+              className={cn(
+                'flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50',
+                compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
               )}
-              <div className={cn('min-w-0 flex-1', expanded ? 'flex items-center' : 'pr-14')}>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-normal leading-tight text-primary">{folder.name}</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[13px] font-normal leading-tight text-secondary">
-                    {pinned && <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />}
-                    <span className="truncate">{countLabel}</span>
+            >
+              {folder.collapsed ? (
+                <ChevronRightIcon className="h-4 w-4 shrink-0 text-secondary" />
+              ) : (
+                <ChevronDownIcon className="h-4 w-4 shrink-0 text-secondary" />
+              )}
+              <div
+                className={cn(
+                  'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
+                  compact ? 'h-9 w-9' : 'h-12 w-12',
+                )}
+              >
+                <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+              </div>
+              <div className="min-w-0 flex-1 pr-7">
+                <p className="truncate text-sm font-normal text-primary">{folder.name}</p>
+                {!compact && (
+                  <p className="truncate text-xs text-secondary">
+                    {t(count === 1 ? 'sidebar.folderItem' : 'sidebar.folderItems', { n: count })}
                   </p>
-                </div>
-                {expanded && (
-                  <>
-                    <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">—</span>
-                    <span className="w-1/5 shrink-0 pr-4 text-right text-[13px] text-secondary">—</span>
-                  </>
                 )}
               </div>
             </button>
-            {menu}
+            <div ref={menuRef} className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={t('sidebar.folderOptions')}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className={cn(
+                  'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100',
+                  menuOpen ? 'opacity-100' : 'opacity-0 group-hover/folder:opacity-100',
+                )}
+              >
+                <EllipsisHorizontalIcon className="h-4 w-4" />
+              </button>
+              {menuOpen && (
+                  <div role="menu" className="absolute right-0 top-full z-[1000] mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onRenameStart()
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <PencilIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.rename')}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false)
+                        deleteFolder(folder.id)
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+                    >
+                      <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.deleteFolder')}
+                    </button>
+                  </div>
+              )}
+            </div>
           </>
         )}
       </div>
 
-      {open && <div className="ml-4 border-l border-secondary/10 pl-1">{nested}</div>}
+      {!folder.collapsed && (
+        <div className="ml-4 border-l border-secondary/10 pl-1">
+          {contents.length === 0 ? (
+            <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
+          ) : (
+            contents.map((item) => (
+              <LibraryListRow
+                key={item.key}
+                item={item}
+                compact={compact}
+                nowPlaying={isNowPlaying(item)}
+                onPlay={() => onPlayItem(item)}
+                menuPlaylist={playlistFor(item)}
+                menuAlbum={albumFor(item)}
+                menuArtist={artistFor(item)}
+                menuVideo={videoFor(item)}
+                menuPodcast={podcastFor(item)}
+              />
+            ))
+          )}
+        </div>
+      )}
     </div>
   )
-}
-
-/** Column template for a folder's nested grid contents (matches the library grid). */
-function gridCompactCols(compact: boolean): string {
-  return compact
-    ? '[grid-template-columns:repeat(auto-fill,minmax(96px,1fr))] gap-2'
-    : '[grid-template-columns:repeat(auto-fill,minmax(120px,1fr))] gap-2'
 }
 
 

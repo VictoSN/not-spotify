@@ -528,7 +528,7 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
   - [x] Visual feedback during drag (accent drop-position indicator + native drag image)
   - [x] Persist new order to localStorage (`ns-library-order` + `ns-library-sort` = "custom")
   - [x] Order maintained after page refresh (sort persisted, custom order rehydrated)
-  - [x] Edge cases: reordering composes with pins (pinned still float); only in the default view (no filter/search) to keep the saved order complete.
+  - [~] Edge cases: reordering composes with pins (pinned still float); only in the default view (no filter/search) to keep the saved order complete. NOT included: dragging items *into* folders, and reordering folders themselves (separate ordering store) — see note below.
   - [x] Works in both minimized and maximized sidebar states
 
 - [x] **Tests to Complete**
@@ -537,19 +537,11 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
   - [x] Test: New order persists after refresh
   - [x] Test: Drag-and-drop works in minimized sidebar
   - [x] Test: Drag-and-drop works in maximized sidebar
-  - [x] Test: Can drag folder to new position (bug 26 extension — folders share the item keyspace via `fold-<id>` keys)
+  - [ ] Test: Can drag folder to new position — NOT done (folder reordering out of scope this pass)
 
-### Bug #26 extension (folders are first-class library entries)
-Folders are no longer a separate always-on-top section; they're top-level
-entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
-
-- [x] Grid + compact grid: folder renders as a **square tile with a folder icon**, identical box size to album/playlist tiles (verified in preview: 117×117, matching a playlist card).
-- [x] List: folder row has **no chevron** (just the folder icon); clicking the row toggles its contents inline (verified: aria "Expand/Collapse", inline reveal).
-- [x] Folders are **draggable** like items (`fold-<id>` keys flow through `reorderKeys`/`ns-library-order`); dragging a folder switches to Custom sort and persists.
-- [x] Folders are **not forced to the top** — by default they trail the items and only float up when **pinned** or dragged there.
-- [x] **Pin/Unpin** added to the folder menu (alongside Rename/Delete); pinned folders show the accent pin badge and float to the top with the items.
-- [x] One mixed order + one pinned set shared across folders and items (per product decision).
-- [x] Tests: not-forced-to-top, pin-floats-folder, folder drag-reorder, inline toggle (Sidebar.test.tsx). Existing folder/drag/pin tests still green (24 Sidebar tests).
+> Follow-up: folder reordering and dragging items into/out of folders are a
+> separate feature (folders live in their own `libraryFolders` store). Tracked
+> for a later pass; item reordering above is complete and tested.
 
 ---
 

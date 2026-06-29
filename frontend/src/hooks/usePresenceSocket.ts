@@ -5,6 +5,7 @@ import { useFriendStore } from '@/stores/friendStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { fireOsNotification } from '@/services/notifications'
+import { chatService } from '@/services/chatService'
 import type { ChatMessage } from '@/types/chat'
 import type { AppNotification } from '@/types/notification'
 
@@ -67,6 +68,13 @@ export function usePresenceSocket() {
     // send (for multi-tab sync). If E2E encryption is enabled later, decrypt here.
     connection.on('ChatMessage', (message: ChatMessage) => {
       useChatStore.getState().receiveMessage(message)
+      const me = useAuthStore.getState().user?.id
+      if (message.recipientId === me) void chatService.markDelivered()
+    })
+
+    // A friend's client acknowledged receipt: one grey tick becomes two.
+    connection.on('ChatDelivered', (recipientUserId: string, deliveredAt: string) => {
+      useChatStore.getState().applyDelivered(recipientUserId, deliveredAt)
     })
 
     // A friend read my messages — update ✓✓ read receipts live.
@@ -95,6 +103,7 @@ export function usePresenceSocket() {
 
     connection
       .start()
+      .then(() => chatService.markDelivered())
       .catch((err) => console.warn('[Presence] connection failed:', err))
 
     connectionRef.current = connection

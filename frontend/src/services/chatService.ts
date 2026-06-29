@@ -28,4 +28,8 @@ export const chatService = {
   async markRead(userId: string): Promise<void> {
     await api.post(`/chat/with/${userId}/read`)
   },
+
+  async markDelivered(): Promise<void> {
+    await api.post('/chat/delivered')
+  },
 }

@@ -22,6 +22,9 @@ public class ChatMessage
 
     public DateTime SentAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>Set when the recipient's client acknowledges receiving the message.</summary>
+    public DateTime? DeliveredAt { get; set; }
+
     /// <summary>Set when the recipient opens the conversation (read receipt).</summary>
     public DateTime? ReadAt { get; set; }
 

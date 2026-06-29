@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type UIEvent } from 're
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
+import { DiagonalCollapseIcon, DiagonalExpandIcon } from '@/components/common/DiagonalResizeIcon'
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -2064,33 +2065,5 @@ function DragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => voi
     >
       <div className="h-full w-px bg-transparent transition-colors group-hover:bg-secondary/70" />
     </div>
-  )
-}
-
-function DiagonalExpandIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
-      <path
-        d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function DiagonalCollapseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
-      <path
-        d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   )
 }

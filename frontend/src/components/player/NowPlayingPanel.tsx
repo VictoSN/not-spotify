@@ -6,13 +6,12 @@ import {
   ChevronDoubleRightIcon,
   Bars3Icon,
   ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
-  PhotoIcon,
   FilmIcon,
-  UserCircleIcon,
 } from '@heroicons/react/24/outline'
 import { CheckBadgeIcon } from '@heroicons/react/24/solid'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
+import { DiagonalCollapseIcon, DiagonalExpandIcon } from '@/components/common/DiagonalResizeIcon'
+import { ArtistViewIcon, ArtworkViewIcon } from '@/components/common/NowPlayingViewIcons'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { ShareIcon } from '@/components/common/ShareIcon'
 import type { Artist, TourDate } from '@/types/artist'
@@ -63,31 +62,12 @@ function NowPlayingDragHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEve
   )
 }
 
-function DiagonalExpandIcon() {
+function ViewSelectionMarker() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
-      <path
-        d="M16.6 5.6h2.2v2.2M18.8 5.6l-4.5 4.5M7.4 18.4H5.2v-2.2M5.2 18.4l4.5-4.5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-function DiagonalCollapseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="none">
-      <path
-        d="M18.6 5.4l-4.4 4.4M14.2 7.6v2.2h2.2M5.4 18.6l4.4-4.4M7.6 14.2h2.2v2.2"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <span
+      aria-hidden="true"
+      className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-[1px] bg-current"
+    />
   )
 }
 
@@ -412,7 +392,7 @@ export function NowPlayingPanel() {
     const heroOpacity = Math.max(0, 1 - heroProgress * 1.35)
     // Shared style for the compact top-right control buttons (subtle circular
     // gray hover, gray→white on hover — Spotify fullscreen).
-    const npFsControlClass = 'flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-95'
+    const npFsControlClass = 'relative flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-95'
     const artistHeroImage = artist?.headerImageUrl ?? artist?.imageUrl ?? artistAvatarUrl ?? null
     // Fall back to artwork if the selected hero source isn't available for this track.
     const effectiveHeroView =
@@ -462,9 +442,10 @@ export function NowPlayingPanel() {
                 aria-label={t('np.showArtwork')}
                 aria-pressed={heroView === 'artwork'}
                 title={t('np.showArtwork')}
-                className={cn(npFsControlClass, heroView === 'artwork' && 'bg-primary/10 text-primary')}
+                className={cn(npFsControlClass, heroView === 'artwork' && 'text-primary')}
               >
-                <PhotoIcon className="h-[18px] w-[18px]" />
+                <ArtworkViewIcon className="mb-1 h-[18px] w-[18px]" />
+                {heroView === 'artwork' && <ViewSelectionMarker />}
               </button>
               <button
                 onClick={() => video && setHeroView('canvas')}
@@ -474,11 +455,12 @@ export function NowPlayingPanel() {
                 title={video ? t('np.showClip') : t('np.noClip')}
                 className={cn(
                   npFsControlClass,
-                  heroView === 'canvas' && 'bg-primary/10 text-primary',
+                  heroView === 'canvas' && 'text-primary',
                   !video && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
                 )}
               >
-                <FilmIcon className="h-[18px] w-[18px]" />
+                <FilmIcon className="mb-1 h-[18px] w-[18px]" />
+                {heroView === 'canvas' && <ViewSelectionMarker />}
               </button>
               <button
                 onClick={() => artistHeroImage && setHeroView('artist')}
@@ -488,11 +470,12 @@ export function NowPlayingPanel() {
                 title={t('np.showArtist')}
                 className={cn(
                   npFsControlClass,
-                  heroView === 'artist' && 'bg-primary/10 text-primary',
+                  heroView === 'artist' && 'text-primary',
                   !artistHeroImage && 'opacity-35 hover:scale-100 hover:bg-transparent hover:text-secondary',
                 )}
               >
-                <UserCircleIcon className="h-[18px] w-[18px]" />
+                <ArtistViewIcon className="mb-1 h-[18px] w-[18px]" />
+                {heroView === 'artist' && <ViewSelectionMarker />}
               </button>
 
               <span className="mx-1 h-5 w-px bg-secondary/25" aria-hidden="true" />
@@ -510,7 +493,7 @@ export function NowPlayingPanel() {
                 aria-label={t('np.shrinkPanel')}
                 title={t('np.shrinkPanel')}
               >
-                <ArrowsPointingInIcon className="h-[18px] w-[18px]" />
+                <DiagonalCollapseIcon className="h-[18px] w-[18px]" />
               </button>
             </div>
           </div>

@@ -7,6 +7,7 @@ public record ChatMessageDto(
     string RecipientId,
     string Body,
     DateTime SentAt,
+    DateTime? DeliveredAt,
     DateTime? ReadAt
 );
 

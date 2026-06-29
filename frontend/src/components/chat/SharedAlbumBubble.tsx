@@ -47,7 +47,7 @@ export function SharedAlbumBubble({ albumId, mine, time, ticks }: Props) {
 
   const shell = cn(
     'w-64 max-w-full overflow-hidden rounded-2xl',
-    mine ? 'rounded-br-md bg-accent text-white' : 'rounded-bl-md bg-elevated text-primary',
+    mine ? 'chat-bubble-outgoing rounded-br-md' : 'chat-bubble-incoming rounded-bl-md',
   )
 
   if (failed) {
@@ -80,7 +80,7 @@ export function SharedAlbumBubble({ albumId, mine, time, ticks }: Props) {
         </Link>
 
         <div className="min-w-0 flex-1">
-          <p className={cn('text-[10px] font-bold uppercase tracking-wider', mine ? 'text-white/70' : 'text-secondary')}>
+          <p className={cn('text-[10px] font-bold uppercase tracking-wider', mine ? 'chat-meta-outgoing' : 'chat-meta-incoming')}>
             {kindLabel}
           </p>
           {album ? (
@@ -90,13 +90,13 @@ export function SharedAlbumBubble({ albumId, mine, time, ticks }: Props) {
           ) : (
             <p className="truncate text-sm font-semibold leading-tight">Loading…</p>
           )}
-          <p className={cn('truncate text-xs leading-tight', mine ? 'text-white/70' : 'text-secondary')}>
+          <p className={cn('truncate text-xs leading-tight', mine ? 'chat-meta-outgoing' : 'chat-meta-incoming')}>
             {album?.artist.name ?? ' '}
           </p>
         </div>
       </div>
 
-      <div className={cn('flex items-center justify-end gap-1 px-2.5 pb-1.5 text-[10px]', mine ? 'text-white/70' : 'text-secondary')}>
+      <div className={cn('flex items-center justify-end gap-1 px-2.5 pb-1.5 text-[10px]', mine ? 'chat-meta-outgoing' : 'chat-meta-incoming')}>
         {time}
         {ticks}
       </div>

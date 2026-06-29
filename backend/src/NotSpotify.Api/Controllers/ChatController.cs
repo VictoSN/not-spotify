@@ -63,6 +63,7 @@ public class ChatController : ControllerBase
         m.RecipientId.ToString(),
         m.Body,
         m.SentAt,
+        m.DeliveredAt,
         m.ReadAt
     );
 
@@ -215,11 +216,37 @@ public class ChatController : ControllerBase
         return Ok(payload);
     }
 
-    // ── Read receipts ────────────────────────────────────────────────────────
+    // ── Delivery + read receipts ─────────────────────────────────────────────
+
+    /// <summary>
+    /// POST /chat/delivered — acknowledge every message that has reached this
+    /// recipient's client and push ChatDelivered receipts to their senders.
+    /// </summary>
+    [HttpPost("delivered")]
+    public async Task<IActionResult> MarkDelivered(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        var now = DateTime.UtcNow;
+        var messages = await _db.ChatMessages
+            .Where(m => m.RecipientId == me && m.DeliveredAt == null)
+            .ToListAsync(ct);
+
+        if (messages.Count == 0) return NoContent();
+
+        foreach (var message in messages) message.DeliveredAt = now;
+        await _db.SaveChangesAsync(ct);
+
+        var senders = messages.Select(m => m.SenderId).Distinct();
+        await Task.WhenAll(senders.Select(senderId =>
+            _hub.Clients.Group($"user-{senderId}")
+                .SendAsync("ChatDelivered", me.ToString(), now, ct)));
+
+        return NoContent();
+    }
 
     /// <summary>
     /// POST /chat/with/{userId}/read — mark every message from that friend as read.
-    /// Pushes a "ChatRead" event to the sender so their ✓✓ ticks update live.
+    /// Pushes a ChatRead event to the sender so their double ticks turn blue.
     /// </summary>
     [HttpPost("with/{userId:guid}/read")]
     public async Task<IActionResult> MarkRead(Guid userId, CancellationToken ct = default)
@@ -227,12 +254,19 @@ public class ChatController : ControllerBase
         var me = CurrentUserId();
 
         var now = DateTime.UtcNow;
-        var updated = await _db.ChatMessages
+        var messages = await _db.ChatMessages
             .Where(m => m.SenderId == userId && m.RecipientId == me && m.ReadAt == null)
-            .ExecuteUpdateAsync(s => s.SetProperty(m => m.ReadAt, now), ct);
+            .ToListAsync(ct);
 
-        if (updated > 0)
+        if (messages.Count > 0)
         {
+            foreach (var message in messages)
+            {
+                message.DeliveredAt ??= now;
+                message.ReadAt = now;
+            }
+            await _db.SaveChangesAsync(ct);
+
             // Tell the original sender their messages were read (live read receipts),
             // and sync my own other tabs so their unread badges clear too.
             await Task.WhenAll(

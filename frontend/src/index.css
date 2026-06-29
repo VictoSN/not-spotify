@@ -68,6 +68,15 @@ html[data-theme="dark"] {
   --c-secondary: #b3b3b3;
   --c-muted: #6a6a6a;
 
+  /* WhatsApp-inspired chat palette. */
+  --chat-outgoing-bg: #144d37;
+  --chat-outgoing-text: #fafafa;
+  --chat-incoming-bg: #242626;
+  --chat-incoming-text: #fafafa;
+  --chat-outgoing-meta: #b8c2bd;
+  --chat-incoming-meta: #aeb3b3;
+  --chat-bubble-border: rgba(255, 255, 255, 0.1);
+
   /* Artwork-derived page shading */
   --artwork-hero-strength: 82%;
   --artwork-fade-strength: 48%;
@@ -94,6 +103,15 @@ html[data-theme="light"] {
   --c-secondary: #5f6561;
   --c-muted: #8a918d;
 
+  /* A calm, readable daylight counterpart to WhatsApp's dark green bubbles. */
+  --chat-outgoing-bg: #d9fdd3;
+  --chat-outgoing-text: #111b21;
+  --chat-incoming-bg: #ffffff;
+  --chat-incoming-text: #111b21;
+  --chat-outgoing-meta: #667781;
+  --chat-incoming-meta: #667781;
+  --chat-bubble-border: rgba(17, 27, 33, 0.08);
+
   /* Let artwork read as a soft wash instead of a dark block in light mode. */
   --artwork-hero-strength: 48%;
   --artwork-fade-strength: 24%;
@@ -102,6 +120,33 @@ html[data-theme="light"] {
 
   color-scheme: light;
   background-color: var(--c-base);
+}
+
+.chat-bubble-outgoing {
+  background-color: var(--chat-outgoing-bg);
+  color: var(--chat-outgoing-text);
+}
+
+.chat-bubble-incoming {
+  background-color: var(--chat-incoming-bg);
+  color: var(--chat-incoming-text);
+}
+
+.chat-meta-outgoing {
+  color: var(--chat-outgoing-meta);
+}
+
+.chat-meta-incoming {
+  color: var(--chat-incoming-meta);
+}
+
+.chat-bubble-border {
+  border-color: var(--chat-bubble-border);
+}
+
+html[data-theme="light"] .chat-bubble-incoming,
+html[data-theme="light"] .chat-bubble-outgoing {
+  box-shadow: 0 1px 1px rgba(11, 20, 26, 0.08);
 }
 
 /*

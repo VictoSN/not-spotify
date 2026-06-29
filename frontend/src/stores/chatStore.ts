@@ -34,6 +34,7 @@ interface ChatState {
 
   // Real-time handlers (called from usePresenceSocket)
   receiveMessage: (message: ChatMessage) => void
+  applyDelivered: (recipientUserId: string, deliveredAt: string) => void
   applyRead: (readerUserId: string, readAt: string) => void
   applyReadSelf: (partnerUserId: string) => void
 }
@@ -68,6 +69,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ? conversations.map((c) => (c.userId === activeUserId ? { ...c, unreadCount: 0 } : c))
           : conversations
       set({ conversations: clamped })
+      void chatService.markDelivered()
     } catch {
       /* network blip — keep current state */
     }
@@ -78,6 +80,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const page = await chatService.getThread(userId)
       set((s) => ({ threads: { ...s.threads, [userId]: sortThread(page) }, isLoading: false }))
+      void chatService.markDelivered()
       await get().markRead(userId)
     } catch {
       set({ isLoading: false })
@@ -114,6 +117,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       recipientId: userId,
       body: trimmed,
       sentAt: new Date().toISOString(),
+      deliveredAt: null,
       readAt: null,
       pending: true,
     }
@@ -218,7 +222,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   applyRead: (readerUserId, readAt) => {
     const me = myId()
     if (!me) return
-    // The friend read my messages — flip ✓ to ✓✓ in their thread.
+    // The friend read my messages — keep two ticks and turn them blue.
     set((s) => {
       const thread = s.threads[readerUserId]
       if (!thread) return s
@@ -226,7 +230,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
         threads: {
           ...s.threads,
           [readerUserId]: thread.map((m) =>
-            m.senderId === me && !m.readAt ? { ...m, readAt } : m,
+            m.senderId === me && !m.readAt ? { ...m, deliveredAt: m.deliveredAt ?? readAt, readAt } : m,
+          ),
+        },
+      }
+    })
+  },
+
+  applyDelivered: (recipientUserId, deliveredAt) => {
+    const me = myId()
+    if (!me) return
+    set((s) => {
+      const thread = s.threads[recipientUserId]
+      if (!thread) return s
+      return {
+        threads: {
+          ...s.threads,
+          [recipientUserId]: thread.map((m) =>
+            m.senderId === me && !m.deliveredAt ? { ...m, deliveredAt } : m,
           ),
         },
       }

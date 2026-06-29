@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { PaperAirplaneIcon, ChatBubbleLeftRightIcon, CheckIcon, LockClosedIcon } from '@heroicons/react/24/outline'
+import {
+  PaperAirplaneIcon,
+  ChatBubbleLeftRightIcon,
+  LockClosedIcon,
+  PlusIcon,
+  FaceSmileIcon,
+} from '@heroicons/react/24/outline'
+import { DocumentIcon, PhotoIcon } from '@heroicons/react/24/solid'
 import { Avatar } from '@/components/ui/Avatar'
 import { Spinner } from '@/components/ui/Spinner'
 import { useChatStore } from '@/stores/chatStore'
@@ -28,15 +35,30 @@ function formatDay(iso: string) {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/** WhatsApp-style ✓ (sent) / ✓✓ (read) ticks on my own bubbles. */
-function ReadTicks({ message }: { message: ChatMessage }) {
+const QUICK_EMOJIS = ['😀', '😂', '😍', '🥰', '😎', '😭', '😡', '👍', '👏', '🙏', '❤️', '🔥', '🎉', '✨', '🎵', '🤝']
+
+/** Sent (one grey), delivered (two grey), and read (two blue) message receipts. */
+export function MessageStatusTicks({ message }: { message: ChatMessage }) {
   if (message.pending) {
-    return <span className="ml-1 inline-block h-3 w-3 rounded-full border border-white/50" aria-label="Sending" />
+    return <span className="chat-meta-outgoing ml-1 inline-block h-3 w-3 rounded-full border border-current" aria-label="Sending" />
   }
+
+  const read = Boolean(message.readAt)
+  const delivered = read || Boolean(message.deliveredAt)
   return (
-    <span className={cn('ml-1 inline-flex', message.readAt ? 'text-white' : 'text-white/50')} aria-label={message.readAt ? 'Read' : 'Sent'}>
-      <CheckIcon className="h-3.5 w-3.5" />
-      {message.readAt && <CheckIcon className="-ml-2 h-3.5 w-3.5" />}
+    <span
+      className={cn(
+        'ml-1 inline-flex h-3.5 w-[18px] shrink-0 translate-y-px items-center justify-center',
+        read ? 'text-[#53bdeb]' : 'chat-meta-outgoing',
+      )}
+      aria-label={read ? 'Read' : delivered ? 'Delivered' : 'Sent'}
+    >
+      <svg viewBox="0 0 18 14" aria-hidden="true" className="h-3.5 w-[18px]" fill="none">
+        {delivered && (
+          <path d="m1.2 7.5 3.1 3 6.2-7" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+        <path d={delivered ? 'm6.1 7.5 3.1 3 6.2-7' : 'm4.3 7.5 3.1 3 6.2-7'} stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </span>
   )
 }
@@ -55,7 +77,13 @@ export function MessagesPage() {
   const fetchFriends = useFriendStore((s) => s.fetchFriends)
 
   const [draft, setDraft] = useState('')
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false)
+  const [emojiMenuOpen, setEmojiMenuOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const composerToolsRef = useRef<HTMLDivElement | null>(null)
+  const documentInputRef = useRef<HTMLInputElement | null>(null)
+  const mediaInputRef = useRef<HTMLInputElement | null>(null)
+  const draftInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     fetchConversations()
@@ -79,6 +107,17 @@ export function MessagesPage() {
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [activeUserId, markRead])
+
+  useEffect(() => {
+    const closePopovers = (event: PointerEvent) => {
+      if (!composerToolsRef.current?.contains(event.target as Node)) {
+        setAttachmentMenuOpen(false)
+        setEmojiMenuOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', closePopovers)
+    return () => document.removeEventListener('pointerdown', closePopovers)
+  }, [])
 
   const thread = activeUserId ? (threads[activeUserId] ?? []) : []
 
@@ -122,6 +161,19 @@ export function MessagesPage() {
     if (!activeUserId || !draft.trim() || chatLocked) return
     sendMessage(activeUserId, draft)
     setDraft('')
+  }
+
+  const insertEmoji = (emoji: string) => {
+    const input = draftInputRef.current
+    const start = input?.selectionStart ?? draft.length
+    const end = input?.selectionEnd ?? start
+    const next = `${draft.slice(0, start)}${emoji}${draft.slice(end)}`
+    setDraft(next)
+    setEmojiMenuOpen(false)
+    requestAnimationFrame(() => {
+      input?.focus()
+      input?.setSelectionRange(start + emoji.length, start + emoji.length)
+    })
   }
 
   if (!me) return null
@@ -290,21 +342,21 @@ export function MessagesPage() {
                                 trackId={share.id}
                                 mine={mine}
                                 time={formatTime(m.sentAt)}
-                                ticks={mine ? <ReadTicks message={m} /> : null}
+                                ticks={mine ? <MessageStatusTicks message={m} /> : null}
                               />
                             ) : share.kind === 'album' ? (
                               <SharedAlbumBubble
                                 albumId={share.id}
                                 mine={mine}
                                 time={formatTime(m.sentAt)}
-                                ticks={mine ? <ReadTicks message={m} /> : null}
+                                ticks={mine ? <MessageStatusTicks message={m} /> : null}
                               />
                             ) : share.kind === 'playlist' ? (
                               <SharedPlaylistBubble
                                 playlistId={share.id}
                                 mine={mine}
                                 time={formatTime(m.sentAt)}
-                                ticks={mine ? <ReadTicks message={m} /> : null}
+                                ticks={mine ? <MessageStatusTicks message={m} /> : null}
                               />
                             ) : (
                               <SharedJamBubble
@@ -312,7 +364,7 @@ export function MessagesPage() {
                                 hostName={share.name ?? 'your friend'}
                                 mine={mine}
                                 time={formatTime(m.sentAt)}
-                                ticks={mine ? <ReadTicks message={m} /> : null}
+                                ticks={mine ? <MessageStatusTicks message={m} /> : null}
                               />
                             )
                           ) : (
@@ -320,19 +372,19 @@ export function MessagesPage() {
                               className={cn(
                                 'max-w-[75%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed break-words',
                                 mine
-                                  ? 'rounded-br-md bg-accent text-white'
-                                  : 'rounded-bl-md bg-elevated text-primary',
+                                  ? 'chat-bubble-outgoing rounded-br-md'
+                                  : 'chat-bubble-incoming rounded-bl-md',
                               )}
                             >
                               <span className="whitespace-pre-wrap">{m.body}</span>
                               <span
                                 className={cn(
                                   'ml-2 inline-flex translate-y-0.5 items-center text-[10px]',
-                                  mine ? 'text-white/70' : 'text-secondary',
+                                  mine ? 'chat-meta-outgoing' : 'chat-meta-incoming',
                                 )}
                               >
                                 {formatTime(m.sentAt)}
-                                {mine && <ReadTicks message={m} />}
+                                {mine && <MessageStatusTicks message={m} />}
                               </span>
                             </div>
                           )}
@@ -358,13 +410,111 @@ export function MessagesPage() {
               </div>
             ) : (
               <form onSubmit={submit} className="flex items-center gap-2 border-t border-elevated/40 px-4 py-3">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={`Message ${activePartner.name}`}
-                  maxLength={4000}
-                  className="h-11 flex-1 rounded-full border border-transparent bg-elevated px-4 text-sm text-primary outline-none transition-colors placeholder:text-muted focus:border-accent/60"
-                />
+                <div
+                  ref={composerToolsRef}
+                  className="relative flex h-11 min-w-0 flex-1 items-center rounded-full border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"
+                >
+                  <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" />
+                  <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAttachmentMenuOpen((open) => !open)
+                      setEmojiMenuOpen(false)
+                    }}
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      attachmentMenuOpen && 'rotate-45 bg-primary/10 text-primary',
+                    )}
+                    aria-label="Add attachment"
+                    aria-haspopup="menu"
+                    aria-expanded={attachmentMenuOpen}
+                  >
+                    <PlusIcon className="h-5 w-5 stroke-2" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmojiMenuOpen((open) => !open)
+                      setAttachmentMenuOpen(false)
+                    }}
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      emojiMenuOpen && 'bg-primary/10 text-primary',
+                    )}
+                    aria-label="Choose emoji"
+                    aria-haspopup="dialog"
+                    aria-expanded={emojiMenuOpen}
+                  >
+                    <FaceSmileIcon className="h-5 w-5 stroke-2" />
+                  </button>
+
+                  {attachmentMenuOpen && (
+                    <div
+                      role="menu"
+                      aria-label="Attachment options"
+                      className="absolute bottom-[calc(100%+0.75rem)] left-0 z-50 w-44 overflow-hidden rounded-2xl bg-[#292929] py-1.5 text-sm text-white shadow-2xl ring-1 ring-white/10"
+                    >
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAttachmentMenuOpen(false)
+                          documentInputRef.current?.click()
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+                      >
+                        <DocumentIcon className="h-5 w-5 shrink-0 text-violet-500" />
+                        <span>Document</span>
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setAttachmentMenuOpen(false)
+                          mediaInputRef.current?.click()
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/10"
+                      >
+                        <PhotoIcon className="h-5 w-5 shrink-0 text-blue-400" />
+                        <span>Photos &amp; videos</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {emojiMenuOpen && (
+                    <div
+                      role="dialog"
+                      aria-label="Emoji picker"
+                      className="absolute bottom-[calc(100%+0.75rem)] left-10 z-50 w-56 rounded-2xl bg-[#292929] p-3 shadow-2xl ring-1 ring-white/10"
+                    >
+                      <div className="grid grid-cols-8 gap-1">
+                        {QUICK_EMOJIS.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => insertEmoji(emoji)}
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-lg transition-all hover:scale-125 hover:bg-white/10 active:scale-95"
+                            aria-label={`Insert ${emoji}`}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <input
+                    ref={draftInputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder={`Message ${activePartner.name}`}
+                    maxLength={4000}
+                    className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm text-primary outline-none placeholder:text-muted"
+                  />
+                </div>
                 <button
                   type="submit"
                   disabled={!draft.trim()}

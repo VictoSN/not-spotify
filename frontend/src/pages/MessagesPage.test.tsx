@@ -1,8 +1,8 @@
 import React, { act } from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MessagesPage } from './MessagesPage'
+import { MessageStatusTicks, MessagesPage } from './MessagesPage'
 import { useAuthStore } from '@/stores/authStore'
 import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
@@ -17,6 +17,7 @@ const message: ChatMessage = {
   recipientId: 'me',
   body: 'hey there',
   sentAt: '2026-06-29T10:00:00Z',
+  deliveredAt: null,
   readAt: null,
 }
 
@@ -37,6 +38,7 @@ const chatServiceMock = vi.hoisted(() => ({
   getThread: vi.fn(),
   send: vi.fn(() => Promise.resolve()),
   markRead: vi.fn(() => Promise.resolve()),
+  markDelivered: vi.fn(() => Promise.resolve()),
 }))
 const friendServiceMock = vi.hoisted(() => ({
   getFriends: vi.fn(),
@@ -111,5 +113,44 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
 
     expect(screen.queryByText(/no longer friends/i)).not.toBeInTheDocument()
     expect(screen.getByPlaceholderText('Message Old Friend')).toBeInTheDocument()
+  })
+
+  it('opens the attachment menu and inserts an emoji from the left composer controls', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add attachment' }))
+    expect(screen.getByRole('menu', { name: 'Attachment options' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Document' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Photos & videos' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Choose emoji' }))
+    expect(screen.queryByRole('menu', { name: 'Attachment options' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Insert 😀' }))
+    expect(screen.getByPlaceholderText('Message Old Friend')).toHaveValue('😀')
+  })
+})
+
+describe('MessageStatusTicks', () => {
+  const outbound = (overrides: Partial<ChatMessage>): ChatMessage => ({
+    id: 'outbound',
+    senderId: 'me',
+    recipientId: PARTNER,
+    body: 'hello',
+    sentAt: '2026-06-29T10:00:00Z',
+    deliveredAt: null,
+    readAt: null,
+    ...overrides,
+  })
+
+  it.each([
+    ['Sent', outbound({}), 1, false],
+    ['Delivered', outbound({ deliveredAt: '2026-06-29T10:00:01Z' }), 2, false],
+    ['Read', outbound({ deliveredAt: '2026-06-29T10:00:01Z', readAt: '2026-06-29T10:00:02Z' }), 2, true],
+  ] as const)('renders %s with the correct check count and color', (label, statusMessage, pathCount, blue) => {
+    const { container } = render(<MessageStatusTicks message={statusMessage} />)
+    const receipt = screen.getByLabelText(label)
+    expect(container.querySelectorAll('path')).toHaveLength(pathCount)
+    expect(receipt).toHaveClass(blue ? 'text-[#53bdeb]' : 'chat-meta-outgoing')
   })
 })

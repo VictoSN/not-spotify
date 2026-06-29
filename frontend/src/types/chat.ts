@@ -4,6 +4,7 @@ export interface ChatMessage {
   recipientId: string
   body: string
   sentAt: string
+  deliveredAt: string | null
   readAt: string | null
   /** Local-only: true while an optimistic send is awaiting the server. */
   pending?: boolean

@@ -79,6 +79,7 @@ public class ChatControllerTests
 
         var stored = Assert.Single(db.ChatMessages);
         Assert.Equal("hey there", stored.Body);
+        Assert.Null(stored.DeliveredAt);
         Assert.Null(stored.ReadAt);
 
         var notification = Assert.Single(db.Notifications);
@@ -92,6 +93,58 @@ public class ChatControllerTests
         proxy.Verify(
             p => p.SendCoreAsync("ChatMessage", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task MarkDelivered_SetsReceiptAndPushesRealtimeToSender()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (hub, proxy) = TestHelpers.NewHub();
+        var sender = Guid.NewGuid();
+        var me = Guid.NewGuid();
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage
+        {
+            SenderId = sender,
+            RecipientId = me,
+            Body = "delivered",
+        });
+        await db.SaveChangesAsync();
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+
+        var result = await controller.MarkDelivered();
+
+        Assert.IsType<NoContentResult>(result);
+        Assert.NotNull(Assert.Single(db.ChatMessages).DeliveredAt);
+        proxy.Verify(
+            p => p.SendCoreAsync("ChatDelivered", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkRead_AlsoMarksUndeliveredMessageDelivered()
+    {
+        await using var db = TestHelpers.NewDb();
+        var (hub, proxy) = TestHelpers.NewHub();
+        var sender = Guid.NewGuid();
+        var me = Guid.NewGuid();
+        db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage
+        {
+            SenderId = sender,
+            RecipientId = me,
+            Body = "read",
+        });
+        await db.SaveChangesAsync();
+        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+
+        var result = await controller.MarkRead(sender);
+
+        Assert.IsType<NoContentResult>(result);
+        var stored = Assert.Single(db.ChatMessages);
+        Assert.NotNull(stored.DeliveredAt);
+        Assert.NotNull(stored.ReadAt);
+        proxy.Verify(
+            p => p.SendCoreAsync("ChatRead", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

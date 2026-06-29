@@ -9,6 +9,7 @@ const msg = (over: Partial<ChatMessage>): ChatMessage => ({
   recipientId: 'friend',
   body: 'x',
   sentAt: new Date().toISOString(),
+  deliveredAt: null,
   readAt: null,
   ...over,
 })
@@ -60,6 +61,24 @@ describe('chatStore', () => {
     const t = useChatStore.getState().threads.friend
     expect(t.find((m) => m.id === 'm1')!.readAt).toBe(readAt)
     expect(t.find((m) => m.id === 'm2')!.readAt).toBeNull()
+  })
+
+  it('applyDelivered updates only my outbound messages for that recipient', () => {
+    const deliveredAt = '2026-06-15T00:00:00.000Z'
+    useChatStore.setState({
+      threads: {
+        friend: [
+          msg({ id: 'm1', senderId: 'me', recipientId: 'friend' }),
+          msg({ id: 'm2', senderId: 'friend', recipientId: 'me' }),
+        ],
+      },
+    })
+
+    useChatStore.getState().applyDelivered('friend', deliveredAt)
+
+    const thread = useChatStore.getState().threads.friend
+    expect(thread.find((message) => message.id === 'm1')!.deliveredAt).toBe(deliveredAt)
+    expect(thread.find((message) => message.id === 'm2')!.deliveredAt).toBeNull()
   })
 
   it('receiveMessage bumps unread for an inbound message to an inactive conversation', () => {

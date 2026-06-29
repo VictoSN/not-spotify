@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { CollapseIcon } from '@/components/common/CollapseIcon'
 import { DiagonalCollapseIcon, DiagonalExpandIcon } from '@/components/common/DiagonalResizeIcon'
 import {
+  ArrowLeftIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   PlusIcon,
@@ -233,6 +234,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>(getInitialSort)
   const [query, setQuery] = useState('')
+  const [folderView, setFolderView] = useState<string | null>(null) // bug 32: folder detail view
   const [searchOpen, setSearchOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialViewMode)
   const [playHistory, setPlayHistory] = useState(getPlayHistory)
@@ -568,6 +570,15 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             ? artists
             : [...playlists, ...albums, ...artists, ...podcasts, ...videos]
 
+    // Folder view: show only items inside the selected folder (bug 32)
+    if (folderView) {
+      const fv = getFolders().find((f) => f.id === folderView)
+      if (fv) {
+        const fvSet = new Set(fv.itemKeys)
+        list = list.filter((i) => fvSet.has(i.key))
+      }
+    }
+
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
     if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
@@ -670,7 +681,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const folderItemKeys = useMemo(() => new Set(folders.flatMap((f) => f.itemKeys)), [folders])
   // Folders only surface in the default view (no active filter/search), so the
   // flat filtered list stays predictable when searching.
-  const foldersActive = filter === 'all' && !query.trim()
+  const foldersActive = filter === 'all' && !query.trim() && !folderView
   const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
   const hasFolderSection = foldersActive && folders.length > 0
 
@@ -952,34 +963,54 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             background, so the top corners stay rounded. */}
         <div className="group/library-header flex items-center justify-between gap-2 px-4 pb-3 pt-3">
           <div className="relative flex min-w-0 items-center">
-            {!libraryExpanded && (
-              <button
-                onClick={collapseLibrarySidebar}
-                className={cn(
-                  'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
-                  // Reveal on hover only once the resize has settled, so it never flashes in mid-minimize.
-                  !isLibraryAnimating && 'group-hover/sidebar:visible group-hover/sidebar:opacity-100',
+            {folderView ? (
+              <>
+                {/* Back to library button */}
+                <button
+                  type="button"
+                  onClick={() => setFolderView(null)}
+                  className="spotify-tooltip-anchor flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary"
+                  aria-label={t('sidebar.backToLibrary')}
+                >
+                  <ArrowLeftIcon className="h-5 w-5" />
+                  <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.backToLibrary')}</span>
+                </button>
+                {/* Folder name */}
+                <span className="min-w-0 truncate pl-2 text-left font-bold leading-5 text-primary text-base">
+                  {folders.find((f) => f.id === folderView)?.name ?? folderView}
+                </span>
+              </>
+            ) : (
+              <>
+                {!libraryExpanded && (
+                  <button
+                    onClick={collapseLibrarySidebar}
+                    className={cn(
+                      'spotify-tooltip-anchor invisible absolute left-0 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary opacity-0 transition-all duration-200 hover:scale-110 hover:bg-elevated hover:text-primary',
+                      !isLibraryAnimating && 'group-hover/sidebar:visible group-hover/sidebar:opacity-100',
+                    )}
+                    aria-label={t('sidebar.collapse')}
+                  >
+                    <CollapseIcon className="h-6 w-6 -scale-x-100" />
+                    <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
+                  </button>
                 )}
-                aria-label={t('sidebar.collapse')}
-              >
-                <CollapseIcon className="h-6 w-6 -scale-x-100" />
-                <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.collapse')}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={collapseLibrarySidebar}
+                  onContextMenu={handleLibraryTitleContextMenu}
+                  className={cn(
+                    'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+                    'text-base',
+                    !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
+                  )}
+                  aria-label={t('sidebar.collapse')}
+                  title={t('sidebar.collapse')}
+                >
+                  {t('sidebar.title')}
+                </button>
+              </>
             )}
-            <button
-              type="button"
-              onClick={collapseLibrarySidebar}
-              onContextMenu={handleLibraryTitleContextMenu}
-              className={cn(
-                'min-w-0 truncate rounded-sm pl-0 text-left font-bold leading-5 text-primary transition-all duration-200 hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
-                'text-base',
-                !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
-              )}
-              aria-label={t('sidebar.collapse')}
-              title={t('sidebar.collapse')}
-            >
-              {t('sidebar.title')}
-            </button>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <div className="relative">
@@ -1016,9 +1047,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </div>
         </div>
 
-        {/* Filter chips */}
-        <div className="flex flex-wrap items-center gap-2 bg-sidebar px-4 pb-3">
-        {filter !== 'all' && (
+        {/* Filter chips + Search + sort — hidden in folder view */}
+        {!folderView ? (
+          <>
+            <div className="flex flex-wrap items-center gap-2 bg-sidebar px-4 pb-3">
+              {filter !== 'all' && (
           <button
             onClick={() => setFilter('all')}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-elevated text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95"
@@ -1045,8 +1078,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           ))}
       </div>
 
-      {/* Search + sort */}
-      <div className="flex h-9 shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-2">
+            {/* Search + sort */}
+            <div className="flex h-9 shrink-0 items-center justify-between gap-2 bg-sidebar px-4 pb-2">
         {searchOpen ? (
           <div
             className={cn('library-search-field relative', libraryExpanded ? 'w-full max-w-sm flex-none' : 'flex-1')}
@@ -1087,6 +1120,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </button>
         </div>
       </div>
+          </>
+        ) : null}
 
       </div>
 
@@ -1104,17 +1139,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
         onDragOver={(e) => {
-          // Handle reorder drags landing on the library surface (not on a folder or row).
+          // Handle reorder drags landing on the library surface (not on a row).
           if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
           const target = e.target as Element | null
-          if (target?.closest('.group\\/folder') || target?.closest('.group\\/row')) return
+          if (target?.closest('.group\\/row')) return
           e.preventDefault()
           e.dataTransfer.dropEffect = 'move'
         }}
         onDrop={(e) => {
           if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
           const target = e.target as Element | null
-          if (target?.closest('.group\\/folder') || target?.closest('.group\\/row')) return
+          if (target?.closest('.group\\/row')) return
           e.preventDefault()
 
           const key = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
@@ -1149,6 +1184,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 onRenameCancel={() => setRenamingFolderId(null)}
                 onPlayItem={playLibraryItem}
                 onItemReorder={reorderEnabled ? reorderLibrary : undefined}
+                onFolderViewOpen={setFolderView}
                 allFolders={folders}
                 itemByKey={itemByKey}
                 playlistFor={playlistFor}
@@ -1994,6 +2030,7 @@ function FolderGroup({
   videoFor,
   podcastFor,
   onItemReorder,
+  onFolderViewOpen,
   allFolders,
   itemByKey,
 }: {
@@ -2012,6 +2049,7 @@ function FolderGroup({
   albumFor: (item: LibItem) => Album | undefined
   artistFor: (item: LibItem) => Artist | undefined
   onItemReorder?: (fromKey: string, toKey: string, before: boolean) => void
+  onFolderViewOpen?: (folderId: string) => void
   allFolders?: LibraryFolder[]
   itemByKey?: Map<string, LibItem>
   videoFor: (item: LibItem) => MusicVideo | undefined
@@ -2162,42 +2200,61 @@ function FolderGroup({
             />
           </div>
         ) : (
-          <>
+          <div
+            className={cn(
+              'flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50',
+              compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+            )}
+          >
+            {/* Folder icon */}
+            <div
+              className={cn(
+                'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
+                compact ? 'h-9 w-9' : 'h-12 w-12',
+              )}
+            >
+              <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
+            </div>
+
+            {/* Name — clickable, opens folder view */}
             <button
               type="button"
-              onClick={() => setFolderCollapsed(folder.id, !folder.collapsed)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onFolderViewOpen?.(folder.id)
+              }}
+              className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 rounded-sm"
+            >
+              <p className="truncate text-sm font-normal text-primary">{folder.name}</p>
+              {!compact && (
+                <p className="truncate text-xs text-secondary">
+                  {t(count === 1 ? 'sidebar.folderItem' : 'sidebar.folderItems', { n: count })}
+                </p>
+              )}
+            </button>
+
+            {/* Chevron — toggles expand/collapse inline */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setFolderCollapsed(folder.id, !folder.collapsed)
+              }}
               aria-expanded={!folder.collapsed}
               aria-label={t(folder.collapsed ? 'sidebar.expandFolder' : 'sidebar.collapseFolder', {
                 name: folder.name,
               })}
-              className={cn(
-                'flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50',
-                compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
-              )}
+              className="shrink-0 rounded-full p-1 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90"
             >
               {folder.collapsed ? (
-                <ChevronRightIcon className="h-4 w-4 shrink-0 text-secondary" />
+                <ChevronRightIcon className="h-4 w-4" />
               ) : (
-                <ChevronDownIcon className="h-4 w-4 shrink-0 text-secondary" />
+                <ChevronDownIcon className="h-4 w-4" />
               )}
-              <div
-                className={cn(
-                  'shrink-0 rounded-md bg-elevated flex items-center justify-center text-secondary',
-                  compact ? 'h-9 w-9' : 'h-12 w-12',
-                )}
-              >
-                <FolderIcon className={compact ? 'h-4 w-4' : 'h-5 w-5'} />
-              </div>
-              <div className="min-w-0 flex-1 pr-7">
-                <p className="truncate text-sm font-normal text-primary">{folder.name}</p>
-                {!compact && (
-                  <p className="truncate text-xs text-secondary">
-                    {t(count === 1 ? 'sidebar.folderItem' : 'sidebar.folderItems', { n: count })}
-                  </p>
-                )}
-              </div>
             </button>
-            <div ref={menuRef} className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
+
+            {/* Ellipsis menu */}
+            <div ref={menuRef} className="relative shrink-0">
               <button
                 ref={buttonRef}
                 type="button"
@@ -2206,14 +2263,14 @@ function FolderGroup({
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 className={cn(
-                  'rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100',
+                  'rounded-full p-1 text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 focus-visible:opacity-100',
                   menuOpen ? 'opacity-100' : 'opacity-0 group-hover/folder:opacity-100',
                 )}
               >
                 <EllipsisHorizontalIcon className="h-4 w-4" />
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -2286,6 +2343,7 @@ function FolderGroup({
                   onRenameCancel={() => {}}
                   onPlayItem={onPlayItem}
                   onItemReorder={onItemReorder}
+                  onFolderViewOpen={onFolderViewOpen}
                   allFolders={allFolders}
                   itemByKey={itemByKey}
                   playlistFor={playlistFor}

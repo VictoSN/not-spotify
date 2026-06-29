@@ -391,6 +391,7 @@ const en: Dict = {
   'sidebar.folderEmpty': 'Empty — add items from a row’s ⋯ menu.',
   'sidebar.expandFolder': 'Expand {name}',
   'sidebar.collapseFolder': 'Collapse {name}',
+  'sidebar.backToLibrary': 'Back to Your Library',
   'sidebar.movedToFolder': 'Moved to folder',
   'sidebar.folderNestingBlocked': 'Cannot nest folder here',
 
@@ -993,6 +994,7 @@ const es: Dict = {
   'sidebar.folderEmpty': 'Vacía — añade elementos desde el menú ⋯ de una fila.',
   'sidebar.expandFolder': 'Expandir {name}',
   'sidebar.collapseFolder': 'Contraer {name}',
+  'sidebar.backToLibrary': 'Volver a tu biblioteca',
   'sidebar.movedToFolder': 'Movido a la carpeta',
   'sidebar.folderNestingBlocked': 'No se puede anidar la carpeta aquí',
 
@@ -1593,6 +1595,7 @@ const fr: Dict = {
   'sidebar.folderEmpty': 'Vide — ajoutez des éléments depuis le menu ⋯ d’une ligne.',
   'sidebar.expandFolder': 'Développer {name}',
   'sidebar.collapseFolder': 'Réduire {name}',
+  'sidebar.backToLibrary': 'Retour à la bibliothèque',
   'sidebar.movedToFolder': 'Déplacé dans le dossier',
   'sidebar.folderNestingBlocked': 'Impossible de placer le dossier ici',
 

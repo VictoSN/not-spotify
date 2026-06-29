@@ -391,6 +391,8 @@ const en: Dict = {
   'sidebar.folderEmpty': 'Empty — add items from a row’s ⋯ menu.',
   'sidebar.expandFolder': 'Expand {name}',
   'sidebar.collapseFolder': 'Collapse {name}',
+  'sidebar.movedToFolder': 'Moved to folder',
+  'sidebar.folderNestingBlocked': 'Cannot nest folder here',
 
   // Top bar / mobile navigation
   'topbar.brandHome': 'not-spotify home',
@@ -991,6 +993,8 @@ const es: Dict = {
   'sidebar.folderEmpty': 'Vacía — añade elementos desde el menú ⋯ de una fila.',
   'sidebar.expandFolder': 'Expandir {name}',
   'sidebar.collapseFolder': 'Contraer {name}',
+  'sidebar.movedToFolder': 'Movido a la carpeta',
+  'sidebar.folderNestingBlocked': 'No se puede anidar la carpeta aquí',
 
   // Top bar / navegación móvil
   'topbar.brandHome': 'Inicio de not-spotify',
@@ -1589,6 +1593,8 @@ const fr: Dict = {
   'sidebar.folderEmpty': 'Vide — ajoutez des éléments depuis le menu ⋯ d’une ligne.',
   'sidebar.expandFolder': 'Développer {name}',
   'sidebar.collapseFolder': 'Réduire {name}',
+  'sidebar.movedToFolder': 'Déplacé dans le dossier',
+  'sidebar.folderNestingBlocked': 'Impossible de placer le dossier ici',
 
   // Top bar / navigation mobile
   'topbar.brandHome': 'Accueil not-spotify',

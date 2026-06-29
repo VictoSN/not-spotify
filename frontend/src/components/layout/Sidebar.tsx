@@ -60,6 +60,12 @@ import {
   renameFolder,
   deleteFolder,
   setFolderCollapsed,
+  addItemToFolder,
+  removeItemFromFolder,
+  folderOfItem,
+  folderKey,
+  addItemToFolderSafely,
+  FOLDER_KEY_PREFIX,
   FOLDERS_EVENT,
 } from '@/utils/libraryFolders'
 import { getPinnedKeys, PINNED_EVENT } from '@/utils/pinnedLibrary'
@@ -1097,10 +1103,35 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           isLibraryAnimating ? 'opacity-0' : 'opacity-100',
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
+        onDragOver={(e) => {
+          // Handle reorder drags landing on the library surface (not on a folder or row).
+          if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+          const target = e.target as Element | null
+          if (target?.closest('.group\\/folder') || target?.closest('.group\\/row')) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'move'
+        }}
+        onDrop={(e) => {
+          if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+          const target = e.target as Element | null
+          if (target?.closest('.group\\/folder') || target?.closest('.group\\/row')) return
+          e.preventDefault()
+
+          const key = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
+          if (!key) return
+
+          // Check if the item is actually in a folder
+          const currentFolder = folderOfItem(getFolders(), key)
+          if (!currentFolder) return
+          removeItemFromFolder(key)
+          notify.success(t('sidebar.movedToFolder'))
+        }}
       >
         {hasFolderSection && (
           <div className="mb-1 flex flex-col">
-            {folders.map((folder) => (
+            {folders
+              .filter((f) => !folderOfItem(folders, folderKey(f.id)))
+              .map((folder) => (
               <FolderGroup
                 key={folder.id}
                 folder={folder}
@@ -1117,6 +1148,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 onRenameCommit={() => commitRename(folder.id)}
                 onRenameCancel={() => setRenamingFolderId(null)}
                 onPlayItem={playLibraryItem}
+                onItemReorder={reorderEnabled ? reorderLibrary : undefined}
+                allFolders={folders}
+                itemByKey={itemByKey}
                 playlistFor={playlistFor}
                 albumFor={albumFor}
                 artistFor={artistFor}
@@ -1944,7 +1978,7 @@ function LibraryGridCard({
 /** A collapsible folder header + its (indented) contents, list-style. */
 function FolderGroup({
   folder,
-  contents,
+  contents: contentsProp,
   compact,
   isNowPlaying,
   renaming,
@@ -1959,9 +1993,12 @@ function FolderGroup({
   artistFor,
   videoFor,
   podcastFor,
+  onItemReorder,
+  allFolders,
+  itemByKey,
 }: {
   folder: LibraryFolder
-  contents: LibItem[]
+  contents?: LibItem[]  // pre-resolved for root folders; derived internally when allFolders+itemByKey provided
   compact: boolean
   isNowPlaying: (item: LibItem) => boolean
   renaming: boolean
@@ -1974,6 +2011,9 @@ function FolderGroup({
   playlistFor: (item: LibItem) => Playlist | undefined
   albumFor: (item: LibItem) => Album | undefined
   artistFor: (item: LibItem) => Artist | undefined
+  onItemReorder?: (fromKey: string, toKey: string, before: boolean) => void
+  allFolders?: LibraryFolder[]
+  itemByKey?: Map<string, LibItem>
   videoFor: (item: LibItem) => MusicVideo | undefined
   podcastFor: (item: LibItem) => PodcastSummary | undefined
 }) {
@@ -1983,6 +2023,21 @@ function FolderGroup({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const count = folder.itemKeys.length
+
+  // Derive contents: when allFolders + itemByKey are available, split folder
+  // keys from item keys so sub-folders can be rendered recursively (bug 32).
+  const contents: LibItem[] = contentsProp ?? (
+    itemByKey
+      ? folder.itemKeys
+          .filter((k) => !k.startsWith(FOLDER_KEY_PREFIX))
+          .map((k) => itemByKey.get(k))
+          .filter((i): i is LibItem => !!i)
+      : []
+  )
+
+  const subFolders: LibraryFolder[] = allFolders
+    ? allFolders.filter((f) => f.id !== folder.id && folder.itemKeys.includes(folderKey(f.id)))
+    : []
 
   const openMenu = (e?: React.MouseEvent) => {
     // Use the event position for right-click, the button position for button click.
@@ -2021,10 +2076,56 @@ function FolderGroup({
     }
   }, [menuOpen])
 
+  // Drag-into-folder state (bug 32)
+  const [folderDropOver, setFolderDropOver] = useState(false)
+
+  const handleFolderDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'move'
+    if (!folderDropOver) setFolderDropOver(true)
+  }
+
+  const handleFolderDragLeave = (e: React.DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setFolderDropOver(false)
+  }
+
+  const handleFolderDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
+    e.preventDefault()
+    e.stopPropagation()
+    setFolderDropOver(false)
+
+    const key = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
+    if (!key) return
+
+    // Skip if the item is already in this folder
+    if (folder.itemKeys.includes(key)) return
+
+    const isFolderKey = key.startsWith(FOLDER_KEY_PREFIX)
+    if (isFolderKey) {
+      const ok = addItemToFolderSafely(folder.id, key)
+      if (!ok) {
+        notify.info(t('sidebar.folderNestingBlocked'))
+        return
+      }
+    } else {
+      addItemToFolder(folder.id, key)
+    }
+    notify.success(t('sidebar.movedToFolder'))
+  }
+
   return (
     <div>
       <div
-        className="group/folder relative"
+        className="group/folder relative rounded-md transition-[box-shadow,background-color] duration-150"
+        style={
+          folderDropOver
+            ? { boxShadow: `0 0 0 2px ${DROP_GREEN}, 0 0 0 4px ${DROP_GREEN}24` }
+            : undefined
+        }
         onContextMenu={(e) => {
           // Right-click opens the same menu (parity with playlists/albums).
           if (renaming) return
@@ -2032,6 +2133,9 @@ function FolderGroup({
           e.stopPropagation()
           openMenu(e)
         }}
+        onDragOver={handleFolderDragOver}
+        onDragLeave={handleFolderDragLeave}
+        onDrop={handleFolderDrop}
       >
         {renaming ? (
           <div className={cn('flex items-center rounded-md', compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2')}>
@@ -2163,23 +2267,57 @@ function FolderGroup({
 
       {!folder.collapsed && (
         <div className="ml-4 border-l border-secondary/10 pl-1">
-          {contents.length === 0 ? (
+          {subFolders.length === 0 && contents.length === 0 ? (
             <p className="px-3 py-2 text-xs text-secondary">{t('sidebar.folderEmpty')}</p>
           ) : (
-            contents.map((item) => (
-              <LibraryListRow
-                key={item.key}
-                item={item}
-                compact={compact}
-                nowPlaying={isNowPlaying(item)}
-                onPlay={() => onPlayItem(item)}
-                menuPlaylist={playlistFor(item)}
-                menuAlbum={albumFor(item)}
-                menuArtist={artistFor(item)}
-                menuVideo={videoFor(item)}
-                menuPodcast={podcastFor(item)}
-              />
-            ))
+            <>
+              {/* Nested sub-folders rendered recursively (bug 32) */}
+              {subFolders.map((sub) => (
+                <FolderGroup
+                  key={sub.id}
+                  folder={sub}
+                  compact={compact}
+                  isNowPlaying={isNowPlaying}
+                  renaming={false}
+                  renameValue=""
+                  onRenameChange={() => {}}
+                  onRenameStart={() => {}}
+                  onRenameCommit={() => {}}
+                  onRenameCancel={() => {}}
+                  onPlayItem={onPlayItem}
+                  onItemReorder={onItemReorder}
+                  allFolders={allFolders}
+                  itemByKey={itemByKey}
+                  playlistFor={playlistFor}
+                  albumFor={albumFor}
+                  artistFor={artistFor}
+                  videoFor={videoFor}
+                  podcastFor={podcastFor}
+                />
+              ))}
+              {contents.map((item) => (
+                <LibraryListRow
+                  key={item.key}
+                  item={item}
+                  compact={compact}
+                  nowPlaying={isNowPlaying(item)}
+                  onPlay={() => onPlayItem(item)}
+                  onReorder={
+                    onItemReorder
+                      ? (fromKey, toKey, before) => {
+                          removeItemFromFolder(fromKey)
+                          onItemReorder(fromKey, toKey, before)
+                        }
+                      : undefined
+                  }
+                  menuPlaylist={playlistFor(item)}
+                  menuAlbum={albumFor(item)}
+                  menuArtist={artistFor(item)}
+                  menuVideo={videoFor(item)}
+                  menuPodcast={podcastFor(item)}
+                />
+              ))}
+            </>
           )}
         </div>
       )}

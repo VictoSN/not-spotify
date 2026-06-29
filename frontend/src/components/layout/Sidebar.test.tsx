@@ -415,4 +415,194 @@ describe('Sidebar saved media navigation', () => {
     expect(screen.queryByRole('menu', { name: 'Create playlist or folder' })).not.toBeInTheDocument()
     selection?.removeAllRanges()
   })
+
+  // ── bug 32: drag items into folders ────────────────────────────────
+
+  describe('drag items into folders (bug 32)', () => {
+    const makeDataTransfer = () => {
+      const store: Record<string, string> = {}
+      return {
+        effectAllowed: '', dropEffect: '',
+        setData: (type: string, val: string) => { store[type] = String(val) },
+        getData: (type: string) => store[type] ?? '',
+        get types() { return Object.keys(store) },
+      }
+    }
+
+    const setupWithFolder = (folderItemKeys: string[] = []) => {
+      useLibraryStore.setState({
+        savedPlaylists: [
+          { id: 'pl-one', name: 'Playlist One', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+          { id: 'pl-two', name: 'Playlist Two', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-02T00:00:00Z', tracks: [] },
+          { id: 'pl-three', name: 'Playlist Three', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-03T00:00:00Z', tracks: [] },
+        ] as never,
+        savedAlbums: [
+          { id: 'al-one', title: 'Album One', type: 'album', coverUrl: null, artist: { id: 'ar-x', name: 'Artist X', imageUrl: null } },
+        ] as never,
+        savedAlbumIds: new Set(['al-one']),
+        savedVideos: [], savedPodcasts: [],
+      })
+      window.localStorage.setItem('ns-library-folders', JSON.stringify([{
+        id: 'folder-a', name: 'Folder A',
+        itemKeys: folderItemKeys, collapsed: false,
+      }]))
+    }
+
+    it('drags a playlist into a folder', () => {
+      setupWithFolder()
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'pl-one')
+
+      const folderHeader = screen.getByText('Folder A').closest('.group\\/folder')!
+      fireEvent.dragOver(folderHeader, { dataTransfer: dt })
+      fireEvent.drop(folderHeader, { dataTransfer: dt })
+
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      expect(folders[0].itemKeys).toContain('pl-one')
+    })
+
+    it('shows visual feedback when dragging over a folder', () => {
+      setupWithFolder()
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'pl-one')
+
+      const folderHeader = screen.getByText('Folder A').closest('.group\\/folder')!
+      fireEvent.dragOver(folderHeader, { dataTransfer: dt })
+
+      // The folder row should get a green box-shadow when drag-over is active
+      const style = folderHeader.getAttribute('style') ?? ''
+      expect(style).toContain('box-shadow')
+    })
+
+    it('drags an album into a folder', () => {
+      setupWithFolder()
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'al-one')
+
+      const folderHeader = screen.getByText('Folder A').closest('.group\\/folder')!
+      fireEvent.dragOver(folderHeader, { dataTransfer: dt })
+      fireEvent.drop(folderHeader, { dataTransfer: dt })
+
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      expect(folders[0].itemKeys).toContain('al-one')
+    })
+
+    it('removes an item from its folder when dragged out', () => {
+      setupWithFolder(['pl-one'])
+      renderSidebar()
+
+      // The playlist should render inside the folder (collapsed section expanded)
+      expect(screen.getByText('Playlist One')).toBeInTheDocument()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'pl-one')
+
+      // Simulate dropping on the library surface (not on a folder or row).
+      // Use the scrollable body — it's the second [data-sidebar-empty-space].
+      const librarySurface = document.querySelectorAll('[data-sidebar-empty-space="true"]')[1] as HTMLElement
+      fireEvent.dragOver(librarySurface, { dataTransfer: dt })
+      fireEvent.drop(librarySurface, { dataTransfer: dt })
+
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      expect(folders[0].itemKeys).not.toContain('pl-one')
+    })
+
+    it('prevents dragging a folder into itself', () => {
+      setupWithFolder()
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'fold-folder-a')
+
+      const folderHeader = screen.getByText('Folder A').closest('.group\\/folder')!
+      fireEvent.dragOver(folderHeader, { dataTransfer: dt })
+      fireEvent.drop(folderHeader, { dataTransfer: dt })
+
+      // The folder should NOT contain itself
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      expect(folders[0].itemKeys).not.toContain('fold-folder-a')
+    })
+
+    it('prevents circular nesting', () => {
+      // Folder B is inside Folder A. Dragging Folder A into Folder B would create a cycle.
+      window.localStorage.setItem('ns-library-folders', JSON.stringify([
+        { id: 'folder-a', name: 'Folder A', itemKeys: ['fold-folder-b'], collapsed: false },
+        { id: 'folder-b', name: 'Folder B', itemKeys: [], collapsed: false },
+      ]))
+      renderSidebar()
+
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'fold-folder-a')
+
+      // Folder B is rendered inside Folder A. Use getAllByText since it also
+      // appears as a root-level folder (filtered out after the parent fix).
+      const allB = screen.getAllByText('Folder B')
+      const folderB = allB[allB.length - 1].closest('.group\\/folder')!
+      fireEvent.dragOver(folderB, { dataTransfer: dt })
+      fireEvent.drop(folderB, { dataTransfer: dt })
+
+      // Folder B should NOT contain Folder A
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      const folderBData = folders.find((f: { id: string }) => f.id === 'folder-b')
+      expect(folderBData.itemKeys).not.toContain('fold-folder-a')
+    })
+
+    it('prevents nesting beyond max depth', () => {
+      // Chain: Folder A → Folder B → Folder C → Folder D (depth 0, 1, 2, 3)
+      // Folder D is at depth 3 — putting anything inside it exceeds MAX_FOLDER_DEPTH
+      window.localStorage.setItem('ns-library-folders', JSON.stringify([
+        { id: 'folder-a', name: 'Folder A', itemKeys: ['fold-folder-b'], collapsed: false },
+        { id: 'folder-b', name: 'Folder B', itemKeys: ['fold-folder-c'], collapsed: false },
+        { id: 'folder-c', name: 'Folder C', itemKeys: ['fold-folder-d'], collapsed: false },
+        { id: 'folder-d', name: 'Folder D', itemKeys: [], collapsed: false },
+        { id: 'folder-e', name: 'Folder E', itemKeys: [], collapsed: false },
+      ]))
+      renderSidebar()
+
+      // Try to nest Folder E inside Folder D (which is already at depth 3)
+      const dt = makeDataTransfer()
+      dt.setData('application/x-ns-library-reorder', 'fold-folder-e')
+
+      // Find Folder D inside the nested structure — it's rendered at depth 3 inside Folder C
+      const allFolderDs = screen.getAllByText('Folder D')
+      const folderD = allFolderDs[allFolderDs.length - 1].closest('.group\\/folder')!
+      fireEvent.dragOver(folderD, { dataTransfer: dt })
+      fireEvent.drop(folderD, { dataTransfer: dt })
+
+      // Folder D should NOT contain Folder E (depth limit exceeded)
+      const folders = JSON.parse(window.localStorage.getItem('ns-library-folders') ?? '[]')
+      const folderDData = folders.find((f: { id: string }) => f.id === 'folder-d')
+      expect(folderDData.itemKeys).not.toContain('fold-folder-e')
+    })
+
+    it('renders nested folders inside their parent', () => {
+      // Set up library data AND folders in one go — don't call setupWithFolder as
+      // it would overwrite the localStorage with a single folder.
+      useLibraryStore.setState({
+        savedPlaylists: [
+          { id: 'pl-one', name: 'Playlist One', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+          { id: 'pl-two', name: 'Playlist Two', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-02T00:00:00Z', tracks: [] },
+        ] as never,
+        savedAlbums: [] as never, savedAlbumIds: new Set(),
+        savedVideos: [], savedPodcasts: [],
+      } as never)
+      window.localStorage.setItem('ns-library-folders', JSON.stringify([
+        { id: 'folder-a', name: 'Folder A', itemKeys: ['fold-folder-b', 'pl-one'], collapsed: false },
+        { id: 'folder-b', name: 'Folder B', itemKeys: ['pl-two'], collapsed: false },
+      ]))
+      renderSidebar()
+
+      // Both parent and child folders should render at least once
+      expect(screen.getByText('Folder A')).toBeInTheDocument()
+      expect(screen.getAllByText('Folder B').length).toBeGreaterThanOrEqual(1)
+      // Items inside nested folders should render
+      expect(screen.getByText('Playlist Two')).toBeInTheDocument()
+    })
+  })
 })

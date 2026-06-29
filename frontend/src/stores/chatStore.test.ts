@@ -24,6 +24,7 @@ const convo = (over: Partial<Conversation>): Conversation => ({
 })
 
 beforeEach(() => {
+  window.localStorage.clear()
   useChatStore.setState({ conversations: [], threads: {}, activeUserId: null, isLoading: false })
   // myId() reads useAuthStore.getState().user?.id
   useAuthStore.setState({ user: { id: 'me' } as never })
@@ -124,5 +125,37 @@ describe('chatStore', () => {
     })
     useChatStore.getState().receiveMessage(msg({ id: 'dup', senderId: 'friend', recipientId: 'me', body: 'hi' }))
     expect(useChatStore.getState().threads.friend).toHaveLength(1)
+  })
+
+  it('clearChat empties the thread but keeps an empty conversation in the list', () => {
+    const lastMessage = msg({ id: 'clear-me', sentAt: '2026-06-30T10:00:00.000Z' })
+    useChatStore.setState({
+      conversations: [convo({ lastMessage, unreadCount: 2 })],
+      threads: { friend: [lastMessage] },
+      activeUserId: 'friend',
+    })
+
+    useChatStore.getState().clearChat('friend')
+
+    expect(useChatStore.getState().threads.friend).toEqual([])
+    expect(useChatStore.getState().conversations).toEqual([
+      convo({ lastMessage: null, unreadCount: 0 }),
+    ])
+    expect(useChatStore.getState().activeUserId).toBe('friend')
+  })
+
+  it('deleteChat removes the conversation, its cached history, and active selection', () => {
+    const lastMessage = msg({ id: 'delete-me' })
+    useChatStore.setState({
+      conversations: [convo({ lastMessage })],
+      threads: { friend: [lastMessage] },
+      activeUserId: 'friend',
+    })
+
+    useChatStore.getState().deleteChat('friend')
+
+    expect(useChatStore.getState().conversations).toEqual([])
+    expect(useChatStore.getState().threads.friend).toBeUndefined()
+    expect(useChatStore.getState().activeUserId).toBeNull()
   })
 })

@@ -25,7 +25,7 @@ interface LyricsViewProps {
 
 // Collapsed height (px) for foldable static lyrics; the toggle only appears when
 // the lyrics are actually taller than this.
-const COLLAPSED_LYRICS_PX = 320
+const COLLAPSED_LYRICS_PX = 352
 
 // How long after a manual scroll before auto-scroll takes over again.
 const USER_SCROLL_GRACE_MS = 3000
@@ -211,25 +211,28 @@ export function LyricsView({ lyrics, syncedLyrics, trackId, loading, variant = '
   if (variant === 'page' && collapsible) {
     const clamped = !expanded && lyricsOverflow
     return (
-      <div>
+      <div className="max-w-2xl">
         <div className="relative">
           <div
             ref={staticTextRef}
-            className={cn('whitespace-pre-wrap text-primary text-sm leading-8', clamped && 'overflow-hidden')}
+            data-testid="track-lyrics-text"
+            className={cn(
+              'whitespace-pre-wrap text-base font-semibold leading-[1.4] text-secondary',
+              clamped && 'overflow-hidden',
+            )}
             style={clamped ? { maxHeight: COLLAPSED_LYRICS_PX } : undefined}
           >
             {staticText}
           </div>
-          {clamped && (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-page to-transparent" />
-          )}
         </div>
         {lyricsOverflow && (
           <button
+            type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-3 text-sm font-bold uppercase tracking-wide text-secondary transition-colors hover:text-primary"
+            aria-expanded={expanded}
+            className="block text-base font-bold leading-[1.4] text-primary transition-opacity hover:opacity-80"
           >
-            {expanded ? t('detail.lyricsShowLess') : t('detail.lyricsShowMore')}
+            {expanded ? t('detail.lyricsShowLess') : `...${t('detail.lyricsShowMore')}`}
           </button>
         )}
       </div>

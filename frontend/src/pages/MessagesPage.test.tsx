@@ -1,5 +1,5 @@
 import React, { act } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageStatusTicks, MessagesPage } from './MessagesPage'
@@ -8,6 +8,15 @@ import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
 import type { ChatMessage, Conversation } from '@/types/chat'
 import type { Friend } from '@/types/friend'
+import { ConfirmProvider } from '@/components/common/ConfirmDialog'
+
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+vi.stubGlobal('ResizeObserver', ResizeObserverStub)
 
 const PARTNER = 'partner-1'
 
@@ -50,11 +59,13 @@ vi.mock('@/services/friendService', () => ({ friendService: friendServiceMock })
 
 async function renderThread() {
   const result = render(
-    <MemoryRouter initialEntries={[`/messages?u=${PARTNER}`]}>
-      <Routes>
-        <Route path="/messages" element={<MessagesPage />} />
-      </Routes>
-    </MemoryRouter>,
+    <ConfirmProvider>
+      <MemoryRouter initialEntries={[`/messages?u=${PARTNER}`]}>
+        <Routes>
+          <Route path="/messages" element={<MessagesPage />} />
+        </Routes>
+      </MemoryRouter>
+    </ConfirmProvider>,
   )
   // Flush the mount effects (fetchConversations / fetchFriends / openThread).
   await act(async () => {
@@ -68,6 +79,7 @@ async function renderThread() {
 describe('MessagesPage chat lock after unfriending (bug 28)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.localStorage.clear()
     // jsdom has no scrollIntoView; the page auto-scrolls to the newest message.
     Element.prototype.scrollIntoView = vi.fn()
     chatServiceMock.getConversations.mockResolvedValue([conversation])
@@ -128,6 +140,60 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
     expect(screen.queryByRole('menu', { name: 'Attachment options' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Insert 😀' }))
     expect(screen.getByPlaceholderText('Message Old Friend')).toHaveValue('😀')
+  })
+  it('shows only pin, clear, and delete on a conversation right-click', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Open chat with Old Friend' }), {
+      clientX: 80,
+      clientY: 120,
+    })
+
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Pin chat', 'Clear chat', 'Delete chat'])
+
+    const pinItem = screen.getByRole('menuitem', { name: 'Pin chat' })
+    expect(pinItem.querySelector('path')).toHaveAttribute(
+      'd',
+      'M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134c.064.374.143.844.16 1.013.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0L5.94 10.768 2.757 13.95c-.195.195-.707.707-1.414 0-.707-.707-.195-1.219 0-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72.169.016.639.095 1.013.159L8.22 2.302c-.02-.125-.039-.283-.04-.46 0-.43.108-1.022.589-1.503a.5.5 0 0 1 .707 0z',
+    )
+    fireEvent.click(pinItem)
+    expect(window.localStorage.getItem('ns-library-pinned:me')).toContain(`chat-${PARTNER}`)
+  })
+
+  it('clear chat removes every bubble but preserves an empty conversation row', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Open chat with Old Friend' }), {
+      clientX: 80,
+      clientY: 120,
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Clear chat' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear chat' }))
+
+    await waitFor(() => expect(screen.queryByText('hey there')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Open chat with Old Friend' })).toBeInTheDocument()
+    expect(screen.getByText('Say hi!')).toBeInTheDocument()
+  })
+
+  it('delete chat removes the conversation and its history from the list', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    fireEvent.contextMenu(screen.getByRole('button', { name: 'Open chat with Old Friend' }), {
+      clientX: 80,
+      clientY: 120,
+    })
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Delete chat' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete chat' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Open chat with Old Friend' })).not.toBeInTheDocument()
+    })
+    expect(screen.queryByText('hey there')).not.toBeInTheDocument()
+    expect(screen.getByText('No conversations yet')).toBeInTheDocument()
   })
 })
 

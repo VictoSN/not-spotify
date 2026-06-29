@@ -76,6 +76,7 @@ public record FollowUserDto(
     string Name,
     string? AvatarUrl,
     bool IsArtist,
+    string? ArtistId,
     // True when the authenticated viewer already follows this user.
     bool IsFollowedByMe
 );

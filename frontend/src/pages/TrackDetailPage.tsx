@@ -299,9 +299,9 @@ export function TrackDetailPage() {
       {/* ── Body: Lyrics + Artist card ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8 px-4 sm:px-6 py-4">
         {/* Left: Lyrics (folded behind "Show more" when long) */}
-        <div>
+        <div className="-mx-2 sm:mx-0">
           <section>
-            <h2 className="text-2xl font-bold text-primary mb-4">{t('detail.lyrics')}</h2>
+            <h2 className="mb-4 text-2xl font-bold text-primary">{t('detail.lyrics')}</h2>
             {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
             <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} collapsible />
           </section>

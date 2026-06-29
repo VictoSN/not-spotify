@@ -241,6 +241,7 @@ public class UsersController : ControllerBase
                 u.Name,
                 _mapper.ToRef(u).AvatarUrl,
                 u.ArtistId.HasValue,
+                u.ArtistId?.ToString(),
                 myFollowing.Contains(u.Id)))
             .ToList();
     }

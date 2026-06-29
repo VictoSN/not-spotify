@@ -17,6 +17,7 @@ interface MediaMenuShellProps {
   alwaysVisible?: boolean
   triggerClassName?: string
   triggerIconClassName?: string
+  panelClassName?: string
 }
 
 /**
@@ -32,6 +33,7 @@ export const MediaMenuShell = forwardRef<PointerMenuHandle, MediaMenuShellProps>
   alwaysVisible,
   triggerClassName,
   triggerIconClassName,
+  panelClassName,
 }, ref) {
   const menu = usePointerMenu()
   const { coords, hiddenBtnRef, openAt, openFromButton } = menu
@@ -74,7 +76,7 @@ export const MediaMenuShell = forwardRef<PointerMenuHandle, MediaMenuShellProps>
               modal={false}
               transition
               onClick={stop}
-              className={CONTEXT_MENU_PANEL_CLASS}
+              className={`${CONTEXT_MENU_PANEL_CLASS} ${panelClassName ?? ''}`}
             >
               {children(close)}
             </MenuItems>

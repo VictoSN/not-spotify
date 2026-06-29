@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import type { ChatMessage, Conversation } from '@/types/chat'
 import { chatService } from '@/services/chatService'
 import { notify } from '@/utils/toast'
+import {
+  applyChatPreferences,
+  clearChatOnDevice,
+  deleteChatOnDevice,
+  filterThreadForDevice,
+  isMessageVisibleOnDevice,
+} from '@/utils/chatPreferences'
+import { isPinned, togglePinned } from '@/utils/pinnedLibrary'
 import { useAuthStore } from './authStore'
 import { useNotificationStore } from './notificationStore'
 
@@ -31,6 +39,8 @@ interface ChatState {
   loadOlder: (userId: string) => Promise<void>
   sendMessage: (userId: string, body: string) => Promise<void>
   markRead: (userId: string) => Promise<void>
+  clearChat: (userId: string) => void
+  deleteChat: (userId: string) => void
 
   // Real-time handlers (called from usePresenceSocket)
   receiveMessage: (message: ChatMessage) => void
@@ -57,7 +67,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   fetchConversations: async () => {
     try {
-      const conversations = await chatService.getConversations()
+      const conversations = applyChatPreferences(await chatService.getConversations())
       // The thread I'm looking at is read by definition. The server may still
       // report unread > 0 here when this fetch races the mark-read POST (e.g.
       // first message from a "Start a chat" partner) — without this clamp the
@@ -78,7 +88,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   openThread: async (userId) => {
     set({ activeUserId: userId, isLoading: true })
     try {
-      const page = await chatService.getThread(userId)
+      const page = filterThreadForDevice(userId, await chatService.getThread(userId))
       set((s) => ({ threads: { ...s.threads, [userId]: sortThread(page) }, isLoading: false }))
       void chatService.markDelivered()
       await get().markRead(userId)
@@ -94,7 +104,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!thread || thread.length === 0) return
     const oldest = thread[0].sentAt
     try {
-      const page = await chatService.getThread(userId, oldest)
+      const page = filterThreadForDevice(userId, await chatService.getThread(userId, oldest))
       if (page.length === 0) return
       set((s) => ({
         threads: { ...s.threads, [userId]: sortThread([...page, ...(s.threads[userId] ?? [])]) },
@@ -168,12 +178,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
     for (const n of linkedInvites) void useNotificationStore.getState().markRead(n.id)
   },
 
+  clearChat: (userId) => {
+    clearChatOnDevice(userId)
+    set((state) => ({
+      threads: { ...state.threads, [userId]: [] },
+      conversations: state.conversations.map((conversation) =>
+        conversation.userId === userId
+          ? { ...conversation, lastMessage: null, unreadCount: 0 }
+          : conversation,
+      ),
+    }))
+    void get().markRead(userId)
+  },
+
+  deleteChat: (userId) => {
+    deleteChatOnDevice(userId)
+    const pinKey = `chat-${userId}`
+    if (isPinned(pinKey)) togglePinned(pinKey)
+    set((state) => {
+      const threads = { ...state.threads }
+      delete threads[userId]
+      return {
+        conversations: state.conversations.filter((conversation) => conversation.userId !== userId),
+        threads,
+        activeUserId: state.activeUserId === userId ? null : state.activeUserId,
+      }
+    })
+    void get().markRead(userId)
+  },
+
   // ── Real-time handlers ─────────────────────────────────────────────────────
 
   receiveMessage: (message) => {
     const me = myId()
     if (!me) return
     const partnerId = message.senderId === me ? message.recipientId : message.senderId
+    if (!isMessageVisibleOnDevice(partnerId, message)) return
     const { activeUserId } = get()
 
     set((s) => {

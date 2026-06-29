@@ -14,6 +14,7 @@ import { HomePage } from '@/pages/HomePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { LibraryPage } from '@/pages/LibraryPage'
 import { ProfilePage } from '@/pages/ProfilePage'
+import { FollowingPage } from '@/pages/FollowingPage'
 import { AccountSettingsPage } from '@/pages/AccountSettingsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { MessagesPage } from '@/pages/MessagesPage'
@@ -128,6 +129,7 @@ export const router = createBrowserRouter([
             element: <ProtectedRoute />,
             children: [
               { path: 'profile', element: <ProfilePage /> },
+              { path: 'following', element: <FollowingPage /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: 'stats', element: <StatsPage /> },
               { path: 'uploads', element: <UploadsPage /> },

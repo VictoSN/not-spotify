@@ -77,6 +77,8 @@ export interface FollowUser {
   name: string
   avatarUrl: string | null
   isArtist: boolean
+  /** Catalog artist represented by this account, used to avoid duplicate following cards. */
+  artistId?: string | null
   isFollowedByMe: boolean
 }
 

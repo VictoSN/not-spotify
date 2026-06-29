@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   PaperAirplaneIcon,
   ChatBubbleLeftRightIcon,
   LockClosedIcon,
+  MinusCircleIcon,
   PlusIcon,
   FaceSmileIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline'
 import { DocumentIcon, PhotoIcon } from '@heroicons/react/24/solid'
 import { Avatar } from '@/components/ui/Avatar'
@@ -13,13 +16,19 @@ import { Spinner } from '@/components/ui/Spinner'
 import { useChatStore } from '@/stores/chatStore'
 import { useFriendStore } from '@/stores/friendStore'
 import { useAuthStore } from '@/stores/authStore'
-import type { ChatMessage } from '@/types/chat'
+import type { ChatMessage, Conversation } from '@/types/chat'
 import { parseShare } from '@/utils/chatShare'
 import { SharedTrackBubble } from '@/components/chat/SharedTrackBubble'
 import { SharedAlbumBubble } from '@/components/chat/SharedAlbumBubble'
 import { SharedPlaylistBubble } from '@/components/chat/SharedPlaylistBubble'
 import { SharedJamBubble } from '@/components/chat/SharedJamBubble'
+import { MediaMenuItem, MediaMenuShell } from '@/components/cards/MediaMenuShell'
+import { PinIcon } from '@/components/cards/PinMenuItem'
 import { cn } from '@/utils/cn'
+import { getPinnedKeys, isPinned, PINNED_EVENT, togglePinned } from '@/utils/pinnedLibrary'
+import { isChatDeletedOnDevice } from '@/utils/chatPreferences'
+import type { PointerMenuHandle } from '@/utils/contextMenu'
+import { useConfirm } from '@/hooks/useConfirm'
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -36,6 +45,10 @@ function formatDay(iso: string) {
 }
 
 const QUICK_EMOJIS = ['😀', '😂', '😍', '🥰', '😎', '😭', '😡', '👍', '👏', '🙏', '❤️', '🔥', '🎉', '✨', '🎵', '🤝']
+
+interface ChatThreadMenuHandle {
+  openFor: (conversation: Conversation, x: number, y: number) => void
+}
 
 /** Sent (one grey), delivered (two grey), and read (two blue) message receipts. */
 export function MessageStatusTicks({ message }: { message: ChatMessage }) {
@@ -64,13 +77,23 @@ export function MessageStatusTicks({ message }: { message: ChatMessage }) {
 }
 
 export function MessagesPage() {
+  const confirm = useConfirm()
   const me = useAuthStore((s) => s.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const conversations = useChatStore((s) => s.conversations)
   const threads = useChatStore((s) => s.threads)
   const activeUserId = useChatStore((s) => s.activeUserId)
   const isLoading = useChatStore((s) => s.isLoading)
-  const { fetchConversations, openThread, closeThread, sendMessage, loadOlder, markRead } = useChatStore()
+  const {
+    fetchConversations,
+    openThread,
+    closeThread,
+    sendMessage,
+    loadOlder,
+    markRead,
+    clearChat,
+    deleteChat,
+  } = useChatStore()
   const friends = useFriendStore((s) => s.friends)
   const friendsLoaded = useFriendStore((s) => s.friendsLoaded)
   const activity = useFriendStore((s) => s.activity)
@@ -79,16 +102,28 @@ export function MessagesPage() {
   const [draft, setDraft] = useState('')
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false)
   const [emojiMenuOpen, setEmojiMenuOpen] = useState(false)
+  const [pinRevision, setPinRevision] = useState(0)
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const composerToolsRef = useRef<HTMLDivElement | null>(null)
   const documentInputRef = useRef<HTMLInputElement | null>(null)
   const mediaInputRef = useRef<HTMLInputElement | null>(null)
   const draftInputRef = useRef<HTMLInputElement | null>(null)
+  const chatMenuRef = useRef<ChatThreadMenuHandle | null>(null)
 
   useEffect(() => {
     fetchConversations()
     fetchFriends()
   }, [fetchConversations, fetchFriends])
+
+  useEffect(() => {
+    const syncPins = () => setPinRevision((revision) => revision + 1)
+    window.addEventListener(PINNED_EVENT, syncPins)
+    window.addEventListener('storage', syncPins)
+    return () => {
+      window.removeEventListener(PINNED_EVENT, syncPins)
+      window.removeEventListener('storage', syncPins)
+    }
+  }, [])
 
   // Deep link: /messages?u=<friendId> opens that thread.
   const deepLink = searchParams.get('u')
@@ -131,9 +166,33 @@ export function MessagesPage() {
     [activity],
   )
 
+  const sortedConversations = useMemo(() => {
+    const pinRank = new Map(
+      getPinnedKeys()
+        .filter((key) => key.startsWith('chat-'))
+        .map((key, index) => [key.slice(5), index]),
+    )
+    return conversations
+      .map((conversation, index) => ({ conversation, index }))
+      .sort((left, right) => {
+        const leftRank = pinRank.get(left.conversation.userId)
+        const rightRank = pinRank.get(right.conversation.userId)
+        if (leftRank !== undefined || rightRank !== undefined) {
+          if (leftRank === undefined) return 1
+          if (rightRank === undefined) return -1
+          return leftRank - rightRank
+        }
+        return left.index - right.index
+      })
+      .map(({ conversation }) => conversation)
+  }, [conversations, pinRevision])
+
   // Friends I have no conversation with yet — shown so a first chat can be started.
   const newChatFriends = useMemo(
-    () => friends.filter((f) => !conversations.some((c) => c.userId === f.userId)),
+    () => friends.filter(
+      (friend) => !conversations.some((conversation) => conversation.userId === friend.userId)
+        && !isChatDeletedOnDevice(friend.userId),
+    ),
     [friends, conversations],
   )
 
@@ -154,6 +213,28 @@ export function MessagesPage() {
 
   const select = (userId: string) => {
     setSearchParams({ u: userId }, { replace: true })
+  }
+
+  const handleClearChat = async (conversation: Conversation) => {
+    const accepted = await confirm({
+      title: `Clear chat with ${conversation.name}?`,
+      message: 'This removes every message from this device but keeps the empty chat in your list.',
+      confirmText: 'Clear chat',
+      danger: true,
+    })
+    if (accepted) clearChat(conversation.userId)
+  }
+
+  const handleDeleteChat = async (conversation: Conversation) => {
+    const accepted = await confirm({
+      title: `Delete chat with ${conversation.name}?`,
+      message: 'This removes the conversation and its message history from this device.',
+      confirmText: 'Delete chat',
+      danger: true,
+    })
+    if (!accepted) return
+    deleteChat(conversation.userId)
+    if (activeUserId === conversation.userId) setSearchParams({}, { replace: true })
   }
 
   const submit = (e: React.FormEvent) => {
@@ -195,10 +276,15 @@ export function MessagesPage() {
             </div>
           )}
 
-          {conversations.map((c) => (
+          {sortedConversations.map((c) => (
             <button
               key={c.userId}
               onClick={() => select(c.userId)}
+              aria-label={`Open chat with ${c.name}`}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                chatMenuRef.current?.openFor(c, event.clientX, event.clientY)
+              }}
               className={cn(
                 'flex w-full items-center gap-3 rounded-md p-2.5 text-left transition-colors',
                 activeUserId === c.userId ? 'bg-elevated' : 'hover:bg-elevated/50',
@@ -232,6 +318,9 @@ export function MessagesPage() {
                         }`
                       : 'Say hi!'}
                   </p>
+                  {isPinned(`chat-${c.userId}`) && (
+                    <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />
+                  )}
                   {c.unreadCount > 0 && (
                     <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
                       {c.unreadCount > 99 ? '99+' : c.unreadCount}
@@ -269,6 +358,11 @@ export function MessagesPage() {
             </>
           )}
         </div>
+        <ChatThreadContextMenu
+          ref={chatMenuRef}
+          onClear={handleClearChat}
+          onDelete={handleDeleteChat}
+        />
       </aside>
 
       {/* ── Thread ────────────────────────────────────────────────────── */}
@@ -531,3 +625,61 @@ export function MessagesPage() {
     </div>
   )
 }
+
+const ChatThreadContextMenu = forwardRef<
+  ChatThreadMenuHandle,
+  {
+    onClear: (conversation: Conversation) => void
+    onDelete: (conversation: Conversation) => void
+  }
+>(function ChatThreadContextMenu({ onClear, onDelete }, ref) {
+  const pointerMenuRef = useRef<PointerMenuHandle | null>(null)
+  const [conversation, setConversation] = useState<Conversation | null>(null)
+  const pinKey = `chat-${conversation?.userId ?? 'none'}`
+  const pinned = conversation ? isPinned(pinKey) : false
+
+  useImperativeHandle(ref, () => ({
+    openFor: (nextConversation, x, y) => {
+      flushSync(() => setConversation(nextConversation))
+      pointerMenuRef.current?.openAt(x, y)
+    },
+  }), [])
+
+  return (
+    <MediaMenuShell
+      ref={pointerMenuRef}
+      ariaLabel={conversation ? `Chat options for ${conversation.name}` : 'Chat options'}
+      triggerClassName="hidden"
+      panelClassName="w-52!"
+    >
+      {(close) => conversation && (
+        <>
+          <MediaMenuItem
+            icon={<PinIcon className={pinned ? 'text-accent' : ''} />}
+            label={pinned ? 'Unpin chat' : 'Pin chat'}
+            onClick={() => {
+              togglePinned(pinKey)
+              close()
+            }}
+          />
+          <MediaMenuItem
+            icon={<MinusCircleIcon />}
+            label="Clear chat"
+            onClick={() => {
+              close()
+              void onClear(conversation)
+            }}
+          />
+          <MediaMenuItem
+            icon={<TrashIcon />}
+            label="Delete chat"
+            onClick={() => {
+              close()
+              void onDelete(conversation)
+            }}
+          />
+        </>
+      )}
+    </MediaMenuShell>
+  )
+})

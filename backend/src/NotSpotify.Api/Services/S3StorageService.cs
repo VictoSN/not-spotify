@@ -7,8 +7,8 @@ namespace NotSpotify.Api.Services;
 
 /// <summary>
 /// S3-compatible storage backend (AWS S3 by default; any S3-compatible store via
-/// <see cref="S3StorageOptions.ServiceUrl"/>). Mirrors <see cref="SupabaseStorageService"/>:
-/// audio/image URLs are handed to the browser, while <see cref="ReadAsync"/> pulls
+/// <see cref="S3StorageOptions.ServiceUrl"/>). Audio/image URLs are handed to the
+/// browser, while <see cref="ReadAsync"/> pulls
 /// bytes server-side for ZIP downloads. Registered as a singleton — <see cref="AmazonS3Client"/>
 /// is thread-safe and intended to be reused.
 /// </summary>

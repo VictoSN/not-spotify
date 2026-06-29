@@ -9,7 +9,7 @@ public interface IStorageService
 
     /// <summary>
     /// Reads a stored object's bytes directly (disk for local storage, authed
-    /// fetch for Supabase). Returns null if the object doesn't exist. Server-side
+    /// fetch for remote storage). Returns null if the object doesn't exist. Server-side
     /// consumers (e.g. track/album/playlist downloads) must use this instead of HTTP-fetching
     /// GetPublicUrl — public URLs are built for browsers and may not be
     /// reachable from the server itself.

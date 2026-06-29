@@ -5,8 +5,8 @@ namespace NotSpotify.Api.Controllers;
 
 /// <summary>
 /// Proxies storage images through the backend so they work regardless of
-/// whether the Supabase bucket has a public-read policy. The proxy uses the
-/// service key to fetch, so the browser never talks to Supabase directly.
+/// whether the storage bucket has a public-read policy. The proxy uses the
+/// service credentials to fetch, so the browser never talks to storage directly.
 /// </summary>
 [ApiController]
 [Route("storage")]

@@ -18,8 +18,8 @@ It is a companion to [`support-page-roadmap.md`](support-page-roadmap.md) (ticke
 |---|---|---|
 | Frontend | React/Vite SPA, one bundle. `/support` is a client-side route ([`SupportPage.tsx`](../frontend/src/pages/SupportPage.tsx)). Also shipped as PWA + Tauri. | Article content + search UI all live here, **static, no backend call**. |
 | Backend | One ASP.NET Core 8 monolith (`NotSpotify.Api`), `https://localhost:7045`. SignalR hubs, JWT + refresh cookie, rate limiter. | A support API would be **new controllers in the same monolith** — no new service. |
-| DB | Postgres (Supabase now → RDS per [`aws-rds-setup.md`](aws-rds-setup.md)). EF migrations auto-apply on startup. | Ticket tables = **new EF entities in the same DbContext**. |
-| Storage | `IStorageService`, priority S3 → Supabase → Local ([`aws-s3-setup.md`](aws-s3-setup.md)). | Ticket screenshot attachments = **reuse `IStorageService`**, new key prefix. |
+| DB | Postgres (→ RDS per [`aws-rds-setup.md`](aws-rds-setup.md)). EF migrations auto-apply on startup. | Ticket tables = **new EF entities in the same DbContext**. |
+| Storage | `IStorageService`, priority S3 → Local ([`aws-s3-setup.md`](aws-s3-setup.md)). | Ticket screenshot attachments = **reuse `IStorageService`**, new key prefix. |
 | Search | Catalogue search is server-side ([`SearchController.cs`](../backend/src/NotSpotify.Api/Controllers/SearchController.cs)). **Support search is client-side substring match** over the hardcoded article index. | "Basic search" = enrich the client index; no backend needed for v1. |
 
 **Key fact that shapes the whole plan:** the support page today is **100% static and self-contained**. It needs no API, no DB, no auth. That's why the subdomain question is cheap to answer and why basic-search is a frontend-only first step.
@@ -93,7 +93,7 @@ This section places the **support backend** (tickets, attachments, status, searc
 ### How the pieces interact (and what support adds)
 - **Support API = new controllers in the existing monolith.** A `SupportController` (+ admin endpoints) added next to the others. No new deployable, no new container. Auth, rate limiting, and DI all already exist.
 - **Ticket data = new EF entities in the existing `AppDbContext`.** They migrate onto **RDS** automatically via the same `MigrateAsync()` on startup. Use the project's **idempotent `CREATE TABLE IF NOT EXISTS` guard pattern** (see `Program.cs`) because the DB is shared.
-- **Attachments = existing `IStorageService`.** Store under a new key prefix `support/attachments/{ticketId}/{guid}.{ext}` so it works identically on S3, Supabase, or Local. On S3 it inherits private bucket + presigned URLs for free.
+- **Attachments = existing `IStorageService`.** Store under a new key prefix `support/attachments/{ticketId}/{guid}.{ext}` so it works identically on S3 or Local. On S3 it inherits private bucket + presigned URLs for free.
 - **Notifications = existing notification system.** "Admin replied / ticket closed" reuses `NotificationService` — no new channel.
 - **System-status panel hits AWS surfaces.** Its checks map 1:1 to our AWS pieces: API reachable (ALB/health), DB connected (RDS), storage configured (S3), Stripe configured. This is genuinely useful precisely because we now have RDS + S3 + Stripe as separate failure points.
 

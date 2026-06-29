@@ -10,7 +10,7 @@ namespace NotSpotify.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Idempotent (shared Supabase DB): create the taxonomy + join tables only
+            // Idempotent (shared Postgres DB): create the taxonomy + join tables only
             // if they don't already exist, then seed the canonical mood/activity tags.
             migrationBuilder.Sql(
                 """

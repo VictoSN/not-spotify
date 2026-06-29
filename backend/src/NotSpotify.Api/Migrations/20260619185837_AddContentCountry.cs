@@ -11,7 +11,7 @@ namespace NotSpotify.Api.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Idempotent (ADD COLUMN IF NOT EXISTS) so it reconciles cleanly on the
-            // shared Supabase DB even if a column was already added out-of-band.
+            // shared Postgres DB even if a column was already added out-of-band.
             migrationBuilder.Sql(@"ALTER TABLE ""Artists"" ADD COLUMN IF NOT EXISTS ""Country"" text;");
             migrationBuilder.Sql(@"ALTER TABLE ""Albums"" ADD COLUMN IF NOT EXISTS ""Country"" text;");
 

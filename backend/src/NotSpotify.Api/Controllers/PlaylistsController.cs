@@ -494,7 +494,7 @@ public class PlaylistsController : ControllerBase
             for (var i = 0; i < ordered.Count; i++)
             {
                 var track = ordered[i];
-                // Read uploaded audio via the storage service (disk / authed Supabase) —
+                // Read uploaded audio via the storage service (disk / authed remote) —
                 // never by HTTP-fetching our own public URL, which the server may not
                 // be able to reach. Absolute legacy/seeded URLs are fetched directly.
                 var audio = await _audioDownloads.FetchAsync(track.AudioKey, track.AudioUrl, ct);

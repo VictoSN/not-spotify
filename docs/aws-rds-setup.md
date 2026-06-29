@@ -1,10 +1,10 @@
 # AWS RDS (PostgreSQL) Setup & Migration Runbook
 
-Move the **database** off Supabase Postgres to **Amazon RDS for PostgreSQL**. Pairs with [`aws-s3-setup.md`](aws-s3-setup.md) (storage) — together they put the whole app on AWS.
+Move the **database** to **Amazon RDS for PostgreSQL**. Pairs with [`aws-s3-setup.md`](aws-s3-setup.md) (storage) — together they put the whole app on AWS.
 
 **No code changes needed** — the app reads `ConnectionStrings:Postgres` from user-secrets, so this is provisioning + a connection-string swap. And unlike the S3 keys, **RDS uses its own database username/password that does *not* rotate** with the Academy session — so teammates set the connection string **once**.
 
-> ⚠️ **Don't delete your Supabase project.** It's free and always-on — keep it as a fallback (see "Account budget & switching" at the bottom). Pointing the app at RDS is all you need; tearing Supabase down buys you nothing and removes your safety net.
+> ⚠️ **Keep your existing database as a fallback.** Pointing the app at RDS is all you need; tearing down the original database buys you nothing and removes your safety net.
 
 ---
 
@@ -45,10 +45,10 @@ Pick one:
 
 **5a — Fresh start (simplest).** Just run the backend (`dotnet run`). On startup it runs EF migrations + the idempotent table guards + `DbSeeder`, so all tables and seed data (artists, tracks, demo admin) are **created automatically** in the empty RDS. Watch the console — you'll see it migrate and seed. Done.
 
-**5b — Keep your current Supabase data** (users, playlists, uploads). Needs the Postgres client tools (`pg_dump`/`pg_restore`):
+**5b — Keep your current data** (users, playlists, uploads). Needs the Postgres client tools (`pg_dump`/`pg_restore`):
 ```bash
-# dump from Supabase (use your Session Pooler connection string)
-pg_dump "postgresql://postgres.<ref>:<pw>@aws-1-...pooler.supabase.com:5432/postgres" \
+# dump from your current database (use your connection string)
+pg_dump "postgresql://<user>:<pw>@<host>:5432/postgres" \
   --no-owner --no-privileges -Fc -f notspotify.dump
 
 # restore into RDS
@@ -58,11 +58,11 @@ pg_restore --no-owner --no-privileges \
 
 ## 6. Storage too
 
-If you haven't already, move media to S3 as well — see [`aws-s3-setup.md`](aws-s3-setup.md). RDS (database) + S3 (files) = fully off Supabase.
+If you haven't already, move media to S3 as well — see [`aws-s3-setup.md`](aws-s3-setup.md). RDS (database) + S3 (files) = fully on AWS.
 
 ## 7. Verify
 
-`dotnet run` → the console connects to RDS (no Supabase). Log in as the seed admin (`alex@example.com` / `Password123!`), browse, and play a track.
+`dotnet run` → the console connects to RDS. Log in as the seed admin (`alex@example.com` / `Password123!`), browse, and play a track.
 
 ---
 
@@ -79,12 +79,12 @@ When you **Start Lab**, the RDS instance is usually **stopped**. RDS → select 
 - Each Learner Lab account has its **own** credit (commonly ~$50 — confirm yours) and budgets **cannot be pooled** across accounts. Three accounts = three separate buckets, not one shared $150.
 - "Moving to a teammate's account" is a **re-provision**, not a live move:
   - **RDS** → create a new instance there, then `pg_dump` your current DB → `pg_restore` into it (a few minutes). Keep a recent `pg_dump` backup so this is quick.
-  - **S3** → create a new bucket there, add its creds as an `S3StorageDest:*` user-secret section (BucketName/Region/AccessKeyId/SecretAccessKey/SessionToken), then copy bucket-to-bucket — no Supabase needed:
+  - **S3** → create a new bucket there, add its creds as an `S3StorageDest:*` user-secret section (BucketName/Region/AccessKeyId/SecretAccessKey/SessionToken), then copy bucket-to-bucket:
     ```powershell
     dotnet run -- migrate-storage --source S3Storage --dest S3StorageDest
     ```
     Then point the app's `S3Storage:*` at the new bucket and drop `S3StorageDest`.
-- Keeping Supabase as a dormant fallback also makes this trivial — you can always re-run the plain `migrate-storage` from Supabase into any new bucket.
+- Keeping your existing storage as a dormant fallback also makes this trivial — you can always re-run the migration from it into any new bucket.
 
 ## Troubleshooting
 

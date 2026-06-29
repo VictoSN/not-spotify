@@ -11,7 +11,7 @@ namespace NotSpotify.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Idempotent: shared Supabase DB may already have this table from
+            // Idempotent: shared Postgres DB may already have this table from
             // the raw-SQL guard in Program.cs.
             migrationBuilder.Sql(@"
                 CREATE TABLE IF NOT EXISTS ""TrackComments"" (

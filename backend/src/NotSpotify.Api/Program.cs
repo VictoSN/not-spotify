@@ -28,7 +28,7 @@ builder.Configuration.AddEnvironmentVariables();
 Console.WriteLine($"[Env] ASPNETCORE_ENVIRONMENT = {builder.Environment.EnvironmentName}");
 
 // One-time storage migration CLI (`dotnet run -- migrate-storage [--dry-run]`):
-// copies every DB-referenced object from Supabase to S3 under the same keys.
+// copies every DB-referenced object between storage providers under the same keys.
 // Short-circuits before the web host so it needs no JWT/Stripe/etc. config.
 if (args.Contains("migrate-storage"))
 {
@@ -76,7 +76,7 @@ builder.Services.AddSingleton(jwt);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
 {
-    // Supabase session-mode pooler is capped at 15 connections shared across all team members.
+    // Postgres session-mode pooler is capped at 15 connections shared across all team members.
     // Limiting the app-side pool prevents one running instance from consuming all slots.
     var cs = builder.Configuration.GetConnectionString("Postgres") ?? string.Empty;
     if (!cs.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
@@ -179,13 +179,11 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// Storage provider selection (priority: S3 → Supabase → Local). Each keys off its
+// Storage provider selection (priority: S3 → Local). Each keys off its
 // own config being present, so swapping is a user-secrets change, not a code change.
 builder.Services.AddHttpClient();
 var s3Section = builder.Configuration.GetSection("S3Storage");
 var s3Bucket = s3Section["BucketName"];
-var supabaseStorageSection = builder.Configuration.GetSection("SupabaseStorage");
-var supabaseUrl = supabaseStorageSection["Url"];
 if (!string.IsNullOrWhiteSpace(s3Bucket))
 {
     builder.Services.Configure<S3StorageOptions>(s3Section);
@@ -195,17 +193,11 @@ if (!string.IsNullOrWhiteSpace(s3Bucket))
         : s3Section["ServiceUrl"];
     Console.WriteLine($"[Storage] Using S3: bucket {s3Bucket} (endpoint: {endpoint})");
 }
-else if (!string.IsNullOrWhiteSpace(supabaseUrl))
-{
-    builder.Services.Configure<SupabaseStorageOptions>(supabaseStorageSection);
-    builder.Services.AddSingleton<IStorageService, SupabaseStorageService>();
-    Console.WriteLine($"[Storage] Using Supabase: {supabaseUrl} (bucket: {supabaseStorageSection["Bucket"]})");
-}
 else
 {
     builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
     builder.Services.AddSingleton<IStorageService, LocalStorageService>();
-    Console.WriteLine("[Storage] Using LocalStorage (no S3/Supabase config — user-secrets not loaded?)");
+    Console.WriteLine("[Storage] Using LocalStorage (no S3 config — user-secrets not loaded?)");
 }
 var openSearchOptions = builder.Configuration.GetSection("OpenSearch").Get<OpenSearchOptions>() ?? new OpenSearchOptions();
 builder.Services.AddSingleton(openSearchOptions);
@@ -316,7 +308,7 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07" || ex.SqlState == "42701")
     {
-        // Shared Supabase DB: a previous run's raw-SQL guard already created the
+        // Shared Postgres DB: a previous run's raw-SQL guard already created the
         // table/column. The migration is a no-op — log and continue so later
         // migrations (which may add columns/ indexes) still apply.
         Console.WriteLine($"[Migration] Skipped (already exists): {ex.MessageText}");
@@ -343,7 +335,7 @@ using (var scope = app.Services.CreateScope())
     ");
 
     // Same guard for the asymmetric-follow graph: ensure the table exists even if the
-    // EF migration gets stamped-without-running on the shared Supabase DB (a documented
+    // EF migration gets stamped-without-running on the shared Postgres DB (a documented
     // hazard with multiple team members applying migrations).
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""UserFollows"" (
@@ -365,7 +357,7 @@ using (var scope = app.Services.CreateScope())
             ON ""UserFollows""(""FollowerId"");
     ");
 
-    // Ensure TrackComments table exists (same guard pattern — shared Supabase DB
+    // Ensure TrackComments table exists (same guard pattern — shared Postgres DB
     // sometimes stamps EF migrations without applying the DDL).
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""TrackComments"" (
@@ -426,7 +418,7 @@ using (var scope = app.Services.CreateScope())
     ");
 
     // Ensure Playlist featured/sort columns exist (same guard pattern —
-    // shared Supabase DB sometimes stamps EF migrations without applying DDL).
+    // shared Postgres DB sometimes stamps EF migrations without applying DDL).
     await db.Database.ExecuteSqlRawAsync(@"
         DO $$
         BEGIN
@@ -495,7 +487,7 @@ using (var scope = app.Services.CreateScope())
         END $$;
     ");
 
-    // Podcasts subsystem (same guard pattern — shared Supabase DB may already
+    // Podcasts subsystem (same guard pattern — shared Postgres DB may already
     // have these tables; create them idempotently regardless of EF history).
     // The one-time seed draws episode audio straight from the existing approved
     // catalogue so episodes actually play through the unchanged audio engine.
@@ -835,7 +827,7 @@ using (var scope = app.Services.CreateScope())
 
     // Multi-seat plans (Duo/Family/Student): per-user tier + shared-seat owner
     // columns, plus the membership/invite table. Same idempotent guard pattern —
-    // the shared Supabase DB may already have these from a teammate's run.
+    // the shared Postgres DB may already have these from a teammate's run.
     await db.Database.ExecuteSqlRawAsync(@"
         DO $$
         BEGIN

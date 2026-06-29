@@ -2315,7 +2315,7 @@ function buildDefaultArticleBlocks(articleRef: ArticleRef, group: HelpGroup, sec
             'If S3 presigned URLs are enabled, expired links require a fresh API response.',
           ],
         },
-        supportMinimumBlock(['Browser and OS.', 'Track or upload title.', 'Whether audio, images, or both fail.', 'Storage backend: local, S3, or Supabase if known.']),
+        supportMinimumBlock(['Browser and OS.', 'Track or upload title.', 'Whether audio, images, or both fail.', 'Storage backend: local or S3 if known.']),
       ]
     }
 

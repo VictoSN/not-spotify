@@ -21,7 +21,7 @@ namespace NotSpotify.Api.Tests;
 /// These are *unit* tests: a controller is constructed directly over an
 /// EF Core InMemory database and mocked services, then its action methods are
 /// invoked and the results asserted. Nothing here ever touches the shared
-/// Supabase/Postgres database, and the web host (Program.cs) is never started —
+/// Nothing here ever touches the shared Postgres database, and the web host
 /// so tests are fast, isolated, and safe to run on every machine.
 /// </summary>
 internal static class TestHelpers

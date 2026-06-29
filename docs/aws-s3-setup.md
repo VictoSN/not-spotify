@@ -1,8 +1,8 @@
 # AWS S3 Setup & Migration Runbook
 
-Move the media catalogue (audio, cover art, avatars, uploads) off Supabase Storage onto **AWS S3**. The backend code is already done — this is the AWS console + config + one migration command. Budget ~30 minutes.
+Move the media catalogue (audio, cover art, avatars, uploads) onto **AWS S3**. The backend code is already done — this is the AWS console + config. Budget ~30 minutes.
 
-The app picks its storage provider by priority **S3 → Supabase → Local**, each keyed off its own config. Setting `S3Storage:BucketName` is what flips it to S3; the console prints `[Storage] Using S3: …` on startup.
+The app picks its storage provider by priority **S3 → Local**, each keyed off its own config. Setting `S3Storage:BucketName` is what flips it to S3; the console prints `[Storage] Using S3: …` on startup.
 
 ---
 
@@ -96,7 +96,7 @@ The browser fetches audio cross-origin (for playback *and* the "identify a song"
 
 ## 4. Configure the backend (user-secrets)
 
-From `backend/src/NotSpotify.Api`. Keep your existing **Supabase** secrets in place — the migration reads *from* Supabase and writes *to* S3, so both must be set at once.
+From `backend/src/NotSpotify.Api`.
 
 **Path A:**
 ```powershell
@@ -122,14 +122,14 @@ Verify with `dotnet user-secrets list`.
 
 ## 5. Migrate the catalogue
 
-From `backend/src/NotSpotify.Api`:
+If you have existing media in another storage backend, use the migrate-storage command. From `backend/src/NotSpotify.Api`:
 
 ```powershell
-dotnet run -- migrate-storage --dry-run   # lists every object it WOULD copy; writes nothing
-dotnet run -- migrate-storage             # actually copies Supabase -> S3 (idempotent; safe to re-run)
+dotnet run -- migrate-storage --source <sourceSection> --dest <destSection> --dry-run   # preview; writes nothing
+dotnet run -- migrate-storage --source <sourceSection> --dest <destSection>             # copy (idempotent; safe to re-run)
 ```
 
-You'll see one line per object (`copied audio/<guid>.mp3 (… bytes)`) and a final summary (`copied N, missing M, failed F`). `missing` = a DB row pointing at an object that isn't in Supabase (usually fine — external/seeded URLs that were never uploaded). Any `failed` rows can be fixed and re-run safely.
+You'll see one line per object and a final summary (`copied N, missing M, failed F`). Any `failed` rows can be fixed and re-run safely.
 
 ---
 
@@ -147,19 +147,18 @@ That's the migration done — you're submitting on AWS S3.
 
 ## Team setup: shared DB, per-machine storage
 
-Important mental model for a team on one shared Supabase **database** but different storage backends:
+Important mental model for a team on one shared **database** but different storage backends:
 
-- The **database is shared** (everyone's `ConnectionStrings:Postgres` points at the same Supabase). The **storage credentials are per-machine**, in each person's local user-secrets — never in the repo or DB.
-- The migration **copies** (doesn't move) files, so after it runs the catalogue exists in **both** Supabase and your S3. Your app serves from S3; a teammate with no `S3Storage` config keeps serving the same catalogue from Supabase. Both work — no key sharing needed.
-- **Split-brain risk with *new* uploads:** an upload goes to whichever backend that app is configured with, but the key is saved in the shared DB. So a track **you** upload while on S3 lands in *your* S3 only — a teammate on Supabase sees the DB row but can't fetch the file (and vice-versa).
+- The **database is shared** (everyone's `ConnectionStrings:Postgres` points at the same instance). The **storage credentials are per-machine**, in each person's local user-secrets — never in the repo or DB.
+- **Split-brain risk with *new* uploads:** an upload goes to whichever backend that app is configured with, but the key is saved in the shared DB. So a track **you** upload while on S3 lands in *your* S3 only — a teammate on Local sees the DB row but can't fetch the file (and vice-versa).
 
-**Recommended (Academy creds are personal + temporary):** treat S3 as **your submission/demo config** — keep teammates on Supabase for collaboration, and re-run `dotnet run -- migrate-storage` once right before the demo to pull in anything teammates uploaded to Supabase. Only share one bucket + credentials across the team if you specifically need everyone serving from S3.
+**Recommended:** use the same S3 bucket + credentials across the team if you need everyone serving from S3. Everyone on the same storage backend avoids split-brain.
 
 ---
 
 ## Troubleshooting
 
-- **Console still says `Using Supabase`** → `S3Storage:BucketName` isn't set (or you ran from the wrong folder). `dotnet user-secrets list` to confirm.
+- **Console still says `Using LocalStorage`** → `S3Storage:BucketName` isn't set (or you ran from the wrong folder). `dotnet user-secrets list` to confirm.
 - **`Access Denied` during migration** → the IAM policy bucket name/ARN is wrong, the region doesn't match the bucket, or (Path B) the lab token expired — re-copy the three values.
 - **Audio won't play / CORS error in console** → the bucket CORS (step 2) is missing or doesn't list `http://localhost:5173`.
 - **404 on a specific track** → that object wasn't copied; re-run `migrate-storage` (it's idempotent).

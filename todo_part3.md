@@ -634,24 +634,24 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Keeping unused dependencies and code creates technical debt, increases bundle size, and can lead to confusion. Removing Supabase will clean up the codebase and reduce maintenance overhead.
 
-- [ ] **Fix Implementation**
-  - [ ] Search the entire codebase for any references to "supabase" (case-insensitive)
-  - [ ] Remove all Supabase client initialization code
-  - [ ] Remove Supabase configuration files and environment variables
-  - [ ] Remove Supabase dependencies from package.json (e.g., `@supabase/supabase-js`, `@supabase/ssr`, etc.)
-  - [ ] Remove any API routes or backend logic that use Supabase
-  - [ ] Remove any database migration files related to Supabase
-  - [ ] Remove any utility functions or helpers that interact with Supabase
-  - [ ] Ensure the application still functions correctly without Supabase
-  - [ ] Update any documentation that references Supabase
+- [x] **Fix Implementation**
+  - [x] Search the entire codebase for any references to "supabase" (case-insensitive)
+  - [x] Remove all Supabase client initialization code
+  - [x] Remove Supabase configuration files and environment variables
+  - [x] Remove Supabase dependencies from package.json (e.g., `@supabase/supabase-js`, `@supabase/ssr`, etc.) — n/a: no npm/NuGet packages used; integration was custom HttpClient
+  - [x] Remove any API routes or backend logic that use Supabase
+  - [x] Remove any database migration files related to Supabase
+  - [x] Remove any utility functions or helpers that interact with Supabase
+  - [x] Ensure the application still functions correctly without Supabase
+  - [x] Update any documentation that references Supabase
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Application starts without errors after removing Supabase
-  - [ ] Test: All database operations work with the primary database
-  - [ ] Test: No console errors related to missing Supabase client
-  - [ ] Test: Environment variables no longer reference Supabase
-  - [ ] Test: Build process completes successfully
-  - [ ] Test: All existing features work as expected
+- [x] **Tests to Complete**
+  - [x] Test: Application starts without errors after removing Supabase
+  - [x] Test: All database operations work with the primary database
+  - [x] Test: No console errors related to missing Supabase client
+  - [x] Test: Environment variables no longer reference Supabase
+  - [x] Test: Build process completes successfully
+  - [x] Test: All existing features work as expected
 
 ---
 
@@ -721,6 +721,6 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 - [ ] Feature works in both light and dark themes
 - [ ] Feature works on mobile and desktop viewports
 - [ ] All dead/duplicate UI elements have been removed
-- [ ] Supabase has been completely removed from the codebase
+- [x] Supabase has been completely removed from the codebase
 - [ ] Folder dropdown menus have proper z-index layering
 - [ ] Drag and drop into folders functionality is fully implemented and tested

@@ -12,15 +12,13 @@ namespace NotSpotify.Api.Services;
 ///
 /// Run from <c>backend/src/NotSpotify.Api</c>:
 /// <code>
-///   dotnet run -- migrate-storage                                   # SupabaseStorage -> S3Storage (default)
-///   dotnet run -- migrate-storage --dry-run                         # preview, writes nothing
-///   dotnet run -- migrate-storage --source S3Storage --dest S3StorageDest   # S3 -> S3 (e.g. moving to a new account)
+///   dotnet run -- migrate-storage --source S3Storage --dest S3StorageDest     # S3 -> S3 (e.g. moving to a new account)
+///   dotnet run -- migrate-storage --dry-run                                   # preview, writes nothing
 /// </code>
 /// <para>
-/// <c>--source</c>/<c>--dest</c> name config sections (default <c>SupabaseStorage</c> →
-/// <c>S3Storage</c>). A section with a <c>Url</c> is treated as Supabase; a section with a
-/// <c>BucketName</c> is treated as S3 (so two S3 sections with different creds copy
-/// bucket-to-bucket across accounts). Idempotent — re-runs just upsert.
+/// <c>--source</c>/<c>--dest</c> name config sections (default <c>S3Storage</c> →
+/// <c>S3StorageDest</c>). Both must be S3-compatible config sections with a
+/// <c>BucketName</c>. Idempotent — re-runs just upsert.
 /// </para>
 /// </summary>
 public static class StorageMigration
@@ -30,8 +28,8 @@ public static class StorageMigration
     public static async Task RunAsync(IConfiguration config, string[] args)
     {
         var dryRun = args.Contains("--dry-run");
-        var sourceSection = ArgValue(args, "--source") ?? "SupabaseStorage";
-        var destSection = ArgValue(args, "--dest") ?? "S3Storage";
+        var sourceSection = ArgValue(args, "--source") ?? "S3Storage";
+        var destSection = ArgValue(args, "--dest") ?? "S3StorageDest";
 
         if (string.Equals(sourceSection, destSection, StringComparison.OrdinalIgnoreCase))
         {
@@ -106,12 +104,6 @@ public static class StorageMigration
     {
         var sec = config.GetSection(section);
 
-        if (!string.IsNullOrWhiteSpace(sec["Url"]))
-        {
-            var opt = sec.Get<SupabaseStorageOptions>() ?? new SupabaseStorageOptions();
-            return new SupabaseStorageService(Options.Create(opt), sp.GetRequiredService<IHttpClientFactory>());
-        }
-
         if (!string.IsNullOrWhiteSpace(sec["BucketName"]))
         {
             var opt = sec.Get<S3StorageOptions>() ?? new S3StorageOptions();
@@ -119,7 +111,7 @@ public static class StorageMigration
         }
 
         throw new InvalidOperationException(
-            $"Config section '{section}' isn't a usable storage config — it needs a 'Url' (Supabase) or a 'BucketName' (S3). Set it in user-secrets.");
+            $"Config section '{section}' isn't a usable S3 storage config — it needs a 'BucketName'. Set it in user-secrets.");
     }
 
     /// <summary>Every distinct non-empty storage key the DB references, normalised (no leading slash).</summary>

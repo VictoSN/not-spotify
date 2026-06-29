@@ -14,7 +14,7 @@
 Effort: **Low** = under a session · **Med** = 1–3 sessions · **High** = own session/migration.
 
 ### 1A — Migration-gated
-⚠️ Shared Supabase DB — coordinate first. **Always `dotnet build` before `dotnet run` after `migrations add`**, and prefer idempotent `CREATE … IF NOT EXISTS` migrations.
+⚠️ Shared Postgres DB — coordinate first. **Always `dotnet build` before `dotnet run` after `migrations add`**, and prefer idempotent `CREATE … IF NOT EXISTS` migrations.
 - [x] **Smart playlists** — **done (2026-06-18)**. JSONB rules on `Playlists` with AND-combined genre / minimum rating / minimum play-count / recently-added filters plus a result cap. Tracks resolve dynamically from the approved catalogue; Library has a smart-playlist builder, detail pages show/edit rule chips, and manual add/remove is disabled while rules are active. Migration is idempotent and covered by backend unit tests.
 - [x] **Waveform + timed comments** — **done**. `Track.Waveform` (peaks JSON) column via `AddTrackWaveforms`; timed comments via `TrackComment` model + `AddTrackComments` migration, `trackService` endpoints, and the `CommentSection` UI (timestamp-pinned). Backend + frontend build clean (verified 2026-06-19). ⚠️ Peak *extraction* runs at upload via ffmpeg — when ffmpeg isn't on the host (e.g. some dev envs) peaks are simply absent and the bar falls back gracefully; the column, render, and comments work regardless.
 - [x] **Featured playlist flags / manual ordering** — Med. Optional hardening beyond the shipped admin-owned public playlist curation; add featured/sort fields on `Playlists`.
@@ -62,17 +62,17 @@ Licensed major-label catalogue · spatial audio · real ad-network/royalties at 
 
 ## Phase 2 — Storage (→ AWS S3, the university submission target)
 
-**Goal:** move audio/media off Supabase Storage (1 GB free tier — the ceiling) to **AWS S3**.
+**Goal:** move audio/media to **AWS S3** (the submission target).
 
 **Decision (2026-06-21):** go **straight to AWS S3**, skipping the R2 interim step. Rationale: the submission rubric requires AWS, so R2 wouldn't count; doing the migration once (not R2-then-S3) avoids re-uploading the catalogue twice under the deadline; and at demo scale the egress cost that originally favoured R2 is negligible (AWS Free Tier + student credits cover it). The adapter is S3-API based, so R2/B2 remain a config-only swap (`ServiceUrl`) if ever needed.
 
 **Why low-risk:** already abstracted behind `IStorageService` (`GetAudioUrl`, `GetPublicUrl`, `Upload`, `Delete`, `Read`) — a new provider is one class + DI wiring.
 
-- [x] **`S3StorageService : IStorageService` + `S3StorageOptions` + Program.cs wiring** — **done (2026-06-21)**. Provider-agnostic (AWS S3 by default; any S3-compatible store via `ServiceUrl`, e.g. R2/B2/MinIO). Uses `AWSSDK.S3`; supports explicit keys *or* the AWS default credential chain (IAM role when deployed); presigned GET URLs by default (private bucket) or public-object URLs (`UsePresignedUrls=false`). Selection priority in `Program.cs` is **S3 → Supabase → Local**, each keyed off its own config. Backend builds clean (0W/0E).
+- [x] **`S3StorageService : IStorageService` + `S3StorageOptions` + Program.cs wiring** — **done (2026-06-21)**. Provider-agnostic (AWS S3 by default; any S3-compatible store via `ServiceUrl`, e.g. R2/B2/MinIO). Uses `AWSSDK.S3`; supports explicit keys *or* the AWS default credential chain (IAM role when deployed); presigned GET URLs by default (private bucket) or public-object URLs (`UsePresignedUrls=false`). Selection priority in `Program.cs` is **S3 → Local**, each keyed off its own config. Backend builds clean (0W/0E).
 - [ ] **Create the AWS resources** — S3 bucket (e.g. `not-spotify-media`, pick a region) in the student account; an IAM user with `s3:GetObject/PutObject/DeleteObject/ListBucket` (or an instance role if deployed on EC2).
 - [ ] **Add a bucket CORS policy** allowing the frontend origin (`GET`/`HEAD`) — required for `<audio>` playback *and* the audio-recognition feature that fetches + decodes catalogue audio.
 - [ ] **Set backend user-secrets** — `S3Storage:BucketName`, `S3Storage:Region`, `S3Storage:AccessKeyId`, `S3Storage:SecretAccessKey` (see README → Storage Backends). Setting `BucketName` flips the provider to S3 on next `dotnet run`.
-- [ ] **Migrate / re-upload the seed catalogue** from Supabase to the S3 bucket (one-time script keyed on the existing `audio/{guid}.ext` keys); verify playback, ZIP downloads, and uploads locker.
+- [ ] **Upload / seed the catalogue** to the S3 bucket (keyed on the existing `audio/{guid}.ext` keys); verify playback, ZIP downloads, and uploads locker.
 
 ---
 

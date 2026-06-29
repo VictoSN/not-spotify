@@ -102,7 +102,7 @@ export async function saveTrackOffline(track: Track): Promise<void> {
 
   // Fetch the complete file (no Range) so we hold a full, readable body. This is
   // a cross-origin fetch to storage; it requires CORS to be allowed on the media
-  // host (Supabase public buckets / the backend's static audio).
+  // host (S3 bucket CORS / the backend's static audio).
   const res = await fetch(track.audioUrl, { credentials: 'omit' })
   if (!res.ok) throw new Error(`Download failed (${res.status}).`)
   const blob = await res.blob()

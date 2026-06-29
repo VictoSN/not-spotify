@@ -13,7 +13,7 @@ order makes sense, until every realistically-shippable item is checked off.
   info, and the Desktop wrapper (Tauri). Get them all done.
 - **Nothing is "environment-blocked" anymore.** Ship a **working, honest,
   demo-scale** version of each, with or without a migration:
-  - No real object storage? Use the existing storage service / Supabase / seed
+  - No real object storage? Use the existing storage service / seed
     data / public sample assets — demo scale is fine.
   - No paid/third-party API key (Concert/tour, AcoustID)? Build it against a
     free/no-key source, a local heuristic, or seeded/stub data — a real working
@@ -26,7 +26,7 @@ order makes sense, until every realistically-shippable item is checked off.
     fallbacks are fine.
   - Don't ship anything dishonest (no toggle/button that lies, no fake premium
     bypass) — but DO ship the smallest **real** version that works.
-- Migrations against the shared Supabase DB are allowed — keep them
+- Migrations against the shared Postgres DB are allowed — keep them
   **idempotent** (`CREATE … IF NOT EXISTS`, the Program.cs raw-SQL guard
   pattern) and always `dotnet build` before any `dotnet run`. Migrations are
   **optional**: prefer them when they make the feature real, skip them when a

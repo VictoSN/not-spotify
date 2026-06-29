@@ -45,7 +45,7 @@ Ensure you have the following installed:
 * [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 * [Node.js (LTS)](https://nodejs.org/)
 
-> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared **Supabase** Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md).)*
+> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md).)*
 
 ---
 
@@ -56,14 +56,12 @@ Ensure you have the following installed:
    cd backend/src/NotSpotify.Api
    ```
 
-2. Configure your Supabase database connection and JWT secret via **dotnet user-secrets** (these stay on your machine, outside the repo):
+2. Configure your database connection and JWT secret via **dotnet user-secrets** (these stay on your machine, outside the repo):
    ```bash
-   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=aws-1-ap-northeast-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.nayirxkfuaiejdmeagbr;Password=aLnyRQxbaqyDfeH1;SSL Mode=Require;Trust Server Certificate=true"
+   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=<your-db-host>;Port=5432;Database=postgres;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true"
    dotnet user-secrets set "Jwt:SigningKey" "a-very-long-random-string-at-least-32-chars-long"
    ```
-   Replace `YOUR_SUPABASE_PASSWORD` with the password from your teammate. The values above use the **Supabase Session Pooler** (IPv4-compatible, works with EF Core migrations).
-
-   > **Why a pooler URL, not the direct connection?** Supabase's direct connection (`db.<ref>.supabase.co`) is IPv6-only on the free tier — most home/uni networks can't reach it. The Session Pooler is IPv4-proxied and behaves the same way for our purposes.
+   Replace the placeholder values with your team's shared database credentials.
 
    Verify the secrets were saved:
    ```bash
@@ -79,11 +77,11 @@ Ensure you have the following installed:
    ```bash
    dotnet run
    ```
-   On first run, EF Core auto-applies all migrations and `DbSeeder` populates artists/albums/tracks/playlists/genres + the demo admin user. No manual `dotnet ef database update` needed — the schema and seed data already exist in shared Supabase.
+   On first run, EF Core auto-applies all migrations and `DbSeeder` populates artists/albums/tracks/playlists/genres + the demo admin user. No manual `dotnet ef database update` needed — the schema and seed data already exist in the shared database.
 
    *The API will compile and run on **`https://localhost:7045`** (and Swagger UI will be available at [https://localhost:7045/swagger](https://localhost:7045/swagger)).*
 
-> **Heads up — shared database.** Everyone on the team writes to the same Supabase tables. If you delete a track, your teammate sees it gone. For destructive testing, do it in a transaction you can roll back, or coordinate in the team chat first.
+> **Heads up — shared database.** Everyone on the team writes to the same tables. If you delete a track, your teammate sees it gone. For destructive testing, do it in a transaction you can roll back, or coordinate in the team chat first.
 
 ---
 
@@ -150,7 +148,7 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 | testing1 | `testing1@example.com` | `Testing1` | User |
 | testing2 | `testing2@example.com` | `Testing2` | User |
 
-> These are seeded accounts that already exist in the shared Supabase database. Do not change their passwords or you will break the shortcuts for your teammates.
+> These are seeded accounts that already exist in the shared database. Do not change their passwords or you will break the shortcuts for your teammates.
 
 ---
 
@@ -177,9 +175,9 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 
 Premium users can download music for offline use:
 
-- **Album download** — Download button on every album page. Calls `GET /albums/{id}/download-zip`. Backend fetches each approved track's audio from Supabase storage and bundles them into a ZIP file returned as `application/zip`.
+- **Album download** — Download button on every album page. Calls `GET /albums/{id}/download-zip`. Backend fetches each approved track's audio from storage and bundles them into a ZIP file returned as `application/zip`.
 - **Playlist download** — Download button on every playlist page. Calls `GET /playlists/{id}/download-zip`. Same ZIP bundling logic.
-- **Individual track** — "Download" option in every track's `…` context menu. Links directly to the Supabase audio URL with a `download` attribute.
+- **Individual track** — "Download" option in every track's `…` context menu. Links directly to the audio URL with a `download` attribute.
 
 All three endpoints are gated: the backend checks `user.Plan == "premium"` and returns HTTP 403 for free users. The frontend also shows a "Premium" badge on the button for free users that redirects to `/premium` on click.
 
@@ -337,9 +335,9 @@ After checkout, the account changes to Premium only after the webhook reaches `/
 
 ---
 
-## Storage Backends (S3 / Supabase / Local)
+## Storage Backends (S3 / Local)
 
-All media (audio, cover art, avatars, personal uploads) goes through `IStorageService`. The backend picks a provider at startup by **priority: S3 → Supabase → Local**, each keyed off its own config being present — so switching providers is a user-secrets change, not a code change. The active provider is printed to the console on boot (`[Storage] Using …`).
+All media (audio, cover art, avatars, personal uploads) goes through `IStorageService`. The backend picks a provider at startup by **priority: S3 → Local**, each keyed off its own config being present — so switching providers is a user-secrets change, not a code change. The active provider is printed to the console on boot (`[Storage] Using …`).
 
 ### AWS S3 (the submission target)
 
@@ -364,19 +362,13 @@ dotnet user-secrets set "S3Storage:Region" "ap-southeast-1"
 dotnet user-secrets set "S3Storage:AccessKeyId" "AKIA..."
 dotnet user-secrets set "S3Storage:SecretAccessKey" "..."
 ```
-Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run` (it takes precedence over any Supabase config). Optional keys: `SessionToken` (**required for temporary creds like AWS Academy Learner Lab**), `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
+Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run`. Optional keys: `SessionToken` (**required for temporary creds like AWS Academy Learner Lab**), `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
 
-**4. Migrate the seed catalogue** — with the Supabase secrets still in place, run the built-in one-time migration (it copies every DB-referenced object from Supabase to S3 under the **same keys** so `AudioKey`/cover keys still resolve):
-```powershell
-cd backend/src/NotSpotify.Api
-dotnet run -- migrate-storage --dry-run   # preview; writes nothing
-dotnet run -- migrate-storage             # copy (idempotent)
-```
 Then verify playback, album/playlist ZIP downloads, and the uploads locker.
 
-### Supabase Storage (current dev default) / Local
+### Local Storage
 
-Supabase is selected when `SupabaseStorage:Url` is set (see the shared-DB notes); Local disk (`wwwroot/uploads`) is the fallback when neither S3 nor Supabase is configured — handy for fully offline dev.
+Local disk (`wwwroot/uploads`) is the fallback when S3 is not configured — handy for fully offline dev.
 
 ---
 
@@ -511,7 +503,7 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
 
 ## Architecture & Conventions
 
-**Stack:** React 18 + TS + Vite + Zustand + React Router + Tailwind (custom CSS vars: `text-primary`, `bg-surface`, `bg-elevated`, `text-accent`; `bg-primary`/`text-page` for filled CTAs) + Heroicons · ASP.NET Core 8 + EF Core 8 · PostgreSQL on **Supabase** (`MigrateAsync()` runs on startup) · ASP.NET Identity + JWT (access+refresh; SignalR uses `?access_token=` on `/hubs/*`) · Supabase Storage behind `IStorageService` (Local fallback) · lyrics via LRCLIB→Lyrics.ovh (no keys) · Stripe.
+**Stack:** React 18 + TS + Vite + Zustand + React Router + Tailwind (custom CSS vars: `text-primary`, `bg-surface`, `bg-elevated`, `text-accent`; `bg-primary`/`text-page` for filled CTAs) + Heroicons · ASP.NET Core 8 + EF Core 8 · PostgreSQL (`MigrateAsync()` runs on startup) · ASP.NET Identity + JWT (access+refresh; SignalR uses `?access_token=` on `/hubs/*`) · S3 Storage behind `IStorageService` (Local fallback) · lyrics via LRCLIB→Lyrics.ovh (no keys) · Stripe.
 
 **Folder structure:**
 ```
@@ -537,7 +529,7 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
 - **Downloads:** `AudioDownloadService` only; frontend calls `trackService.download()`, never links `audioUrl`.
 - **Two social graphs:** `Friendships` = bidirectional + acceptance (FriendsController); `UserFollows` = one-way, no acceptance (UsersController).
 
-> **Shared DB:** the whole team writes to one Supabase instance. Coordinate destructive changes; prefer throwaway data. EF migrations auto-apply on backend startup.
+> **Shared DB:** the whole team writes to one Postgres instance. Coordinate destructive changes; prefer throwaway data. EF migrations auto-apply on backend startup.
 
 ---
 

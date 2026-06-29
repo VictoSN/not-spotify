@@ -58,43 +58,6 @@ dotnet user-secrets set "Stripe:CancelUrl" "http://localhost:5173/premium?checko
 dotnet user-secrets set "Stripe:PortalReturnUrl" "http://localhost:5173/account"
 ```
 
-#### Supabase Storage (for file uploads — audio, covers, avatars)
-
-1. Go to your [Supabase dashboard](https://supabase.com/dashboard) → **Storage** → **New bucket**
-   - Name: `media`
-   - Check **Public bucket** (so uploaded files are accessible without auth tokens)
-
-2. Get your **Project URL**:
-   - Go to **Settings → General**
-   - Copy the **Project ID** value
-   - Your URL is `https://<Project ID>.supabase.co`
-
-3. Get your **secret key**:
-   - Go to **Settings → API Keys**
-   - Copy the **secret key** (starts with `sb-secret-...`) — NOT the publishable key
-
-4. Save them as user secrets:
-
-```powershell
-cd backend/src/NotSpotify.Api
-
-dotnet user-secrets set "SupabaseStorage:Url" "https://abcdefgh.supabase.co"
-dotnet user-secrets set "SupabaseStorage:ServiceKey" "eyJhbGciOiJIUzI1NiIs..."
-```
-
-> The bucket name defaults to `media`. If you used a different name, also run:
-> ```powershell
-> dotnet user-secrets set "SupabaseStorage:Bucket" "your-bucket-name"
-> ```
-
-Once `SupabaseStorage:Url` is set the backend switches automatically to Supabase Storage. Leave it empty and it falls back to local disk storage.
-
-Uploaded files land at:
-```
-https://<project>.supabase.co/storage/v1/object/public/media/audio/<uuid>.<ext>
-https://<project>.supabase.co/storage/v1/object/public/media/covers/<uuid>.<ext>
-```
-
 For Stripe setup details, including installing Stripe CLI on Windows, creating recurring test prices, and forwarding webhooks to `/stripe/webhook`, see the root `README.md`.
 
 #### Stripe promotional codes (e.g. 5OFF)
@@ -212,9 +175,10 @@ backend/
 | `Stripe:MonthlyPriceId` | user-secrets / env var | Stripe recurring monthly Price ID |
 | `Stripe:YearlyPriceId` | user-secrets / env var | Stripe recurring yearly Price ID, configured in Stripe as 15% cheaper annually |
 | `Stripe:SuccessUrl`, `Stripe:CancelUrl`, `Stripe:PortalReturnUrl` | user-secrets / env var | Frontend redirects for Checkout and Customer Portal |
-| `SupabaseStorage:Url` | user-secrets / env var | Supabase project URL — enables cloud storage when set |
-| `SupabaseStorage:ServiceKey` | user-secrets / env var | Supabase `service_role` key (never the anon key) |
-| `SupabaseStorage:Bucket` | `appsettings.json` | Storage bucket name, default `media` |
+| `S3Storage:BucketName` | user-secrets / env var | S3 bucket name — enables cloud storage when set |
+| `S3Storage:Region` | user-secrets / env var | AWS region (default `us-east-1`) |
+| `S3Storage:AccessKeyId` | user-secrets / env var | AWS access key ID |
+| `S3Storage:SecretAccessKey` | user-secrets / env var | AWS secret access key |
 
 ### Stripe webhook testing
 
@@ -270,9 +234,9 @@ If `*Key` is set, the API resolves it via `IStorageService`. Otherwise it falls 
    ```
 3. `GET /tracks/{id}` now returns `audioUrl = https://localhost:7080/uploads/audio/my-song.mp3`.
 
-### Supabase Storage (cloud)
+### S3 Storage (cloud)
 
-`SupabaseStorageService` uploads directly to a Supabase Storage bucket via the REST API. Enable it by setting `SupabaseStorage:Url` in user secrets (see setup steps above). Files are served from the bucket's public URL — no extra CDN needed for dev/staging.
+`S3StorageService` handles all cloud media storage through AWS S3 (or any S3-compatible store). Enable it by setting `S3Storage:BucketName` in user secrets. Files can be served via presigned URLs or public bucket URLs depending on configuration.
 
 ## What's not built yet
 

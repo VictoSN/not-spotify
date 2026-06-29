@@ -11,7 +11,7 @@ namespace NotSpotify.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Idempotent (IF NOT EXISTS) so it reconciles cleanly on the shared Supabase
+            // Idempotent (IF NOT EXISTS) so it reconciles cleanly on the shared Postgres
             // DB regardless of whether the defensive guard in Program.cs already created
             // the table — same hazard the UserSavedAlbums migration hit. Schema is byte-for-byte
             // what EF would have generated from the UserFollow model.

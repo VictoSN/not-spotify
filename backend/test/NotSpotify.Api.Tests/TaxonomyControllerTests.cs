@@ -122,7 +122,11 @@ public class TaxonomyControllerTests
         db.Genres.Add(rock);
         var tagged = db.SeedTrack("Rocker");
         var untagged = db.SeedTrack("Quiet");
-        db.TrackGenres.Add(new TrackGenre { TrackId = tagged.Id, GenreId = rock.Id });
+        var pending = db.SeedTrack("Pending Rocker");
+        pending.Status = "pending";
+        db.TrackGenres.AddRange(
+            new TrackGenre { TrackId = tagged.Id, GenreId = rock.Id },
+            new TrackGenre { TrackId = pending.Id, GenreId = rock.Id });
         await db.SaveChangesAsync();
 
         var result = await new GenresController(db, TestHelpers.NewMapper()).Tracks("rock");
@@ -145,6 +149,11 @@ public class TaxonomyControllerTests
         pub.PlaylistTracks.Add(new PlaylistTrack { PlaylistId = pub.Id, TrackId = track.Id, Position = 1, AddedByUserId = owner });
         var priv = db.AddPlaylist(owner, "private", "PrivateRock");
         priv.PlaylistTracks.Add(new PlaylistTrack { PlaylistId = priv.Id, TrackId = track.Id, Position = 1, AddedByUserId = owner });
+        var pendingTrack = db.SeedTrack("Pending Rocker");
+        pendingTrack.Status = "pending";
+        db.TrackGenres.Add(new TrackGenre { TrackId = pendingTrack.Id, GenreId = rock.Id });
+        var pendingOnly = db.AddPlaylist(owner, "public", "PendingOnly");
+        pendingOnly.PlaylistTracks.Add(new PlaylistTrack { PlaylistId = pendingOnly.Id, TrackId = pendingTrack.Id, Position = 1, AddedByUserId = owner });
         await db.SaveChangesAsync();
 
         var result = await new GenresController(db, TestHelpers.NewMapper()).Playlists("rock");
@@ -152,5 +161,50 @@ public class TaxonomyControllerTests
         var playlists = Assert.IsAssignableFrom<IEnumerable<PlaylistDto>>(Assert.IsType<OkObjectResult>(result.Result).Value);
         var single = Assert.Single(playlists);
         Assert.Equal(pub.Id, single.Id);
+    }
+
+    [Fact]
+    public async Task Genres_Artists_UnknownSlug_NotFound()
+    {
+        await using var db = TestHelpers.NewDb();
+
+        var result = await new GenresController(db, TestHelpers.NewMapper()).Artists("nope");
+
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Genres_Artists_ReturnsGenreArtistsRankedByGenreTrackPlays()
+    {
+        await using var db = TestHelpers.NewDb();
+        var rock = new Genre { Id = Guid.NewGuid(), Name = "Rock", Slug = "rock" };
+        var jazz = new Genre { Id = Guid.NewGuid(), Name = "Jazz", Slug = "jazz" };
+        db.Genres.AddRange(rock, jazz);
+
+        var top = db.SeedTrack("Popular Rock");
+        top.PlayCount = 500;
+        top.Artist.MonthlyListeners = 10;
+        var second = db.SeedTrack("Second Rock");
+        second.PlayCount = 100;
+        second.Artist.MonthlyListeners = 1_000;
+        var unrelated = db.SeedTrack("Jazz Only");
+        unrelated.PlayCount = 10_000;
+        var pending = db.SeedTrack("Pending Rock");
+        pending.PlayCount = 20_000;
+        pending.Status = "pending";
+
+        db.TrackGenres.AddRange(
+            new TrackGenre { TrackId = top.Id, GenreId = rock.Id },
+            new TrackGenre { TrackId = second.Id, GenreId = rock.Id },
+            new TrackGenre { TrackId = pending.Id, GenreId = rock.Id },
+            new TrackGenre { TrackId = unrelated.Id, GenreId = jazz.Id });
+        await db.SaveChangesAsync();
+
+        var result = await new GenresController(db, TestHelpers.NewMapper()).Artists("rock");
+
+        var artists = Assert.IsAssignableFrom<IEnumerable<ArtistDto>>(
+            Assert.IsType<OkObjectResult>(result.Result).Value).ToList();
+        Assert.Equal(new[] { top.ArtistId, second.ArtistId }, artists.Select(a => a.Id));
+        Assert.All(artists, artist => Assert.Contains("rock", artist.Genres));
     }
 }

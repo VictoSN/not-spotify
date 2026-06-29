@@ -370,19 +370,19 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a major navigation failure. Users expect to be taken to a curated page with playlists, artists, and songs related to that genre.
 
-- [ ] **Fix Implementation**
-  - [ ] Create backend logic to fetch and serve genre-specific content
-  - [ ] Implement route/page for each genre (Pop, Rock, Hip-Hop, etc.)
-  - [ ] Display curated playlists for each genre
-  - [ ] Display top songs for each genre
-  - [ ] Display popular artists for each genre
+- [x] **Fix Implementation**
+  - [x] Create backend logic to fetch and serve genre-specific content — retained the genre-scoped tracks/playlists endpoints and added `GET /genres/{slug}/artists`, ranked by plays on tracks in that genre
+  - [x] Implement route/page for each genre (Pop, Rock, Hip-Hop, etc.) — search browse tiles link to the existing `/genres/:slug` route, including curated tiles whose genre is not returned by the API
+  - [x] Display curated playlists for each genre — `GenreDetailPage` renders public playlists returned by the genre endpoint, with search fallback content
+  - [x] Display top songs for each genre — genre tracks are ordered by play count by the backend and rendered as playable track tiles
+  - [x] Display popular artists for each genre — wired the new artists endpoint through `genreService` and rendered a linked, playable artist row
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Clicking "Pop" navigates to pop genre page
-  - [ ] Test: Clicking "Rock" navigates to rock genre page
-  - [ ] Test: Each genre page shows relevant content
-  - [ ] Test: Playlists on genre pages are clickable and playable
-  - [ ] Test: Artist links on genre pages navigate correctly
+- [x] **Tests to Complete**
+  - [x] Test: Clicking "Pop" navigates to pop genre page (`BrowseCategoryGrid.test.tsx`)
+  - [x] Test: Clicking "Rock" navigates to rock genre page (`BrowseCategoryGrid.test.tsx`)
+  - [x] Test: Each genre page shows relevant content (backend genre scoping/ranking + frontend content-row regression tests)
+  - [x] Test: Playlists on genre pages are clickable and playable (playlist link and `playContext` assertions)
+  - [x] Test: Artist links on genre pages navigate correctly (artist profile-link assertion)
 
 ---
 

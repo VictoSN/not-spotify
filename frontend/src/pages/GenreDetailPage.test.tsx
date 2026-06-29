@@ -1,9 +1,14 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { GenreDetailPage } from './GenreDetailPage'
 import { curatedBrowseCategories, getBrowseFallbackRows } from '@/data/browseContent'
+import type { Artist } from '@/types/artist'
+import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
+import { useAuthStore } from '@/stores/authStore'
+import { usePlayerStore } from '@/stores/playerStore'
 
 // HorizontalScroller observes its viewport size.
 class ResizeObserverStub {
@@ -12,6 +17,16 @@ class ResizeObserverStub {
   disconnect() {}
 }
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+vi.stubGlobal('matchMedia', (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+}))
 
 // No API genre/tracks/playlists → only the editorial showcase rows render, so the
 // only "Show all" / cards on the page are the discover showcases under test.
@@ -20,6 +35,7 @@ vi.mock('@/services/genreService', () => ({
     getBySlug: vi.fn(() => Promise.reject(new Error('no api genre'))),
     getTracksByGenre: vi.fn(() => Promise.resolve([])),
     getPlaylistsByGenre: vi.fn(() => Promise.resolve([])),
+    getArtistsByGenre: vi.fn(() => Promise.resolve([])),
   },
 }))
 
@@ -99,5 +115,70 @@ describe('browse showcase routing data (bug #2)', () => {
       expect(item.href).toBe('/genres/rock')
       expect(item.href ?? '').not.toMatch(/\/search/)
     }
+  })
+})
+
+const rockTrack = {
+  id: 'track-rock',
+  title: 'Rock Anthem',
+  artist: { id: 'artist-rock', name: 'The Rockers', imageUrl: '/artist.jpg' },
+  album: { id: 'album-rock', title: 'Loud', coverUrl: '/album.jpg' },
+} as Track
+
+const rockPlaylist = {
+  id: 'playlist-rock',
+  name: 'Rock Essentials',
+  description: 'The loudest essentials',
+  coverUrl: '/playlist.jpg',
+  isPublic: true,
+  owner: { id: 'owner', name: 'Curator', avatarUrl: null },
+  tracks: [{ track: rockTrack, addedAt: '2026-01-01T00:00:00Z', addedBy: { id: 'owner', name: 'Curator', avatarUrl: null } }],
+} as unknown as Playlist
+
+const rockArtist = {
+  id: 'artist-rock',
+  name: 'The Rockers',
+  imageUrl: '/artist.jpg',
+  monthlyListeners: 50_000,
+  genres: ['rock'],
+  socialLinks: {},
+} as unknown as Artist
+
+describe('GenreDetailPage genre content (bug #19)', () => {
+  const originalAuthState = useAuthStore.getState()
+  const originalPlayerState = usePlayerStore.getState()
+
+  afterEach(() => {
+    act(() => {
+      useAuthStore.setState(originalAuthState, true)
+      usePlayerStore.setState(originalPlayerState, true)
+    })
+  })
+
+  it('shows relevant playlists, tracks, and popular artists with working links and play controls', async () => {
+    const { genreService } = await import('@/services/genreService')
+    vi.mocked(genreService.getBySlug).mockResolvedValueOnce({
+      id: 'genre-rock',
+      name: 'Rock',
+      slug: 'rock',
+      color: '#b91c1c',
+      imageUrl: null,
+    })
+    vi.mocked(genreService.getPlaylistsByGenre).mockResolvedValueOnce([rockPlaylist])
+    vi.mocked(genreService.getTracksByGenre).mockResolvedValueOnce([rockTrack])
+    vi.mocked(genreService.getArtistsByGenre).mockResolvedValueOnce([rockArtist])
+    const playContext = vi.fn()
+    useAuthStore.setState({ isAuthenticated: true })
+    usePlayerStore.setState({ playContext })
+
+    renderGenre('rock')
+
+    expect(await screen.findByText('Popular Rock playlists')).toBeInTheDocument()
+    expect(screen.getByText('Rock tracks')).toBeInTheDocument()
+    expect(screen.getByText('Popular Rock artists')).toBeInTheDocument()
+    expect(document.querySelector('a[href="/playlist/playlist-rock"]')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Play Rock Essentials' }))
+    expect(playContext).toHaveBeenCalledWith({ type: 'playlist', id: 'playlist-rock' }, [rockTrack], 0)
+    expect(document.querySelector('a[href="/artist/artist-rock"]')).toBeInTheDocument()
   })
 })

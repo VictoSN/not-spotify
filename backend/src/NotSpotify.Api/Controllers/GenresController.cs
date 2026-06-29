@@ -40,7 +40,7 @@ public class GenresController : ControllerBase
         if (genre is null) return NotFound();
 
         var tracks = await _db.Tracks
-            .Where(t => t.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+            .Where(t => t.Status == "approved" && t.TrackGenres.Any(tg => tg.GenreId == genre.Id))
             .Include(t => t.Artist)
             .Include(t => t.Album)
             .Include(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
@@ -57,7 +57,9 @@ public class GenresController : ControllerBase
         if (genre is null) return NotFound();
 
         var playlistIds = await _db.PlaylistTracks
-            .Where(pt => pt.Playlist.IsPublic && pt.Track.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+            .Where(pt => pt.Playlist.IsPublic
+                && pt.Track.Status == "approved"
+                && pt.Track.TrackGenres.Any(tg => tg.GenreId == genre.Id))
             .GroupBy(pt => pt.PlaylistId)
             .OrderByDescending(g => g.Count())
             .ThenByDescending(g => g.Max(pt => pt.Playlist.UpdatedAt))
@@ -87,5 +89,47 @@ public class GenresController : ControllerBase
             dtos.Add(await _mapper.ToDtoAsync(playlist, ct));
 
         return Ok(dtos);
+    }
+
+    [HttpGet("{slug}/artists")]
+    public async Task<ActionResult<IEnumerable<ArtistDto>>> Artists(string slug, CancellationToken ct = default)
+    {
+        var genre = await _db.Genres.FirstOrDefaultAsync(g => g.Slug == slug, ct);
+        if (genre is null) return NotFound();
+
+        // Rank artists by the plays on tracks that actually belong to this genre.
+        // Monthly listeners provides a stable tie-breaker without allowing an
+        // artist's popularity in unrelated genres to dominate this page.
+        var artistIds = await _db.Tracks
+            .Where(t => t.Status == "approved" && t.TrackGenres.Any(tg => tg.GenreId == genre.Id))
+            .GroupBy(t => t.ArtistId)
+            .OrderByDescending(group => group.Sum(t => t.PlayCount))
+            .ThenByDescending(group => group.Max(t => t.Artist.MonthlyListeners))
+            .Take(24)
+            .Select(group => group.Key)
+            .ToListAsync(ct);
+
+        if (artistIds.Count == 0) return Ok(Array.Empty<ArtistDto>());
+
+        var artists = await _db.Artists
+            .Where(a => artistIds.Contains(a.Id))
+            .ToListAsync(ct);
+        var genreRows = await _db.TrackGenres
+            .Where(tg => artistIds.Contains(tg.Track.ArtistId) && tg.Track.Status == "approved")
+            .Select(tg => new { tg.Track.ArtistId, tg.Genre.Slug })
+            .Distinct()
+            .ToListAsync(ct);
+
+        var genresByArtist = genreRows
+            .GroupBy(row => row.ArtistId)
+            .ToDictionary(group => group.Key, group => group.Select(row => row.Slug));
+        var byId = artists.ToDictionary(a => a.Id);
+        var ordered = artistIds
+            .Where(byId.ContainsKey)
+            .Select(id => _mapper.ToDto(
+                byId[id],
+                genresByArtist.GetValueOrDefault(id) ?? Array.Empty<string>()));
+
+        return Ok(ordered);
     }
 }

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import type { Genre } from '@/types/genre'
+import type { Artist } from '@/types/artist'
 import type { Playlist } from '@/types/playlist'
 import type { Track } from '@/types/track'
 import type { BrowseFeatureRow } from '@/data/browseContent'
 import { genreService } from '@/services/genreService'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { PlaylistCard } from '@/components/cards/PlaylistCard'
+import { ArtistCard } from '@/components/cards/ArtistCard'
 import { TrackTile } from '@/components/cards/TrackTile'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
 import { SectionHeader } from '@/components/common/SectionHeader'
@@ -45,6 +47,7 @@ export function GenreDetailPage() {
   const [genre, setGenre] = useState<Genre | null>(null)
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [tracks, setTracks] = useState<Track[]>([])
+  const [artists, setArtists] = useState<Artist[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -69,25 +72,29 @@ export function GenreDetailPage() {
       genreService.getBySlug(slug),
       genreService.getPlaylistsByGenre(slug),
       genreService.getTracksByGenre(slug),
+      genreService.getArtistsByGenre(slug),
       searchService.search(query),
-    ]).then(([genreResult, playlistResult, trackResult, searchResult]) => {
+    ]).then(([genreResult, playlistResult, trackResult, artistResult, searchResult]) => {
       if (cancelled) return
 
       const apiGenre = fulfilledValue(genreResult)
       const apiPlaylists = fulfilledValue(playlistResult) ?? []
       const apiTracks = fulfilledValue(trackResult) ?? []
+      const apiArtists = fulfilledValue(artistResult) ?? []
       const search = fulfilledValue(searchResult) ?? emptySearchResults()
       const selectedGenre = apiGenre ?? fallbackGenre
 
       setGenre(selectedGenre)
       setPlaylists(apiPlaylists.length > 0 ? apiPlaylists : search.playlists)
       setTracks(apiTracks.length > 0 ? apiTracks : [...search.tracks, ...search.tracksByLyrics])
+      setArtists(apiArtists.length > 0 ? apiArtists : search.artists)
       setLoading(false)
     }).catch(() => {
       if (cancelled) return
       setGenre(fallbackGenre)
       setPlaylists([])
       setTracks([])
+      setArtists([])
       setLoading(false)
     })
 
@@ -158,11 +165,21 @@ export function GenreDetailPage() {
           </GenreRow>
         )}
 
+        {artists.length > 0 && (
+          <GenreRow title={`Popular ${genre.name} artists`} href={searchHref(query)}>
+            <HorizontalScroller>
+              {artists.slice(0, 16).map((artist) => (
+                <ArtistCard key={artist.id} artist={artist} flush />
+              ))}
+            </HorizontalScroller>
+          </GenreRow>
+        )}
+
         {fallbackRows.map((row) => (
           <EditorialRow key={row.title} row={row} />
         ))}
 
-        {playlists.length === 0 && tracks.length === 0 && fallbackRows.length === 0 && (
+        {playlists.length === 0 && tracks.length === 0 && artists.length === 0 && fallbackRows.length === 0 && (
           <div className="rounded-lg border border-elevated/40 bg-surface px-6 py-12 text-center text-secondary">
             Nothing has been tagged with {genre.name} yet.
           </div>

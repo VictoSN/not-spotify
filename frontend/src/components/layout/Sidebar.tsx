@@ -609,6 +609,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
+    !folderView &&
     (filter === 'all' || filter === 'playlists') &&
     (!query.trim() ||
       'liked songs'.includes(query.trim().toLowerCase()) ||
@@ -1139,23 +1140,21 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
         )}
         onDragOver={(e) => {
-          // Handle reorder drags landing on the library surface (not on a row).
+          // Accept reorder drags anywhere on the library surface for drag-out.
           if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
-          const target = e.target as Element | null
-          if (target?.closest('.group\\/row')) return
           e.preventDefault()
           e.dataTransfer.dropEffect = 'move'
         }}
         onDrop={(e) => {
           if (!e.dataTransfer.types.includes(LIBRARY_REORDER_MIME)) return
-          const target = e.target as Element | null
-          if (target?.closest('.group\\/row')) return
           e.preventDefault()
 
           const key = e.dataTransfer.getData(LIBRARY_REORDER_MIME)
           if (!key) return
 
-          // Check if the item is actually in a folder
+          // Items dropped on another row are handled by useReorderDrag (which
+          // calls stopPropagation). If we get here, the drop landed on empty
+          // library space — remove the item from whichever folder owns it.
           const currentFolder = folderOfItem(getFolders(), key)
           if (!currentFolder) return
           removeItemFromFolder(key)
@@ -2203,7 +2202,7 @@ function FolderGroup({
           <div
             className={cn(
               'flex w-full items-center rounded-md text-left transition-colors hover:bg-elevated/50',
-              compact ? 'gap-2 px-2 py-1' : 'gap-3 p-2',
+              compact ? 'gap-2 px-2 py-1' : 'gap-3 px-4 py-1.5',
             )}
           >
             {/* Folder icon */}

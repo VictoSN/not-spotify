@@ -753,7 +753,7 @@ export function SettingsPage() {
         <Row
           label="NotSpotify"
           sub="React, ASP.NET Core, and Tauri desktop shell."
-          control={<span className="text-sm font-semibold text-secondary">0.1.0</span>}
+          control={<span className="text-sm font-semibold text-secondary">{__APP_VERSION__}</span>}
         />
       </Section>,
   ]

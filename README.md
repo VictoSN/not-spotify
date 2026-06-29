@@ -130,10 +130,11 @@ The same React frontend can run as a native desktop window via [Tauri](https://t
 **Run it (from `frontend/`):**
 ```bash
 npm run tauri:dev     # launches the Vite dev server + a native window (hot reload)
-npm run tauri:build   # builds dist (dev mode) + a packaged installer in src-tauri/target/release/bundle
+npm run tauri:build   # builds production installers and stages them in the backend's public downloads folder
 ```
 
-- **It talks to the same backend.** `tauri:dev` loads `http://localhost:5173`; `tauri:build` runs `npm run build:desktop` (`vite build --mode development`) so the bundled app uses `VITE_API_URL` from `.env.development` (`https://localhost:7045`). **Start the backend first** (`dotnet run`) — the desktop app is a client, not a server.
+- **It talks to the same backend.** `tauri:dev` loads `http://localhost:5173` and uses `.env.development`; `tauri:build` runs `npm run build:desktop` in production mode so downloadable installers use the deployed API from `.env.production`. The desktop app is a client, not a server.
+- **Public downloads:** `/download` serves the staged Windows EXE/MSI through the backend/CloudFront origin and offers the installable PWA on macOS, Linux, iOS, and Android. See [`docs/installer-release.md`](docs/installer-release.md) for the release and optional S3 workflow.
 - **Icons** are derived from the PWA icons by [`src-tauri/icons/generate-icons.mjs`](frontend/src-tauri/icons/generate-icons.mjs) (re-run with `node generate-icons.mjs` if the source art changes).
 - `src-tauri/target/` is git-ignored; `Cargo.lock` is committed (this is an application crate).
 

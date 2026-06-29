@@ -28,7 +28,7 @@ const columns = [
     title: 'Useful links',
     links: [
       { label: 'Support', to: '/support' },
-      { label: 'Free Mobile App', to: 'https://www.spotify.com/download/' },
+      { label: 'Download app', to: '/download' },
       { label: 'Popular', to: '/charts' },
       { label: 'Import your music', to: '/uploads' },
     ],

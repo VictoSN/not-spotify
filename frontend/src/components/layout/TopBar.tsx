@@ -28,7 +28,7 @@ import { trackService } from '@/services/trackService'
 import { Avatar } from '@/components/ui/Avatar'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
-import { InstallAppButton, InstallAppMenuItem } from '@/components/common/InstallAppButton'
+import { InstallAppButton } from '@/components/common/InstallAppButton'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { WindowControls } from './WindowControls'
 import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
@@ -846,7 +846,14 @@ export function TopBar() {
                 {t('topbar.support')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
-              <InstallAppMenuItem className={userMenuItemClass} label={t('topbar.download')} onSelect={() => setShowMenu(false)} />
+              <Link
+                to="/download"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.download')}
+                <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
+              </Link>
               <Link
                 to="/settings"
                 onClick={() => setShowMenu(false)}

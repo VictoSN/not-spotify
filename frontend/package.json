@@ -10,10 +10,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:desktop": "tsc -b && vite build --mode development",
+    "build:desktop": "tsc -b && vite build --mode production",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build && node scripts/stage-tauri-installers.mjs"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.2.8",

@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -280,7 +281,23 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
+var staticContentTypes = new FileExtensionContentTypeProvider();
+staticContentTypes.Mappings[".exe"] = "application/vnd.microsoft.portable-executable";
+staticContentTypes.Mappings[".msi"] = "application/x-msi";
+staticContentTypes.Mappings[".dmg"] = "application/x-apple-diskimage";
+staticContentTypes.Mappings[".apk"] = "application/vnd.android.package-archive";
+staticContentTypes.Mappings[".appimage"] = "application/octet-stream";
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = staticContentTypes,
+    OnPrepareResponse = context =>
+    {
+        if (!context.Context.Request.Path.StartsWithSegments("/downloads")) return;
+        context.Context.Response.Headers.CacheControl = "public,max-age=86400";
+        context.Context.Response.Headers.ContentDisposition = $"attachment; filename=\"{context.File.Name}\"";
+        context.Context.Response.Headers.XContentTypeOptions = "nosniff";
+    }
+});
 app.UseRouting();
 app.UseCors();
 app.UseAuthentication();

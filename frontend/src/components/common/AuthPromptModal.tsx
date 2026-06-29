@@ -86,9 +86,13 @@ export function AuthPromptModal() {
             >
               Sign up free
             </Link>
-            <button className="rounded-full border border-secondary/60 px-9 py-3 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95">
+            <Link
+              to="/download"
+              onClick={requestClose}
+              className="rounded-full border border-secondary/60 px-9 py-3 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
+            >
               Download app
-            </button>
+            </Link>
           </div>
           <p className="mt-8 text-sm font-semibold text-secondary">
             Already have an account?{' '}

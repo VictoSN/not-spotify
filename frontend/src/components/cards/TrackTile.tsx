@@ -8,11 +8,14 @@ import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
 import { openMenuAtPointer } from '@/utils/contextMenu'
 import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
 import { CardPlayButton } from './CardPlayButton'
+import { cn } from '@/utils/cn'
 
 interface TrackTileProps {
   track: Track
   queue?: Track[]
   flush?: boolean
+  /** Fill a responsive grid cell instead of using the standard carousel width. */
+  fluid?: boolean
   /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
   boldTitle?: boolean
 }
@@ -20,7 +23,7 @@ interface TrackTileProps {
 /** Spotify-style square tile: cover with a rising hover play button + title/artist.
  *  Right-click (or the hover "…") opens the track menu; the tile is draggable into
  *  the sidebar library/playlists. */
-export function TrackTile({ track, queue, flush = false, boldTitle = false }: TrackTileProps) {
+export function TrackTile({ track, queue, flush = false, fluid = false, boldTitle = false }: TrackTileProps) {
   const { currentTrack, isPlaying, pause, resume, currentContextType } = usePlayerStore()
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
@@ -43,7 +46,10 @@ export function TrackTile({ track, queue, flush = false, boldTitle = false }: Tr
 
   return (
     <div
-      className="group relative flex-shrink-0 w-44 sm:w-48 transition-opacity"
+      className={cn(
+        'group relative min-w-0 transition-opacity',
+        fluid ? 'w-full' : 'w-44 flex-shrink-0 sm:w-48',
+      )}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'copy'

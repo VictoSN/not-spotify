@@ -2,13 +2,18 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { meService, type PlayHistoryItem } from '@/services/meService'
 import { useAuthStore } from '@/stores/authStore'
-import { useIsMobile } from '@/hooks/useMediaQuery'
-import { Spinner } from '@/components/ui/Spinner'
-import { TrackRow } from '@/components/cards/TrackRow'
+import { TrackTile } from '@/components/cards/TrackTile'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import {
+  COLLECTION_GRID_CLASS,
+  COLLECTION_PAGE_CLASS,
+  CollectionPageHeader,
+  CollectionPageSkeleton,
+} from '@/components/common/CollectionPage'
 
 export function RecentsPage() {
+  useDocumentTitle('Recently played')
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const isMobile = useIsMobile()
   const [history, setHistory] = useState<PlayHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -22,38 +27,28 @@ export function RecentsPage() {
 
   const tracks = history.map((row) => row.track)
 
+  if (isAuthenticated && loading) return <CollectionPageSkeleton label="Loading recently played" />
+
   return (
-    <div className="px-6 py-6">
-      <h1 className="text-3xl font-bold text-primary mb-6">Listening history</h1>
+    <div className={COLLECTION_PAGE_CLASS}>
+      <CollectionPageHeader
+        title="Recently played"
+        description="Pick up where you left off."
+      />
       {!isAuthenticated ? (
         <p className="text-secondary">
-          <Link to="/login" className="text-primary underline">Log in</Link> to see what you've been listening to.
+          <Link to="/login" className="text-primary underline">Log in</Link> to see what you&apos;ve been listening to.
         </p>
-      ) : loading ? (
-        <div className="flex items-center justify-center h-64"><Spinner size="lg" /></div>
       ) : history.length === 0 ? (
         <p className="text-secondary">No recent plays yet. Hit play on something!</p>
       ) : (
-        <div className="rounded-lg bg-surface p-2">
-          {/* Column header — mirrors the album/playlist track tables. */}
-          <div
-            className="grid items-center gap-4 px-4 pb-2 text-xs uppercase tracking-wide text-secondary border-b border-elevated/40"
-            style={{ gridTemplateColumns: isMobile ? '16px 1fr var(--track-actions-width)' : '16px 6fr 4fr 3fr var(--track-actions-width)' }}
-          >
-            <span className="text-center">#</span>
-            <span>Title</span>
-            {!isMobile && <span>Album</span>}
-            {!isMobile && <span>Played</span>}
-            <span />
-          </div>
+        <div className={COLLECTION_GRID_CLASS} data-testid="recently-played-grid">
           {history.map((row, index) => (
-            <TrackRow
+            <TrackTile
               key={`${row.track.id}-${row.playedAt}-${index}`}
               track={row.track}
-              index={index}
               queue={tracks}
-              showAlbum
-              addedAt={row.playedAt}
+              fluid
             />
           ))}
         </div>

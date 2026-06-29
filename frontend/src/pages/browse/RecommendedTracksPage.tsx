@@ -2,9 +2,16 @@ import { useEffect, useState } from 'react'
 import type { Track } from '@/types/track'
 import { trackService } from '@/services/trackService'
 import { TrackTile } from '@/components/cards/TrackTile'
-import { Spinner } from '@/components/ui/Spinner'
+import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import {
+  COLLECTION_GRID_CLASS,
+  COLLECTION_PAGE_CLASS,
+  CollectionPageHeader,
+  CollectionPageSkeleton,
+} from '@/components/common/CollectionPage'
 
 export function RecommendedTracksPage() {
+  useDocumentTitle('For you today')
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -13,7 +20,7 @@ export function RecommendedTracksPage() {
 
     Promise.resolve().then(async () => {
       try {
-        const next = await trackService.getDiscoverWeekly(50)
+        const next = await trackService.getForYou(50)
         if (!cancelled) setTracks(next)
       } finally {
         if (!cancelled) setLoading(false)
@@ -25,22 +32,20 @@ export function RecommendedTracksPage() {
     }
   }, [])
 
+  if (loading) return <CollectionPageSkeleton label="Loading For you today" />
+
   return (
-    <div className="px-6 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-primary">Discover Weekly</h1>
-        <p className="mt-1 text-sm text-secondary">
-          Collaborative picks from listeners with similar play history.
-        </p>
-      </div>
-      {loading ? (
-        <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
-      ) : tracks.length === 0 ? (
+    <div className={COLLECTION_PAGE_CLASS}>
+      <CollectionPageHeader
+        title="For you today"
+        description="Personalized picks based on what you listen to."
+      />
+      {tracks.length === 0 ? (
         <p className="text-secondary">No recommendations yet.</p>
       ) : (
-        <div className="flex flex-wrap gap-2">
+        <div className={COLLECTION_GRID_CLASS}>
           {tracks.map((t) => (
-            <TrackTile key={t.id} track={t} queue={tracks} />
+            <TrackTile key={t.id} track={t} queue={tracks} fluid />
           ))}
         </div>
       )}

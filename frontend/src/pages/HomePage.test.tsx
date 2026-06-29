@@ -6,10 +6,13 @@ import { HomePage, HomePodcastTile, HomeQuickPlaylist, HomeVideoTile, getHomeFil
 import { useDragStore } from '@/stores/dragStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useLibraryStore } from '@/stores/libraryStore'
 import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
 import type { Playlist } from '@/types/playlist'
+import type { Track } from '@/types/track'
 import type { DailyMix } from '@/services/trackService'
 
 class ResizeObserverStub {
@@ -19,6 +22,16 @@ class ResizeObserverStub {
 }
 
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+vi.stubGlobal('matchMedia', (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+}))
 
 const dominantColorMock = vi.hoisted(() => vi.fn(() => Promise.resolve('hsl(280 42% 38%)')))
 
@@ -41,15 +54,19 @@ const mockVideo = vi.hoisted(() => ({
 }))
 
 const dailyMixesMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as DailyMix[])))
+const recommendedPlaylistsMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as Playlist[])))
+const forYouMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as Track[])))
+const trendingMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as Track[])))
+const recentsMock = vi.hoisted(() => vi.fn(() => Promise.resolve([] as Track[])))
 
 vi.mock('@/services/trackService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/trackService')>()
   return {
     ...actual,
     trackService: {
-      getForYou: vi.fn(() => Promise.resolve([])),
-      getTrending: vi.fn(() => Promise.resolve([])),
-      getRecents: vi.fn(() => Promise.resolve([])),
+      getForYou: forYouMock,
+      getTrending: trendingMock,
+      getRecents: recentsMock,
       getMostLiked: vi.fn(() => Promise.resolve([])),
       getNewMusic: vi.fn(() => Promise.resolve([])),
       getDailyMixes: dailyMixesMock,
@@ -60,7 +77,7 @@ vi.mock('@/services/trackService', async (importOriginal) => {
 
 vi.mock('@/services/playlistService', () => ({
   playlistService: {
-    getRecommended: vi.fn(() => Promise.resolve([])),
+    getRecommended: recommendedPlaylistsMock,
   },
 }))
 
@@ -115,6 +132,24 @@ const playlist: Playlist = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
+const homeTrack = {
+  id: 'home-track',
+  title: 'Home Track',
+  durationMs: 180_000,
+  audioUrl: '/home-track.mp3',
+  artist: { id: 'home-artist', name: 'Home Artist', imageUrl: null },
+  album: { id: 'home-album', title: 'Home Album', coverUrl: '/home-cover.jpg', releaseDate: '2026-01-01', type: 'album' },
+  genres: [],
+  playCount: 0,
+  ratingCount: 0,
+  averageRating: 0,
+  previewUrl: null,
+  trackNumber: 1,
+  discNumber: 1,
+  explicit: false,
+  createdAt: '2026-01-01',
+} as unknown as Track
+
 const dailyMixes: DailyMix[] = [
   { id: 'mix-first', title: 'First Daily Mix', subtitle: 'Daily Mix', color: '#1db954', tracks: [] },
   { id: 'mix-second', title: 'Second Daily Mix', subtitle: 'Daily Mix', color: '#6b4ce6', tracks: [] },
@@ -132,6 +167,12 @@ describe('Home media interactions', () => {
   beforeEach(() => {
     window.localStorage.clear()
     dailyMixesMock.mockResolvedValue([])
+    recommendedPlaylistsMock.mockResolvedValue([])
+    forYouMock.mockResolvedValue([])
+    trendingMock.mockResolvedValue([])
+    recentsMock.mockResolvedValue([])
+    useAuthStore.setState({ isAuthenticated: false, user: null })
+    useLibraryStore.setState({ isLoading: false, savedPlaylists: [] })
     usePlayerStore.setState({ currentContextType: null, currentContextId: null, isPlaying: false })
     useDragStore.setState({
       draggedTrack: null,
@@ -216,6 +257,46 @@ describe('Home media interactions', () => {
     const menuItem = await screen.findByRole('menuitem', { name: 'Add to queue' })
     expect(menuItem).toBeInTheDocument()
     fireEvent.click(menuItem)
+  })
+
+  it('keeps the balanced skeleton until every Home section is ready', async () => {
+    let resolveRecommended!: (playlists: Playlist[]) => void
+    recommendedPlaylistsMock.mockReturnValue(new Promise((resolve) => {
+      resolveRecommended = resolve
+    }))
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('status', { name: 'Loading Home' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Music Video' })).not.toBeInTheDocument()
+
+    await React.act(async () => resolveRecommended([playlist]))
+
+    expect(await screen.findByRole('button', { name: 'Music Video' })).toBeInTheDocument()
+    expect(screen.getByText('Home Playlist')).toBeInTheDocument()
+    expect(screen.queryByTestId('home-loading-skeleton')).not.toBeInTheDocument()
+  })
+
+  it('links the three requested Home rows to their full collection pages', async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: { id: 'me', name: 'Listener', country: 'US' } as never })
+    forYouMock.mockResolvedValue([homeTrack])
+    recentsMock.mockResolvedValue([homeTrack])
+    trendingMock.mockResolvedValue([homeTrack])
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByRole('heading', { name: 'For you today' })
+    expect(document.querySelector('a[href="/recommended-tracks"]')).toHaveTextContent('Show all')
+    expect(document.querySelector('a[href="/recents"]')).toHaveTextContent('Show all')
+    expect(document.querySelector('a[href="/trending"]')).toHaveTextContent('Show all')
   })
 
   it('uses artwork hue only when hovering a top quick-access playlist', async () => {

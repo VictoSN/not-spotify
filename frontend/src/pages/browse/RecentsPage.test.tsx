@@ -99,8 +99,8 @@ describe('RecentsPage context menu', () => {
   it('opens the track menu when a Recents row is right-clicked', async () => {
     await renderRecents()
 
-    const titleLink = await screen.findByRole('link', { name: 'Track recent-1' })
-    const row = titleLink.closest('.group')!
+    const title = await screen.findByText('Track recent-1')
+    const row = title.closest('.group')!
     await fireAndFlush(() => fireEvent.contextMenu(row, { clientX: 120, clientY: 80 }))
 
     await waitFor(() => expect(screen.getByText('Go to artist')).toBeInTheDocument())
@@ -114,9 +114,11 @@ describe('RecentsPage context menu', () => {
     expect(panel.className).toContain('max-h-none!')
   })
 
-  it('keeps the ⋯ menu trigger available on Recents rows', async () => {
+  it('uses fluid cards in the responsive recently played grid', async () => {
     await renderRecents()
 
-    expect(await screen.findByRole('button', { name: 'More options' })).toBeInTheDocument()
+    const grid = await screen.findByTestId('recently-played-grid')
+    expect(grid).toHaveClass('[grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))]')
+    expect(screen.getByText('Track recent-1').closest('.group')).toHaveClass('w-full', 'min-w-0')
   })
 })

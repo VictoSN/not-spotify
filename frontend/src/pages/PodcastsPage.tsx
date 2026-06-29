@@ -3,10 +3,15 @@ import { Link } from 'react-router-dom'
 import { MicrophoneIcon } from '@heroicons/react/24/solid'
 import type { PodcastSummary } from '@/types/podcast'
 import { podcastService } from '@/services/podcastService'
-import { Spinner } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PodcastMenu, type PodcastMenuHandle } from '@/components/cards/PodcastMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
+import {
+  COLLECTION_GRID_CLASS,
+  COLLECTION_PAGE_CLASS,
+  CollectionPageHeader,
+  CollectionPageSkeleton,
+} from '@/components/common/CollectionPage'
 
 export function PodcastsPage() {
   const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
@@ -22,17 +27,20 @@ export function PodcastsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
+  if (loading) return <CollectionPageSkeleton label="Loading podcasts" />
 
   return (
-    <div className="px-4 py-4 md:px-6 md:py-6">
-      <h1 className="mb-4 text-2xl font-black text-primary">Podcasts</h1>
+    <div className={COLLECTION_PAGE_CLASS}>
+      <CollectionPageHeader
+        title="Podcasts"
+        description="Shows and episodes worth listening to."
+      />
       {podcasts.length === 0 ? (
         <div className="rounded-lg border border-elevated/40 bg-surface px-6 py-12 text-center text-secondary">
           No podcasts yet.
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className={COLLECTION_GRID_CLASS}>
           {podcasts.map((p) => (
             <PodcastGridCard key={p.id} podcast={p} />
           ))}
@@ -48,7 +56,7 @@ function PodcastGridCard({ podcast: p }: { podcast: PodcastSummary }) {
     <div className="group relative" onContextMenu={(e) => openMenuAtPointer(e, menuRef)}>
       <Link
         to={`/podcasts/${p.id}`}
-        className="block rounded-lg bg-surface p-4 transition-colors hover:bg-elevated"
+        className="block rounded-lg p-3 transition-colors hover:bg-surface"
       >
         <div className="mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-md bg-elevated">
           {p.imageUrl ? (

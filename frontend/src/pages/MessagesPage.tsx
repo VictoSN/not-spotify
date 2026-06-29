@@ -107,7 +107,7 @@ export function MessagesPage() {
   const composerToolsRef = useRef<HTMLDivElement | null>(null)
   const documentInputRef = useRef<HTMLInputElement | null>(null)
   const mediaInputRef = useRef<HTMLInputElement | null>(null)
-  const draftInputRef = useRef<HTMLInputElement | null>(null)
+  const draftInputRef = useRef<HTMLTextAreaElement | null>(null)
   const chatMenuRef = useRef<ChatThreadMenuHandle | null>(null)
 
   useEffect(() => {
@@ -237,12 +237,29 @@ export function MessagesPage() {
     if (activeUserId === conversation.userId) setSearchParams({}, { replace: true })
   }
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const sendDraft = () => {
     if (!activeUserId || !draft.trim() || chatLocked) return
     sendMessage(activeUserId, draft)
     setDraft('')
   }
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    sendDraft()
+  }
+
+  const handleDraftKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return
+    e.preventDefault()
+    sendDraft()
+  }
+
+  useEffect(() => {
+    const input = draftInputRef.current
+    if (!input) return
+    input.style.height = '0px'
+    input.style.height = `${Math.min(input.scrollHeight, 96)}px`
+  }, [draft])
 
   const insertEmoji = (emoji: string) => {
     const input = draftInputRef.current
@@ -300,7 +317,15 @@ export function MessagesPage() {
                 <div className="flex items-baseline justify-between gap-2">
                   <p className="truncate text-sm font-semibold text-primary">{c.name}</p>
                   {c.lastMessage && (
-                    <span className="shrink-0 text-[11px] text-secondary">{formatTime(c.lastMessage.sentAt)}</span>
+                    <time
+                      dateTime={c.lastMessage.sentAt}
+                      className={cn(
+                        'shrink-0 text-[11px]',
+                        c.unreadCount > 0 ? 'font-bold text-primary' : 'font-normal text-secondary',
+                      )}
+                    >
+                      {formatTime(c.lastMessage.sentAt)}
+                    </time>
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-2">
@@ -322,7 +347,7 @@ export function MessagesPage() {
                     <PinIcon className="h-3.5 w-3.5 shrink-0 text-accent" />
                   )}
                   {c.unreadCount > 0 && (
-                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+                    <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[11px] font-bold text-black">
                       {c.unreadCount > 99 ? '99+' : c.unreadCount}
                     </span>
                   )}
@@ -503,10 +528,10 @@ export function MessagesPage() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={submit} className="flex items-center gap-2 border-t border-elevated/40 px-4 py-3">
+              <form onSubmit={submit} className="border-t border-elevated/40 px-4 py-3">
                 <div
                   ref={composerToolsRef}
-                  className="relative flex h-11 min-w-0 flex-1 items-center rounded-full border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"
+                  className="relative flex min-h-11 w-full min-w-0 items-end rounded-[22px] border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"
                 >
                   <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" />
                   <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" />
@@ -518,7 +543,7 @@ export function MessagesPage() {
                       setEmojiMenuOpen(false)
                     }}
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
                       attachmentMenuOpen && 'rotate-45 bg-primary/10 text-primary',
                     )}
                     aria-label="Add attachment"
@@ -535,7 +560,7 @@ export function MessagesPage() {
                       setAttachmentMenuOpen(false)
                     }}
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
                       emojiMenuOpen && 'bg-primary/10 text-primary',
                     )}
                     aria-label="Choose emoji"
@@ -600,23 +625,26 @@ export function MessagesPage() {
                     </div>
                   )}
 
-                  <input
+                  <textarea
                     ref={draftInputRef}
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={handleDraftKeyDown}
                     placeholder={`Message ${activePartner.name}`}
                     maxLength={4000}
-                    className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm text-primary outline-none placeholder:text-muted"
+                    rows={1}
+                    className="max-h-24 min-h-11 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2 py-3 text-sm leading-5 text-primary outline-none placeholder:text-muted"
                   />
+                  {draft.trim() && (
+                    <button
+                      type="submit"
+                      className="mb-1 mr-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-black transition-all hover:scale-105 active:scale-95"
+                      aria-label="Send"
+                    >
+                      <PaperAirplaneIcon className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
-                <button
-                  type="submit"
-                  disabled={!draft.trim()}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-black transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100"
-                  aria-label="Send"
-                >
-                  <PaperAirplaneIcon className="h-5 w-5" />
-                </button>
               </form>
             )}
           </>

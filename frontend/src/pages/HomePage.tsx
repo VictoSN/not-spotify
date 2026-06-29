@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Link, useOutletContext } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import { MusicalNoteIcon } from '@heroicons/react/24/outline'
@@ -44,10 +44,10 @@ import {
   setPodcastDragImage,
   setVideoDragImage,
 } from '@/utils/trackDnd'
-import { Spinner } from '@/components/ui/Spinner'
 import type { DailyMix } from '@/services/trackService'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
+import type { AppShellOutletContext } from '@/components/layout/appShellContext'
 
 const PREVIEW_LIMIT = 10
 const HOME_CONTENT_GUTTER = 'px-4 sm:px-6 lg:px-8 2xl:px-10'
@@ -64,10 +64,13 @@ export function getHomeFilterVisibility(filter: HomeFilter) {
 
 export function HomePage() {
   const { t } = useTranslation()
+  const outletContext = useOutletContext<AppShellOutletContext | null>()
+  const setPageLoading = outletContext?.setPageLoading
   useDocumentTitle(t('topbar.home'))
   const { user, isAuthenticated } = useAuthStore()
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
+  const libraryLoading = useLibraryStore((s) => s.isLoading)
   const [trending, setTrending] = useState<Track[]>([])
   const [mostLiked, setMostLiked] = useState<Track[]>([])
   const [forYou, setForYou] = useState<Track[]>([])
@@ -82,39 +85,41 @@ export function HomePage() {
   const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
   const [musicVideos, setMusicVideos] = useState<MusicVideo[]>([])
   const [loading, setLoading] = useState(true)
+  const pageLoading = loading || (isAuthenticated && libraryLoading)
+
+  useLayoutEffect(() => {
+    setPageLoading?.(pageLoading)
+    return () => setPageLoading?.(false)
+  }, [pageLoading, setPageLoading])
 
   useEffect(() => {
     let cancelled = false
+    setLoading(true)
 
     const load = async () => {
       try {
-        // Wave 1: above-the-fold content (3 requests)
-        const [fy, tr, rc] = await Promise.all([
-          trackService.getForYou(PREVIEW_LIMIT),
-          trackService.getTrending(PREVIEW_LIMIT),
+        // Resolve the complete Home payload behind one loading boundary. Each
+        // section can fail independently, but none is revealed before the rest.
+        const [fy, tr, rc, ml, nm, rp, nr, pa, dm, pic, pods, mv] = await Promise.all([
+          trackService.getForYou(PREVIEW_LIMIT).catch(() => [] as Track[]),
+          trackService.getTrending(PREVIEW_LIMIT).catch(() => [] as Track[]),
           isAuthenticated
             ? trackService.getRecents(PREVIEW_LIMIT).catch(() => [] as Track[])
             : Promise.resolve([] as Track[]),
-        ])
-        if (cancelled) return
-        setForYou(fy)
-        setTrending(tr)
-        setRecents(rc)
-        setLoading(false)
-
-        // Wave 2: secondary sections (staggered after paint)
-        const [ml, nm, rp, nr, pa, dm, pic, pods, mv] = await Promise.all([
-          trackService.getMostLiked(PREVIEW_LIMIT),
-          trackService.getNewMusic(PREVIEW_LIMIT),
-          playlistService.getRecommended(PREVIEW_LIMIT),
-          albumService.getNewReleases(PREVIEW_LIMIT),
-          artistService.getPopular(PREVIEW_LIMIT),
+          trackService.getMostLiked(PREVIEW_LIMIT).catch(() => [] as Track[]),
+          trackService.getNewMusic(PREVIEW_LIMIT).catch(() => [] as Track[]),
+          playlistService.getRecommended(PREVIEW_LIMIT).catch(() => [] as Playlist[]),
+          albumService.getNewReleases(PREVIEW_LIMIT).catch(() => [] as Album[]),
+          artistService.getPopular(PREVIEW_LIMIT).catch(() => [] as Artist[]),
           trackService.getDailyMixes(4).catch(() => [] as DailyMix[]),
           trackService.getPopularInCountry(user?.country, PREVIEW_LIMIT).catch(() => [] as Track[]),
           podcastService.getAll().catch(() => [] as PodcastSummary[]),
           videoService.list().catch(() => [] as MusicVideo[]),
         ])
         if (cancelled) return
+        setForYou(fy)
+        setTrending(tr)
+        setRecents(rc)
         setMostLiked(ml)
         setNewMusic(nm)
         setRecommendedPlaylists(rp)
@@ -124,14 +129,20 @@ export function HomePage() {
         setPopularInCountry(pic)
         setPodcasts(pods)
         setMusicVideos(mv)
-      } catch {
-        if (!cancelled) setLoading(false)
+      } finally {
+        if (!cancelled) {
+          // React batches the complete payload with this flag. Home remains on
+          // its skeleton if the shared library is still loading.
+          setLoading(false)
+        }
       }
     }
 
-    load()
-    return () => { cancelled = true }
-  }, [isAuthenticated])
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, user?.country])
 
   // Cover-derived hue for the top of the page (reflects what's playing, else a featured cover).
   const heroSeed =
@@ -190,12 +201,8 @@ export function HomePage() {
     return t('home.greeting.evening')
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    )
+  if (pageLoading) {
+    return <HomePageSkeleton />
   }
 
   const quickPicks = savedPlaylists.slice(0, 8)
@@ -357,7 +364,7 @@ export function HomePage() {
         {/* For You Today — personalised, auth only */}
         {showMusic && isAuthenticated && forYou.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.forYouToday')} variant="home" />
+            <SectionHeader title={t('home.section.forYouToday')} href="/recommended-tracks" variant="home" />
             <HorizontalScroller bleedRight>
               {forYou.map((track) => (
                 <TrackTile key={track.id} track={track} queue={forYou} flush />
@@ -369,7 +376,7 @@ export function HomePage() {
         {/* Recents — auth only, hidden until the user has played something */}
         {showMusic && isAuthenticated && recents.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.recentlyPlayed')} variant="home" />
+            <SectionHeader title={t('home.section.recentlyPlayed')} href="/recents" variant="home" />
             <HorizontalScroller bleedRight>
               {recents.map((track) => (
                 <TrackTile key={track.id} track={track} queue={recents} flush />
@@ -381,7 +388,7 @@ export function HomePage() {
         {/* Trending now */}
         {showMusic && trending.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.trendingNow')} href="/charts" variant="home" />
+            <SectionHeader title={t('home.section.trendingNow')} href="/trending" variant="home" />
             <HorizontalScroller bleedRight>
               {trending.map((track) => (
                 <TrackTile key={track.id} track={track} queue={trending} flush />
@@ -489,6 +496,60 @@ export function HomePage() {
             </HorizontalScroller>
           </section>
         )}
+      </div>
+    </div>
+  )
+}
+
+export function HomePageSkeleton() {
+  const chipWidths = ['w-12', 'w-16', 'w-20', 'w-24']
+
+  return (
+    <div
+      data-testid="home-loading-skeleton"
+      role="status"
+      aria-label="Loading Home"
+      className="min-h-[calc(100vh-6rem)] pb-12"
+    >
+      <span className="sr-only">Loading your Home page</span>
+
+      <div className={cn('py-3', HOME_CONTENT_GUTTER)} aria-hidden="true">
+        <div className="flex gap-2">
+          {chipWidths.map((width, index) => (
+            <div key={index} className={cn('h-8 rounded-full bg-elevated', width)} />
+          ))}
+        </div>
+      </div>
+
+      <div className={cn('animate-pulse motion-reduce:animate-none', HOME_CONTENT_GUTTER)} aria-hidden="true">
+        <div className="mb-6 mt-2 h-8 w-52 max-w-[60%] rounded-md bg-elevated" />
+
+        <div className="mb-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, index) => (
+            <div key={index} className="flex h-16 overflow-hidden rounded-md bg-surface">
+              <div className="h-16 w-16 shrink-0 bg-primary/15" />
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 px-3">
+                <div className="h-3.5 w-4/5 rounded bg-primary/15" />
+                <div className="h-2.5 w-2/5 rounded bg-primary/10" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {[0, 1].map((row) => (
+          <section key={row} className="mb-9">
+            <div className="mb-4 h-5 w-40 rounded bg-elevated" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} className="min-w-0">
+                  <div className="aspect-square w-full rounded-md bg-elevated" />
+                  <div className="mt-3 h-3.5 w-4/5 rounded bg-primary/15" />
+                  <div className="mt-2 h-2.5 w-2/5 rounded bg-primary/10" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   )

@@ -3,11 +3,16 @@ import { Link } from 'react-router-dom'
 import { PlayIcon, FilmIcon } from '@heroicons/react/24/solid'
 import type { MusicVideo } from '@/types/musicVideo'
 import { videoService } from '@/services/videoService'
-import { Spinner } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { formatMs } from '@/utils/formatTime'
 import { VideoMenu, type VideoMenuHandle } from '@/components/cards/VideoMenu'
 import { openMenuAtPointer } from '@/utils/contextMenu'
+import {
+  COLLECTION_PAGE_CLASS,
+  VIDEO_COLLECTION_GRID_CLASS,
+  CollectionPageHeader,
+  CollectionPageSkeleton,
+} from '@/components/common/CollectionPage'
 
 export function MusicVideosPage() {
   const [videos, setVideos] = useState<MusicVideo[]>([])
@@ -22,17 +27,20 @@ export function MusicVideosPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>
+  if (loading) return <CollectionPageSkeleton label="Loading music videos" variant="video" count={9} />
 
   return (
-    <div className="px-4 py-4 md:px-6 md:py-6">
-      <h1 className="mb-4 text-2xl font-black text-primary">Music videos</h1>
+    <div className={COLLECTION_PAGE_CLASS}>
+      <CollectionPageHeader
+        title="Music videos"
+        description="Watch the latest visuals from artists you love."
+      />
       {videos.length === 0 ? (
         <div className="rounded-lg border border-elevated/40 bg-surface px-6 py-12 text-center text-secondary">
           No music videos yet.
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={VIDEO_COLLECTION_GRID_CLASS}>
           {videos.map((v) => (
             <VideoCard key={v.id} video={v} queue={videos} />
           ))}
@@ -46,7 +54,7 @@ function VideoCard({ video: v, queue }: { video: MusicVideo; queue: MusicVideo[]
   const menuRef = useRef<VideoMenuHandle>(null)
   return (
     <div className="group relative" onContextMenu={(e) => openMenuAtPointer(e, menuRef)}>
-      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} className="block rounded-lg bg-surface p-2 transition-colors hover:bg-elevated">
+      <Link to={`/videos/${v.id}`} state={{ videoQueue: queue }} className="block rounded-lg p-2 transition-colors hover:bg-surface">
         <div className="relative mb-2 flex aspect-video items-center justify-center overflow-hidden rounded-md bg-elevated">
           {v.thumbnailUrl
             ? <img src={v.thumbnailUrl} alt={v.title} className="h-full w-full object-cover" />

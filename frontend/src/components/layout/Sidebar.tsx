@@ -24,7 +24,6 @@ import { usePlayerStore, type PlayContextType } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
-import { useRatingStore } from '@/stores/ratingStore'
 import { useTranslation } from '@/i18n/useTranslation'
 import { recordPlay, getPlayHistory, PLAY_HISTORY_EVENT } from '@/utils/playHistory'
 import type { Track } from '@/types/track'
@@ -211,8 +210,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     followedArtists,
     followedArtistIds,
     likedSongs,
+    isLoading,
     createPlaylist,
-    fetchLibrary,
     followArtist,
     saveAlbum,
     saveVideo,
@@ -221,7 +220,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const addTrackToPlaylist = useLibraryStore((s) => s.addTrackToPlaylist)
   const likeTrack = useLibraryStore((s) => s.likeTrack)
   const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
-  const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const currentContextType = usePlayerStore((s) => s.currentContextType)
   const currentContextId = usePlayerStore((s) => s.currentContextId)
@@ -311,13 +309,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   useEffect(() => {
     setLibraryBodyScrolled(false)
   }, [collapsed, libraryExpanded, filter, query, viewMode])
-
-  // Populate the library app-wide (today only LibraryPage triggers this).
-  useEffect(() => {
-    if (!isAuthenticated) return
-    fetchLibrary()
-    loadRatings()
-  }, [fetchLibrary, loadRatings, isAuthenticated])
 
   // Persist width
   useEffect(() => {
@@ -1174,7 +1165,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           notify.success(t('sidebar.movedToFolder'))
         }}
       >
-        {hasFolderSection && (
+        {!isLoading && hasFolderSection && (
           <div className="mb-1 flex flex-col">
             {folders
               .filter((f) => !folderOfItem(folders, folderKey(f.id)))
@@ -1209,7 +1200,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </div>
         )}
 
-        {grid ? (
+        {isLoading ? (
+          <LibrarySidebarSkeleton
+            grid={grid}
+            compact={compactLibrary}
+            expanded={libraryExpanded}
+            threeColumns={maxDraggedLibraryGrid}
+          />
+        ) : grid ? (
           <div
             className={cn(
               'grid',
@@ -1546,6 +1544,68 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
  * Wraps a library row as a drop target for dragged tracks. The hovered valid target
  * gets a bright Spotify-green ring without tinting the row content.
  */
+function LibrarySidebarSkeleton({
+  grid,
+  compact,
+  expanded,
+  threeColumns,
+}: {
+  grid: boolean
+  compact: boolean
+  expanded: boolean
+  threeColumns: boolean
+}) {
+  if (grid) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading your library"
+        className={cn(
+          'grid animate-pulse motion-reduce:animate-none',
+          expanded
+            ? compact
+              ? '[grid-template-columns:repeat(auto-fill,minmax(128px,1fr))] gap-3 p-2'
+              : '[grid-template-columns:repeat(auto-fill,minmax(150px,1fr))] gap-4 p-2'
+            : threeColumns
+              ? 'grid-cols-3 gap-1'
+              : 'grid-cols-2 gap-1',
+        )}
+      >
+        {Array.from({ length: expanded ? 10 : 6 }, (_, index) => (
+          <div key={index} className={compact ? 'p-1.5' : 'p-2'}>
+            <div className="aspect-square w-full rounded-md bg-elevated" />
+            {!compact && (
+              <>
+                <div className="mt-2 h-3 w-4/5 rounded bg-primary/15" />
+                <div className="mt-1.5 h-2.5 w-2/5 rounded bg-primary/10" />
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      role="status"
+      aria-label="Loading your library"
+      className="space-y-1 px-2 py-1 animate-pulse motion-reduce:animate-none"
+    >
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} className="flex h-15 items-center gap-3 rounded-md px-2 py-1.5">
+          {!compact && <div className="h-12 w-12 shrink-0 rounded-md bg-elevated" />}
+          <div className="min-w-0 flex-1">
+            <div className="h-3 w-3/4 rounded bg-primary/15" />
+            <div className="mt-2 h-2.5 w-2/5 rounded bg-primary/10" />
+          </div>
+          {expanded && <div className="h-2.5 w-16 rounded bg-primary/10" />}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function TrackDropZone({
   accepts,
   onDropTrack,

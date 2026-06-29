@@ -55,6 +55,7 @@ describe('Sidebar saved media navigation', () => {
       savedVideos: [video], savedPodcasts: [podcast], likedTrackIds: new Set(),
       followedArtistIds: new Set(), savedAlbumIds: new Set(),
       savedVideoIds: new Set([video.id]), savedPodcastIds: new Set([podcast.id]),
+      isLoading: false,
       fetchLibrary: vi.fn(async () => {}),
       createPlaylist: createPlaylistMock as never,
     })
@@ -103,6 +104,14 @@ describe('Sidebar saved media navigation', () => {
     expectRoute(`/videos/${video.id}`)
     fireEvent.click(screen.getByRole('link', { name: new RegExp(podcast.title) }))
     expectRoute(`/podcasts/${podcast.id}`)
+  })
+
+  it('shows the balanced library skeleton while saved media is loading', () => {
+    useLibraryStore.setState({ isLoading: true })
+    renderSidebar()
+
+    expect(screen.getByRole('status', { name: 'Loading your library' })).toBeInTheDocument()
+    expect(screen.queryByText(video.title)).not.toBeInTheDocument()
   })
 
   it('uses three columns throughout the final ten percent of the sidebar drag range', () => {

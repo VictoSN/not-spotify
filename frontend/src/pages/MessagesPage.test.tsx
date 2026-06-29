@@ -1,5 +1,5 @@
 import React, { act } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessageStatusTicks, MessagesPage } from './MessagesPage'
@@ -57,10 +57,10 @@ const friendServiceMock = vi.hoisted(() => ({
 vi.mock('@/services/chatService', () => ({ chatService: chatServiceMock }))
 vi.mock('@/services/friendService', () => ({ friendService: friendServiceMock }))
 
-async function renderThread() {
+async function renderMessages(initialEntry: string) {
   const result = render(
     <ConfirmProvider>
-      <MemoryRouter initialEntries={[`/messages?u=${PARTNER}`]}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/messages" element={<MessagesPage />} />
         </Routes>
@@ -74,6 +74,10 @@ async function renderThread() {
     await Promise.resolve()
   })
   return result
+}
+
+async function renderThread() {
+  return renderMessages(`/messages?u=${PARTNER}`)
 }
 
 describe('MessagesPage chat lock after unfriending (bug 28)', () => {
@@ -127,6 +131,30 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
     expect(screen.getByPlaceholderText('Message Old Friend')).toBeInTheDocument()
   })
 
+  it('uses the green unread badge and bolds only unread conversation times', async () => {
+    const readConversation: Conversation = {
+      ...conversation,
+      userId: 'partner-2',
+      name: 'Read Friend',
+      lastMessage: { ...message, id: 'm2', senderId: 'partner-2', sentAt: '2026-06-29T11:00:00Z' },
+    }
+    chatServiceMock.getConversations.mockResolvedValue([
+      { ...conversation, name: 'Unread Friend', unreadCount: 2 },
+      readConversation,
+    ])
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+
+    await renderMessages('/messages')
+
+    const unreadRow = screen.getByRole('button', { name: 'Open chat with Unread Friend' })
+    expect(unreadRow.querySelector('time')).toHaveClass('font-bold', 'text-primary')
+    expect(within(unreadRow).getByText('2')).toHaveClass('bg-accent', 'text-black')
+
+    const readRow = screen.getByRole('button', { name: 'Open chat with Read Friend' })
+    expect(readRow.querySelector('time')).toHaveClass('font-normal', 'text-secondary')
+    expect(readRow.querySelector('time')).not.toHaveClass('font-bold')
+  })
+
   it('opens the attachment menu and inserts an emoji from the left composer controls', async () => {
     friendServiceMock.getFriends.mockResolvedValue([friend])
     await renderThread()
@@ -140,6 +168,52 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
     expect(screen.queryByRole('menu', { name: 'Attachment options' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Insert 😀' }))
     expect(screen.getByPlaceholderText('Message Old Friend')).toHaveValue('😀')
+  })
+
+  it('shows the send button inside the composer only when text is entered', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    const composer = screen.getByPlaceholderText('Message Old Friend')
+    const composerBox = composer.parentElement
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+
+    fireEvent.change(composer, { target: { value: 'Hello' } })
+
+    const send = screen.getByRole('button', { name: 'Send' })
+    expect(composerBox).toContainElement(send)
+
+    fireEvent.change(composer, { target: { value: '' } })
+    expect(screen.queryByRole('button', { name: 'Send' })).not.toBeInTheDocument()
+  })
+
+  it('keeps Shift+Enter for a new line and sends with Enter', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    chatServiceMock.send.mockResolvedValue({
+      ...message,
+      id: 'sent-message',
+      senderId: 'me',
+      recipientId: PARTNER,
+      body: 'first line\nsecond line',
+    })
+    await renderThread()
+
+    const composer = screen.getByPlaceholderText('Message Old Friend')
+    expect(composer.tagName).toBe('TEXTAREA')
+
+    fireEvent.change(composer, { target: { value: 'first line' } })
+    const shiftEnter = createEvent.keyDown(composer, { key: 'Enter', shiftKey: true })
+    fireEvent(composer, shiftEnter)
+    expect(shiftEnter.defaultPrevented).toBe(false)
+
+    // jsdom does not perform the browser's native textarea line-break action.
+    fireEvent.change(composer, { target: { value: 'first line\nsecond line' } })
+    const enter = createEvent.keyDown(composer, { key: 'Enter' })
+    fireEvent(composer, enter)
+
+    expect(enter.defaultPrevented).toBe(true)
+    await waitFor(() => expect(chatServiceMock.send).toHaveBeenCalledWith(PARTNER, 'first line\nsecond line'))
+    expect(composer).toHaveValue('')
   })
   it('shows only pin, clear, and delete on a conversation right-click', async () => {
     friendServiceMock.getFriends.mockResolvedValue([friend])

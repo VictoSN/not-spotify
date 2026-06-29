@@ -12,16 +12,19 @@ import { useDragStore } from '@/stores/dragStore'
 import { ALBUM_DND_MIME, setAlbumDragImage } from '@/utils/trackDnd'
 import { AlbumMenu, type AlbumMenuHandle } from './AlbumMenu'
 import { CardPlayButton } from './CardPlayButton'
+import { cn } from '@/utils/cn'
 
 interface AlbumCardProps {
   album: Album
   tracks?: Track[]
   flush?: boolean
+  /** Fill a responsive grid cell instead of using the standard carousel width. */
+  fluid?: boolean
   /** Render the title bold. Defaults to normal weight (Spotify-style); pass true where bold is wanted. */
   boldTitle?: boolean
 }
 
-export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: AlbumCardProps) {
+export function AlbumCard({ album, tracks, flush = false, fluid = false, boldTitle = false }: AlbumCardProps) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'album', id: album.id })
@@ -59,7 +62,10 @@ export function AlbumCard({ album, tracks, flush = false, boldTitle = false }: A
 
   return (
     <div
-      className="group relative flex-shrink-0 w-40 sm:w-44 transition-opacity"
+      className={cn(
+        'group relative min-w-0 transition-opacity',
+        fluid ? 'w-full' : 'w-40 flex-shrink-0 sm:w-44',
+      )}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'copy'

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -17,6 +17,8 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useHueStore } from '@/stores/hueStore'
+import { useLibraryStore } from '@/stores/libraryStore'
+import { useRatingStore } from '@/stores/ratingStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { AuthPromptModal } from '@/components/common/AuthPromptModal'
 import { KeyboardShortcutsHelp } from '@/components/common/KeyboardShortcutsHelp'
@@ -28,13 +30,17 @@ import { AppFooter } from '@/components/common/AppFooter'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
 import { cn } from '@/utils/cn'
+import type { AppShellOutletContext } from './appShellContext'
 
 export function AppShell() {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
+  const [pageLoading, setPageLoading] = useState(isHomeRoute)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
+  const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const currentTrack = usePlayerStore((s) => s.currentTrack)
@@ -69,6 +75,16 @@ export function AppShell() {
     scrolledRef.current = false
     setHeaderScrolled(false)
   }, [location.pathname, setHeaderScrolled])
+
+  useLayoutEffect(() => {
+    setPageLoading(isHomeRoute)
+  }, [isHomeRoute])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    void fetchLibrary()
+    void loadRatings()
+  }, [fetchLibrary, isAuthenticated, loadRatings])
 
   // Real-time presence via WebSocket — instant online/offline updates.
   usePresenceSocket()
@@ -152,10 +168,10 @@ export function AppShell() {
             onScroll={handleMainScroll}
             className={`scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-clip ${karaokeVisible ? 'hidden' : ''}`}
           >
-            <Outlet />
+            <Outlet context={{ setPageLoading } satisfies AppShellOutletContext} />
             {/* Global footer — sits at the bottom of every routed page's scroll
                 content (Spotify-style), so individual pages don't render their own. */}
-            <AppFooter />
+            {!pageLoading && <AppFooter />}
           </div>
           {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} flushRight={isHomeRoute} />}
           {karaokeVisible && (

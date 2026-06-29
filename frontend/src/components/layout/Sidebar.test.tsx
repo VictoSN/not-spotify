@@ -330,7 +330,7 @@ describe('Sidebar saved media navigation', () => {
     const { container } = renderSidebar()
     fireEvent.click(screen.getByRole('button', { name: 'Create playlist or folder' }))
 
-    expect(screen.getByRole('menu')).toHaveClass('z-[1000]')
+    expect(screen.getByRole('menu')).toHaveClass('z-[9999]')
     expect(container.querySelector('aside')).toHaveClass('z-30')
   })
 
@@ -382,8 +382,10 @@ describe('Sidebar saved media navigation', () => {
       expect(screen.getByText('Rename')).toBeInTheDocument()
       expect(screen.getByText('Delete folder')).toBeInTheDocument()
 
-      // Clicking anywhere outside the menu (incl. outside the sidebar) closes it.
-      fireEvent.mouseDown(document.body)
+      // The portal backdrop covers the viewport; mousedown on it closes the menu.
+      const backdrop = document.body.querySelector('.fixed.inset-0.z-\\[9998\\]') as HTMLElement
+      expect(backdrop).toBeTruthy()
+      fireEvent.mouseDown(backdrop)
       expect(screen.queryByText('Delete folder')).not.toBeInTheDocument()
     })
 

@@ -234,9 +234,13 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const [pinnedKeys, setPinnedKeys] = useState<string[]>(getPinnedKeys)
   const [customOrder, setCustomOrderState] = useState<string[]>(getCustomOrder)
   const [createMenuOpen, setCreateMenuOpen] = useState(false)
+  const [createMenuPos, setCreateMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const createButtonRef = useRef<HTMLButtonElement>(null)
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const [sortMenuPos, setSortMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const sortButtonRef = useRef<HTMLButtonElement>(null)
   const [blankCreateMenu, setBlankCreateMenu] = useState<{ x: number; y: number } | null>(null)
   const [libraryBodyScrolled, setLibraryBodyScrolled] = useState(false)
   const libraryExpanded = useUiStore((s) => s.libraryExpanded)
@@ -678,6 +682,38 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (sort !== 'custom') setSort('custom')
   }
 
+  const openCreateMenu = () => {
+    const rect = createButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      setCreateMenuPos({
+        x: Math.max(8, Math.min(rect.right - 176, window.innerWidth - 192)),
+        y: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 104)),
+      })
+    }
+    setCreateMenuOpen(true)
+  }
+
+  const closeCreateMenu = () => {
+    setCreateMenuOpen(false)
+    setCreateMenuPos(null)
+  }
+
+  const openSortMenu = () => {
+    const rect = sortButtonRef.current?.getBoundingClientRect()
+    if (rect) {
+      setSortMenuPos({
+        x: Math.max(8, Math.min(rect.right - 224, window.innerWidth - 240)),
+        y: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 320)),
+      })
+    }
+    setSortMenuOpen(true)
+  }
+
+  const closeSortMenu = () => {
+    setSortMenuOpen(false)
+    setSortMenuPos(null)
+  }
+
   const handleCreateFolder = () => {
     const folder = createFolder()
     // Clear any filter/search so the new (empty) folder is visible, then rename.
@@ -942,7 +978,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div className="flex shrink-0 items-center gap-1">
             <div className="relative">
               <button
-                onClick={() => setCreateMenuOpen((v) => !v)}
+                ref={createButtonRef}
+                onClick={() => (createMenuOpen ? closeCreateMenu() : openCreateMenu())}
                 className={cn(
                   'spotify-tooltip-anchor relative flex h-8 items-center justify-center rounded-full bg-elevated text-xs font-normal text-primary transition-all hover:scale-105 hover:bg-elevated/70 active:scale-95',
                   compactCreateButton ? 'w-8 px-0' : 'gap-1.5 pl-2 pr-3',
@@ -959,31 +996,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                   </span>
                 )}
               </button>
-              {createMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-[990]" onClick={() => setCreateMenuOpen(false)} />
-                  <div role="menu" className="absolute right-0 top-full z-[1000] mt-2 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-                    <button
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        handleCreate()
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                    >
-                      <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.playlist')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setCreateMenuOpen(false)
-                        handleCreateFolder()
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                    >
-                      <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.folder')}
-                    </button>
-                  </div>
-                </>
-              )}
             </div>
             <button
               onClick={toggleLibraryExpanded}
@@ -1057,7 +1069,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         )}
         <div className="relative shrink-0">
           <button
-            onClick={() => setSortMenuOpen((v) => !v)}
+            ref={sortButtonRef}
+            onClick={() => (sortMenuOpen ? closeSortMenu() : openSortMenu())}
             className="flex h-8 items-center gap-2 px-1 text-xs font-normal leading-none text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
             title={t('sidebar.sort')}
             aria-haspopup="menu"
@@ -1066,65 +1079,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             {t(SORT_OPTIONS.find((o) => o.key === sort)?.tKey ?? 'sort.recents')}
             <LibraryViewIcon mode={viewMode} />
           </button>
-          {sortMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-[990]" onClick={() => setSortMenuOpen(false)} />
-              <div role="menu" className="absolute right-0 top-full z-[1000] mt-2 w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-                <p className="px-3 pb-1 pt-2 text-xs font-normal text-secondary">{t('sidebar.sortBy')}</p>
-                {SORT_OPTIONS.map((o) => (
-                  <button
-                    key={o.key}
-                    onClick={() => { setSort(o.key); setSortMenuOpen(false) }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-surface"
-                  >
-                    <span className={cn(sort === o.key ? 'font-normal text-accent' : 'text-primary')}>{t(o.tKey)}</span>
-                    {sort === o.key && <CheckIcon className="h-4 w-4 text-accent" />}
-                  </button>
-                ))}
-                <div className="my-1 border-t border-secondary/10" />
-                <p className="px-3 pb-1 pt-1 text-xs font-normal text-secondary">{t('sidebar.viewAs')}</p>
-                <div className="flex items-center gap-0.5 mx-2 mb-2 p-1 rounded-md bg-surface">
-                  {(
-                    [
-                      {
-                        v: 'list-compact' as ViewMode,
-                        label: t('sidebar.view.listCompact'),
-                        icon: <LibraryViewIcon mode="list-compact" />,
-                      },
-                      {
-                        v: 'list' as ViewMode,
-                        label: t('sidebar.view.list'),
-                        icon: <LibraryViewIcon mode="list" />,
-                      },
-                      {
-                        v: 'grid-compact' as ViewMode,
-                        label: t('sidebar.view.gridCompact'),
-                        icon: <LibraryViewIcon mode="grid-compact" />,
-                      },
-                      {
-                        v: 'grid' as ViewMode,
-                        label: t('sidebar.view.grid'),
-                        icon: <LibraryViewIcon mode="grid" />,
-                      },
-                    ]
-                  ).map(({ v, icon, label }) => (
-                    <button
-                      key={v}
-                      onClick={() => { setView(v); setSortMenuOpen(false) }}
-                      aria-label={label}
-                      className={cn(
-                        'spotify-tooltip-anchor relative flex flex-1 items-center justify-center rounded-md py-2 transition-colors',
-                        viewMode === v ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary',
-                      )}
-                    >
-                      {icon}
-                      <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
         </div>
       </div>
 
@@ -1322,12 +1276,141 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         )}
       </div>
 
+      {/* Portal-based create menu — escapes the sidebar's z-30 stacking context. */}
+      {createMenuOpen &&
+        createMenuPos &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              aria-hidden="true"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                closeCreateMenu()
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                closeCreateMenu()
+              }}
+            />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl"
+              style={{ left: createMenuPos.x, top: createMenuPos.y }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => {
+                  closeCreateMenu()
+                  handleCreate()
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              >
+                <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.playlist')}
+              </button>
+              <button
+                onClick={() => {
+                  closeCreateMenu()
+                  handleCreateFolder()
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              >
+                <FolderPlusIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.folder')}
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
+
+      {/* Portal-based sort menu — escapes the sidebar's z-30 stacking context. */}
+      {sortMenuOpen &&
+        sortMenuPos &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              aria-hidden="true"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                closeSortMenu()
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                closeSortMenu()
+              }}
+            />
+            <div
+              role="menu"
+              className="fixed z-[9999] w-56 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl"
+              style={{ left: sortMenuPos.x, top: sortMenuPos.y }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="px-3 pb-1 pt-2 text-xs font-normal text-secondary">{t('sidebar.sortBy')}</p>
+              {SORT_OPTIONS.map((o) => (
+                <button
+                  key={o.key}
+                  onClick={() => { setSort(o.key); closeSortMenu() }}
+                  className="flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-surface"
+                >
+                  <span className={cn(sort === o.key ? 'font-normal text-accent' : 'text-primary')}>{t(o.tKey)}</span>
+                  {sort === o.key && <CheckIcon className="h-4 w-4 text-accent" />}
+                </button>
+              ))}
+              <div className="my-1 border-t border-secondary/10" />
+              <p className="px-3 pb-1 pt-1 text-xs font-normal text-secondary">{t('sidebar.viewAs')}</p>
+              <div className="flex items-center gap-0.5 mx-2 mb-2 p-1 rounded-md bg-surface">
+                {(
+                  [
+                    {
+                      v: 'list-compact' as ViewMode,
+                      label: t('sidebar.view.listCompact'),
+                      icon: <LibraryViewIcon mode="list-compact" />,
+                    },
+                    {
+                      v: 'list' as ViewMode,
+                      label: t('sidebar.view.list'),
+                      icon: <LibraryViewIcon mode="list" />,
+                    },
+                    {
+                      v: 'grid-compact' as ViewMode,
+                      label: t('sidebar.view.gridCompact'),
+                      icon: <LibraryViewIcon mode="grid-compact" />,
+                    },
+                    {
+                      v: 'grid' as ViewMode,
+                      label: t('sidebar.view.grid'),
+                      icon: <LibraryViewIcon mode="grid" />,
+                    },
+                  ]
+                ).map(({ v, icon, label }) => (
+                  <button
+                    key={v}
+                    onClick={() => { setView(v); closeSortMenu() }}
+                    aria-label={label}
+                    className={cn(
+                      'spotify-tooltip-anchor relative flex flex-1 items-center justify-center rounded-md py-2 transition-colors',
+                      viewMode === v ? 'bg-elevated text-primary' : 'text-secondary hover:text-primary',
+                    )}
+                  >
+                    {icon}
+                    <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-center">{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>,
+          document.body,
+        )}
+
       {blankCreateMenu && createPortal(
         <>
           <div
-            className="fixed inset-0 z-[990]"
+            className="fixed inset-0 z-[9998]"
             aria-hidden="true"
-            onClick={() => setBlankCreateMenu(null)}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              setBlankCreateMenu(null)
+            }}
             onContextMenu={(event) => {
               event.preventDefault()
               setBlankCreateMenu(null)
@@ -1336,8 +1419,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           <div
             role="menu"
             aria-label={t('sidebar.createAria')}
-            className={`fixed ${CONTEXT_MENU_PANEL_CLASS}`}
+            className={`fixed ${CONTEXT_MENU_PANEL_CLASS} !z-[9999]`}
             style={{ left: blankCreateMenu.x, top: blankCreateMenu.y }}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <button
               role="menuitem"
@@ -1895,24 +1979,44 @@ function FolderGroup({
 }) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const count = folder.itemKeys.length
 
-  // Close the folder menu on any outside click (incl. outside the sidebar) or
-  // Escape — consistent with the playlist/album menus. A `fixed inset-0` overlay
-  // can't do this because the sidebar's transformed ancestor clips it (bug 25).
+  const openMenu = (e?: React.MouseEvent) => {
+    // Use the event position for right-click, the button position for button click.
+    if (e) {
+      setMenuPos({
+        x: Math.max(8, Math.min(e.clientX, window.innerWidth - 192)),
+        y: Math.max(8, Math.min(e.clientY, window.innerHeight - 104)),
+      })
+    } else {
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) {
+        setMenuPos({
+          x: Math.max(8, Math.min(rect.right - 176, window.innerWidth - 192)),
+          y: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 104)),
+        })
+      }
+    }
+    setMenuOpen(true)
+  }
+
+  const closeMenu = () => {
+    setMenuOpen(false)
+    setMenuPos(null)
+  }
+
+  // Close the folder menu on Escape. Outside-click is handled by the portal
+  // backdrop's onMouseDown.
   useEffect(() => {
     if (!menuOpen) return
-    const onPointerDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
-    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false)
+      if (e.key === 'Escape') closeMenu()
     }
-    document.addEventListener('mousedown', onPointerDown)
     document.addEventListener('keydown', onKey)
     return () => {
-      document.removeEventListener('mousedown', onPointerDown)
       document.removeEventListener('keydown', onKey)
     }
   }, [menuOpen])
@@ -1925,7 +2029,8 @@ function FolderGroup({
           // Right-click opens the same menu (parity with playlists/albums).
           if (renaming) return
           e.preventDefault()
-          setMenuOpen(true)
+          e.stopPropagation()
+          openMenu(e)
         }}
       >
         {renaming ? (
@@ -1990,8 +2095,9 @@ function FolderGroup({
             </button>
             <div ref={menuRef} className="absolute right-1.5 top-1/2 z-20 -translate-y-1/2">
               <button
+                ref={buttonRef}
                 type="button"
-                onClick={() => setMenuOpen((v) => !v)}
+                onClick={() => (menuOpen ? closeMenu() : openMenu())}
                 aria-label={t('sidebar.folderOptions')}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
@@ -2002,32 +2108,58 @@ function FolderGroup({
               >
                 <EllipsisHorizontalIcon className="h-4 w-4" />
               </button>
-              {menuOpen && (
-                  <div role="menu" className="absolute right-0 top-full z-[1000] mt-1 w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl">
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false)
-                        onRenameStart()
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                    >
-                      <PencilIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.rename')}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false)
-                        deleteFolder(folder.id)
-                      }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
-                    >
-                      <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.deleteFolder')}
-                    </button>
-                  </div>
-              )}
             </div>
           </>
         )}
       </div>
+
+      {/* Portal the folder dropdown to document.body so it escapes the sidebar's
+          z-30 stacking context and always renders above other page elements. */}
+      {menuOpen &&
+        menuPos &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[9998]"
+              aria-hidden="true"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                closeMenu()
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault()
+                closeMenu()
+              }}
+            />
+            <div
+              ref={menuRef}
+              role="menu"
+              className="fixed z-[9999] w-44 rounded-md border border-secondary/10 bg-elevated py-1 shadow-xl"
+              style={{ left: menuPos.x, top: menuPos.y }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => {
+                  closeMenu()
+                  onRenameStart()
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              >
+                <PencilIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.rename')}
+              </button>
+              <button
+                onClick={() => {
+                  closeMenu()
+                  deleteFolder(folder.id)
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              >
+                <TrashIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.deleteFolder')}
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
 
       {!folder.collapsed && (
         <div className="ml-4 border-l border-secondary/10 pl-1">

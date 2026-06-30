@@ -711,6 +711,459 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 ---
 
+## Bug #33: Download Page - Light Mode White-on-White Text & Installation Guide Improvements
+**Issue:** In light mode, multiple text elements on the Download page use white font on a white background, making them completely illegible. The installation guide needs clearer presentation, and the mobile, tablet, and computer icons should be removed. The 'Show install steps' section should be toggleable.
+
+**Explanation:** This is a critical accessibility and usability issue. White text on a white background is completely unreadable, rendering important download and installation information useless for light mode users. The redundant device icons clutter the UI without adding value, and a toggleable install steps section gives users control over the information density.
+
+- [ ] **Fix Implementation**
+  - [ ] Audit all text elements on the Download page in light mode for color contrast issues
+  - [ ] Apply appropriate text colors (dark/black) for light mode backgrounds
+  - [ ] Ensure all text passes WCAG AA contrast ratio minimums
+  - [ ] Restructure installation guide for clearer step-by-step presentation
+  - [ ] Remove mobile, tablet, and computer icons from the page
+  - [ ] Add toggle functionality to 'Show install steps' section with smooth expand/collapse animation
+  - [ ] Ensure toggle state is preserved during the session
+
+- [ ] **Tests to Complete**
+  - [ ] Test: All text is clearly readable on the Download page in light mode
+  - [ ] Test: All text is clearly readable on the Download page in dark mode
+  - [ ] Test: No white-on-white text remains anywhere on the page
+  - [ ] Test: Installation guide steps are clear and logically ordered
+  - [ ] Test: Mobile, tablet, and computer icons are completely removed
+  - [ ] Test: 'Show install steps' toggle expands and collapses correctly
+  - [ ] Test: Toggle works in both light and dark themes
+  - [ ] Test: Toggle works on mobile and desktop viewports
+
+---
+
+## Bug #34: Download Page - Replace Placeholder Laptop Image
+**Issue:** The installation page displays a placeholder/generic laptop image instead of the actual application screenshot or branded imagery.
+
+**Explanation:** Using placeholder imagery looks unprofessional and reduces user trust. The real application image provides visual confirmation that users are downloading the correct software and improves the overall polish of the page.
+
+- [ ] **Fix Implementation**
+  - [ ] Create or source an actual application screenshot for the installation page
+  - [ ] Ensure the image shows the app interface clearly and attractively
+  - [ ] Optimize image for web (appropriate resolution, format, and file size)
+  - [ ] Replace the placeholder image with the real application image
+  - [ ] Ensure image is responsive across all viewport sizes
+  - [ ] Add appropriate alt text for accessibility
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Real application image displays instead of placeholder
+  - [ ] Test: Image is clear and properly sized on desktop viewport
+  - [ ] Test: Image is responsive on tablet viewport
+  - [ ] Test: Image is responsive on mobile viewport
+  - [ ] Test: Image has proper alt text for screen readers
+  - [ ] Test: Image loads correctly in both light and dark themes
+
+---
+
+## Bug #35: Free Tier - Daily Mix Not Visible
+**Issue:** Free tier account users cannot see or access Daily Mix content. Daily Mix should be available to all users regardless of subscription tier as a core feature for music discovery.
+
+**Explanation:** Daily Mix is a fundamental music discovery feature that drives user engagement. Restricting it to premium users only limits the free tier experience unnecessarily and may reduce conversion rates by preventing free users from experiencing the full value of the platform's recommendation engine.
+
+- [ ] **Fix Implementation**
+  - [ ] Identify where Daily Mix visibility is gated by subscription tier
+  - [ ] Remove or adjust the tier restriction to allow free users access
+  - [ ] Ensure Daily Mix generation logic works for free tier accounts
+  - [ ] Verify Daily Mix appears in the left sidebar for free users
+  - [ ] Ensure Daily Mix content is playable for free users (with ad interruptions if applicable)
+  - [ ] Update any UI that conditionally hides Daily Mix based on subscription status
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Free tier users can see Daily Mix in the left sidebar
+  - [ ] Test: Free tier users can play Daily Mix content
+  - [ ] Test: Daily Mix generates appropriate recommendations for free users
+  - [ ] Test: Daily Mix updates regularly for free users
+  - [ ] Test: Right-click context menu works on Daily Mix for free users
+  - [ ] Test: Daily Mix is visible and functional after account creation (free tier)
+  - [ ] Test: Daily Mix remains accessible after subscription downgrade to free
+
+---
+
+## Bug #36: Admin Dashboard - Missing Music Video & Podcast Management
+**Issue:** The admin dashboard can approve, delete, and modify albums and tracks, but lacks these same management capabilities for music videos and podcasts. Content moderation should be consistent across all content types.
+
+**Explanation:** Inconsistent content management creates moderation gaps. Admins need the ability to manage all content types from a unified dashboard to ensure platform quality and respond to policy violations regardless of content format.
+
+- [ ] **Fix Implementation**
+  - [ ] Add music video management section to admin dashboard (approve/delete/modify)
+  - [ ] Add podcast management section to admin dashboard (approve/delete/modify)
+  - [ ] Implement approval workflow for music videos matching existing track/album flow
+  - [ ] Implement approval workflow for podcasts matching existing track/album flow
+  - [ ] Add delete functionality with confirmation dialog for music videos
+  - [ ] Add delete functionality with confirmation dialog for podcasts
+  - [ ] Add modify/edit functionality for music video metadata
+  - [ ] Add modify/edit functionality for podcast metadata
+  - [ ] Ensure bubble filters work for music video and podcast sections
+  - [ ] Add search functionality for music videos and podcasts in admin dashboard
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Admin can view list of all music videos
+  - [ ] Test: Admin can approve pending music videos
+  - [ ] Test: Admin can delete music videos with confirmation
+  - [ ] Test: Admin can modify music video metadata
+  - [ ] Test: Admin can view list of all podcasts
+  - [ ] Test: Admin can approve pending podcasts
+  - [ ] Test: Admin can delete podcasts with confirmation
+  - [ ] Test: Admin can modify podcast metadata
+  - [ ] Test: Bubble filters work correctly for music videos
+  - [ ] Test: Bubble filters work correctly for podcasts
+  - [ ] Test: Search functionality works for both content types
+
+---
+
+## Bug #37: Admin Dashboard - Loading Animations for All Pages
+**Issue:** The admin dashboard lacks loading animations, making pages appear broken or frozen while data is being fetched. This is especially noticeable on pages with the bubble filter at the top (tracks, albums, etc.).
+
+**Explanation:** Without loading indicators, users cannot distinguish between a page that is loading data and a page that is broken. Loading animations provide essential visual feedback that the system is working, reducing perceived wait time and user frustration.
+
+- [ ] **Fix Implementation**
+  - [ ] Create a consistent loading animation/skeleton component for admin dashboard
+  - [ ] Add loading skeletons to tracks page (including bubble filter area)
+  - [ ] Add loading skeletons to albums page (including bubble filter area)
+  - [ ] Add loading skeletons to artists page
+  - [ ] Add loading skeletons to music videos page (see Bug #36)
+  - [ ] Add loading skeletons to podcasts page (see Bug #36)
+  - [ ] Add loading skeletons to advertisements page (see Bug #39)
+  - [ ] Add loading skeletons to playlists page (see Bug #38)
+  - [ ] Add loading skeletons to user management page
+  - [ ] Add loading skeletons to analytics/dashboard overview page
+  - [ ] Ensure loading states appear immediately on page navigation
+  - [ ] Ensure loading states are replaced smoothly when data arrives
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Loading animation appears immediately when navigating to tracks page
+  - [ ] Test: Loading animation appears immediately when navigating to albums page
+  - [ ] Test: Loading animation appears when bubble filter data is loading
+  - [ ] Test: Loading animation is replaced by content when data loads
+  - [ ] Test: Loading animation displays correctly in light mode
+  - [ ] Test: Loading animation displays correctly in dark mode
+  - [ ] Test: No flash of empty content before loading animation appears
+  - [ ] Test: Loading state handles error states gracefully (shows error, not perpetual loading)
+
+---
+
+## Bug #38: Admin Dashboard - Playlist Deletion Capability
+**Issue:** Administrators cannot delete playlists from the admin dashboard. This is a necessary moderation tool for removing playlists that violate platform policies or contain inappropriate content.
+
+**Explanation:** Without playlist deletion capability, administrators have no way to enforce content policies on user-generated playlists. This creates a moderation gap that could allow policy-violating content to remain on the platform.
+
+- [ ] **Fix Implementation**
+  - [ ] Add playlists section to admin dashboard (if not already present)
+  - [ ] Implement playlist listing with search and filter capabilities
+  - [ ] Add delete functionality with confirmation dialog for playlists
+  - [ ] Implement soft-delete (preserve data with deleted flag) vs hard-delete decision
+  - [ ] Add ability to view playlist contents before deletion
+  - [ ] Log playlist deletions with admin ID, timestamp, and reason
+  - [ ] Notify playlist owner when their playlist is deleted (optional but recommended)
+  - [ ] Add bubble filter support for playlist management page
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Admin can view list of all playlists
+  - [ ] Test: Admin can search for specific playlists
+  - [ ] Test: Admin can view playlist contents before deleting
+  - [ ] Test: Admin can delete a playlist with confirmation dialog
+  - [ ] Test: Deleted playlist is removed from the platform
+  - [ ] Test: Deletion is logged with admin ID and timestamp
+  - [ ] Test: Playlist owner is notified of deletion (if implemented)
+  - [ ] Test: Cannot delete system-generated playlists (Daily Mix, etc.)
+
+---
+
+## Bug #39: Admin Dashboard - Advertisement Preview/Playback
+**Issue:** Administrators cannot play or preview advertisements from the admin dashboard. They need the ability to listen to ads to evaluate their quality, appropriateness, and whether they should be approved for the platform.
+
+**Explanation:** Without ad preview capability, administrators are forced to approve or reject advertisements blindly. This is a critical quality control gap that could allow inappropriate, low-quality, or technically flawed ads onto the platform.
+
+- [ ] **Fix Implementation**
+  - [ ] Add advertisements management section to admin dashboard (if not already present)
+  - [ ] Implement advertisement listing with approval status indicators
+  - [ ] Add play/preview button for each advertisement
+  - [ ] Implement audio player specifically for ad preview in admin dashboard
+  - [ ] Ensure ad playback doesn't interfere with the main app audio player
+  - [ ] Add playback controls (play/pause, seek, volume) for ad preview
+  - [ ] Show ad metadata alongside the player (duration, format, upload date, advertiser)
+  - [ ] Add approve/reject functionality alongside the preview player
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Admin can see list of all advertisements
+  - [ ] Test: Admin can click play to preview an advertisement
+  - [ ] Test: Advertisement audio plays correctly
+  - [ ] Test: Play/pause controls work for ad preview
+  - [ ] Test: Seek functionality works in ad preview player
+  - [ ] Test: Volume control works independently from main player
+  - [ ] Test: Ad preview stops when navigating away from the page
+  - [ ] Test: Approve/reject buttons are accessible while previewing
+  - [ ] Test: Ad preview works in both light and dark themes
+
+---
+
+## Bug #40: Left Sidebar - Redundant Bottom Buttons & Account Info
+**Issue:** The left sidebar at the bottom contains 'Back to App' and 'Log Out' buttons, as well as account information, which are redundant because the same buttons and information exist in the top bar. These duplicate elements should be removed to reduce clutter.
+
+**Explanation:** Duplicate navigation elements create unnecessary visual clutter and can confuse users about which control to use. Since the top bar already provides these functions consistently across all pages, the sidebar duplicates serve no additional purpose and consume valuable vertical space.
+
+- [ ] **Fix Implementation**
+  - [ ] Remove 'Back to App' button from the left sidebar bottom section
+  - [ ] Remove 'Log Out' button from the left sidebar bottom section
+  - [ ] Remove account information display (username/avatar) from the left sidebar bottom section
+  - [ ] Ensure the top bar 'Back to App' and 'Log Out' buttons remain functional
+  - [ ] Ensure the top bar account information display remains functional
+  - [ ] Adjust sidebar layout to account for removed elements (prevent empty space)
+  - [ ] Verify sidebar still looks balanced after element removal
+  - [ ] Do the same removal for any other dashboards with duplicate elements (artist dashboard, admin dashboard)
+
+- [ ] **Tests to Complete**
+  - [ ] Test: 'Back to App' button is removed from left sidebar
+  - [ ] Test: 'Log Out' button is removed from left sidebar
+  - [ ] Test: Account information is removed from left sidebar bottom
+  - [ ] Test: Top bar 'Back to App' button still works correctly
+  - [ ] Test: Top bar 'Log Out' button still works correctly
+  - [ ] Test: Top bar account information still displays correctly
+  - [ ] Test: Sidebar layout looks correct without removed elements
+  - [ ] Test: No empty/gaping space where elements were removed
+  - [ ] Test: Artist dashboard sidebar also has redundant elements removed
+  - [ ] Test: Admin dashboard sidebar also has redundant elements removed
+
+---
+
+## Bug #41: Artist Dashboard - Layout Redesign to Match Admin Dashboard
+**Issue:** The artist dashboard uses a different layout than the admin dashboard, requiring excessive scrolling and making navigation less efficient. It should adopt the same layout as the admin dashboard for consistency and improved usability.
+
+**Explanation:** Inconsistent dashboard layouts between admin and artist views create a fragmented experience. The admin dashboard layout is presumably more efficient with better information architecture. Standardizing on this layout reduces cognitive load for users who access both dashboards and improves the artist experience.
+
+- [ ] **Fix Implementation**
+  - [ ] Analyze the admin dashboard layout structure and components
+  - [ ] Redesign artist dashboard to match admin dashboard layout
+  - [ ] Implement side navigation matching admin dashboard style
+  - [ ] Reorganize artist dashboard content into the new layout sections
+  - [ ] Ensure all existing artist dashboard functionality is preserved
+  - [ ] Reduce vertical scrolling by using tabs, sections, or better content organization
+  - [ ] Match the color scheme and styling of the admin dashboard
+  - [ ] Ensure responsive design works on all viewport sizes
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Artist dashboard layout matches admin dashboard layout
+  - [ ] Test: All existing artist features are accessible in new layout
+  - [ ] Test: Navigation between artist dashboard sections works correctly
+  - [ ] Test: Less scrolling is required to access key information
+  - [ ] Test: Layout is responsive on desktop viewport
+  - [ ] Test: Layout is responsive on tablet viewport
+  - [ ] Test: Layout works in both light and dark themes
+  - [ ] Test: Artist can still upload/manage tracks in new layout
+  - [ ] Test: Artist can still view analytics in new layout
+
+---
+
+## Bug #42: Admin Dashboard - Specific Play Count Indicators for Top Music
+**Issue:** The 'Top Music Played in 30 Days' section on the admin dashboard lacks specific, detailed indicators. It needs to show both the total all-time play count AND the play count specifically within the last 30 days, with clear labeling to distinguish the two metrics.
+
+**Explanation:** Without specific play count breakdowns, administrators cannot accurately assess whether a track's popularity is recent or historical. Having both total and 30-day metrics side by side provides valuable insight into trending content versus evergreen popularity, enabling better content curation decisions.
+
+- [ ] **Fix Implementation**
+  - [ ] Add total all-time play count display for each track in the Top Music section
+  - [ ] Add 30-day play count display for each track with clear "Last 30 Days" label
+  - [ ] Visually distinguish between the two metrics (different font weight, color, or position)
+  - [ ] Add column headers clearly labeling each metric
+  - [ ] Ensure both counts update accurately based on actual play data
+  - [ ] Consider adding a trend indicator (up/down arrow) comparing recent vs. historical performance
+  - [ ] Make the 30-day count the primary sorting metric (as it's "Top Music in 30 Days")
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Each track shows total all-time play count
+  - [ ] Test: Each track shows 30-day play count with clear label
+  - [ ] Test: The two metrics are visually distinguishable
+  - [ ] Test: Column headers clearly label each metric
+  - [ ] Test: Play counts update when tracks are played
+  - [ ] Test: 30-day count only reflects plays within the last 30 days
+  - [ ] Test: Section sorts correctly by 30-day play count
+  - [ ] Test: Metrics display correctly in light and dark themes
+  - [ ] Test: Metrics display correctly on mobile and tablet viewports
+
+---
+
+## Bug #43: Admin & Artist Dashboard - Chart Tooltip/Hover Values
+**Issue:** Charts in both the admin dashboard and artist dashboard do not display tooltips or values when hovering over data points with the mouse. Users cannot see precise values for chart data without tooltip interaction.
+
+**Explanation:** Charts without hover tooltips are significantly less useful for data analysis. Users need to see exact values (play counts, listener numbers, revenue figures) to make informed decisions. Tooltips are a standard chart interaction that provides precision without cluttering the visual display.
+
+- [ ] **Fix Implementation**
+  - [ ] Identify the charting library used in admin and artist dashboards
+  - [ ] Enable or implement tooltip functionality for all chart types
+  - [ ] Configure tooltips to show relevant data (date, value, metric name)
+  - [ ] Style tooltips to match the dashboard theme
+  - [ ] Ensure tooltips appear on hover and follow the cursor
+  - [ ] Test tooltip functionality on: line charts, bar charts, pie/donut charts
+  - [ ] Ensure tooltips work for all data series in multi-series charts
+  - [ ] Add tooltips to the admin dashboard overview/analytics page
+  - [ ] Add tooltips to the artist dashboard analytics page
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Hovering over chart data points shows tooltip with values
+  - [ ] Test: Tooltip displays correct data (date, value, metric name)
+  - [ ] Test: Tooltip follows cursor movement
+  - [ ] Test: Tooltip disappears when cursor leaves data point
+  - [ ] Test: Tooltips work on line charts in admin dashboard
+  - [ ] Test: Tooltips work on bar charts in admin dashboard
+  - [ ] Test: Tooltips work on pie/donut charts (if present)
+  - [ ] Test: Tooltips work in artist dashboard charts
+  - [ ] Test: Tooltips are readable in light mode
+  - [ ] Test: Tooltips are readable in dark mode
+  - [ ] Test: Multi-series charts show tooltip for each series
+
+---
+
+## Bug #44: Admin & Artist Dashboard - Search Bars for All Pages
+**Issue:** The admin dashboard and newly redesigned artist dashboard lack search bars on their content management pages, making it difficult to find specific albums, artists, podcasts, music videos, tracks, ads, and other content. All dashboard pages need search functionality for efficient content management.
+
+**Explanation:** As the content library grows, browsing through paginated lists to find specific items becomes impractical. Search bars enable administrators and artists to quickly locate specific content for review, editing, or moderation. Without search, managing large catalogs becomes frustrating and time-consuming.
+
+- [ ] **Fix Implementation**
+  - [ ] Add search bar to admin dashboard tracks page
+  - [ ] Add search bar to admin dashboard albums page
+  - [ ] Add search bar to admin dashboard artists page
+  - [ ] Add search bar to admin dashboard music videos page (see Bug #36)
+  - [ ] Add search bar to admin dashboard podcasts page (see Bug #36)
+  - [ ] Add search bar to admin dashboard advertisements page (see Bug #39)
+  - [ ] Add search bar to admin dashboard playlists page (see Bug #38)
+  - [ ] Add search bar to admin dashboard users page
+  - [ ] Add search bar to all corresponding artist dashboard pages
+  - [ ] Ensure all searches are case-insensitive
+  - [ ] Implement real-time filtering as user types (debounced)
+  - [ ] Show "No results found" state when search yields no matches
+  - [ ] Search should check item names, titles, artist names, and other relevant metadata
+  - [ ] Ensure search works alongside bubble filters (combined filtering)
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Search bar is present on admin tracks page and functional
+  - [ ] Test: Search bar is present on admin albums page and functional
+  - [ ] Test: Search bar is present on admin artists page and functional
+  - [ ] Test: Search bar is present on all new admin pages (videos, podcasts, ads, playlists)
+  - [ ] Test: Search bar is present on all artist dashboard pages
+  - [ ] Test: Search is case-insensitive ("ROCK" finds "rock")
+  - [ ] Test: Search works with partial matches ("alb" finds "album")
+  - [ ] Test: "No results found" appears when no items match
+  - [ ] Test: Clearing search restores full item list
+  - [ ] Test: Search works in combination with bubble filters
+  - [ ] Test: Search works in both light and dark themes
+  - [ ] Test: Search works on mobile and tablet viewports
+
+---
+
+## Bug #45: Home Page - 'For You Today' Show All Links to Wrong Page
+**Issue:** The 'Show All' button in the 'For You Today' section on the Home page navigates to the 'Recommended Tracks' page instead of a dedicated 'For You Today' page. These are different features with different content, and the navigation should reflect this.
+
+**Explanation:** 'For You Today' provides daily curated recommendations personalized to the user's listening habits and time of day, while 'Recommended Tracks' is a general recommendation feed. Linking them together confuses users and denies them access to the full 'For You Today' experience they expect when clicking 'Show All.'
+
+- [ ] **Fix Implementation**
+  - [ ] Verify whether a dedicated 'For You Today' page exists
+  - [ ] If it exists, update the 'Show All' link to navigate to it
+  - [ ] If it doesn't exist, create a 'For You Today' page with expanded daily recommendations
+  - [ ] Ensure the 'For You Today' page shows more daily curated content than the home section
+  - [ ] Distinguish 'For You Today' content from 'Recommended Tracks' content clearly
+  - [ ] Update the link/route from the Home page 'Show All' button
+  - [ ] Ensure the 'For You Today' page has proper navigation and back functionality
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Clicking 'Show All' in 'For You Today' navigates to 'For You Today' page
+  - [ ] Test: 'For You Today' page displays expanded daily recommendations
+  - [ ] Test: 'For You Today' page is distinct from 'Recommended Tracks' page
+  - [ ] Test: Navigation back to Home works from 'For You Today' page
+  - [ ] Test: 'For You Today' page loads correctly for different user accounts
+  - [ ] Test: Page works in both light and dark themes
+
+---
+
+## Bug #46: Home Page - Missing 'Show All' Buttons on Some Rows
+**Issue:** Not all content rows on the Home page have 'Show All' functionality. Some rows allow users to view expanded content while others do not, creating an inconsistent browsing experience.
+
+**Explanation:** Inconsistent 'Show All' availability frustrates users who want to explore more content in certain categories. Every content row should provide the option to view more, allowing users to dive deeper into any category that interests them.
+
+- [ ] **Fix Implementation**
+  - [ ] Audit all content rows on the Home page to identify which ones lack 'Show All'
+  - [ ] Determine appropriate destination page for each missing 'Show All' row
+  - [ ] Create any missing category/collection pages needed
+  - [ ] Add 'Show All' button to all rows that currently lack it
+  - [ ] Ensure consistent styling and positioning of all 'Show All' buttons
+  - [ ] Verify all 'Show All' links navigate to correct expanded content pages
+  - [ ] Consider adding 'Show All' to: Recently Played, Featured Playlists, New Releases, etc.
+
+- [ ] **Tests to Complete**
+  - [ ] Test: All content rows on Home page have 'Show All' button
+  - [ ] Test: Each 'Show All' button navigates to the correct expanded page
+  - [ ] Test: 'Show All' buttons have consistent styling across all rows
+  - [ ] Test: 'Show All' buttons work in both light and dark themes
+  - [ ] Test: 'Show All' buttons are visible on mobile viewport
+  - [ ] Test: 'Show All' buttons are visible on tablet viewport
+  - [ ] Test: Expanded pages display relevant content matching the row category
+
+---
+
+## Bug #47: Admin & Artist Dashboard - Bubble Filter Shows Stale Results
+**Issue:** When clicking one bubble filter and then clicking a different bubble filter, the dashboard displays results for the first filter instead of the second. The filter state is not updating correctly when changing between filter options.
+
+**Explanation:** This is a state management bug that causes administrators and artists to see incorrect data, which could lead to wrong decisions about content management. Filter functionality must reliably update to reflect the currently selected filter to be useful and trustworthy.
+
+- [ ] **Fix Implementation**
+  - [ ] Investigate the bubble filter state management logic
+  - [ ] Identify where the stale state is being retained (likely React state not updating properly)
+  - [ ] Ensure filter state is properly reset/updated when a new filter is selected
+  - [ ] Add proper dependency tracking for filter change effects
+  - [ ] Implement proper loading state while fetching new filter results
+  - [ ] Verify the correct API call is made with the new filter parameters
+  - [ ] Fix the issue on all pages with bubble filters (tracks, albums, artists, etc.)
+  - [ ] Fix in both admin dashboard and artist dashboard
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Clicking filter A shows results for filter A
+  - [ ] Test: Clicking filter B after filter A shows results for filter B (not A)
+  - [ ] Test: Rapid filter switching always shows correct results
+  - [ ] Test: Filter state resets correctly when navigating away and back
+  - [ ] Test: Loading state appears while fetching new filter results
+  - [ ] Test: Bubble filter fix works on tracks page
+  - [ ] Test: Bubble filter fix works on albums page
+  - [ ] Test: Bubble filter fix works on all applicable admin pages
+  - [ ] Test: Bubble filter fix works in artist dashboard
+  - [ ] Test: Filter works correctly in both light and dark themes
+
+---
+
+## Bug #48: Playback State - Song Progress Lost on Browser Refresh
+**Issue:** When a song is playing and the browser is refreshed, the application forgets which song was playing and its current playback position. The real Spotify remembers the current track and resumes from the same position after refresh, and also restores the right sidebar with the correct song details.
+
+**Explanation:** Losing playback state on refresh is a major UX regression compared to industry-standard behavior. Users expect their listening session to persist across page refreshes. The current behavior disrupts the listening experience and requires users to manually find and restart their music. Additionally, the right sidebar should restore to show the currently playing track's details.
+
+- [ ] **Fix Implementation**
+  - [ ] Implement playback state persistence mechanism (localStorage, sessionStorage, or IndexedDB)
+  - [ ] Store current track ID, playback position (seconds), and queue state on playback updates
+  - [ ] Store playback state before page unload (beforeunload event or periodic saving)
+  - [ ] On application load, check for persisted playback state
+  - [ ] Restore the previously playing track and seek to the saved position
+  - [ ] Restore the right sidebar to show the current track's details
+  - [ ] Restore the playback queue (upcoming tracks)
+  - [ ] Handle edge case: track no longer available (skip to next or show error)
+  - [ ] Handle edge case: user was not playing anything (don't auto-play on reload)
+  - [ ] Consider using the Web Audio API or Media Session API for better state management
+
+- [ ] **Tests to Complete**
+  - [ ] Test: Song resumes playing from the same position after browser refresh
+  - [ ] Test: Right sidebar shows the correct song details after refresh
+  - [ ] Test: Playback queue is restored after refresh
+  - [ ] Test: If no song was playing, nothing auto-plays after refresh
+  - [ ] Test: Playback state persists across multiple tabs (if applicable)
+  - [ ] Test: If the previously playing track is unavailable, app handles gracefully
+  - [ ] Test: Works in Chrome after refresh
+  - [ ] Test: Works in Firefox after refresh
+  - [ ] Test: Works in Safari after refresh
+  - [ ] Test: Works in Edge after refresh
+  - [ ] Test: Position accuracy is within 1-2 seconds of the pre-refresh position
+
+  ---
+  
 ## Final Checklist Before Marking All Tasks Complete
 - [ ] All 32 bugs/features have been fixed
 - [ ] All tests for each bug have passed
@@ -720,6 +1173,3 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 - [ ] Feature works in both light and dark themes
 - [ ] Feature works on mobile and desktop viewports
 - [ ] All dead/duplicate UI elements have been removed
-- [x] Supabase has been completely removed from the codebase
-- [x] Folder dropdown menus have proper z-index layering
-- [x] Drag and drop into folders functionality is fully implemented and tested

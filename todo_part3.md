@@ -800,6 +800,7 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
   - [ ] Add modify/edit functionality for podcast metadata
   - [ ] Ensure bubble filters work for music video and podcast sections
   - [ ] Add search functionality for music videos and podcasts in admin dashboard
+  - [ ] Ensure when artist upload a podcast or music videos, they are not automatically approved like how it is currently
 
 - [ ] **Tests to Complete**
   - [ ] Test: Admin can view list of all music videos

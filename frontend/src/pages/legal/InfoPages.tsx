@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
 
 /**
  * Shared layout for the static footer pages (About, Legal, Privacy). Keeps the
@@ -90,9 +91,9 @@ export function AboutPage() {
       <Section heading="Questions and takedown requests">
         <p>
           If you are a rights holder and believe material has been included in error, please visit the{' '}
-          <Link to="/support?topic=copyright-claims" className="text-primary underline hover:no-underline">
+          <IndependentSiteLink site="support" path="/support?topic=copyright-claims" className="text-primary underline hover:no-underline">
             copyright help article
-          </Link>{' '}
+          </IndependentSiteLink>{' '}
           to contact the team. We will review reasonable notices and remove material when appropriate.
         </p>
       </Section>
@@ -178,9 +179,9 @@ export function PrivacyPolicyPage() {
       <Section heading="Contact">
         <p>
           For privacy questions, reach the team through the{' '}
-          <Link to="/support?topic=privacy-settings" className="text-primary underline hover:no-underline">
+          <IndependentSiteLink site="support" path="/support?topic=privacy-settings" className="text-primary underline hover:no-underline">
             privacy help article
-          </Link>
+          </IndependentSiteLink>
           .
         </p>
       </Section>

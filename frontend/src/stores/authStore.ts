@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { User } from '@/types/user'
 import { authService } from '@/services/authService'
 import type { SignupStartResult } from '@/services/authService'
+import { publishAuthSessionEvent } from '@/components/common/AuthSessionSync'
 
 interface AuthState {
   user: User | null
@@ -36,6 +37,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { accessToken, user } = await authService.login({ email, password })
       ;(window as { __authToken?: string }).__authToken = accessToken
       set({ user, accessToken, isAuthenticated: true, isLoading: false })
+      await publishAuthSessionEvent('login')
     } catch (err) {
       const data = (err as { response?: { data?: { errors?: string[]; message?: string } } })?.response?.data
       const msg = data?.errors?.join(' ') ?? data?.message ?? (err instanceof Error ? err.message : 'Login failed')
@@ -64,6 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const { accessToken, user } = await authService.verifySignup(email, code)
       ;(window as { __authToken?: string }).__authToken = accessToken
       set({ user, accessToken, isAuthenticated: true, isLoading: false })
+      await publishAuthSessionEvent('login')
     } catch (err) {
       const data = (err as { response?: { data?: { errors?: string[]; message?: string } } })?.response?.data
       const msg = data?.errors?.join(' ') ?? data?.message ?? (err instanceof Error ? err.message : 'Verification failed')
@@ -78,13 +81,17 @@ export const useAuthStore = create<AuthState>((set) => ({
     const { accessToken, user } = await authService.changePassword(currentPassword, newPassword)
     ;(window as { __authToken?: string }).__authToken = accessToken
     set({ user, accessToken, isAuthenticated: true })
+    await publishAuthSessionEvent('login')
   },
 
   logout: async () => {
     // Clear auth state immediately so UI re-renders (sidebar empties) before the API call.
     ;(window as { __authToken?: string }).__authToken = undefined
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false })
-    try { await authService.logout() } catch { /* ignore */ }
+    try {
+      await authService.logout()
+      await publishAuthSessionEvent('logout')
+    } catch { /* ignore */ }
     window.location.reload()
   },
 

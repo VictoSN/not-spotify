@@ -99,6 +99,19 @@ export function usePresenceSocket() {
       void useNotificationStore.getState().fetch()
     })
 
+    // This refresh-cookie session logged out from another app subdomain.
+    connection.on('AuthSessionEnded', () => {
+      ;(window as { __authToken?: string }).__authToken = undefined
+      useAuthStore.setState({
+        user: null,
+        accessToken: null,
+        isAuthenticated: false,
+        isLoading: false,
+        isInitializing: false,
+      })
+      window.location.reload()
+    })
+
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
     connection

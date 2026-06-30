@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { IndependentSiteLink } from './IndependentSiteLink'
+import { independentSiteForPath } from '@/utils/independentSites'
 
 // Links whose target is a real page in this app use a router `to`. The corporate
 // pages we don't (and shouldn't) reimplement — careers, newsroom, developer
@@ -56,6 +58,14 @@ const legalLinks = [
 
 /** Renders an external Spotify link (new tab) for http(s) targets, otherwise an in-app router link. */
 function FooterLink({ to, className, children }: { to: string; className?: string; children: ReactNode }) {
+  const independentSite = independentSiteForPath(to)
+  if (independentSite) {
+    return (
+      <IndependentSiteLink site={independentSite} path={to} className={className}>
+        {children}
+      </IndependentSiteLink>
+    )
+  }
   if (/^https?:\/\//.test(to)) {
     return (
       <a href={to} target="_blank" rel="noreferrer" className={className}>

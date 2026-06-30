@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useAuthStore } from './authStore'
+import { independentSiteFromHostname } from '@/utils/independentSites'
 
 export type Theme = 'dark' | 'light'
 
@@ -35,6 +36,10 @@ function isGuest(): boolean {
   return !isAuthenticated && !isInitializing
 }
 
+function hasFixedDarkTheme() {
+  return typeof window !== 'undefined' && independentSiteFromHostname() !== null
+}
+
 interface ThemeState {
   theme: Theme
   /** True while the theme is mirroring the device (guest mode). */
@@ -43,8 +48,9 @@ interface ThemeState {
   toggleTheme: () => void
 }
 
-const initialFollow = isGuest()
-const initialTheme = initialFollow ? systemTheme() : storedPreference()
+const initialFixedDark = hasFixedDarkTheme()
+const initialFollow = !initialFixedDark && isGuest()
+const initialTheme = initialFixedDark ? 'dark' : initialFollow ? systemTheme() : storedPreference()
 // Keep <html data-theme> in sync as soon as the store module loads.
 applyTheme(initialTheme)
 
@@ -52,6 +58,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   theme: initialTheme,
   followSystem: initialFollow,
   setTheme: (theme) => {
+    if (hasFixedDarkTheme()) return
     // Guests can't override the device theme (the picker is hidden for them, so
     // this is just defense in depth).
     if (get().followSystem) return
@@ -71,8 +78,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
 /** Re-derive the effective theme from the current auth + device state. */
 function resolveTheme() {
-  const followSystem = isGuest()
-  const theme = followSystem ? systemTheme() : storedPreference()
+  const fixedDark = hasFixedDarkTheme()
+  const followSystem = !fixedDark && isGuest()
+  const theme = fixedDark ? 'dark' : followSystem ? systemTheme() : storedPreference()
   applyTheme(theme)
   useThemeStore.setState({ theme, followSystem })
 }

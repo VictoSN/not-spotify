@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
 import {
   ArrowDownToLine,
   Check,
@@ -30,6 +29,8 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useInstallApp } from '@/hooks/useInstallApp'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
+import { mainAppUrl } from '@/utils/independentSites'
 
 const MANUAL_INSTALL_STEPS: Record<DownloadPlatform, string[]> = {
   windows: [
@@ -86,20 +87,20 @@ function DownloadHeader() {
   return (
     <header className="sticky top-0 z-50 h-16 border-b border-white/10 bg-black text-white">
       <div className="mx-auto flex h-full max-w-[1180px] items-center px-5 sm:px-7">
-        <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Not Spotify home">
+        <a href={mainAppUrl('/')} className="flex shrink-0 items-center gap-2" aria-label="Not Spotify home">
           <SpotifyMark className="h-8 w-8" />
           <span className="hidden text-[18px] font-black tracking-[-0.03em] sm:block">
             Not Spotify
           </span>
-        </Link>
+        </a>
 
         <nav className="ml-auto hidden items-center gap-8 md:flex" aria-label="Main navigation">
-          <Link to="/premium" className="text-[13px] font-bold transition hover:text-accent">
+          <a href={mainAppUrl('/premium')} className="text-[13px] font-bold transition hover:text-accent">
             Premium plans
-          </Link>
-          <Link to="/support" className="text-[13px] font-bold transition hover:text-accent">
+          </a>
+          <IndependentSiteLink site="support" className="text-[13px] font-bold transition hover:text-accent">
             Support
-          </Link>
+          </IndependentSiteLink>
           <span className="text-[13px] font-bold text-accent" aria-current="page">
             Download
           </span>
@@ -137,24 +138,24 @@ function DownloadHeader() {
                   className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-lg bg-[#282828] py-1 shadow-2xl ring-1 ring-white/10"
                   role="menu"
                 >
-                  <Link
-                    to="/profile"
+                  <a
+                    href={mainAppUrl('/profile')}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 text-[13px] font-bold hover:bg-white/10"
                     role="menuitem"
                   >
                     <UserRound className="h-4 w-4 text-white/70" aria-hidden="true" />
                     Profile
-                  </Link>
-                  <Link
-                    to="/account"
+                  </a>
+                  <IndependentSiteLink
+                    site="account"
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-3 text-[13px] font-bold hover:bg-white/10"
                     role="menuitem"
                   >
                     <ShieldCheck className="h-4 w-4 text-white/70" aria-hidden="true" />
                     Account
-                  </Link>
+                  </IndependentSiteLink>
                   <div className="border-t border-white/10" />
                   <button
                     type="button"
@@ -170,15 +171,15 @@ function DownloadHeader() {
             </div>
           ) : (
             <div className="flex items-center gap-4 text-[13px] font-bold">
-              <Link to="/signup" className="hidden transition hover:text-accent sm:inline">
+              <a href={mainAppUrl('/signup')} className="hidden transition hover:text-accent sm:inline">
                 Sign up
-              </Link>
-              <Link
-                to="/login"
+              </a>
+              <a
+                href={mainAppUrl('/login')}
                 className="rounded-full bg-white px-5 py-2.5 text-black transition hover:scale-105"
               >
                 Log in
-              </Link>
+              </a>
             </div>
           )}
         </div>
@@ -418,9 +419,9 @@ export function DownloadPage() {
                 Windows may show an “Unknown publisher” notice because this academic build is not code-signed.
               </p>
             </div>
-            <Link to="/support?topic=web-player-help" className="shrink-0 text-sm font-black underline underline-offset-4 hover:text-accent">
+            <IndependentSiteLink site="support" path="/support?topic=web-player-help" className="shrink-0 text-sm font-black underline underline-offset-4 hover:text-accent">
               Get help
-            </Link>
+            </IndependentSiteLink>
           </div>
         </section>
       </main>

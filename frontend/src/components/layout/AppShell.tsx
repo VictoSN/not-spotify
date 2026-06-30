@@ -27,7 +27,6 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { useJamSocket } from '@/hooks/useJamSocket'
 import { JamBar } from '@/components/jam/JamBar'
 import { AppFooter } from '@/components/common/AppFooter'
-import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { analyticsService } from '@/services/analyticsService'
 import { cn } from '@/utils/cn'
 import type { AppShellOutletContext } from './appShellContext'
@@ -87,8 +86,6 @@ export function AppShell() {
     void loadRatings()
   }, [fetchLibrary, isAuthenticated, loadRatings])
 
-  // Real-time presence via WebSocket — instant online/offline updates.
-  usePresenceSocket()
   // Social data (now-playing, requests, friends list) on a slower poll.
   useFriendPolling()
   // Space/arrows/M/L player shortcuts.

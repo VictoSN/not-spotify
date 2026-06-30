@@ -40,32 +40,32 @@ describe('Footer legal/info pages (bug #23)', () => {
     }
   })
 
-  it('footer help links open the matching local support articles', () => {
+  it('footer help links open matching support-subdomain articles in a new tab', () => {
     render(<MemoryRouter><AppFooter /></MemoryRouter>)
 
     expect(screen.getByRole('link', { name: 'For Artists' })).toHaveAttribute(
       'href',
-      '/support?topic=artist-dashboard',
+      'http://support.localhost:3000/?topic=artist-dashboard',
     )
     expect(screen.getByRole('link', { name: 'Import your music' })).toHaveAttribute(
       'href',
-      '/support?topic=upload-your-own-audio',
+      'http://support.localhost:3000/?topic=upload-your-own-audio',
     )
     expect(screen.getByRole('link', { name: 'Safety & Privacy Center' })).toHaveAttribute(
       'href',
-      '/support?topic=privacy-settings',
+      'http://support.localhost:3000/?topic=privacy-settings',
     )
     expect(screen.getByRole('link', { name: 'Cookies' })).toHaveAttribute(
       'href',
-      '/support?topic=cookies-and-local-storage',
+      'http://support.localhost:3000/?topic=cookies-and-local-storage',
     )
     expect(screen.getByRole('link', { name: 'About Ads' })).toHaveAttribute(
       'href',
-      '/support?topic=ads-and-sponsored-content',
+      'http://support.localhost:3000/?topic=ads-and-sponsored-content',
     )
     expect(screen.getByRole('link', { name: 'Accessibility' })).toHaveAttribute(
       'href',
-      '/support?topic=accessibility-and-keyboard-controls',
+      'http://support.localhost:3000/?topic=accessibility-and-keyboard-controls',
     )
   })
 })

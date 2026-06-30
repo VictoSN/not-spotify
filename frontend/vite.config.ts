@@ -11,6 +11,13 @@ const tauriConf = JSON.parse(
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    // These hosts remain independent browser origins while sharing this build.
+    allowedHosts: ['.localhost'],
+  },
+  preview: {
+    allowedHosts: ['.localhost'],
+  },
   build: {
     rolldownOptions: {
       checks: {

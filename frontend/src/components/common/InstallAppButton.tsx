@@ -4,6 +4,7 @@ import { useInstallApp } from '@/hooks/useInstallApp'
 import { useTranslation } from '@/i18n/useTranslation'
 import { notify } from '@/utils/toast'
 import { cn } from '@/utils/cn'
+import { mainAppUrl } from '@/utils/independentSites'
 
 /**
  * Route link for the top bar and public support header. The destination keeps
@@ -16,10 +17,21 @@ export function InstallAppButton({ className }: { className?: string }) {
 
   if (isStandalone) return null
 
-  return (
-    <Link to="/install-app" className={cn('inline-flex items-center gap-2', className)}>
+  const destination = mainAppUrl('/install-app')
+  const content = (
+    <>
       <ArrowDownCircleIcon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
       <span>{t('topbar.installApp')}</span>
+    </>
+  )
+
+  if (/^https?:\/\//.test(destination)) {
+    return <a href={destination} className={cn('inline-flex items-center gap-2', className)}>{content}</a>
+  }
+
+  return (
+    <Link to={destination} className={cn('inline-flex items-center gap-2', className)}>
+      {content}
     </Link>
   )
 }

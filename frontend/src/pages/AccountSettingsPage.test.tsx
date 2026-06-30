@@ -178,7 +178,8 @@ describe('AccountSettingsPage account feature rows', () => {
 
     expect(screen.getByRole('link', { name: /Notification settings/ })).toHaveAttribute('href', '/settings')
     expect(screen.getByRole('link', { name: /Account privacy/ })).toHaveAttribute('href', '/settings')
-    expect(screen.getByRole('link', { name: /Spotify support/ })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: /Spotify support/ })).toHaveAttribute('href', 'http://support.localhost:3000/')
+    expect(screen.getByRole('link', { name: /Spotify support/ })).toHaveAttribute('target', '_blank')
   })
 
   it('live-filters settings rows from the search bar', async () => {

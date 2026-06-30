@@ -74,6 +74,22 @@ npm run dev
 
 The local development client will be available at `http://localhost:5173`.
 
+Account, Support, and Download are independent dark-only sites. Local links open
+`account.localhost:5173`, `support.localhost:5173`, and
+`download.localhost:5173` in new tabs; no hosts-file entries are required.
+
+For a deployed app, point those three DNS names (and TLS certificates) at the
+same frontend build. Set `VITE_ROOT_DOMAIN=example.com` for their shared root.
+If the music app itself uses a prefixed host, also set
+`VITE_MAIN_APP_ORIGIN=https://app.example.com`; otherwise the root domain is
+used as the main origin. The API expands each configured frontend/CORS origin
+to the three corresponding subdomains.
+
+Authentication is shared through the API's secure HTTP-only refresh cookie;
+access tokens remain tab-local. A main-origin relay and the authenticated
+SignalR connection propagate login/logout changes, so logging out on any one
+site signs the same browser session out on every open site.
+
 ---
 
 ### Available Scripts

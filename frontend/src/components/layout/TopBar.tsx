@@ -29,6 +29,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { VoiceSearchButton } from '@/components/common/VoiceSearchButton'
 import { InstallAppButton } from '@/components/common/InstallAppButton'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 import { WindowControls } from './WindowControls'
 import { SpotifyHomeIcon, SpotifyHomeSolidIcon } from '@/components/icons/SpotifyHomeIcon'
@@ -661,7 +662,7 @@ export function TopBar() {
           <div className="hidden items-center gap-5 2xl:flex">
             <Link to="/premium" onClick={closeKaraoke} className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.premium')}</Link>
             <InstallAppButton className="whitespace-nowrap transition-colors hover:text-primary" />
-            <Link to="/support" onClick={closeKaraoke} className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.support')}</Link>
+            <IndependentSiteLink site="support" onClick={closeKaraoke} className="whitespace-nowrap transition-colors hover:text-primary">{t('topbar.support')}</IndependentSiteLink>
             <div className="h-6 w-px bg-secondary/40" />
           </div>
           <Link to="/signup" onClick={closeKaraoke} className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-primary md:block">
@@ -810,14 +811,14 @@ export function TopBar() {
           <>
             <div className="fixed inset-0 z-[990]" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
-              <Link
-                to="/account"
+              <IndependentSiteLink
+                site="account"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
                 {t('topbar.account')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
+              </IndependentSiteLink>
               <Link
                 to="/premium"
                 onClick={() => setShowMenu(false)}
@@ -840,22 +841,22 @@ export function TopBar() {
               >
                 {t('topbar.recents')}
               </Link>
-              <Link
-                to="/support"
+              <IndependentSiteLink
+                site="support"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
                 {t('topbar.support')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
-              <Link
-                to="/download"
+              </IndependentSiteLink>
+              <IndependentSiteLink
+                site="download"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
                 {t('topbar.download')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
+              </IndependentSiteLink>
               <Link
                 to="/settings"
                 onClick={() => setShowMenu(false)}

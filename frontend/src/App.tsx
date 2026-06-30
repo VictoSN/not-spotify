@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from '@/router'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,15 +8,55 @@ import { ConfirmProvider } from '@/components/common/ConfirmDialog'
 import { useAppZoomShortcuts } from '@/hooks/useAppZoom'
 import { startNotificationLoop } from '@/services/notifications'
 import { syncPushSubscriptionWithSettings } from '@/services/webPush'
+import { AuthSessionSync, type AuthSessionEvent } from '@/components/common/AuthSessionSync'
+import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
   const isInitializing = useAuthStore((s) => s.isInitializing)
   useAppZoomShortcuts()
+  // One real-time connection per tab, including standalone subdomain pages.
+  usePresenceSocket()
+
+  const handleRemoteAuthEvent = useCallback((event: AuthSessionEvent) => {
+    if (event === 'login') {
+      void useAuthStore.getState().hydrateFromCookie()
+      return
+    }
+
+    ;(window as { __authToken?: string }).__authToken = undefined
+    useAuthStore.setState({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      isLoading: false,
+      isInitializing: false,
+    })
+    window.location.reload()
+  }, [])
 
   useEffect(() => {
     hydrateFromCookie()
   }, [hydrateFromCookie])
+
+  // Reconcile with the shared API cookie whenever a tab becomes active. This
+  // is also a fallback for browsers that partition cross-site iframe storage.
+  useEffect(() => {
+    const reconcileSession = () => {
+      if (document.visibilityState === 'hidden') return
+      const auth = useAuthStore.getState()
+      if (auth.isLoading) return
+      if (auth.isAuthenticated) void auth.refreshToken()
+      else void auth.hydrateFromCookie()
+    }
+
+    window.addEventListener('focus', reconcileSession)
+    document.addEventListener('visibilitychange', reconcileSession)
+    return () => {
+      window.removeEventListener('focus', reconcileSession)
+      document.removeEventListener('visibilitychange', reconcileSession)
+    }
+  }, [])
 
   useEffect(() => {
     startNotificationLoop()
@@ -63,14 +103,17 @@ export default function App() {
   if (isInitializing) return null
 
   return (
-    <ConfirmProvider>
-      <div className="flex h-screen flex-col bg-base text-primary">
-        <div className="min-h-0 flex-1">
-          <RouterProvider router={router} />
+    <>
+      <AuthSessionSync onEvent={handleRemoteAuthEvent} />
+      <ConfirmProvider>
+        <div className="flex h-screen flex-col bg-base text-primary">
+          <div className="min-h-0 flex-1">
+            <RouterProvider router={router} />
+          </div>
         </div>
-      </div>
-      <InstallPrompt />
-      <AppToaster />
-    </ConfirmProvider>
+        <InstallPrompt />
+        <AppToaster />
+      </ConfirmProvider>
+    </>
   )
 }

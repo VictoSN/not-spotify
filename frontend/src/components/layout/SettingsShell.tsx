@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ChartBarSquareIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,6 +8,8 @@ import { Avatar } from '@/components/ui/Avatar'
 import { MobileNav } from './MobileNav'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
+import { independentSiteFromHostname, mainAppUrl } from '@/utils/independentSites'
 
 export function SettingsShell() {
   const { user, logout } = useAuthStore()
@@ -20,7 +22,7 @@ export function SettingsShell() {
   // Context-aware menu (bug 14): hide the link to the page we're already on so
   // the alternative view (Account <-> Artist Dashboard) is surfaced instead.
   const isArtist = user?.roles?.includes('Artist') ?? false
-  const onAccountPage = location.pathname === '/account'
+  const onAccountPage = location.pathname === '/account' || independentSiteFromHostname() === 'account'
   const onArtistDashboard = location.pathname === '/artist-dashboard'
 
   useEffect(() => {
@@ -37,7 +39,9 @@ export function SettingsShell() {
   const handleLogout = async () => {
     setMenuOpen(false)
     await logout()
-    navigate('/')
+    const home = mainAppUrl('/')
+    if (/^https?:\/\//.test(home)) window.location.assign(home)
+    else navigate(home)
   }
 
   return (
@@ -46,26 +50,28 @@ export function SettingsShell() {
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
         <div className="mx-auto flex h-full max-w-[960px] items-center px-6">
           {/* Logo */}
-          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Home">
+          <a href={mainAppUrl('/')} className="flex shrink-0 items-center gap-2" aria-label="Home">
             <SpotifyMark className="h-8 w-8 text-primary" />
             <span className="hidden text-[18px] font-black tracking-tight text-primary sm:block">Spotify</span>
-          </Link>
+          </a>
 
           {/* Nav links */}
           <nav className="ml-10 hidden items-center gap-7 md:flex">
-            <Link
-              to="/premium"
+            <a
+              href={mainAppUrl('/premium')}
               className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
             >
               Premium plans
-            </Link>
-            <Link
-              to="/support"
+            </a>
+            <IndependentSiteLink
+              site="support"
               className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
             >
               Support
-            </Link>
-            <span className="cursor-default text-[13px] font-semibold text-secondary">Download</span>
+            </IndependentSiteLink>
+            <IndependentSiteLink site="download" className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary">
+              Download
+            </IndependentSiteLink>
           </nav>
 
           {/* Right side */}
@@ -89,33 +95,33 @@ export function SettingsShell() {
             {/* Dropdown */}
             {menuOpen && (
               <div className="absolute right-0 top-full mt-1.5 w-52 overflow-hidden rounded-lg bg-elevated py-1 shadow-lg ring-1 ring-primary/10">
-                <Link
-                  to="/profile"
+                <a
+                  href={mainAppUrl('/profile')}
                   onClick={() => setMenuOpen(false)}
                   className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
                 >
                   <UserCircleIcon className="h-4 w-4 shrink-0 text-secondary" />
                   Profile
-                </Link>
+                </a>
                 {!onAccountPage && (
-                  <Link
-                    to="/account"
+                  <IndependentSiteLink
+                    site="account"
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
                   >
                     <Cog6ToothIcon className="h-4 w-4 shrink-0 text-secondary" />
                     Account
-                  </Link>
+                  </IndependentSiteLink>
                 )}
                 {isArtist && !onArtistDashboard && (
-                  <Link
-                    to="/artist-dashboard"
+                  <a
+                    href={mainAppUrl('/artist-dashboard')}
                     onClick={() => setMenuOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 text-[13px] font-semibold text-primary transition-colors hover:bg-primary/10"
                   >
                     <ChartBarSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
                     Artist Dashboard
-                  </Link>
+                  </a>
                 )}
                 <div className="my-1 border-t border-primary/10" />
                 <button

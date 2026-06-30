@@ -26,6 +26,8 @@ import { Avatar } from '@/components/ui/Avatar'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
+import { independentSiteForPath, independentSiteFromHostname, mainAppUrl } from '@/utils/independentSites'
 
 interface ArticleRef {
   slug: string
@@ -2996,11 +2998,15 @@ function titleFromSlug(slug: string) {
 
 function supportTopicHref(value: string) {
   const slug = ARTICLE_INDEX.has(value) ? value : slugify(value)
-  return `/support?topic=${encodeURIComponent(slug)}`
+  return `${supportHomeHref()}?topic=${encodeURIComponent(slug)}`
 }
 
 function supportSearchHref(value: string) {
-  return `/support?search=${encodeURIComponent(value.trim())}`
+  return `${supportHomeHref()}?search=${encodeURIComponent(value.trim())}`
+}
+
+function supportHomeHref() {
+  return independentSiteFromHostname() === 'support' ? '/' : '/support'
 }
 
 function supportMinimumBlock(items: string[]): ArticleBlock {
@@ -3502,7 +3508,7 @@ export function SupportPage() {
 
   const submitSearch = () => {
     const normalized = query.trim()
-    navigate(normalized ? supportSearchHref(normalized) : '/support')
+    navigate(normalized ? supportSearchHref(normalized) : supportHomeHref())
   }
 
   return (
@@ -3528,7 +3534,7 @@ export function SupportPage() {
             query={query}
             setQuery={setQuery}
             onSearch={submitSearch}
-            onClear={() => navigate('/support')}
+            onClear={() => navigate(supportHomeHref())}
           />
         ) : (
           <SupportHome
@@ -3570,7 +3576,7 @@ function SupportNotFound({
           />
         </div>
         <Link
-          to="/support"
+          to={supportHomeHref()}
           className="mt-6 inline-flex text-sm font-black text-primary underline underline-offset-4 hover:text-accent"
         >
           Browse all help topics
@@ -3592,14 +3598,14 @@ function SupportHeader({
   return (
     <header className="sticky top-0 z-50 flex h-12 items-center justify-between bg-base px-4 border-b border-primary/5">
       <div className="flex min-w-0 items-center gap-6">
-        <Link to="/" className="flex items-center gap-2 text-primary" aria-label="Not Spotify home">
+        <a href={mainAppUrl('/')} className="flex items-center gap-2 text-primary" aria-label="Not Spotify home">
           <SpotifyMark className="h-6 w-6 text-primary" />
           <span className="hidden text-xl font-black tracking-[-0.02em] sm:inline">Not Spotify</span>
-        </Link>
+        </a>
         <nav className="hidden items-center gap-7 text-xs font-black text-primary md:flex">
-          <Link to="/premium" className="transition-colors hover:text-accent">
+          <a href={mainAppUrl('/premium')} className="transition-colors hover:text-accent">
             Explore Premium
-          </Link>
+          </a>
           <InstallAppButton className="transition-colors hover:text-primary" />
         </nav>
       </div>
@@ -3617,25 +3623,25 @@ function SupportHeader({
             <button type="button" onClick={logout} className="hidden transition-colors hover:text-primary sm:inline">
               Log out
             </button>
-            <Link
-              to="/account"
+            <IndependentSiteLink
+              site="account"
               className="flex h-8 items-center gap-1.5 rounded-full bg-white py-1 pl-1 pr-3 text-xs font-black text-black transition-transform hover:scale-105 active:scale-95"
             >
               <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Account'} size="sm" round className="!h-6 !w-6 bg-elevated text-[10px] text-primary" />
               Account
-            </Link>
+            </IndependentSiteLink>
           </>
         ) : (
           <>
-            <Link to="/login" className="hidden transition-colors hover:text-primary sm:inline">
+            <a href={mainAppUrl('/login')} className="hidden transition-colors hover:text-primary sm:inline">
               Log in
-            </Link>
-            <Link
-              to="/signup"
+            </a>
+            <a
+              href={mainAppUrl('/signup')}
               className="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition-transform hover:scale-105 active:scale-95"
             >
               Sign up
-            </Link>
+            </a>
           </>
         )}
       </div>
@@ -3801,7 +3807,7 @@ function SearchResultsPage({
         <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} onClear={onClear} placeholder="Search support" />
 
         <nav className="mt-5 flex items-center gap-2 text-xs font-black text-secondary">
-          <Link to="/support" className="transition-colors hover:text-primary">
+          <Link to={supportHomeHref()} className="transition-colors hover:text-primary">
             Home
           </Link>
           <ChevronRight className="h-3.5 w-3.5 text-secondary/60" />
@@ -3860,7 +3866,7 @@ function ArticlePage({
       <div className="relative mx-auto grid max-w-[1120px] gap-12 lg:grid-cols-[minmax(0,650px)_330px] lg:gap-20">
         <div className="min-w-0">
           <nav className="mb-6 flex items-center gap-2 text-sm font-black text-secondary">
-            <Link to="/support" className="transition-colors hover:text-primary">
+            <Link to={supportHomeHref()} className="transition-colors hover:text-primary">
               Home
             </Link>
             <ChevronRight className="h-4 w-4 text-secondary/60" />
@@ -3873,8 +3879,8 @@ function ArticlePage({
             onSearch={onSearch}
           />
 
-          <Link
-            to="/account"
+          <IndependentSiteLink
+            site="account"
             className="mt-8 flex items-center gap-4 rounded-md bg-elevated p-4 text-left transition-colors hover:bg-surface"
           >
             <span className="flex h-14 w-14 shrink-0 rotate-6 items-center justify-center rounded-md bg-page ring-1 ring-primary/10">
@@ -3885,7 +3891,7 @@ function ArticlePage({
               <span className="block text-sm font-semibold text-secondary">Your profile, payment and more.</span>
             </span>
             <ChevronRight className="h-6 w-6 shrink-0 text-secondary" />
-          </Link>
+          </IndependentSiteLink>
 
           <ArticleContent article={article} />
           <RelatedArticles article={article} />
@@ -4132,20 +4138,33 @@ function ArticleContent({ article }: { article: ArticleDetail }) {
               </ol>
             )}
             {block.steps && <GuideSteps storageKey={`ns-support-guide-${article.slug}-${index}`} steps={block.steps} />}
-            {block.cta && (
-              <Link
-                to={block.cta.href}
-                className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#1ed760] px-5 py-3 text-sm font-black text-black transition-transform hover:scale-[1.02] active:scale-95"
-              >
-                {block.cta.label}
-                <ArrowRight className="h-5 w-5" />
-              </Link>
-            )}
+            {block.cta && <ArticleCta cta={block.cta} />}
           </section>
         ))}
       </div>
     </article>
   )
+}
+
+function ArticleCta({ cta }: { cta: NonNullable<ArticleBlock['cta']> }) {
+  const className = 'mt-2 inline-flex items-center gap-2 rounded-full bg-[#1ed760] px-5 py-3 text-sm font-black text-black transition-transform hover:scale-[1.02] active:scale-95'
+  const content = (
+    <>
+      {cta.label}
+      <ArrowRight className="h-5 w-5" />
+    </>
+  )
+  const independentSite = independentSiteForPath(cta.href)
+
+  if (independentSite) {
+    return <IndependentSiteLink site={independentSite} path={cta.href} className={className}>{content}</IndependentSiteLink>
+  }
+
+  if (cta.href.startsWith('/support?') || (independentSiteFromHostname() === 'support' && cta.href.startsWith('/?'))) {
+    return <Link to={cta.href} className={className}>{content}</Link>
+  }
+
+  return <a href={mainAppUrl(cta.href)} className={className}>{content}</a>
 }
 
 /** "Was this article helpful?" — v1 is localStorage-only (no backend yet); a future

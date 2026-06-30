@@ -3,16 +3,19 @@ import { createRoot } from 'react-dom/client'
 import '@fontsource-variable/montserrat/index.css'
 import './index.css'
 import App from './App.tsx'
+import { AuthSessionBridgePage } from '@/pages/AuthSessionBridgePage'
 import '@/services/audioEngine'
 import { initAppZoom } from '@/services/appZoom'
 import { registerServiceWorker } from '@/utils/registerSW'
 
 initAppZoom()
 
+const isSessionBridge = window.location.pathname === '/auth/session-bridge'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {isSessionBridge ? <AuthSessionBridgePage /> : <App />}
   </StrictMode>,
 )
 
-registerServiceWorker()
+if (!isSessionBridge) registerServiceWorker()

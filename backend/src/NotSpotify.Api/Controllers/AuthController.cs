@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
+using NotSpotify.Api.Hubs;
 
 namespace NotSpotify.Api.Controllers;
 
@@ -34,6 +36,7 @@ public class AuthController : ControllerBase
     private readonly IWebHostEnvironment _env;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<AuthController> _logger;
+    private readonly IHubContext<PresenceHub> _presence;
 
     public AuthController(
         UserManager<ApplicationUser> users,
@@ -45,7 +48,8 @@ public class AuthController : ControllerBase
         IConfiguration config,
         IWebHostEnvironment env,
         IHttpClientFactory httpClientFactory,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        IHubContext<PresenceHub> presence)
     {
         _users = users;
         _tokens = tokens;
@@ -57,6 +61,7 @@ public class AuthController : ControllerBase
         _env = env;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _presence = presence;
     }
 
     [HttpPost("signup")]
@@ -209,20 +214,9 @@ public class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        var (newRaw, newHash, expiresAt) = _tokens.CreateRefreshToken();
-        existing.RevokedAt = DateTime.UtcNow;
-        existing.ReplacedByTokenHash = newHash;
-
-        _db.RefreshTokens.Add(new RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = existing.UserId,
-            TokenHash = newHash,
-            ExpiresAt = expiresAt,
-        });
-        await _db.SaveChangesAsync();
-
-        SetRefreshCookie(newRaw, expiresAt);
+        // All app subdomains share this API cookie. Keep the browser session
+        // stable instead of rotating it on every refresh: concurrent tabs can
+        // otherwise invalidate one another while hydrating at the same time.
         var roles = await _users.GetRolesAsync(existing.User);
         return Ok(new AccessTokenResponse(_tokens.CreateAccessToken(existing.User, roles)));
     }
@@ -231,9 +225,11 @@ public class AuthController : ControllerBase
     public async Task<IActionResult> Logout()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        string? sessionRefreshToken = null;
 
         if (Request.Cookies.TryGetValue(RefreshCookieName, out var raw) && !string.IsNullOrEmpty(raw))
         {
+            sessionRefreshToken = raw;
             var hash = TokenService.HashRefreshToken(raw);
             var token = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
             if (token is not null && token.RevokedAt is null)
@@ -259,7 +255,25 @@ public class AuthController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        Response.Cookies.Delete(RefreshCookieName);
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Path = "/auth",
+        });
+        if (sessionRefreshToken is not null)
+        {
+            try
+            {
+                await _presence.Clients
+                    .Group(PresenceHub.AuthSessionGroup(sessionRefreshToken))
+                    .SendAsync("AuthSessionEnded");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[Auth] Could not broadcast session logout.");
+            }
+        }
         return NoContent();
     }
 
@@ -752,7 +766,28 @@ public class AuthController : ControllerBase
             .Where(u => Uri.TryCreate(u, UriKind.Absolute, out var uri)
                         && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
             .Select(u => OriginOf(new Uri(u)).TrimEnd('/'))
+            .SelectMany(ExpandIndependentOrigins)
             .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<string> ExpandIndependentOrigins(string origin)
+    {
+        if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+            || System.Net.IPAddress.TryParse(uri.Host, out _))
+        {
+            return new[] { origin };
+        }
+
+        var sites = new[] { "account", "support", "download" };
+        var rootHost = uri.Host.StartsWith("www.", StringComparison.OrdinalIgnoreCase)
+            ? uri.Host[4..]
+            : uri.Host;
+        var currentSite = sites.FirstOrDefault(site => rootHost.StartsWith($"{site}.", StringComparison.OrdinalIgnoreCase));
+        if (currentSite is not null) rootHost = rootHost[(currentSite.Length + 1)..];
+
+        var port = uri.IsDefaultPort ? string.Empty : $":{uri.Port}";
+        return new[] { origin }.Concat(sites
+            .Select(site => $"{uri.Scheme}://{site}.{rootHost}{port}"));
     }
 
     private static bool SameOrigin(string allowedOrigin, Uri requested)

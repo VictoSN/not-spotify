@@ -44,7 +44,8 @@ describe('SettingsShell context-aware account menu (bug 14)', () => {
     renderShell('/artist-dashboard', ['Artist'])
 
     expect(screen.queryByRole('link', { name: 'Artist Dashboard' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('href', '/account')
+    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('href', 'http://account.localhost:3000/')
+    expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('target', '_blank')
     expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument()
   })
 

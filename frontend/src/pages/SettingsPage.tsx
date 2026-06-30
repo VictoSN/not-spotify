@@ -10,6 +10,7 @@ import { APP_ZOOM_MAX, APP_ZOOM_MIN } from '@/services/appZoom'
 import { useTranslation } from '@/i18n/useTranslation'
 import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
 import { Slider } from '@/components/ui/Slider'
 import { useAppZoomPreference } from '@/hooks/useAppZoom'
 import { useAutostart } from '@/hooks/useAutostart'
@@ -423,13 +424,13 @@ export function SettingsPage() {
           label={t('settings.account.edit')}
           sub={t('settings.account.editSub')}
           control={
-            <Link
-              to="/account"
+            <IndependentSiteLink
+              site="account"
               className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-4 py-1.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
             >
               {t('common.edit')}
               <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-            </Link>
+            </IndependentSiteLink>
           }
         />
       </Section>,

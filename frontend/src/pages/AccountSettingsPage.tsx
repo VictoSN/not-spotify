@@ -36,6 +36,8 @@ import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import { cn } from '@/utils/cn'
 import { notify } from '@/utils/toast'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
+import { independentSiteForPath, mainAppUrl } from '@/utils/independentSites'
 import type { AccountPreferences, DeletedPlaylist, LoginMethods } from '@/services/meService'
 
 interface ArtistApplication {
@@ -67,6 +69,7 @@ interface RowProps {
 
 function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, disabledReason, expanded, controls }: RowProps) {
   const description = disabled && disabledReason ? disabledReason : sub
+  const independentSite = to ? independentSiteForPath(to) : null
   const inner = (
     <div
       aria-disabled={disabled || undefined}
@@ -84,7 +87,7 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
         <p className="text-[14px] font-semibold leading-tight text-primary">{label}</p>
         {description && <p className="mt-0.5 truncate text-[12px] text-secondary">{description}</p>}
       </div>
-      {external ? (
+      {external || independentSite ? (
         <ArrowTopRightOnSquareIcon className="h-4 w-4 shrink-0 text-secondary" />
       ) : (
         <ChevronRightIcon className="h-5 w-5 shrink-0 text-secondary" />
@@ -92,7 +95,14 @@ function SettingRow({ icon: Icon, label, sub, to, onClick, external, disabled, d
     </div>
   )
 
-  if (to && !disabled) return <Link to={to} className="block w-full">{inner}</Link>
+  if (to && !disabled && independentSite) {
+    return <IndependentSiteLink site={independentSite} path={to} className="block w-full">{inner}</IndependentSiteLink>
+  }
+  if (to && !disabled) {
+    const destination = mainAppUrl(to)
+    if (/^https?:\/\//.test(destination)) return <a href={destination} className="block w-full">{inner}</a>
+    return <Link to={destination} className="block w-full">{inner}</Link>
+  }
   return (
     <button
       type="button"

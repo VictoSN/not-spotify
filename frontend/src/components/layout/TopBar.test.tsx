@@ -85,4 +85,28 @@ describe('TopBar navigation', () => {
     expect(installLink.querySelector('svg')).toBeInTheDocument()
     expect(controls.indexOf(installLink)).toBeLessThan(controls.indexOf(notifications))
   })
+
+  it('opens Account, Support, and Download on localhost subdomains in new tabs', () => {
+    useAuthStore.setState({ user: premiumUser, isAuthenticated: true })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TopBar />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'User menu' }))
+
+    const account = screen.getByRole('link', { name: 'Account' })
+    const support = screen.getAllByRole('link', { name: 'Support' }).find((link) => link.getAttribute('target') === '_blank')
+    const download = screen.getByRole('link', { name: 'Download' })
+
+    expect(account).toHaveAttribute('href', 'http://account.localhost:3000/')
+    expect(support).toHaveAttribute('href', 'http://support.localhost:3000/')
+    expect(download).toHaveAttribute('href', 'http://download.localhost:3000/')
+    for (const link of [account, support, download]) {
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+  })
 })

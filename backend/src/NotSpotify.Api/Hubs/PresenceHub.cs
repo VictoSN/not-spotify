@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +32,13 @@ public class PresenceHub : Hub
     /// </summary>
     public static bool IsUserOnline(Guid userId) =>
         _connectionCounts.TryGetValue(userId, out var count) && count > 0;
+
+    /// <summary>A browser session group shared by every tab/subdomain using its refresh cookie.</summary>
+    public static string AuthSessionGroup(string rawRefreshToken)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(rawRefreshToken));
+        return $"auth-session-{Convert.ToHexString(hash)}";
+    }
 
     private readonly AppDbContext _db;
 
@@ -63,6 +72,11 @@ public class PresenceHub : Hub
 
         // Join own group so friends can push messages to this user by ID.
         await Groups.AddToGroupAsync(Context.ConnectionId, $"user-{userId}");
+        if (Context.GetHttpContext()?.Request.Cookies.TryGetValue("rt", out var refreshToken) == true
+            && !string.IsNullOrWhiteSpace(refreshToken))
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, AuthSessionGroup(refreshToken));
+        }
 
         var newCount = _connectionCounts.AddOrUpdate(userId.Value, 1, (_, c) => c + 1);
 

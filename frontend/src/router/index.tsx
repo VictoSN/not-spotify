@@ -66,8 +66,9 @@ import { DevKaraokePage } from '@/pages/DevKaraokePage'
 import { AboutPage, LegalPage, PrivacyPolicyPage } from '@/pages/legal/InfoPages'
 import { DownloadPage } from '@/pages/DownloadPage'
 import { InstallAppPage } from '@/pages/InstallAppPage'
+import { independentSiteFromHostname, type IndependentSite } from '@/utils/independentSites'
 
-export const router = createBrowserRouter([
+const mainRoutes = [
   // Dev-only harness for the karaoke lyrics view; excluded from production builds.
   ...(import.meta.env.DEV ? [{ path: '/dev/karaoke', element: <DevKaraokePage /> }] : []),
   // Standalone embeddable mini-player — rendered bare (no shell/auth) so it can
@@ -185,4 +186,33 @@ export const router = createBrowserRouter([
       },
     ],
   },
-])
+]
+
+function independentRoutes(site: IndependentSite) {
+  if (site === 'support') {
+    return [{ path: '*', element: <SupportPage /> }]
+  }
+
+  if (site === 'download') {
+    return [{ path: '*', element: <DownloadPage /> }]
+  }
+
+  return [
+    { path: '/login', element: <LoginPage /> },
+    { path: '/signup', element: <SignupPage /> },
+    { path: '/forgot-password', element: <ForgotPasswordPage /> },
+    { path: '/reset-password', element: <ResetPasswordPage /> },
+    {
+      element: <ProtectedRoute />,
+      children: [
+        {
+          element: <SettingsShell />,
+          children: [{ path: '*', element: <AccountSettingsPage /> }],
+        },
+      ],
+    },
+  ]
+}
+
+const independentSite = independentSiteFromHostname()
+export const router = createBrowserRouter(independentSite ? independentRoutes(independentSite) : mainRoutes)

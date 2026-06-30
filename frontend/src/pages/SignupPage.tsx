@@ -11,6 +11,7 @@ import { api } from '@/services/api'
 import { authService } from '@/services/authService'
 import type { SignupStartResult } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
+import { publishAuthSessionEvent } from '@/components/common/AuthSessionSync'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
   const params = new URLSearchParams({
@@ -301,6 +302,7 @@ export function SignupPage() {
             clearError()
             setSocialNotice(null)
             await hydrateFromCookie()
+            await publishAuthSessionEvent('login')
           }}
           onUnavailable={(provider) => {
             const name = `${provider[0].toUpperCase()}${provider.slice(1)}`

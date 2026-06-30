@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
+import { IndependentSiteLink } from '@/components/common/IndependentSiteLink'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 
 const EXIT_MS = 180
@@ -86,13 +87,13 @@ export function AuthPromptModal() {
             >
               Sign up free
             </Link>
-            <Link
-              to="/download"
+            <IndependentSiteLink
+              site="download"
               onClick={requestClose}
               className="rounded-full border border-secondary/60 px-9 py-3 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95"
             >
               Download app
-            </Link>
+            </IndependentSiteLink>
           </div>
           <p className="mt-8 text-sm font-semibold text-secondary">
             Already have an account?{' '}

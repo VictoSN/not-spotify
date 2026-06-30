@@ -71,12 +71,28 @@ function ViewSelectionMarker() {
   )
 }
 
-function PanelSection({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function PanelSection({
+  title,
+  subtitle,
+  children,
+  card = false,
+  className,
+  sectionRef,
+}: {
+  title: string
+  subtitle?: string
+  children: React.ReactNode
+  card?: boolean
+  className?: string
+  sectionRef?: React.Ref<HTMLElement>
+}) {
   return (
-    <section className="px-4 pb-4">
-      <h3 className="text-base font-bold text-primary">{title}</h3>
-      {subtitle && <p className="text-xs text-secondary mb-2">{subtitle}</p>}
-      <div className={subtitle ? '' : 'mt-2'}>{children}</div>
+    <section ref={sectionRef} className={cn('px-4 pb-4', className)}>
+      <div className={cn(card && 'rounded-lg bg-elevated p-4')}>
+        <h3 className="text-base font-bold text-primary">{title}</h3>
+        {subtitle && <p className="text-xs text-secondary mb-2">{subtitle}</p>}
+        <div className={subtitle ? '' : 'mt-2'}>{children}</div>
+      </div>
     </section>
   )
 }
@@ -1028,38 +1044,36 @@ export function NowPlayingPanel() {
         )}
 
         {/* Credits */}
-        <div ref={creditsRef} className="scroll-mt-16">
-          <PanelSection title={t('np.credits')}>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <Link
-                    to={`/artist/${currentTrack.artist.id}`}
-                    className="block text-sm font-medium text-primary truncate hover:underline"
-                  >
-                    {currentTrack.artist.name}
-                  </Link>
-                  <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
-                </div>
-                {artist && (
-                  <button
-                    onClick={toggleFollow}
-                    className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
-                  >
-                    {isFollowing ? t('artist.following') : t('artist.follow')}
-                  </button>
-                )}
+        <PanelSection title={t('np.credits')} card sectionRef={creditsRef} className="scroll-mt-16">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <Link
+                  to={`/artist/${currentTrack.artist.id}`}
+                  className="block text-sm font-medium text-primary truncate hover:underline"
+                >
+                  {currentTrack.artist.name}
+                </Link>
+                <p className="text-xs text-secondary">{t('np.mainArtist')}</p>
               </div>
-              {album?.label && (
-                <div>
-                  <p className="text-sm font-medium text-primary truncate">{album.label}</p>
-                  <p className="text-xs text-secondary">{t('np.label')}</p>
-                </div>
+              {artist && (
+                <button
+                  onClick={toggleFollow}
+                  className="text-xs font-semibold rounded-full border border-secondary/60 text-primary px-3 py-1 hover:border-primary transition-colors shrink-0"
+                >
+                  {isFollowing ? t('artist.following') : t('artist.follow')}
+                </button>
               )}
-              {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
             </div>
-          </PanelSection>
-        </div>
+            {album?.label && (
+              <div>
+                <p className="text-sm font-medium text-primary truncate">{album.label}</p>
+                <p className="text-xs text-secondary">{t('np.label')}</p>
+              </div>
+            )}
+            {album?.copyright && <p className="text-xs text-muted leading-relaxed">{album.copyright}</p>}
+          </div>
+        </PanelSection>
 
         {/* Next in queue */}
         <PanelSection title={t('np.nextInQueue')}>

@@ -37,7 +37,8 @@ export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
-  const [pageLoading, setPageLoading] = useState(isHomeRoute)
+  const hasCoordinatedPageLoad = isHomeRoute || /^\/(?:album|artist|track)\/[^/]+\/?$/.test(location.pathname)
+  const [pageLoading, setPageLoading] = useState(hasCoordinatedPageLoad)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
@@ -77,8 +78,8 @@ export function AppShell() {
   }, [location.pathname, setHeaderScrolled])
 
   useLayoutEffect(() => {
-    setPageLoading(isHomeRoute)
-  }, [isHomeRoute])
+    setPageLoading(hasCoordinatedPageLoad)
+  }, [hasCoordinatedPageLoad, location.pathname])
 
   useEffect(() => {
     if (!isAuthenticated) return

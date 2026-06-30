@@ -19,13 +19,13 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { TrackRow } from '@/components/cards/TrackRow'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { HorizontalScroller } from '@/components/common/HorizontalScroller'
-import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { formatMs } from '@/utils/formatTime'
 import { useDominantColor } from '@/hooks/useDominantColor'
 import { DetailHero } from '@/components/common/DetailHero'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { AlbumMenu } from '@/components/cards/AlbumMenu'
+import { usePageLoading } from '@/hooks/usePageLoading'
 
 export function AlbumDetailPage() {
   const { t } = useTranslation()
@@ -36,7 +36,9 @@ export function AlbumDetailPage() {
   const [moreAlbums, setMoreAlbums] = useState<Album[]>([])
   useDocumentTitle(album ? `${album.title} · ${album.artist.name}` : null)
   const isMobile = useIsMobile()
-  const [loading, setLoading] = useState(true)
+  const [loadedId, setLoadedId] = useState<string | null>(null)
+  const loading = !!id && loadedId !== id
+  usePageLoading(loading)
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   // Album buttons derive their play/pause icon from the global player: this album
@@ -51,35 +53,36 @@ export function AlbumDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    Promise.all([albumService.getById(id), trackService.getByAlbum(id)]).then(([a, t]) => {
-      setAlbum(a)
-      setTracks(t)
-      setLoading(false)
-    })
+    let active = true
+    const load = async () => {
+      try {
+        const [nextAlbum, nextTracks] = await Promise.all([
+          albumService.getById(id),
+          trackService.getByAlbum(id),
+        ])
+        const artistAlbums = await artistService.getAlbums(nextAlbum.artist.id).catch(() => [] as Album[])
+        if (!active) return
+        setAlbum(nextAlbum)
+        setTracks(nextTracks)
+        setMoreAlbums(artistAlbums.filter((item) => item.id !== id))
+      } catch {
+        if (!active) return
+        setAlbum(null)
+        setTracks([])
+        setMoreAlbums([])
+      } finally {
+        if (active) setLoadedId(id)
+      }
+    }
+    void load()
+    return () => {
+      active = false
+    }
   }, [id])
 
   const heroColor = useDominantColor(album?.coverUrl)
 
-  // Load the artist's other releases for the "More by" rail once the album is known.
-  const artistId = album?.artist.id
-  useEffect(() => {
-    if (!artistId) return
-    let active = true
-    artistService
-      .getAlbums(artistId)
-      .then((albums) => active && setMoreAlbums(albums.filter((a) => a.id !== id)))
-      .catch(() => active && setMoreAlbums([]))
-    return () => {
-      active = false
-    }
-  }, [artistId, id])
-
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    )
+  if (loading) return null
   if (!album) return <div className="p-8 text-secondary">{t('detail.albumNotFound')}</div>
 
   const isSaved = savedAlbumIds.has(album.id)

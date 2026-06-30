@@ -16,7 +16,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { AlbumCard } from '@/components/cards/AlbumCard'
 import { ArtistCard } from '@/components/cards/ArtistCard'
-import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { ArtistBadgesDialog } from '@/components/common/ArtistBadgesDialog'
@@ -32,6 +31,7 @@ import { formatMs } from '@/utils/formatTime'
 import { shareLink } from '@/utils/share'
 import { useTranslation } from '@/i18n/useTranslation'
 import { artworkSectionGradient, useDominantColor, withAlpha } from '@/hooks/useDominantColor'
+import { usePageLoading } from '@/hooks/usePageLoading'
 
 export function ArtistProfilePage() {
   const { t } = useTranslation()
@@ -42,7 +42,9 @@ export function ArtistProfilePage() {
   const [albums, setAlbums] = useState<Album[]>([])
   const [related, setRelated] = useState<Artist[]>([])
   const [tourDates, setTourDates] = useState<TourDate[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loadedId, setLoadedId] = useState<string | null>(null)
+  const loading = !!id && loadedId !== id
+  usePageLoading(loading)
   const [shareCopied, setShareCopied] = useState(false)
   const [badgesOpen, setBadgesOpen] = useState(false)
   const [bioOpen, setBioOpen] = useState(false)
@@ -69,26 +71,42 @@ export function ArtistProfilePage() {
 
   useEffect(() => {
     if (!id) return
+    let active = true
     setPopularExpanded(false)
-    Promise.all([artistService.getById(id), artistService.getTopTracks(id, 10), artistService.getAlbums(id)]).then(
-      ([a, t, al]) => {
-        setArtist(a)
-        setTopTracks(t)
-        setAlbums(al)
-        setLoading(false)
-      },
-    )
-    // Related artists + tour dates load independently — never block the page.
-    artistService.getRelated(id, 8).then(setRelated).catch(() => setRelated([]))
-    artistService.getTourDates(id).then(setTourDates).catch(() => setTourDates([]))
+    const load = async () => {
+      try {
+        const [nextArtist, nextTopTracks, nextAlbums, nextRelated, nextTourDates] = await Promise.all([
+          artistService.getById(id),
+          artistService.getTopTracks(id, 10),
+          artistService.getAlbums(id),
+          artistService.getRelated(id, 8).catch(() => [] as Artist[]),
+          artistService.getTourDates(id).catch(() => [] as TourDate[]),
+        ])
+        if (!active) return
+        setArtist(nextArtist)
+        setTopTracks(nextTopTracks)
+        setAlbums(nextAlbums)
+        setRelated(nextRelated)
+        setTourDates(nextTourDates)
+      } catch {
+        if (!active) return
+        setArtist(null)
+        setTopTracks([])
+        setAlbums([])
+        setRelated([])
+        setTourDates([])
+      } finally {
+        if (active) setLoadedId(id)
+      }
+    }
+    void load()
+    // Reveal the page only after its optional sections have also settled.
+    return () => {
+      active = false
+    }
   }, [id])
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    )
+  if (loading) return null
   if (!artist) return <div className="p-8 text-secondary">{t('detail.artistNotFound')}</div>
 
   const isFollowing = followedArtistIds.has(artist.id)

@@ -15,7 +15,6 @@ import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { useDominantColor } from '@/hooks/useDominantColor'
 import { DetailHero } from '@/components/common/DetailHero'
 import { useTranslation } from '@/i18n/useTranslation'
-import { Spinner } from '@/components/ui/Spinner'
 import { Button } from '@/components/ui/Button'
 import { LyricsView } from '@/components/player/LyricsView'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
@@ -29,6 +28,7 @@ import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 import { usePlayerStore } from '@/stores/playerStore'
+import { usePageLoading } from '@/hooks/usePageLoading'
 
 export function TrackDetailPage() {
   const { t } = useTranslation()
@@ -36,8 +36,9 @@ export function TrackDetailPage() {
   const [track, setTrack] = useState<Track | null>(null)
   const [lyrics, setLyrics] = useState<string | null>(null)
   const [syncedLyrics, setSyncedLyrics] = useState<string | null>(null)
-  const [lyricsLoading, setLyricsLoading] = useState(true)
-  const [loading, setLoading] = useState(true)
+  const [loadedId, setLoadedId] = useState<string | null>(null)
+  const loading = !!id && loadedId !== id
+  usePageLoading(loading)
   const [loadError, setLoadError] = useState(false)
   // Same-artist recommendations shown under the lyrics. Kept relevant (never random):
   // the artist's own popular tracks and releases. Sections hide themselves when empty.
@@ -70,48 +71,42 @@ export function TrackDetailPage() {
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
-    setLyricsLoading(true)
+    let active = true
     setLoadError(false)
 
-    // Fetch track info and lyrics in parallel
-    Promise.all([
-      trackService.getById(id),
-      trackService.getLyrics(id),
-    ])
-      .then(([t, lyricsRes]) => {
-        setTrack(t)
-        setLyrics(lyricsRes.lyrics)
-        setSyncedLyrics(lyricsRes.syncedLyrics)
-      })
-      .catch(() => setLoadError(true))
-      .finally(() => {
-        setLoading(false)
-        setLyricsLoading(false)
-      })
-  }, [id])
-
-  // Once the track is known, pull the artist's popular tracks (minus this one) and
-  // releases for the recommendation rows. Independent of the main load — failures
-  // just leave the rows empty rather than breaking the page.
-  const artistId = track?.artist.id
-  useEffect(() => {
-    if (!artistId) return
-    let active = true
-    artistService
-      .getTopTracks(artistId, 6)
-      .then((tracks) => {
-        if (active) setArtistTracks(tracks.filter((tr) => tr.id !== id).slice(0, 5))
-      })
-      .catch(() => active && setArtistTracks([]))
-    artistService
-      .getAlbums(artistId)
-      .then((albums) => active && setArtistAlbums(albums))
-      .catch(() => active && setArtistAlbums([]))
+    const load = async () => {
+      try {
+        const [nextTrack, lyricsResult] = await Promise.all([
+          trackService.getById(id),
+          trackService.getLyrics(id),
+        ])
+        const [nextArtistTracks, nextArtistAlbums] = await Promise.all([
+          artistService.getTopTracks(nextTrack.artist.id, 6).catch(() => [] as Track[]),
+          artistService.getAlbums(nextTrack.artist.id).catch(() => [] as Album[]),
+        ])
+        if (!active) return
+        setTrack(nextTrack)
+        setLyrics(lyricsResult.lyrics)
+        setSyncedLyrics(lyricsResult.syncedLyrics)
+        setArtistTracks(nextArtistTracks.filter((item) => item.id !== id).slice(0, 5))
+        setArtistAlbums(nextArtistAlbums)
+      } catch {
+        if (!active) return
+        setTrack(null)
+        setLyrics(null)
+        setSyncedLyrics(null)
+        setArtistTracks([])
+        setArtistAlbums([])
+        setLoadError(true)
+      } finally {
+        if (active) setLoadedId(id)
+      }
+    }
+    void load()
     return () => {
       active = false
     }
-  }, [artistId, id])
+  }, [id])
 
   const handlePlay = () => {
     if (!track) return
@@ -164,13 +159,7 @@ export function TrackDetailPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
+  if (loading) return null
 
   if (loadError || !track) {
     return <div className="p-8 text-secondary">{t('detail.songNotFound')}</div>
@@ -303,7 +292,7 @@ export function TrackDetailPage() {
           <section>
             <h2 className="mb-4 text-2xl font-bold text-primary">{t('detail.lyrics')}</h2>
             {/* Static on purpose — the karaoke view lives behind the player bar's mic button */}
-            <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} loading={lyricsLoading} collapsible />
+            <LyricsView lyrics={lyrics} syncedLyrics={syncedLyrics} collapsible />
           </section>
         </div>
 

@@ -90,8 +90,8 @@ export function AboutPage() {
       <Section heading="Questions and takedown requests">
         <p>
           If you are a rights holder and believe material has been included in error, please visit the{' '}
-          <Link to="/support" className="text-primary underline hover:no-underline">
-            Support center
+          <Link to="/support?topic=copyright-claims" className="text-primary underline hover:no-underline">
+            copyright help article
           </Link>{' '}
           to contact the team. We will review reasonable notices and remove material when appropriate.
         </p>
@@ -178,8 +178,8 @@ export function PrivacyPolicyPage() {
       <Section heading="Contact">
         <p>
           For privacy questions, reach the team through the{' '}
-          <Link to="/support" className="text-primary underline hover:no-underline">
-            Support center
+          <Link to="/support?topic=privacy-settings" className="text-primary underline hover:no-underline">
+            privacy help article
           </Link>
           .
         </p>

@@ -77,6 +77,7 @@ export const router = createBrowserRouter([
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/support', element: <SupportPage /> },
+  { path: '/download', element: <DownloadPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },
   // Friendly alias — the admin console's only advertised entrance.
   { path: '/adminlogin', element: <AdminLoginPage /> },
@@ -120,7 +121,6 @@ export const router = createBrowserRouter([
           { path: 'track/:id', element: <TrackDetailPage /> },
           { path: 'queue', element: <QueuePage /> },
           { path: 'recognize', element: <RecognizePage /> },
-          { path: 'download', element: <DownloadPage /> },
           // Static footer pages — public so links resolve for guests too.
           { path: 'about', element: <AboutPage /> },
           { path: 'legal', element: <LegalPage /> },

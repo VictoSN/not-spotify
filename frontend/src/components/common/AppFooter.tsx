@@ -17,9 +17,9 @@ const columns = [
   {
     title: 'Communities',
     links: [
-      { label: 'For Artists', to: 'https://artists.spotify.com/' },
+      { label: 'For Artists', to: '/support?topic=artist-dashboard' },
       { label: 'Developers', to: 'https://developer.spotify.com/' },
-      { label: 'Advertising', to: 'https://ads.spotify.com/' },
+      { label: 'Advertising', to: '/support?topic=ads-and-sponsored-content' },
       { label: 'Investors', to: 'https://investors.spotify.com/' },
       { label: 'Vendors', to: 'https://www.spotifyforvendors.com/' },
     ],
@@ -30,7 +30,7 @@ const columns = [
       { label: 'Support', to: '/support' },
       { label: 'Download app', to: '/download' },
       { label: 'Popular', to: '/charts' },
-      { label: 'Import your music', to: '/uploads' },
+      { label: 'Import your music', to: '/support?topic=upload-your-own-audio' },
     ],
   },
   {
@@ -47,11 +47,11 @@ const columns = [
 
 const legalLinks = [
   { label: 'Legal', to: '/legal' },
-  { label: 'Safety & Privacy Center', to: 'https://www.spotify.com/safetyandprivacy/' },
+  { label: 'Safety & Privacy Center', to: '/support?topic=privacy-settings' },
   { label: 'Privacy Policy', to: '/privacy' },
-  { label: 'Cookies', to: 'https://www.spotify.com/legal/cookies-policy/' },
-  { label: 'About Ads', to: 'https://www.spotify.com/legal/privacy-policy/' },
-  { label: 'Accessibility', to: 'https://www.spotify.com/accessibility/' },
+  { label: 'Cookies', to: '/support?topic=cookies-and-local-storage' },
+  { label: 'About Ads', to: '/support?topic=ads-and-sponsored-content' },
+  { label: 'Accessibility', to: '/support?topic=accessibility-and-keyboard-controls' },
 ]
 
 /** Renders an external Spotify link (new tab) for http(s) targets, otherwise an in-app router link. */

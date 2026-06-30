@@ -39,4 +39,33 @@ describe('Footer legal/info pages (bug #23)', () => {
       expect(link.getAttribute('href')).toBeTruthy()
     }
   })
+
+  it('footer help links open the matching local support articles', () => {
+    render(<MemoryRouter><AppFooter /></MemoryRouter>)
+
+    expect(screen.getByRole('link', { name: 'For Artists' })).toHaveAttribute(
+      'href',
+      '/support?topic=artist-dashboard',
+    )
+    expect(screen.getByRole('link', { name: 'Import your music' })).toHaveAttribute(
+      'href',
+      '/support?topic=upload-your-own-audio',
+    )
+    expect(screen.getByRole('link', { name: 'Safety & Privacy Center' })).toHaveAttribute(
+      'href',
+      '/support?topic=privacy-settings',
+    )
+    expect(screen.getByRole('link', { name: 'Cookies' })).toHaveAttribute(
+      'href',
+      '/support?topic=cookies-and-local-storage',
+    )
+    expect(screen.getByRole('link', { name: 'About Ads' })).toHaveAttribute(
+      'href',
+      '/support?topic=ads-and-sponsored-content',
+    )
+    expect(screen.getByRole('link', { name: 'Accessibility' })).toHaveAttribute(
+      'href',
+      '/support?topic=accessibility-and-keyboard-controls',
+    )
+  })
 })

@@ -1,5 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   detectDownloadPlatform,
@@ -9,6 +10,14 @@ import {
 import { DownloadPage } from './DownloadPage'
 
 const promptInstall = vi.hoisted(() => vi.fn(async () => true))
+
+function renderDownloadPage() {
+  return render(
+    <MemoryRouter>
+      <DownloadPage />
+    </MemoryRouter>,
+  )
+}
 
 vi.mock('@/hooks/useInstallApp', () => ({
   useInstallApp: () => ({
@@ -59,7 +68,7 @@ describe('DownloadPage (bug #15)', () => {
   beforeEach(() => promptInstall.mockClear())
 
   it('exposes real Windows EXE and MSI download links with stable filenames', () => {
-    render(<DownloadPage />)
+    renderDownloadPage()
 
     const exeLinks = screen.getAllByRole('link', {
       name: 'Download for Windows',
@@ -82,7 +91,7 @@ describe('DownloadPage (bug #15)', () => {
   })
 
   it('opens the browser install prompt for the macOS/mobile web app', async () => {
-    render(<DownloadPage />)
+    renderDownloadPage()
 
     fireEvent.click(
       screen.getAllByRole('button', { name: 'Install web app' })[0],

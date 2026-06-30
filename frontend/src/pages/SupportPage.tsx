@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState, type FocusEvent } from 'react'
+import { useMemo, useState, type FocusEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   ArrowRight,
-  Bot,
   Check,
   ChevronDown,
   ChevronRight,
@@ -70,6 +69,31 @@ const article = (slug: string, title: string): ArticleRef => ({ slug, title })
 
 const SUPPORT_GROUPS: HelpGroup[] = [
   {
+    id: 'getting-started',
+    title: 'Getting started',
+    description: 'Set up the app, understand your plan, and learn the player controls.',
+    Icon: FileText,
+    sections: [
+      {
+        id: 'first-steps',
+        title: 'First steps',
+        articles: [
+          article('getting-started-with-not-spotify', 'Getting started with Not Spotify'),
+          article('using-the-player', 'Using the music player'),
+          article('free-vs-premium', 'Free and Premium compared'),
+        ],
+      },
+      {
+        id: 'controls-and-accessibility',
+        title: 'Controls and accessibility',
+        articles: [
+          article('keyboard-shortcuts-and-media-keys', 'Keyboard shortcuts and media keys'),
+          article('accessibility-and-keyboard-controls', 'Accessibility and keyboard navigation'),
+        ],
+      },
+    ],
+  },
+  {
     id: 'payments',
     title: 'Payments & billing',
     description: 'Payment methods, charges, receipts, and subscription billing.',
@@ -83,8 +107,8 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('failed-payment-help', 'Failed payment help'),
           article('accepted-payment-methods', 'Accepted payment methods'),
           article('change-payment-details', 'How to change your payment details'),
-          article('gift-card-not-working', 'Gift card not working'),
-          article('not-spotify-gift-cards', 'Not Spotify gift cards'),
+          article('gift-card-not-working', 'Promotion code not working'),
+          article('not-spotify-gift-cards', 'Redeem a promotion code'),
           article('how-to-cancel-premium-plans', 'How to cancel Premium plans'),
           article('payments-for-duo-plan', 'Payments for Duo plan'),
           article('payments-for-family-plan', 'Payments for Family plan'),
@@ -105,7 +129,7 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         articles: [
           article('accepted-payment-methods', 'Accepted payment methods'),
           article('payment-options-by-country', 'Payment options by country'),
-          article('gift-card-not-working', 'Gift card not working'),
+          article('gift-card-not-working', 'Promotion code not working'),
         ],
       },
       {
@@ -141,7 +165,6 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('not-spotify-login-methods', 'Not Spotify login methods'),
           article('reset-or-change-password', 'How to reset or change your Not Spotify password'),
           article('logging-in-with-facebook', 'Logging in to Not Spotify with Facebook'),
-          article('logging-in-with-apple', 'Logging in to Not Spotify with Apple'),
           article('logging-in-with-google', 'Logging in to Not Spotify with Google'),
           article('cant-play-abroad', 'Country and playback'),
           article('disabled-accounts', 'Not Spotify disabled accounts'),
@@ -247,6 +270,8 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('create-and-edit-playlists', 'Create and edit playlists'),
           article('liked-songs', 'Liked Songs'),
           article('collaborative-playlists', 'Collaborative playlists'),
+          article('organize-and-sort-your-library', 'Organize and sort your library'),
+          article('import-and-export-playlists', 'Import and export playlists'),
         ],
       },
       {
@@ -254,8 +279,10 @@ const SUPPORT_GROUPS: HelpGroup[] = [
         title: 'Search and discovery',
         articles: [
           article('search-and-browse-music', 'Search and browse music'),
+          article('voice-search', 'Search with your voice'),
           article('music-recommendations', 'Music recommendations'),
           article('browse-genres-and-moods', 'Browse genres and moods'),
+          article('listening-history-and-stats', 'Listening history and personal stats'),
         ],
       },
       {
@@ -265,7 +292,18 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('lyrics-queue-and-recommendations', 'Lyrics, queue, and recommendations'),
           article('shuffle-and-repeat', 'Shuffle and repeat'),
           article('go-to-song-radio', 'Go to song radio'),
+          article('picture-in-picture-and-media-keys', 'Picture-in-Picture and media keys'),
+          article('ratings-comments-and-reposts', 'Ratings, comments, and reposts'),
+          article('free-tier-audio-ads', 'Audio ads on the Free plan'),
           article('data-saver', 'Data Saver and audio quality'),
+        ],
+      },
+      {
+        id: 'podcasts-and-video',
+        title: 'Podcasts and video',
+        articles: [
+          article('podcasts-and-episodes', 'Podcasts and episodes'),
+          article('music-videos', 'Watch music videos'),
         ],
       },
       {
@@ -280,6 +318,73 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('sleep-timer', 'Sleep timer'),
           article('app-appearance', 'Appearance (light & dark)'),
           article('change-app-language', 'Change the app language'),
+          article('compact-library-and-now-playing', 'Compact library and Now Playing display'),
+        ],
+      },
+    ],
+  },
+  {
+    id: 'social',
+    title: 'Friends, sharing & community',
+    description: 'Friends, follows, messages, listening together, and notifications.',
+    Icon: Globe2,
+    sections: [
+      {
+        id: 'friends-and-profiles',
+        title: 'Friends and profiles',
+        articles: [
+          article('friends-and-following', 'Friends and following'),
+          article('friend-activity-and-presence', 'Friend Activity and online presence'),
+          article('blend-with-a-friend', 'Blend with a friend'),
+        ],
+      },
+      {
+        id: 'messages-and-jams',
+        title: 'Messages and listening together',
+        articles: [
+          article('messages-and-sharing', 'Messages and sharing music'),
+          article('start-or-join-a-jam', 'Start or join a Jam'),
+        ],
+      },
+      {
+        id: 'community-updates',
+        title: 'Community updates',
+        articles: [
+          article('notifications-center', 'Notifications center'),
+          article('manage-reposts-and-profile-activity', 'Manage reposts and profile activity'),
+        ],
+      },
+    ],
+  },
+  {
+    id: 'creators',
+    title: 'Your audio & artist tools',
+    description: 'Personal uploads, recognition, embeds, artist applications, and releases.',
+    Icon: UserRound,
+    sections: [
+      {
+        id: 'your-audio',
+        title: 'Your audio tools',
+        articles: [
+          article('upload-your-own-audio', 'Upload your own audio'),
+          article('identify-a-song', 'Identify a song'),
+          article('embed-a-track', 'Embed a track on another site'),
+        ],
+      },
+      {
+        id: 'becoming-an-artist',
+        title: 'Becoming an artist',
+        articles: [
+          article('apply-for-an-artist-account', 'Apply for an artist account'),
+          article('artist-profile-and-events', 'Artist profile, images, and events'),
+        ],
+      },
+      {
+        id: 'artist-dashboard-help',
+        title: 'Artist Dashboard',
+        articles: [
+          article('artist-dashboard', 'Use the Artist Dashboard'),
+          article('artist-releases-and-approval', 'Create releases and pass content review'),
         ],
       },
     ],
@@ -331,6 +436,8 @@ const SUPPORT_GROUPS: HelpGroup[] = [
           article('privacy-settings', 'Privacy settings'),
           article('private-listening', 'Listening privacy & visibility'),
           article('download-your-data', 'Download your data'),
+          article('cookies-and-local-storage', 'Cookies and local storage'),
+          article('ads-and-sponsored-content', 'Ads and sponsored content'),
         ],
       },
       {
@@ -372,6 +479,409 @@ for (const group of SUPPORT_GROUPS) {
 }
 
 const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
+  'getting-started-with-not-spotify': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify is a full music-streaming study project with catalogue playback, playlists, discovery, social features, creator tools, podcasts, videos, personal uploads, and installable web and desktop experiences.',
+          'You can browse public content without an account. Sign in to keep a library, sync history, message friends, use personal tools, and manage a plan across devices.',
+        ],
+      },
+      {
+        heading: 'Set up your account and play something',
+        steps: [
+          'Create an account with your name, email, and a password of at least 8 characters, or use a configured Google sign-in.',
+          'Choose your country in Account so country-based discovery can be personalized.',
+          'Open Home or Search and choose a playlist, album, podcast, video, artist, or track.',
+          'Use the player bar for play, pause, queue, volume, lyrics, repeat, shuffle, speed, sleep timer, and Picture-in-Picture controls.',
+          'Open Your Library to find liked songs, saved albums, saved playlists, and playlists you created.',
+        ],
+      },
+      {
+        heading: 'What needs an account',
+        bullets: [
+          'Saving music, creating playlists, viewing listening history and stats, following users or artists, messaging, and uploading personal audio.',
+          'Free accounts can listen with shuffle and audio ads. Premium enables on-demand order, repeat, higher quality, and downloads.',
+          'Artist and admin tools require approved roles; creating a normal listener account does not automatically grant them.',
+        ],
+        cta: { label: 'Open Not Spotify', href: '/' },
+      },
+    ],
+    related: ['using-the-player', 'free-vs-premium', 'not-spotify-login-methods', 'web-player-help'],
+  },
+  'using-the-player': {
+    blocks: [
+      {
+        paragraphs: [
+          'The player bar follows you through the app. It shows the current track, play state, elapsed time, queue, volume, and extra listening controls. Starting another track replaces or updates the active queue according to where you started playback.',
+        ],
+      },
+      {
+        heading: 'Core controls',
+        bullets: [
+          'Play or pause, seek through the current item, skip backward or forward, mute, and set volume.',
+          'Open Queue to inspect upcoming tracks. Premium listeners can drag to reorder; any signed-in listener can add a track to the queue.',
+          'Open lyrics when stored or synced lyrics exist. Synced lines can follow playback and can be selected to seek.',
+          'Use playback speed for tracks and podcast episodes, a sleep timer for timed stopping, and the equalizer for tone presets.',
+          'Picture-in-Picture creates a small artwork player in supported browsers; operating-system media keys are handled through Media Session where supported.',
+        ],
+      },
+      {
+        heading: 'Free-plan playback',
+        paragraphs: [
+          'Free playback is intentionally shuffle-first. Choosing a track from a multi-track context can start a shuffled queue, repeat stays unavailable, and a non-skippable house ad can play after the configured number of songs. These controls unlock immediately after the account reflects Premium.',
+        ],
+      },
+    ],
+    related: ['keyboard-shortcuts-and-media-keys', 'shuffle-and-repeat', 'lyrics-queue-and-recommendations', 'sound-or-volume-issues'],
+  },
+  'free-vs-premium': {
+    blocks: [
+      {
+        paragraphs: [
+          'Both plans include the catalogue, search, Liked Songs, saved albums, playlist management, social features, and access across supported devices. Premium changes playback freedom, audio quality, ads, and downloads.',
+        ],
+      },
+      {
+        heading: 'Free',
+        bullets: [
+          'Playlist listening is shuffle-first; selecting an exact track in a multi-track context may start elsewhere in the shuffled queue.',
+          'Shuffle cannot be turned off and repeat is unavailable.',
+          'House audio ads may interrupt after the number of songs configured by the service.',
+          'Streaming quality is capped around the Normal tier and music downloads are unavailable.',
+        ],
+      },
+      {
+        heading: 'Premium',
+        bullets: [
+          'Play any track in order, control shuffle and repeat, and use queue reordering.',
+          'No house audio ads during music playback.',
+          'High and Very High quality options plus individual, album, and playlist downloads.',
+          'Individual, Student, Duo, and Family plans use the same Premium playback capabilities; Duo and Family add member seats.',
+        ],
+        cta: { label: 'Compare Premium plans', href: '/premium' },
+      },
+    ],
+    related: ['not-spotify-premium', 'your-not-spotify-plan-details', 'free-tier-audio-ads', 'download-and-offline-listening'],
+  },
+  'keyboard-shortcuts-and-media-keys': {
+    blocks: [
+      {
+        paragraphs: [
+          'Desktop keyboard shortcuts work throughout the music app except while you are typing in an input, editor, or search field. Press ? to open the shortcut sheet at any time.',
+        ],
+      },
+      {
+        heading: 'Available shortcuts',
+        bullets: [
+          'Space: play or pause when a track is loaded.',
+          'Left or Right Arrow: seek backward or forward 5 seconds.',
+          'Ctrl/Cmd + Left or Right Arrow: previous or next track.',
+          'Shift + Up or Down Arrow: raise or lower volume by 10%.',
+          'M: mute or unmute. L: like or unlike the current track when signed in.',
+          '?: open or close the shortcuts guide. Escape closes the guide.',
+        ],
+      },
+      {
+        heading: 'Operating-system controls',
+        paragraphs: [
+          'Supported browsers publish the current title, artist, artwork, duration, and transport actions to Media Session. This lets compatible keyboards, lock screens, notification areas, and headset controls play, pause, seek, or skip without focusing the tab.',
+        ],
+      },
+    ],
+    related: ['accessibility-and-keyboard-controls', 'picture-in-picture-and-media-keys', 'using-the-player', 'playback-speed'],
+  },
+  'accessibility-and-keyboard-controls': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify uses labelled buttons, keyboard-operable menus, visible focus states, semantic headings, and text alternatives for interactive images where the interface provides them. The light and dark themes share the same feature set.',
+        ],
+      },
+      {
+        heading: 'Navigate without a pointer',
+        steps: [
+          'Use Tab and Shift+Tab to move between controls and links.',
+          'Use Enter or Space to activate the focused control. Arrow keys operate sliders and seek shortcuts when focus is not inside a text field.',
+          'Press ? for the global player shortcut guide and Escape to close open dialogs or menus that support it.',
+          'Set App zoom in Settings → Appearance if text and controls need to be larger.',
+          'Choose the light or dark theme in Settings and use your browser or operating system accessibility tools for additional contrast or screen-reader support.',
+        ],
+      },
+      {
+        heading: 'If a control is difficult to use',
+        paragraphs: [
+          'Include the page URL, control label, browser, operating system, input method, and the exact sequence that failed when reporting an accessibility issue. Do not include passwords or private message contents.',
+        ],
+        cta: { label: 'Open appearance settings', href: '/settings' },
+      },
+    ],
+    related: ['keyboard-shortcuts-and-media-keys', 'app-appearance', 'compact-library-and-now-playing', 'contact-us'],
+  },
+  'organize-and-sort-your-library': {
+    blocks: [
+      {
+        paragraphs: [
+          'Your Library combines playlists you own or save, saved albums, followed artists, and Liked Songs. Filters and sorting change the current view; they do not delete library items.',
+        ],
+      },
+      {
+        heading: 'Organize your library',
+        bullets: [
+          'Use the library type filters to narrow the view to playlists, artists, albums, or tracks.',
+          'Sort library entries and track lists using the available title, creator, date, duration, play-count, or rating controls on that view.',
+          'Enable Compact library in Settings to reduce row spacing without changing the content saved to your account.',
+          'Pinning and recent ordering are device presentation choices where offered; saved music itself remains synced to the account.',
+        ],
+      },
+      {
+        heading: 'Smart playlists',
+        paragraphs: [
+          'Smart playlists build their track list from rules such as genre, minimum rating, minimum play count, recently added days, and result limit. Because the list is rule-generated, manual track additions and removals are intentionally blocked.',
+        ],
+        cta: { label: 'Open Your Library', href: '/library' },
+      },
+    ],
+    related: ['liked-songs', 'create-and-edit-playlists', 'import-and-export-playlists', 'compact-library-and-now-playing'],
+  },
+  'import-and-export-playlists': {
+    blocks: [
+      {
+        paragraphs: [
+          'Playlist export creates a JSON file containing portable playlist details and track identifiers. Import reads a Not Spotify playlist JSON file, creates a new playlist for the signed-in user, and matches catalogue entries it can identify.',
+        ],
+      },
+      {
+        heading: 'Move a playlist',
+        steps: [
+          'Open a playlist you own and choose Export from its menu to save the JSON file.',
+          'Open Your Library and choose Import playlist.',
+          'Select the exported JSON file and wait for matching to finish.',
+          'Open the newly created playlist and review tracks that were matched.',
+        ],
+      },
+      {
+        heading: 'Why some tracks may be missing',
+        bullets: [
+          'Import matches against the current Not Spotify catalogue; deleted, unapproved, private, or renamed catalogue records may not match.',
+          'The file is metadata, not an audio archive. Personal upload audio and third-party media files are not copied into a playlist import.',
+          'Malformed JSON or a file from another service may not contain the fields this importer understands.',
+        ],
+        cta: { label: 'Open Your Library', href: '/library' },
+      },
+    ],
+    related: ['create-and-edit-playlists', 'organize-and-sort-your-library', 'upload-your-own-audio', 'downloads-not-working'],
+  },
+  'voice-search': {
+    blocks: [
+      {
+        paragraphs: [
+          'Voice search turns a short spoken phrase into the same text query used by normal Search. Speech recognition is provided by the browser, so availability and language support depend on the current browser and operating system.',
+        ],
+      },
+      {
+        heading: 'Use voice search',
+        steps: [
+          'Open Search and select the microphone button.',
+          'Allow microphone access when the browser asks.',
+          'Say an artist, track, album, playlist, or lyric phrase clearly.',
+          'Review the recognized text and the results before playing an item.',
+        ],
+      },
+      {
+        heading: 'If the microphone does not work',
+        bullets: [
+          'Confirm microphone permission for this site in browser settings and make sure another app is not exclusively using the microphone.',
+          'Use HTTPS or localhost; browsers commonly restrict microphone features on insecure origins.',
+          'Type the query instead if speech recognition is unavailable. Voice search does not store an audio recording in your Not Spotify account.',
+        ],
+      },
+    ],
+    related: ['search-and-browse-music', 'identify-a-song', 'change-app-language', 'privacy-settings'],
+  },
+  'listening-history-and-stats': {
+    blocks: [
+      {
+        paragraphs: [
+          'Signed-in plays build Recents and personal listening statistics. Stats can summarize 7 days, 30 days, or 1 year with total listening time, plays, unique tracks and artists, daily activity, top artists, top genres, and top tracks.',
+        ],
+      },
+      {
+        heading: 'How listening is counted',
+        bullets: [
+          'A play event is recorded when catalogue playback starts for your account; the stats view groups those events into the selected date range.',
+          'Minutes listened are an estimate derived from recorded plays and media durations, while top lists use the number of recorded play events.',
+          'The yearly view adds a Wrapped-style summary when enough history exists.',
+          'Private listening can suppress listening-history and presence updates while it is enabled on that device.',
+        ],
+        cta: { label: 'View your listening stats', href: '/stats' },
+      },
+      {
+        heading: 'Missing or empty stats',
+        paragraphs: [
+          'Make sure you are signed in, select a range that includes your listening, and play catalogue tracks. Guest plays, personal-upload playback, failed starts, and activity intentionally hidden by privacy settings may not appear like normal catalogue history.',
+        ],
+      },
+    ],
+    related: ['private-listening', 'music-recommendations', 'organize-and-sort-your-library', 'download-your-data'],
+  },
+  'picture-in-picture-and-media-keys': {
+    blocks: [
+      {
+        paragraphs: [
+          'Picture-in-Picture (PiP) opens a small always-on-top artwork player while the real audio continues in Not Spotify. Media Session separately publishes playback controls to supported keyboards, headsets, lock screens, and operating-system media overlays.',
+        ],
+      },
+      {
+        heading: 'Open Picture-in-Picture',
+        steps: [
+          'Start a track and select the Picture-in-Picture icon in the player bar.',
+          'Allow Picture-in-Picture if the browser asks.',
+          'Use the floating window for play, pause, and the controls your browser exposes.',
+          'Close the floating window or select the PiP icon again to return to the normal view.',
+        ],
+      },
+      {
+        heading: 'Compatibility',
+        bullets: [
+          'Chrome and Edge generally provide the strongest PiP and Media Session support. A browser can omit individual next, previous, or seek controls.',
+          'PiP may be blocked by browser policy, private mode, autoplay restrictions, or an operating-system setting. Playback in the main app should continue even when PiP cannot open.',
+          'Music-video playback uses its own video element; opening a music video pauses the music audio player to avoid overlapping sound.',
+        ],
+      },
+    ],
+    related: ['keyboard-shortcuts-and-media-keys', 'using-the-player', 'music-videos', 'sound-or-volume-issues'],
+  },
+  'ratings-comments-and-reposts': {
+    blocks: [
+      {
+        paragraphs: [
+          'Community tools help listeners react to catalogue content. Track ratings run from 1 to 5 stars, comments can include replies and playback timestamps, and reposts place music activity on your profile.',
+        ],
+      },
+      {
+        heading: 'What each action does',
+        bullets: [
+          'Rating a track stores your current star value and updates the displayed average and rating count. Rating signals can influence rating-based discovery and smart-playlist rules.',
+          'Track and music-video comments can be posted while signed in. Timestamped comments can seek back to the moment they reference.',
+          'You can delete your own comments. Include the content URL and comment time when reporting someone else’s comment.',
+          'Repost adds the track, album, playlist, or supported activity to your own repost list. Remove the repost from the same item menu or your profile activity.',
+        ],
+      },
+      {
+        heading: 'Respectful participation',
+        paragraphs: [
+          'Do not post harassment, private information, spam, or content you do not have permission to share. Reporting needs a direct content URL or ID so the team can locate the exact record.',
+        ],
+      },
+    ],
+    related: ['manage-reposts-and-profile-activity', 'report-content-or-users', 'friends-and-following', 'create-and-edit-playlists'],
+  },
+  'free-tier-audio-ads': {
+    blocks: [
+      {
+        paragraphs: [
+          'Free listeners may hear an in-house audio ad after a configurable number of music tracks. Ads use a separate player, lock transport while they run, and then return to the interrupted queue. Premium listeners do not receive these audio ads.',
+        ],
+      },
+      {
+        heading: 'Expected behavior',
+        bullets: [
+          'The current ad is non-skippable; next, previous, seeking, and ordinary track controls remain unavailable until it ends.',
+          'Volume and the visible ad information come from the ad playback surface, not the interrupted track.',
+          'Ad frequency, enabled state, targeting, and creative are managed by admins, so not every free session receives an ad at the same moment.',
+          'An ad impression is recorded for service operation. Not Spotify does not build or sell a third-party advertising profile.',
+        ],
+      },
+      {
+        heading: 'If playback does not resume',
+        paragraphs: [
+          'Wait for the ad to finish, then try play once. If the queue remains locked after the ad UI disappears, refresh the app and report the approximate time, browser, interrupted track, and whether another tab was also playing.',
+        ],
+      },
+    ],
+    related: ['free-vs-premium', 'not-spotify-premium', 'app-not-playing-music', 'ads-and-sponsored-content'],
+  },
+  'podcasts-and-episodes': {
+    blocks: [
+      {
+        paragraphs: [
+          'The Podcasts area lists shows and opens show pages with episodes. Episodes use the same player and queue foundation as music, including play/pause, seeking, volume, sleep timer, and playback speed.',
+        ],
+      },
+      {
+        heading: 'Listen to a podcast',
+        steps: [
+          'Open Podcasts from the app navigation.',
+          'Choose a show to see its description and episode list.',
+          'Select an episode to load it into the player.',
+          'Adjust playback speed or set a sleep timer from the player extras if needed.',
+        ],
+      },
+      {
+        heading: 'Episode troubleshooting',
+        bullets: [
+          'If one episode fails but music works, its media URL may be unavailable or incompatible with the browser.',
+          'If seeking is limited, wait for more of the episode to buffer or try another browser.',
+          'Podcast availability comes from the Not Spotify catalogue; this app is not connected to every external podcast directory.',
+        ],
+        cta: { label: 'Browse podcasts', href: '/podcasts' },
+      },
+    ],
+    related: ['playback-speed', 'sleep-timer', 'app-not-playing-music', 'using-the-player'],
+  },
+  'music-videos': {
+    blocks: [
+      {
+        paragraphs: [
+          'Music videos have a dedicated catalogue and watch page. Starting a video pauses the normal audio player so two sources do not play at once. Video pages can also include timeline comments and replies.',
+        ],
+      },
+      {
+        heading: 'Watch and comment',
+        steps: [
+          'Open Music Videos and choose an available video.',
+          'Use the video player controls for play, pause, seeking, volume, and fullscreen where the browser supports them.',
+          'Sign in to post a comment. Choose a point on the video timeline when you want the comment tied to a moment.',
+          'Select a timestamped comment to return to that moment.',
+        ],
+        cta: { label: 'Browse music videos', href: '/videos' },
+      },
+      {
+        heading: 'If a video will not load',
+        paragraphs: [
+          'Try another video to separate a single-media issue from browser playback. The video object must be reachable from storage and use a browser-compatible format. Include the video URL, browser, and visible error when reporting the issue.',
+        ],
+      },
+    ],
+    related: ['picture-in-picture-and-media-keys', 'ratings-comments-and-reposts', 'sound-or-volume-issues', 'report-content-or-users'],
+  },
+  'compact-library-and-now-playing': {
+    blocks: [
+      {
+        paragraphs: [
+          'Display preferences change layout without changing account data. Compact library reduces spacing in library navigation, while the Now Playing display option controls how much current-track context is shown in the player layout.',
+        ],
+      },
+      {
+        heading: 'Change display preferences',
+        steps: [
+          'Open Settings.',
+          'Under Library, turn Compact library on or off.',
+          'Under Display, choose the Now Playing display option available for your device.',
+          'Use App zoom under Appearance if the entire interface needs to be larger or smaller.',
+        ],
+        cta: { label: 'Open Settings', href: '/settings' },
+      },
+      {
+        heading: 'Where preferences are saved',
+        paragraphs: [
+          'These presentation choices are stored on the current device. Clearing site data or using another browser can restore defaults even though your saved music and account remain intact.',
+        ],
+      },
+    ],
+    related: ['app-appearance', 'organize-and-sort-your-library', 'cookies-and-local-storage', 'accessibility-and-keyboard-controls'],
+  },
   'failed-payment-help': {
     blocks: [
       {
@@ -444,12 +954,12 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'Not Spotify login accepts email and password, plus "Continue with Google" when Google sign-in is configured on the server. The Facebook and Apple buttons are placeholders and are not enabled yet.',
+          'Not Spotify accepts email and password. Google and Facebook sign-in also appear when that provider is both configured and enabled by an admin; Apple sign-in is not currently offered.',
         ],
         bullets: [
           'Use the exact email address you signed up with.',
           'Passwords are checked by the backend identity system; signup requires at least 8 characters.',
-          'If you created your account with Google, use "Continue with Google" rather than a password.',
+          'If you created your account with Google or Facebook, use the same provider again unless you later set a password for the matching email account.',
           'Refresh uses an httpOnly cookie named rt scoped to /auth, so blocked third-party cookies or cross-site cookie settings can break session refresh in some browsers.',
         ],
         cta: { label: 'Reset your password', href: supportTopicHref('reset-or-change-password') },
@@ -667,18 +1177,19 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'You can sign in to Not Spotify in two ways: with an email and password, or with Google.',
+          'You can always sign in with email and password. Google and Facebook are implemented external providers and appear only when the server has valid provider credentials and an admin has enabled them. Apple is hidden because its sign-in flow is not implemented.',
         ],
         bullets: [
           'Email + password — set when you sign up; the password must be at least 8 characters and can be reset or changed.',
           'Continue with Google — uses Google sign-in; the first time, an account is created automatically from your Google email.',
-          'Facebook and Apple buttons may appear but are not available yet.',
+          'Continue with Facebook — uses Facebook sign-in when configured and enabled; a successful first sign-in creates or matches the account from the provider identity and email.',
+          'Apple is not shown because there is no working Apple callback flow.',
         ],
       },
       {
         heading: 'Which one should I use?',
         paragraphs: [
-          'Use whichever you created the account with. If you signed up with email, keep using email and password (and you can reset it any time). If you used Google, choose "Continue with Google" each time — there is no separate password for Google accounts.',
+          'Use the method you originally chose. Password reset applies to email/password credentials. If you use Google or Facebook, select that same provider; provider availability can depend on deployment configuration.',
         ],
       },
     ],
@@ -714,17 +1225,20 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'Logging in with Facebook is not available yet. The button may appear in the interface, but Facebook sign-in has not been enabled. Use email and password, or "Continue with Google" when it is available, instead.',
+          'Facebook sign-in uses a secure redirect to Facebook and back. The button is shown only when Facebook credentials are configured and the provider is enabled by an admin; it is disabled by default in a new deployment.',
+        ],
+        steps: [
+          'On Log in or Sign up, select Continue with Facebook.',
+          'Sign in to Facebook and approve the requested basic profile and email access.',
+          'Return to Not Spotify and confirm the expected account is active.',
         ],
       },
-    ],
-    related: ['not-spotify-login-methods', 'logging-in-with-google', 'reset-or-change-password'],
-  },
-  'logging-in-with-apple': {
-    blocks: [
       {
-        paragraphs: [
-          'Logging in with Apple is not available yet. The button may appear in the interface, but Apple sign-in has not been enabled. Use email and password, or "Continue with Google" when it is available, instead.',
+        heading: 'Button missing or callback failed',
+        bullets: [
+          'Use email/password or Google if Facebook is not available on this deployment.',
+          'A deployment admin must supply the Facebook App ID, App Secret, and matching callback URL, then enable the provider.',
+          'Popup blocking, a callback URL mismatch, a denied permission, or an unavailable Facebook email can prevent completion.',
         ],
       },
     ],
@@ -1678,11 +2192,11 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'You can keep using email and password, or Google when the server has Google credentials. Not Spotify does not currently link or unlink Facebook or Apple accounts.',
+          'You can use email and password, plus Google or Facebook when those providers are configured and enabled. Not Spotify does not provide a self-service page for linking or unlinking external providers, and Apple sign-in is not implemented.',
         ],
         bullets: [
           'To change an email/password login, update your email or password from Account.',
-          'Google login creates or signs into the account with the matching Google email.',
+          'Google or Facebook creates or signs into the provider-linked account after a successful callback.',
           'If you changed your email, use the new email the next time you sign in with password.',
         ],
       },
@@ -1770,16 +2284,19 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'Not Spotify has a notifications center for events such as friend requests, accepted friends, approvals, releases, and Jam invites. Granular notification preferences are not built yet.',
+          'Not Spotify combines an in-app notification center with browser, PWA, or Tauri desktop alerts when permission is granted. Settings includes a master notification switch plus release and friend-activity preferences.',
         ],
         bullets: [
           'Use the notification bell to read new notifications.',
           'Mark individual notifications read, mark all read, or clear them.',
-          'There is no email, push, or per-category toggle in the app yet.',
+          'Allow notifications controls whether the app can request and display operating-system alerts.',
+          'Release alerts and friend-activity subcategories can be enabled separately, including follows, chat replies, playlist saves, and Jam invites.',
+          'Push alerts require a supported browser service worker and a working push subscription. Tauri uses native desktop notifications instead.',
         ],
+        cta: { label: 'Open notification settings', href: '/settings' },
       },
     ],
-    related: ['privacy-settings', 'private-listening', 'keep-your-account-secure', 'report-content-or-users'],
+    related: ['notifications-center', 'privacy-settings', 'friend-activity-and-presence', 'cookies-and-local-storage'],
   },
   'privacy-settings': {
     blocks: [
@@ -2000,6 +2517,462 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     ],
     related: ['privacy-settings', 'private-listening', 'edit-your-profile', 'close-or-recover-account'],
   },
+  'friends-and-following': {
+    blocks: [
+      {
+        paragraphs: [
+          'Friends and follows are different relationships. A friend request becomes a two-way connection after the other person accepts it. Following is one-way: it lets you keep up with a user or artist without requiring them to follow you back.',
+        ],
+      },
+      {
+        heading: 'Add a friend or follow someone',
+        steps: [
+          'Open the Friends panel or a public user profile.',
+          'Send a friend request for a two-way connection, or select Follow for a one-way connection where that action is available.',
+          'Wait for a friend request to be accepted before friends-only playlists, Blend, and direct friend actions become available.',
+          'Use Following or the profile counters to review the accounts and artists you follow.',
+        ],
+      },
+      {
+        heading: 'What friends can do',
+        bullets: [
+          'See each other in Friend Activity according to current presence and privacy settings.',
+          'Start one-to-one chats, create a Blend from listening history, invite each other to a Jam, and collaborate on playlists.',
+          'Open friends-only playlists when the friendship is accepted. A follow alone does not grant friends-only access.',
+        ],
+      },
+    ],
+    related: ['friend-activity-and-presence', 'messages-and-sharing', 'blend-with-a-friend', 'collaborative-playlists'],
+  },
+  'friend-activity-and-presence': {
+    blocks: [
+      {
+        paragraphs: [
+          'Friend Activity shows accepted friends, whether they are online, and recent or current listening information when it is available. Presence updates in real time while the app is connected and falls back to the last activity returned by the service.',
+        ],
+      },
+      {
+        heading: 'Why activity can be missing',
+        bullets: [
+          'The person must be an accepted friend; following alone is not the same relationship.',
+          'They may be offline, have no recent catalogue playback, or have Private listening enabled.',
+          'Realtime presence needs the app’s live connection. A network interruption can temporarily leave the panel stale until it reconnects or refreshes.',
+          'Personal uploads and some non-catalogue media may not appear as normal friend listening activity.',
+        ],
+      },
+      {
+        heading: 'Control your visibility',
+        paragraphs: [
+          'Use Private listening in Settings to suppress new listening-history and presence updates on the current device. Log out on shared devices when you are finished; closing a tab is not the same as revoking its session.',
+        ],
+        cta: { label: 'Open privacy settings', href: '/settings' },
+      },
+    ],
+    related: ['friends-and-following', 'private-listening', 'suspicious-account-activity', 'notifications-center'],
+  },
+  'blend-with-a-friend': {
+    blocks: [
+      {
+        paragraphs: [
+          'Blend creates a shared mix from the listening histories of two accepted friends. It is generated when you request it, so it reflects the catalogue data available at that time rather than becoming a separately editable playlist.',
+        ],
+      },
+      {
+        heading: 'Create a Blend',
+        steps: [
+          'Open an accepted friend’s profile.',
+          'Select Blend with that friend.',
+          'Wait while Not Spotify combines both listeners’ top-track signals.',
+          'Play the resulting mix from the Blend view.',
+        ],
+      },
+      {
+        heading: 'Not enough history yet',
+        paragraphs: [
+          'Both people need enough recorded catalogue listening for a useful overlap. If Blend reports that history is insufficient, each person should listen while signed in and try again later. Private listening and guest playback do not contribute like normal signed-in history.',
+        ],
+      },
+    ],
+    related: ['friends-and-following', 'listening-history-and-stats', 'music-recommendations', 'start-or-join-a-jam'],
+  },
+  'messages-and-sharing': {
+    blocks: [
+      {
+        paragraphs: [
+          'Messages provides one-to-one chat between friends, with live delivery, sent/delivered/read status, emoji insertion, unread counts, and rich cards for tracks, albums, playlists, and Jam invitations.',
+        ],
+      },
+      {
+        heading: 'Start and manage a chat',
+        steps: [
+          'Open Messages and choose an accepted friend, or open a friend profile and start a message.',
+          'Write a message or insert an emoji, then send it. Enter sends; Shift+Enter adds a new line.',
+          'Share music from an item’s menu to send a playable track, album, or playlist card into the conversation.',
+          'Use the conversation menu to pin or unpin it, clear its messages, or delete the conversation from your list.',
+        ],
+      },
+      {
+        heading: 'Current attachment limits',
+        paragraphs: [
+          'Text, emoji, music cards, and Jam cards are the supported message payloads. The document and photo/video pickers are present in the composer, but file transfer is not completed; selecting a file does not create a reliable shared attachment yet.',
+        ],
+      },
+      {
+        heading: 'Delivery indicators',
+        bullets: [
+          'A temporary sending marker means the message is waiting for the service.',
+          'One tick means sent; two ticks indicate delivery; the read style indicates that the recipient opened the conversation.',
+          'If a message remains pending, reconnect, keep the conversation open, and retry the text rather than sending it repeatedly.',
+        ],
+        cta: { label: 'Open Messages', href: '/messages' },
+      },
+    ],
+    related: ['friends-and-following', 'start-or-join-a-jam', 'notifications-center', 'report-content-or-users'],
+  },
+  'start-or-join-a-jam': {
+    blocks: [
+      {
+        paragraphs: [
+          'A Jam is a realtime listen-along session. The host’s active playback state is shared with participants, and the Jam bar shows whether you are hosting or following another listener. It is designed for friends using Not Spotify at the same time.',
+        ],
+      },
+      {
+        heading: 'Host a Jam',
+        steps: [
+          'Start music, open the Jam control in the player, and begin hosting.',
+          'Invite accepted friends from the Jam bar. They receive a chat card and an in-app notification.',
+          'Keep Not Spotify open while listening so realtime playback updates continue.',
+          'End the Jam from the Jam bar when the session is finished.',
+        ],
+      },
+      {
+        heading: 'Join a Jam',
+        bullets: [
+          'Open the Jam invitation from Messages, Notifications, or the host’s shared profile link and select Join Jam.',
+          'You cannot join a second Jam while already hosting or participating in one; leave the current session first.',
+          'A lost realtime connection can stop synchronization. Reopen the invitation after connectivity returns.',
+          'The host controls the shared playback source. A participant’s local volume remains their own.',
+        ],
+      },
+    ],
+    related: ['messages-and-sharing', 'friend-activity-and-presence', 'blend-with-a-friend', 'app-not-playing-music'],
+  },
+  'notifications-center': {
+    blocks: [
+      {
+        paragraphs: [
+          'The notification bell collects account and community events such as friend requests, accepted friendships, new followers, chat activity, playlist saves, release alerts, Jam invites, plan events, artist-application decisions, and content-review decisions when those events are emitted.',
+        ],
+      },
+      {
+        heading: 'Use the notification center',
+        bullets: [
+          'Open the bell to see newest notifications and follow a notification’s destination when it has one.',
+          'Mark individual items read, mark everything read, or clear the feed.',
+          'A badge counts unread server notifications. The feed is attached to your account and can appear on another signed-in device.',
+        ],
+      },
+      {
+        heading: 'Browser and desktop alerts',
+        steps: [
+          'Open Settings → Notifications and turn on Allow notifications.',
+          'Approve the browser or desktop permission prompt.',
+          'Choose the available release and friend-activity subcategories you want to receive.',
+          'Use the test action where available to confirm local and server delivery.',
+        ],
+        cta: { label: 'Open notification settings', href: '/settings' },
+      },
+      {
+        heading: 'Why an alert may not appear',
+        paragraphs: [
+          'Operating-system focus modes, denied site permission, an unsubscribed push worker, a disabled category, or a closed development service can prevent an OS alert. The in-app notification can still exist even when no operating-system banner was shown.',
+        ],
+      },
+    ],
+    related: ['notification-settings', 'friend-activity-and-presence', 'messages-and-sharing', 'cookies-and-local-storage'],
+  },
+  'manage-reposts-and-profile-activity': {
+    blocks: [
+      {
+        paragraphs: [
+          'Reposts let you add supported music activity to your profile without copying the media. The repost points back to the original catalogue item and can be removed later.',
+        ],
+      },
+      {
+        heading: 'Add or remove a repost',
+        steps: [
+          'Open a supported track, album, playlist, or its item menu.',
+          'Choose Repost to add it to your account activity.',
+          'Open your profile or return to the item to confirm it is shown as reposted.',
+          'Choose Remove repost when you no longer want it in your activity.',
+        ],
+      },
+      {
+        heading: 'Visibility and deletion',
+        bullets: [
+          'A repost does not change who owns the track, album, or playlist and does not bypass its visibility rules.',
+          'If the original item is removed, rejected, or made inaccessible, its repost may no longer resolve.',
+          'Removing a repost deletes only your activity reference; it does not delete the original media.',
+        ],
+      },
+    ],
+    related: ['ratings-comments-and-reposts', 'friends-and-following', 'private-listening', 'report-content-or-users'],
+  },
+  'upload-your-own-audio': {
+    blocks: [
+      {
+        paragraphs: [
+          'Your uploads is a private, owner-only audio locker. Uploaded files are separate from the public catalogue: other users cannot search, follow, comment on, or download them through catalogue pages.',
+        ],
+      },
+      {
+        heading: 'Upload and play audio',
+        steps: [
+          'Open Your uploads while signed in.',
+          'Choose Upload audio and select one or more supported files.',
+          'Wait for each file to finish; the browser reads its duration before upload.',
+          'Use the play button beside an upload to listen, or delete it when it is no longer needed.',
+        ],
+        cta: { label: 'Open Your uploads', href: '/uploads' },
+      },
+      {
+        heading: 'File rules',
+        bullets: [
+          'Accepted formats include MP3, M4A, AAC, WAV, OGG/OGA, Opus, FLAC, and WebM audio.',
+          'Each file can be up to 50 MB. The title and artist start from file metadata or filename information available to the service.',
+          'A file can still fail if it is damaged, mislabeled with the wrong extension, cannot be decoded for duration, or storage is unavailable.',
+          'Only upload audio you own or have permission to store. Personal uploads are not a path for publishing a release.',
+        ],
+      },
+    ],
+    related: ['identify-a-song', 'artist-releases-and-approval', 'sound-or-volume-issues', 'privacy-settings'],
+  },
+  'identify-a-song': {
+    blocks: [
+      {
+        paragraphs: [
+          'Identify a song fingerprints a 7-second microphone recording or an uploaded clip entirely in your browser, then compares it with an in-memory index built from up to 50 current trending catalogue tracks. The recording is not uploaded to the Not Spotify server.',
+        ],
+      },
+      {
+        heading: 'Find a match',
+        steps: [
+          'Open Identify a song and select the large microphone button, or choose Upload a clip instead.',
+          'Allow microphone access and play the source clearly for about 7 seconds, or select a clean audio clip.',
+          'Wait while the page prepares its catalogue index and compares the fingerprint.',
+          'Open or play the returned track when a confident match is found.',
+        ],
+        cta: { label: 'Identify a song', href: '/recognize' },
+      },
+      {
+        heading: 'No confident match',
+        bullets: [
+          'Recognition covers the tracks successfully indexed in this browser, not the entire catalogue. A song outside the current top set cannot match.',
+          'Background noise, speech, a very quiet source, heavy remixes, short clips, or browser audio restrictions reduce confidence.',
+          'Storage CORS must allow the browser to analyse catalogue audio. If no tracks can be indexed, recognition cannot run even though normal streaming might still work.',
+        ],
+      },
+    ],
+    related: ['voice-search', 'search-and-browse-music', 'upload-your-own-audio', 'app-not-playing-music'],
+  },
+  'embed-a-track': {
+    blocks: [
+      {
+        paragraphs: [
+          'A track’s embed code creates an iframe for the standalone mini-player at /embed/track/{id}. The embed is intentionally rendered without the normal app shell so it can fit inside another site.',
+        ],
+      },
+      {
+        heading: 'Copy and publish an embed',
+        steps: [
+          'Open the track detail page.',
+          'Open the track options menu and choose Copy embed code.',
+          'Paste the iframe markup into a site or editor that permits iframe HTML.',
+          'Preview the page and confirm the track title, artwork, and playback controls load.',
+        ],
+      },
+      {
+        heading: 'Embed requirements',
+        bullets: [
+          'The track must remain approved and reachable from the deployed Not Spotify origin.',
+          'The host site must allow frames and media from that origin in its Content Security Policy.',
+          'Browser autoplay rules can require the visitor to press play manually.',
+          'An embed is a player, not a downloadable audio file, and it does not grant access to private personal uploads.',
+        ],
+      },
+    ],
+    related: ['using-the-player', 'web-player-help', 'report-content-or-users', 'copyright-claims'],
+  },
+  'apply-for-an-artist-account': {
+    blocks: [
+      {
+        paragraphs: [
+          'An artist account is an approved role on an existing listener account. Applying does not immediately publish music: an admin reviews the artist name, optional biography, and optional sample-work URL before granting access to the Artist Dashboard.',
+        ],
+      },
+      {
+        heading: 'Submit an application',
+        steps: [
+          'Open Account and find the Artist section.',
+          'Choose Apply and enter the artist display name you intend to publish under.',
+          'Add a concise biography and a public sample-work URL when available.',
+          'Submit once and wait for the status to change from pending.',
+        ],
+        cta: { label: 'Open Account', href: '/account' },
+      },
+      {
+        heading: 'Application decisions',
+        bullets: [
+          'Pending means the application is waiting in the admin review queue.',
+          'Approved adds the Artist role and exposes Artist Dashboard tools.',
+          'Rejected applications can include a reviewer note. Correct the requested issue before applying again.',
+          'Do not submit copyrighted work you cannot represent or a sample URL that reviewers cannot access.',
+        ],
+      },
+    ],
+    related: ['artist-dashboard', 'artist-releases-and-approval', 'artist-profile-and-events', 'copyright-claims'],
+  },
+  'artist-profile-and-events': {
+    blocks: [
+      {
+        paragraphs: [
+          'Approved artists can maintain a public artist identity independently from their listener profile. The artist profile supports display name, biography, social links, website, profile image, banner image, catalogue releases, and tour dates.',
+        ],
+      },
+      {
+        heading: 'Keep the public profile current',
+        bullets: [
+          'Use Artist Dashboard to edit biography and supported Instagram, X/Twitter, and website links.',
+          'Upload and crop profile and banner images. Use JPG, JPEG, PNG, or WebP images within the upload limit.',
+          'Add tour dates with date, city, venue, optional country, and optional ticket URL. Upcoming events appear on the public artist page.',
+          'Remove expired or cancelled events rather than leaving misleading ticket information published.',
+        ],
+      },
+      {
+        heading: 'Why a profile or event may not appear',
+        paragraphs: [
+          'The account must still have an active Artist role and not be revoked. Public release visibility also depends on content approval. For event problems, verify the date is valid, city and venue are present, and the public artist page belongs to the dashboard account.',
+        ],
+        cta: { label: 'Open Artist Dashboard', href: '/artist-dashboard' },
+      },
+    ],
+    related: ['apply-for-an-artist-account', 'artist-dashboard', 'artist-releases-and-approval', 'edit-your-profile'],
+  },
+  'artist-dashboard': {
+    blocks: [
+      {
+        paragraphs: [
+          'Artist Dashboard is the workspace for approved artists. It combines artist-profile editing, audience statistics, album/single/EP creation, track upload and ordering, lyrics, review history, podcasts, music videos, tour dates, and managed-content downloads.',
+        ],
+      },
+      {
+        heading: 'What you can manage',
+        bullets: [
+          'Create releases with title, type, release date, label, copyright notice, and cover art.',
+          'Upload tracks with title, track number, explicit flag, lyrics, genre assignments, duration, and audio file.',
+          'Reorder tracks, edit metadata, preview audio, download managed content, and delete items you control when their status permits it.',
+          'Create podcast shows and episodes, music-video records, tour dates, and public artist-profile information from the dedicated dashboard sections.',
+          'Review artist stats and the status/history attached to releases and tracks.',
+        ],
+      },
+      {
+        heading: 'Revoked access',
+        paragraphs: [
+          'A revoked artist can be prevented from submitting or resubmitting content. Preserve the revocation note and contact the project team with the account email and relevant content IDs if you believe the role was removed in error.',
+        ],
+        cta: { label: 'Open Artist Dashboard', href: '/artist-dashboard' },
+      },
+    ],
+    related: ['artist-releases-and-approval', 'artist-profile-and-events', 'apply-for-an-artist-account', 'upload-your-own-audio'],
+  },
+  'artist-releases-and-approval': {
+    blocks: [
+      {
+        paragraphs: [
+          'Artist releases and tracks pass through pending, approved, or rejected states. Pending content stays in the review queue. Approved content can appear in the public catalogue. Rejected content includes a note when the reviewer provides one and can be corrected before resubmission.',
+        ],
+      },
+      {
+        heading: 'Submit a release successfully',
+        steps: [
+          'Create an album, single, or EP with accurate title, date, label, copyright information, and cover art.',
+          'Add each audio track with the correct title, number, explicit status, genres, and lyrics when available.',
+          'Preview files and ordering in Artist Dashboard before leaving the item for review.',
+          'If rejected, read the reviewer note and review history, make the requested correction, and add a concise resubmission note.',
+          'Wait for approval before expecting the release to appear publicly.',
+        ],
+      },
+      {
+        heading: 'Content standards',
+        bullets: [
+          'Only submit audio, artwork, names, lyrics, video, and metadata you have the right to publish.',
+          'Mark explicit tracks accurately and avoid misleading artist names, release dates, or ticket links.',
+          'Do not repeatedly resubmit unchanged rejected content. The review history is retained for context.',
+          'A release can be approved separately from an individual track; check both status badges when something is missing publicly.',
+        ],
+      },
+    ],
+    related: ['artist-dashboard', 'copyright-claims', 'artist-profile-and-events', 'report-content-or-users'],
+  },
+  'cookies-and-local-storage': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify uses an httpOnly refresh cookie to maintain authentication and browser storage for interface and playback preferences. Local storage can remember theme, language, player preferences, pinned items, support-guide progress, and support feedback on the current device.',
+        ],
+      },
+      {
+        heading: 'What clearing site data changes',
+        bullets: [
+          'Clearing cookies signs the browser out because the refresh session is removed.',
+          'Clearing local storage resets device preferences such as theme, language, zoom, player options, pinned chat order, and support checklist progress.',
+          'Clearing Cache Storage removes cached app/media data and offline audio from that browser, but does not delete your account library or server history.',
+          'Account information, playlists, messages, follows, uploads, subscription state, and server notifications remain unless you delete them through their own account features.',
+        ],
+      },
+      {
+        heading: 'Manage storage safely',
+        paragraphs: [
+          'Use Settings → Storage and cache to inspect or clear media cache without guessing which browser folders to remove. Log out normally on shared devices so the server-side refresh session is revoked as well as the visible app state.',
+        ],
+        cta: { label: 'Open storage settings', href: '/settings' },
+      },
+    ],
+    related: ['remove-saved-login-details', 'privacy-settings', 'download-your-data', 'compact-library-and-now-playing'],
+  },
+  'ads-and-sponsored-content': {
+    blocks: [
+      {
+        paragraphs: [
+          'Not Spotify uses first-party house audio ads for Free listeners. Admins can create ad audio and artwork, choose whether ads are enabled, set the approximate cadence, and apply the targeting fields supported by the service. Premium playback is ad-free.',
+        ],
+      },
+      {
+        heading: 'Data and targeting',
+        bullets: [
+          'The service can choose from eligible active ads using its configured weights and targeting rules and records an impression when an ad is served.',
+          'Not Spotify does not sell a third-party advertising profile and does not store full payment details for ad targeting.',
+          'An ad may use country or other fields already held for normal account and catalogue operation when the admin has configured matching criteria.',
+          'Sponsored audio should be clearly presented through the ad player rather than disguised as a catalogue track.',
+        ],
+      },
+      {
+        heading: 'Report an ad',
+        paragraphs: [
+          'Include the ad title or visible creative, approximate time, account plan, country, and the reason for the report. Do not repeatedly reload to reproduce an offensive or broken ad; the team can inspect the ad record and impression context.',
+        ],
+      },
+    ],
+    related: ['free-tier-audio-ads', 'free-vs-premium', 'privacy-settings', 'report-content-or-users'],
+  },
+}
+
+const MISSING_ARTICLE_DETAILS = Array.from(ARTICLE_INDEX.keys()).filter(
+  (slug) => !ARTICLE_DETAILS[slug]?.blocks?.length,
+)
+
+if (MISSING_ARTICLE_DETAILS.length > 0) {
+  throw new Error(`Support articles need complete content: ${MISSING_ARTICLE_DETAILS.join(', ')}`)
 }
 
 function slugify(value: string) {
@@ -2131,7 +3104,7 @@ function buildDefaultArticleBlocks(articleRef: ArticleRef, group: HelpGroup, sec
             'Passwords must be at least 8 characters on signup.',
             'Refresh sessions use an httpOnly cookie named rt scoped to /auth.',
             'Logout revokes the refresh token and can mark you offline when it is your last active session.',
-            'Social login buttons are placeholders until OAuth provider credentials are configured.',
+            'Google and Facebook buttons appear only when their OAuth credentials are configured and the provider is enabled; Apple is hidden because it is not implemented.',
           ],
         },
         supportMinimumBlock(['Account email.', 'Whether login, signup, refresh, or logout failed.', 'Browser and device.', 'Exact error message. Do not include your password.']),
@@ -2516,16 +3489,16 @@ export function SupportPage() {
   const navigate = useNavigate()
   const topicSlug = searchParams.get('topic')
   const searchTerm = searchParams.get('search') ?? ''
-  const selectedArticle = topicSlug ? getArticle(topicSlug) : null
-  useDocumentTitle(selectedArticle?.title ?? (searchTerm.trim() ? `Search results for ${searchTerm.trim()}` : 'Support'))
+  const unknownTopic = Boolean(topicSlug && !ARTICLE_INDEX.has(topicSlug))
+  const selectedArticle = topicSlug && !unknownTopic ? getArticle(topicSlug) : null
+  useDocumentTitle(
+    unknownTopic
+      ? 'Help article not found'
+      : selectedArticle?.title ?? (searchTerm.trim() ? `Search results for ${searchTerm.trim()}` : 'Support'),
+  )
 
   const { user, isAuthenticated, logout } = useAuthStore()
-  const [query, setQuery] = useState('')
-  const [activeMode, setActiveMode] = useState<'ai' | 'basic'>('ai')
-
-  useEffect(() => {
-    setQuery(searchTerm)
-  }, [searchTerm])
+  const [query, setQuery] = useState(searchTerm)
 
   const submitSearch = () => {
     const normalized = query.trim()
@@ -2536,13 +3509,17 @@ export function SupportPage() {
     <div className="min-h-screen bg-page text-primary antialiased">
       <SupportHeader user={user} isAuthenticated={isAuthenticated} logout={logout} />
       <main>
-        {selectedArticle ? (
+        {unknownTopic ? (
+          <SupportNotFound
+            query={query}
+            setQuery={setQuery}
+            onSearch={submitSearch}
+          />
+        ) : selectedArticle ? (
           <ArticlePage
             article={selectedArticle}
             query={query}
             setQuery={setQuery}
-            activeMode={activeMode}
-            setActiveMode={setActiveMode}
             onSearch={submitSearch}
           />
         ) : searchTerm.trim() ? (
@@ -2557,13 +3534,49 @@ export function SupportPage() {
           <SupportHome
             query={query}
             setQuery={setQuery}
-            activeMode={activeMode}
-            setActiveMode={setActiveMode}
             onSearch={submitSearch}
           />
         )}
       </main>
     </div>
+  )
+}
+
+function SupportNotFound({
+  query,
+  setQuery,
+  onSearch,
+}: {
+  query: string
+  setQuery: (value: string) => void
+  onSearch: () => void
+}) {
+  return (
+    <section className="px-4 py-16">
+      <div className="mx-auto max-w-[520px] text-center">
+        <FileText className="mx-auto h-10 w-10 text-accent" aria-hidden="true" />
+        <h1 className="mt-5 text-3xl font-black tracking-[-0.03em] text-primary">
+          Help article not found
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-secondary">
+          That help link is no longer available. Search the complete help center or return to Support home.
+        </p>
+        <div className="mx-auto mt-7 max-w-[390px] shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
+          <SupportSearchField
+            query={query}
+            setQuery={setQuery}
+            onSearch={onSearch}
+            placeholder="Search"
+          />
+        </div>
+        <Link
+          to="/support"
+          className="mt-6 inline-flex text-sm font-black text-primary underline underline-offset-4 hover:text-accent"
+        >
+          Browse all help topics
+        </Link>
+      </div>
+    </section>
   )
 }
 
@@ -2633,14 +3646,10 @@ function SupportHeader({
 function SupportHome({
   query,
   setQuery,
-  activeMode,
-  setActiveMode,
   onSearch,
 }: {
   query: string
   setQuery: (value: string) => void
-  activeMode: 'ai' | 'basic'
-  setActiveMode: (value: 'ai' | 'basic') => void
   onSearch: () => void
 }) {
   const quickHelp = useMemo(() => QUICK_HELP_SLUGS.map((slug) => getArticle(slug)), [])
@@ -2655,9 +3664,7 @@ function SupportHome({
             Not Spotify Support
           </h1>
 
-          <div className="mx-auto mt-8 max-w-[390px] rounded-[2px] border border-primary/20 bg-page p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
-            <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
-
+          <div className="mx-auto mt-8 max-w-[390px] rounded-[2px] bg-page shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
             <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search" />
           </div>
         </div>
@@ -2839,15 +3846,11 @@ function ArticlePage({
   article,
   query,
   setQuery,
-  activeMode,
-  setActiveMode,
   onSearch,
 }: {
   article: ArticleDetail
   query: string
   setQuery: (value: string) => void
-  activeMode: 'ai' | 'basic'
-  setActiveMode: (value: 'ai' | 'basic') => void
   onSearch: () => void
 }) {
   return (
@@ -2867,11 +3870,8 @@ function ArticlePage({
           <ArticleSearchPanel
             query={query}
             setQuery={setQuery}
-            activeMode={activeMode}
-            setActiveMode={setActiveMode}
             onSearch={onSearch}
           />
-          <p className="mt-3 text-xs font-bold text-secondary">You're engaging with an AI-powered tool.</p>
 
           <Link
             to="/account"
@@ -2892,7 +3892,7 @@ function ArticlePage({
           <ArticleFeedback slug={article.slug} />
         </div>
 
-        <ArticleSidebar article={article} />
+        <ArticleSidebar key={article.slug} article={article} />
       </div>
     </section>
   )
@@ -2901,19 +3901,14 @@ function ArticlePage({
 function ArticleSearchPanel({
   query,
   setQuery,
-  activeMode,
-  setActiveMode,
   onSearch,
 }: {
   query: string
   setQuery: (value: string) => void
-  activeMode: 'ai' | 'basic'
-  setActiveMode: (value: 'ai' | 'basic') => void
   onSearch: () => void
 }) {
   return (
-    <div className="rounded-[3px] border border-primary/20 bg-page p-2.5 shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
-      <SearchModeTabs activeMode={activeMode} setActiveMode={setActiveMode} />
+    <div className="rounded-[3px] bg-page shadow-[0_16px_56px_rgba(0,0,0,0.18)]">
       <SupportSearchField query={query} setQuery={setQuery} onSearch={onSearch} placeholder="Search support" />
     </div>
   )
@@ -3017,45 +4012,6 @@ function SupportSearchField({
           </button>
         </div>
       )}
-    </div>
-  )
-}
-
-function SearchModeTabs({
-  activeMode,
-  setActiveMode,
-}: {
-  activeMode: 'ai' | 'basic'
-  setActiveMode: (value: 'ai' | 'basic') => void
-}) {
-  return (
-    <div className="mx-auto mb-2.5 flex h-6 max-w-[215px] rounded-full bg-elevated p-0.5 text-[10px] font-black">
-      <button
-        type="button"
-        onClick={() => setActiveMode('ai')}
-        className={cn(
-          'flex flex-1 items-center justify-center gap-1.5 rounded-full border transition-colors',
-          activeMode === 'ai'
-            ? 'border-accent bg-page text-primary shadow-sm'
-            : 'border-transparent text-secondary hover:text-primary',
-        )}
-      >
-        <Search className="h-3 w-3" />
-        Search with AI
-      </button>
-      <button
-        type="button"
-        onClick={() => setActiveMode('basic')}
-        className={cn(
-          'flex flex-1 items-center justify-center gap-1.5 rounded-full border transition-colors',
-          activeMode === 'basic'
-            ? 'border-secondary/55 bg-elevated text-primary'
-            : 'border-transparent text-secondary hover:text-primary',
-        )}
-      >
-        <Bot className="h-3 w-3" />
-        Basic Search
-      </button>
     </div>
   )
 }
@@ -3271,11 +4227,6 @@ function RelatedArticles({ article }: { article: ArticleDetail }) {
 function ArticleSidebar({ article }: { article: ArticleDetail }) {
   const [openGroup, setOpenGroup] = useState<string | null>(article.groupId)
   const [openSection, setOpenSection] = useState<string | null>(article.sectionId)
-
-  useEffect(() => {
-    setOpenGroup(article.groupId)
-    setOpenSection(article.sectionId)
-  }, [article.groupId, article.sectionId, article.slug])
 
   return (
     <aside className="lg:sticky lg:top-20 lg:self-start">

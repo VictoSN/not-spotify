@@ -9,6 +9,22 @@ public record SignupRequest(
     string? Country
 );
 
+public record SignupStartResponse(
+    string Message,
+    string Email,
+    DateTime ExpiresAt,
+    string? DevelopmentCode
+);
+
+public record VerifySignupRequest(
+    [Required, EmailAddress] string Email,
+    [Required, RegularExpression("^[0-9]{6}$")] string Code
+);
+
+public record ResendSignupOtpRequest(
+    [Required, EmailAddress] string Email
+);
+
 public record LoginRequest(
     [Required, EmailAddress] string Email,
     [Required] string Password

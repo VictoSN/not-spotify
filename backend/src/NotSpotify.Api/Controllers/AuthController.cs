@@ -26,6 +26,7 @@ public class AuthController : ControllerBase
 
     private readonly UserManager<ApplicationUser> _users;
     private readonly TokenService _tokens;
+    private readonly RegistrationVerificationService _registration;
     private readonly AppDbContext _db;
     private readonly JwtOptions _jwt;
     private readonly MediaMapper _mapper;
@@ -37,6 +38,7 @@ public class AuthController : ControllerBase
     public AuthController(
         UserManager<ApplicationUser> users,
         TokenService tokens,
+        RegistrationVerificationService registration,
         AppDbContext db,
         JwtOptions jwt,
         MediaMapper mapper,
@@ -47,6 +49,7 @@ public class AuthController : ControllerBase
     {
         _users = users;
         _tokens = tokens;
+        _registration = registration;
         _db = db;
         _jwt = jwt;
         _mapper = mapper;
@@ -57,13 +60,27 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("signup")]
-    public async Task<ActionResult<AuthResponse>> Signup([FromBody] SignupRequest req)
+    public async Task<ActionResult<SignupStartResponse>> Signup([FromBody] SignupRequest req)
     {
+        var email = req.Email.Trim().ToLowerInvariant();
+        var existing = await _users.FindByEmailAsync(email);
+        if (existing is not null)
+        {
+            if (existing.EmailConfirmed)
+                return Conflict(new { message = "An account with that email already exists." });
+
+            if (existing.EmailConfirmationOtpExpiresAt > DateTime.UtcNow)
+                return Conflict(new { message = "This email is awaiting verification. Use the code already sent to it." });
+
+            await _users.DeleteAsync(existing);
+        }
+
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(),
-            UserName = req.Email,
-            Email = req.Email,
+            UserName = email,
+            Email = email,
+            EmailConfirmed = false,
             Name = req.Name,
             Country = req.Country ?? "US",
         };
@@ -72,7 +89,94 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
+        try
+        {
+            var issue = await _registration.IssueAsync(user, DateTime.UtcNow, HttpContext.RequestAborted);
+            var update = await _users.UpdateAsync(user);
+            if (!update.Succeeded)
+            {
+                await _users.DeleteAsync(user);
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Could not start email verification." });
+            }
+
+            return Accepted(new SignupStartResponse(
+                "Enter the 6-digit code sent to your email.",
+                email,
+                issue.ExpiresAt,
+                _env.IsDevelopment() ? issue.Code : null));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Auth] Could not send registration OTP to {Email}", email);
+            await _users.DeleteAsync(user);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Could not send the verification email. Please try again." });
+        }
+    }
+
+    [HttpPost("signup/verify")]
+    public async Task<ActionResult<AuthResponse>> VerifySignup([FromBody] VerifySignupRequest req)
+    {
+        var user = await _users.FindByEmailAsync(req.Email.Trim().ToLowerInvariant());
+        if (user is null || user.EmailConfirmed)
+            return BadRequest(new { message = "Invalid or expired verification code." });
+
+        var verification = _registration.Verify(user, req.Code, DateTime.UtcNow);
+        var update = await _users.UpdateAsync(user);
+        if (!update.Succeeded)
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Could not verify the account." });
+
+        if (verification == RegistrationOtpVerificationResult.Expired)
+            return BadRequest(new { message = "This verification code has expired. Request a new one." });
+        if (verification == RegistrationOtpVerificationResult.Invalid)
+            return BadRequest(new { message = "Incorrect verification code." });
+
         return Ok(await IssueTokensAsync(user));
+    }
+
+    [HttpPost("signup/resend")]
+    public async Task<ActionResult<SignupStartResponse>> ResendSignupOtp([FromBody] ResendSignupOtpRequest req)
+    {
+        var email = req.Email.Trim().ToLowerInvariant();
+        var user = await _users.FindByEmailAsync(email);
+        if (user is null || user.EmailConfirmed)
+        {
+            return Accepted(new SignupStartResponse(
+                "If an unverified account exists, a new code has been sent.",
+                email,
+                DateTime.UtcNow.Add(RegistrationVerificationService.Lifetime),
+                null));
+        }
+
+        var now = DateTime.UtcNow;
+        if (!_registration.CanResend(user, now))
+        {
+            var retryAfter = Math.Max(1, (int)Math.Ceiling(
+                (user.EmailConfirmationOtpSentAt!.Value.Add(RegistrationVerificationService.ResendCooldown) - now).TotalSeconds));
+            Response.Headers.RetryAfter = retryAfter.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                message = $"Please wait {retryAfter} seconds before requesting another code.",
+                retryAfterSeconds = retryAfter,
+            });
+        }
+
+        try
+        {
+            var issue = await _registration.IssueAsync(user, now, HttpContext.RequestAborted);
+            var update = await _users.UpdateAsync(user);
+            if (!update.Succeeded)
+                return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Could not update the verification code." });
+            return Accepted(new SignupStartResponse(
+                "A new verification code has been sent.",
+                email,
+                issue.ExpiresAt,
+                _env.IsDevelopment() ? issue.Code : null));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[Auth] Could not resend registration OTP to {Email}", email);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "Could not send the verification email. Please try again." });
+        }
     }
 
     [HttpPost("login")]
@@ -81,6 +185,9 @@ public class AuthController : ControllerBase
         var user = await _users.FindByEmailAsync(req.Email);
         if (user is null || !await _users.CheckPasswordAsync(user, req.Password))
             return Unauthorized(new { message = "Invalid email or password." });
+
+        if (!user.EmailConfirmed)
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Verify your email before signing in." });
 
         return Ok(await IssueTokensAsync(user));
     }

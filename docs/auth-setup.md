@@ -1,8 +1,28 @@
-# Auth: Change Password, Reset Password & Social Login
+# Auth: Registration Verification, Password Recovery & Social Login
 
 Three account-recovery / login features, all wired into the existing JWT + refresh-cookie auth. This doc covers how each works and what (if anything) you must configure.
 
 > **Restart the backend after pulling these changes** (`dotnet run`) — the new endpoints (`/auth/change-password`, `/auth/forgot-password`, `/auth/reset-password`, `/auth/external/*`) don't exist in an older running instance.
+
+---
+
+## Registration email verification
+
+Password signup is a two-step flow. `POST /auth/signup` creates an inactive account and emails a six-digit OTP; `POST /auth/signup/verify` confirms the email and only then issues access/refresh tokens. Codes expire after 10 minutes, are limited to five attempts, and can be resent after 60 seconds through `POST /auth/signup/resend`.
+
+Configure SMTP with user-secrets or environment variables in production:
+
+```powershell
+dotnet user-secrets set "Email:Smtp:Host" "smtp.example.com"
+dotnet user-secrets set "Email:Smtp:Port" "587"
+dotnet user-secrets set "Email:Smtp:EnableSsl" "true"
+dotnet user-secrets set "Email:Smtp:FromAddress" "accounts@example.com"
+dotnet user-secrets set "Email:Smtp:FromName" "not-spotify"
+dotnet user-secrets set "Email:Smtp:Username" "accounts@example.com"
+dotnet user-secrets set "Email:Smtp:Password" "your-smtp-password"
+```
+
+Development without SMTP logs and displays the code so the flow remains testable. Production signup fails closed if SMTP is missing; it never exposes the OTP in the API response.
 
 ---
 

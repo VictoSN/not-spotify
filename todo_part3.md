@@ -330,19 +330,20 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a significant security oversight. Verifying the user's email address upon registration is a basic industry standard to prevent bots and ensure the user has access to the provided email.
 
-- [ ] **Fix Implementation**
-  - [ ] Create two-step registration process
-  - [ ] Step 1: User fills out registration form
-  - [ ] Step 2: Send unique OTP to user's provided email address
-  - [ ] Prompt user to enter OTP on the app/website
-  - [ ] Activate account only upon successful verification
+- [x] **Fix Implementation**
+  - [x] Create two-step registration process
+  - [x] Step 1: User fills out registration form and a disabled Identity account is created with `EmailConfirmed = false`
+  - [x] Step 2: Generate a cryptographically random 6-digit OTP, store only an HMAC hash, and send it through the configurable SMTP registration mailer
+  - [x] Prompt user to enter OTP on the app/website, with development-only code display when SMTP is intentionally unconfigured
+  - [x] Activate account and issue access/refresh tokens only upon successful verification; unverified password logins are rejected
+  - [x] Add 10-minute expiry, five-attempt protection, 60-second resend cooldown, and a migration that preserves access for existing accounts
 
-- [ ] **Tests to Complete**
-  - [ ] Test: OTP is sent to user's email after registration
-  - [ ] Test: Correct OTP activates the account
-  - [ ] Test: Incorrect OTP shows error and prevents activation
-  - [ ] Test: OTP expires after reasonable time
-  - [ ] Test: Resend OTP functionality works
+- [x] **Tests to Complete**
+  - [x] Test: OTP is sent to user's email after registration
+  - [x] Test: Correct OTP activates the account
+  - [x] Test: Incorrect OTP shows error and prevents activation
+  - [x] Test: OTP expires after reasonable time
+  - [x] Test: Resend OTP functionality works
 
 ---
 

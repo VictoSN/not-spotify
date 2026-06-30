@@ -3,7 +3,13 @@ import { api } from './api'
 
 interface LoginPayload { email: string; password: string }
 interface SignupPayload { name: string; email: string; password: string }
-interface AuthTokens { accessToken: string; user: User }
+export interface AuthTokens { accessToken: string; user: User }
+export interface SignupStartResult {
+  message: string
+  email: string
+  expiresAt: string
+  developmentCode?: string | null
+}
 export interface ExternalAuthProviderState {
   enabled: boolean
   configured: boolean
@@ -22,8 +28,18 @@ export const authService = {
     return res.data
   },
 
-  async signup(payload: SignupPayload): Promise<AuthTokens> {
-    const res = await api.post<AuthTokens>('/auth/signup', payload)
+  async signup(payload: SignupPayload): Promise<SignupStartResult> {
+    const res = await api.post<SignupStartResult>('/auth/signup', payload)
+    return res.data
+  },
+
+  async verifySignup(email: string, code: string): Promise<AuthTokens> {
+    const res = await api.post<AuthTokens>('/auth/signup/verify', { email, code })
+    return res.data
+  },
+
+  async resendSignupOtp(email: string): Promise<SignupStartResult> {
+    const res = await api.post<SignupStartResult>('/auth/signup/resend', { email })
     return res.data
   },
 

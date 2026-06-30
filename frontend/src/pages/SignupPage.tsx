@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9,6 +9,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useTranslation } from '@/i18n/useTranslation'
 import { api } from '@/services/api'
 import { authService } from '@/services/authService'
+import type { SignupStartResult } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
@@ -35,13 +36,17 @@ export function SignupPage() {
   const { t } = useTranslation()
   useDocumentTitle('Sign up')
   const navigate = useNavigate()
-  const { signup, hydrateFromCookie, isLoading, error, isAuthenticated, clearError } = useAuthStore()
+  const { signup, verifySignup, hydrateFromCookie, isLoading, error, isAuthenticated, clearError } = useAuthStore()
   const { register, handleSubmit, watch, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
   const [facebookEnabled, setFacebookEnabled] = useState(false)
+  const [pending, setPending] = useState<(SignupStartResult & { wantsArtist: boolean; name: string }) | null>(null)
+  const [otp, setOtp] = useState('')
+  const [resending, setResending] = useState(false)
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
@@ -62,10 +67,109 @@ export function SignupPage() {
   const onSubmit = async (data: FormValues) => {
     clearError()
     setSocialNotice(null)
-    await signup(data.name, data.email, data.password)
-    if (data.wantsArtist) {
-      api.post('/me/artist-application', { displayName: data.name, bio: '' }).catch(() => {})
+    const result = await signup(data.name, data.email, data.password)
+    setPending({ ...result, wantsArtist: data.wantsArtist, name: data.name })
+  }
+
+  const verifyOtp = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!pending || otp.length !== 6) return
+    clearError()
+    setVerificationNotice(null)
+    await verifySignup(pending.email, otp)
+    if (pending.wantsArtist) {
+      await api.post('/me/artist-application', { displayName: pending.name, bio: '' }).catch(() => {})
     }
+  }
+
+  const resendOtp = async () => {
+    if (!pending || resending) return
+    clearError()
+    setVerificationNotice(null)
+    setResending(true)
+    try {
+      const result = await authService.resendSignupOtp(pending.email)
+      setPending((current) => current ? { ...current, ...result } : current)
+      setOtp('')
+      setVerificationNotice(result.message)
+    } catch (err) {
+      const message = (err as { response?: { data?: { message?: string } } }).response?.data?.message
+        ?? 'Could not resend the code. Please try again.'
+      setVerificationNotice(message)
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (pending) {
+    return (
+      <div className="relative min-h-screen bg-page px-6 py-8 text-primary">
+        <Link to="/" className="absolute left-6 top-8 inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
+          <ArrowLeftIcon className="h-4 w-4" />
+          {t('auth.backHome')}
+        </Link>
+
+        <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[348px] flex-col items-center pt-[9vh]">
+          <SpotifyMark className="mb-7 h-9 w-9 text-primary" />
+          <h1 className="text-center text-[2.35rem] font-black leading-tight text-primary">Check your email</h1>
+          <p className="mt-4 text-center text-sm font-medium leading-relaxed text-secondary">
+            Enter the 6-digit code sent to <span className="font-bold text-primary">{pending.email}</span>.
+          </p>
+
+          <form onSubmit={verifyOtp} className="mt-8 flex w-full flex-col gap-4">
+            <div>
+              <label htmlFor="signup-otp" className={labelClass}>Verification code</label>
+              <input
+                id="signup-otp"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                autoFocus
+                className={`${inputClass} text-center text-xl tracking-[0.45em]`}
+                placeholder="000000"
+                aria-describedby="signup-otp-expiry"
+              />
+              <p id="signup-otp-expiry" className="mt-2 text-center text-xs font-medium text-muted">
+                The code expires in 10 minutes.
+              </p>
+            </div>
+
+            {pending.developmentCode && (
+              <div className="rounded border border-accent/30 bg-accent-dim/30 px-4 py-3 text-center">
+                <p className="text-xs font-semibold text-secondary">Development code</p>
+                <p className="mt-1 font-mono text-lg font-black tracking-[0.25em] text-primary">{pending.developmentCode}</p>
+              </div>
+            )}
+            {error && (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-4 py-3">
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
+            {verificationNotice && (
+              <div className="rounded border border-primary/15 bg-elevated px-4 py-3">
+                <p className="text-sm font-medium text-secondary">{verificationNotice}</p>
+              </div>
+            )}
+
+            <button type="submit" className={primaryButtonClass} disabled={isLoading || otp.length !== 6}>
+              {isLoading ? <Spinner size="sm" /> : 'Verify and create account'}
+            </button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => void resendOtp()}
+            disabled={resending}
+            className="mt-6 inline-flex items-center gap-2 text-sm font-black text-primary underline transition-colors hover:text-accent disabled:opacity-60"
+          >
+            <ArrowPathIcon className={`h-4 w-4 ${resending ? 'animate-spin' : ''}`} />
+            {resending ? 'Sending…' : 'Resend code'}
+          </button>
+        </main>
+      </div>
+    )
   }
 
   return (

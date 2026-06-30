@@ -30,6 +30,13 @@ public class ApplicationUser : IdentityUser<Guid>
     // Updated on heartbeat / track play — used to derive online status.
     public DateTime? LastSeenAt { get; set; }
 
+    // Local-password registrations stay inactive until this short-lived code is
+    // verified. OAuth accounts are confirmed by their identity provider.
+    public string? EmailConfirmationOtpHash { get; set; }
+    public DateTime? EmailConfirmationOtpExpiresAt { get; set; }
+    public DateTime? EmailConfirmationOtpSentAt { get; set; }
+    public int EmailConfirmationOtpAttempts { get; set; }
+
     public ICollection<Playlist> Playlists { get; set; } = new List<Playlist>();
     public ICollection<Friendship> SentFriendRequests { get; set; } = new List<Friendship>();
     public ICollection<Friendship> ReceivedFriendRequests { get; set; } = new List<Friendship>();

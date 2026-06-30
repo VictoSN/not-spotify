@@ -131,6 +131,8 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IRegistrationEmailSender, SmtpRegistrationEmailSender>();
+builder.Services.AddScoped<RegistrationVerificationService>();
 
 builder.Services.AddRateLimiter(options =>
 {

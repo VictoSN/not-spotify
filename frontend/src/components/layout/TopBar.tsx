@@ -758,13 +758,15 @@ export function TopBar() {
 
       {/* Free-user account links */}
       {user?.capabilities?.unlimitedPlayback === false && (
-        <div className="hidden shrink-0 items-center gap-4 text-sm font-bold text-secondary sm:flex">
+        <div className="hidden shrink-0 items-center text-sm font-bold text-secondary sm:flex">
           <Link to="/premium" onClick={closeKaraoke} className="transition-colors hover:text-primary">
             {t('topbar.premium')}
           </Link>
-          <InstallAppButton className="transition-colors hover:text-primary" />
         </div>
       )}
+
+      {/* Dedicated in-app install destination — immediately before notifications. */}
+      <InstallAppButton className="hidden h-10 shrink-0 items-center gap-2 whitespace-nowrap px-1.5 text-sm font-bold text-secondary transition-all hover:scale-[1.02] hover:text-primary active:scale-95 sm:flex" />
 
       {/* Notifications bell — desktop only */}
       <NotificationBell />

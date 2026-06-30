@@ -65,6 +65,7 @@ import { EmbedTrackPage } from '@/pages/EmbedTrackPage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 import { AboutPage, LegalPage, PrivacyPolicyPage } from '@/pages/legal/InfoPages'
 import { DownloadPage } from '@/pages/DownloadPage'
+import { InstallAppPage } from '@/pages/InstallAppPage'
 
 export const router = createBrowserRouter([
   // Dev-only harness for the karaoke lyrics view; excluded from production builds.
@@ -121,6 +122,7 @@ export const router = createBrowserRouter([
           { path: 'track/:id', element: <TrackDetailPage /> },
           { path: 'queue', element: <QueuePage /> },
           { path: 'recognize', element: <RecognizePage /> },
+          { path: 'install-app', element: <InstallAppPage /> },
           // Static footer pages — public so links resolve for guests too.
           { path: 'about', element: <AboutPage /> },
           { path: 'legal', element: <LegalPage /> },

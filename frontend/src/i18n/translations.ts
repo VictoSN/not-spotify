@@ -421,7 +421,7 @@ const en: Dict = {
   'topbar.result.playlist': 'Playlist',
   'topbar.premium': 'Premium',
   'topbar.support': 'Support',
-  'topbar.installApp': 'Install app',
+  'topbar.installApp': 'Install App',
   'topbar.download': 'Download',
   'topbar.familyPlan': 'Set up your Family plan',
   'topbar.recents': 'Recents',

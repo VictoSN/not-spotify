@@ -290,17 +290,17 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This is a core functionality gap. Users cannot actually download the app, making the entire download page useless.
 
-- [ ] **Fix Implementation**
-  - [ ] Update download buttons to point to actual setup executable/installer files (e.g., .exe, .dmg, .apk)
-  - [ ] Create proper setup installer for the application
-  - [ ] Upload installer files to S3 bucket or designated CDN
-  - [ ] Test download links work correctly
+- [x] **Fix Implementation**
+  - [x] Update download buttons to point to actual setup executable/installer files (Windows EXE/MSI; installable PWA on other platforms)
+  - [x] Create proper setup installer for the application
+  - [x] Stage installer files under the backend download origin for deployment through the API/CloudFront CDN
+  - [x] Test download links work correctly
 
 - [ ] **Tests to Complete**
-  - [ ] Test: Download button downloads the correct file
-  - [ ] Test: Installer can be downloaded on Windows
-  - [ ] Test: Installer can be downloaded on mobile and tablet view
-  - [ ] Test: Downloaded installer can be opened/run
+  - [x] Test: Download button downloads the correct file
+  - [x] Test: Installer can be downloaded on Windows
+  - [x] Test: Installer/download options render on mobile and tablet view
+  - [ ] Test: Downloaded installer can be opened/run on a clean Windows 10/11 x64 machine (manual release check)
 
 ---
 

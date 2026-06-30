@@ -6,6 +6,24 @@ import { TopBar } from './TopBar'
 import { useAuthStore } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import type { User } from '@/types/user'
+
+const premiumUser: User = {
+  id: 'premium-user',
+  name: 'Premium Listener',
+  email: 'premium@example.com',
+  avatarUrl: null,
+  plan: 'premium',
+  country: 'SG',
+  createdAt: '2026-01-01T00:00:00Z',
+  roles: ['User'],
+  subscriptionStatus: 'active',
+  subscriptionInterval: 'monthly',
+  subscriptionCurrentPeriodEnd: null,
+  subscriptionCancelAtPeriodEnd: false,
+  capabilities: { unlimitedPlayback: true, customPlaylistPictures: true },
+  artistId: null,
+}
 
 describe('TopBar navigation', () => {
   beforeEach(() => {
@@ -48,5 +66,23 @@ describe('TopBar navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Browse all' }))
 
     expect(usePlayerStore.getState().isKaraokeOpen).toBe(false)
+  })
+
+  it('shows Install App immediately before notifications for Premium users', () => {
+    useAuthStore.setState({ user: premiumUser, isAuthenticated: true })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TopBar />
+      </MemoryRouter>,
+    )
+
+    const installLink = screen.getByRole('link', { name: 'Install App' })
+    const notifications = screen.getByRole('button', { name: 'Notifications' })
+    const controls = Array.from(document.querySelectorAll('a,button'))
+
+    expect(installLink).toHaveAttribute('href', '/install-app')
+    expect(installLink.querySelector('svg')).toBeInTheDocument()
+    expect(controls.indexOf(installLink)).toBeLessThan(controls.indexOf(notifications))
   })
 })

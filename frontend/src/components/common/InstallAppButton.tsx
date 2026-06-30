@@ -1,29 +1,26 @@
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
+import { ArrowDownCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useInstallApp } from '@/hooks/useInstallApp'
 import { useTranslation } from '@/i18n/useTranslation'
 import { notify } from '@/utils/toast'
+import { cn } from '@/utils/cn'
 
 /**
- * "Install app" link for the top bar (sits beside Premium / Support). Triggers
- * the native PWA install prompt where available (Chromium); on browsers that
- * don't expose it (Firefox / Safari) it falls back to a short instructional
- * toast. Renders nothing once the app is already installed / running standalone.
+ * Route link for the top bar and public support header. The destination keeps
+ * the visitor inside the music-app shell and presents both the native Windows
+ * installer and the real PWA prompt in a full install page.
  */
 export function InstallAppButton({ className }: { className?: string }) {
-  const { isStandalone, promptInstall } = useInstallApp()
+  const { isStandalone } = useInstallApp()
   const { t } = useTranslation()
 
   if (isStandalone) return null
 
-  const handleClick = async () => {
-    const shown = await promptInstall()
-    if (!shown) notify.info(t('topbar.installHint'))
-  }
-
   return (
-    <button type="button" onClick={handleClick} className={className}>
-      {t('topbar.installApp')}
-    </button>
+    <Link to="/install-app" className={cn('inline-flex items-center gap-2', className)}>
+      <ArrowDownCircleIcon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+      <span>{t('topbar.installApp')}</span>
+    </Link>
   )
 }
 

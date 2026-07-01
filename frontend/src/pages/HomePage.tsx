@@ -364,7 +364,7 @@ export function HomePage() {
         {/* For You Today — personalised, auth only */}
         {showMusic && isAuthenticated && forYou.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.forYouToday')} href="/recommended-tracks" variant="home" />
+            <SectionHeader title={t('home.section.forYouToday')} href="/for-you-today" variant="home" />
             <HorizontalScroller bleedRight>
               {forYou.map((track) => (
                 <TrackTile key={track.id} track={track} queue={forYou} flush />
@@ -400,7 +400,7 @@ export function HomePage() {
         {/* Most Liked */}
         {showMusic && mostLiked.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.mostLiked')} variant="home" />
+            <SectionHeader title={t('home.section.mostLiked')} href="/charts" variant="home" />
             <HorizontalScroller bleedRight>
               {mostLiked.map((track) => (
                 <TrackTile key={track.id} track={track} queue={mostLiked} flush />
@@ -412,7 +412,7 @@ export function HomePage() {
         {/* Popular in the listener's country */}
         {showMusic && popularInCountry.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} variant="home" />
+            <SectionHeader title={t('home.section.popularInCountry', { country: countryName })} href="/popular-in-country" variant="home" />
             <HorizontalScroller bleedRight>
               {popularInCountry.map((track) => (
                 <TrackTile key={track.id} track={track} queue={popularInCountry} flush />
@@ -436,7 +436,7 @@ export function HomePage() {
         {/* New Music */}
         {showMusic && newMusic.length > 0 && (
           <section className="mb-6">
-            <SectionHeader title={t('home.section.newMusic')} variant="home" />
+            <SectionHeader title={t('home.section.newMusic')} href="/new-music" variant="home" />
             <HorizontalScroller bleedRight>
               {newMusic.map((track) => (
                 <TrackTile key={track.id} track={track} queue={newMusic} flush />

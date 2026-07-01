@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -134,7 +134,10 @@ export function AdminAlbumsListPage() {
   const [albumSort, setAlbumSort] = useState<AlbumSort>({ field: 'releaseDate', dir: 'desc' })
   const [trackSort, setTrackSort] = useState<TrackSort>({ field: 'trackNumber', dir: 'asc' })
 
+  // Race-safe reload — see AdminTracksListPage for the rationale.
+  const requestIdRef = useRef(0)
   const reload = async (t: Tab = tab) => {
+    const myId = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
     setOpenArtists(new Set())
@@ -142,20 +145,22 @@ export function AdminAlbumsListPage() {
     setTrackCache(new Map())
     setPlayingId(null)
     try {
-      setAlbums(
+      const data =
         t === 'pending'  ? await adminService.listPendingAlbums() :
         t === 'approved' ? await adminService.listAlbums('approved') :
         t === 'rejected' ? await adminService.listAlbums('rejected') :
                            await adminService.listAlbums()
-      )
+      if (myId !== requestIdRef.current) return
+      setAlbums(data)
     } catch (err) {
+      if (myId !== requestIdRef.current) return
       setError(err instanceof Error ? err.message : 'Failed to load albums')
     } finally {
-      setIsLoading(false)
+      if (myId === requestIdRef.current) setIsLoading(false)
     }
   }
 
-  useEffect(() => { reload() }, [tab])
+  useEffect(() => { reload(tab) }, [tab])
 
   // Group albums by artist
   const artistGroups = useMemo((): ArtistGroup[] => {

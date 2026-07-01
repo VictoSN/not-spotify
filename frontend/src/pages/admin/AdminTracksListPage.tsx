@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -54,25 +54,32 @@ export function AdminTracksListPage() {
     }
   }
 
+  // Race-safe reload: rapid tab-switching used to show the older tab's results
+  // because whichever fetch resolved last would win. We stamp each call with a
+  // monotonic id and drop responses that are no longer the current request.
+  const requestIdRef = useRef(0)
   const reload = async (t: Tab = tab) => {
+    const myId = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
     setPlayingId(null)
     try {
-      setTracks(
+      const data =
         t === 'pending'  ? await adminService.listPendingTracks() :
         t === 'approved' ? await adminService.listTracks('approved') :
         t === 'rejected' ? await adminService.listTracks('rejected') :
                            await adminService.listTracks()
-      )
+      if (myId !== requestIdRef.current) return
+      setTracks(data)
     } catch (err) {
+      if (myId !== requestIdRef.current) return
       setError(err instanceof Error ? err.message : 'Failed to load tracks')
     } finally {
-      setIsLoading(false)
+      if (myId === requestIdRef.current) setIsLoading(false)
     }
   }
 
-  useEffect(() => { reload() }, [tab])
+  useEffect(() => { reload(tab) }, [tab])
 
   const handleDelete = async (track: Track) => {
     if (!(await confirm({

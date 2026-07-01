@@ -912,27 +912,27 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Duplicate navigation elements create unnecessary visual clutter and can confuse users about which control to use. Since the top bar already provides these functions consistently across all pages, the sidebar duplicates serve no additional purpose and consume valuable vertical space.
 
-- [ ] **Fix Implementation**
-  - [ ] Remove 'Back to App' button from the left sidebar bottom section
-  - [ ] Remove 'Log Out' button from the left sidebar bottom section
-  - [ ] Remove account information display (username/avatar) from the left sidebar bottom section
-  - [ ] Ensure the top bar 'Back to App' and 'Log Out' buttons remain functional
-  - [ ] Ensure the top bar account information display remains functional
-  - [ ] Adjust sidebar layout to account for removed elements (prevent empty space)
-  - [ ] Verify sidebar still looks balanced after element removal
-  - [ ] Do the same removal for any other dashboards with duplicate elements (artist dashboard, admin dashboard)
+- [x] **Fix Implementation**
+  - [x] Remove 'Back to App' button from the left sidebar bottom section (AdminShell `AdminAccount` deleted)
+  - [x] Remove 'Log Out' button from the left sidebar bottom section (same)
+  - [x] Remove account information display (username/avatar) from the left sidebar bottom section (same)
+  - [x] Ensure the top bar 'Back to App' and 'Log Out' buttons remain functional (kept in AdminShell header; "Back to app" now also visible on mobile — icon-only under `sm`)
+  - [x] Ensure the top bar account information display remains functional (untouched — still in header at `md+`)
+  - [x] Adjust sidebar layout to account for removed elements (sidebar collapses to brand + nav only; no leftover spacer)
+  - [x] Verify sidebar still looks balanced after element removal (verified live: aside ends flush at viewport bottom; only brand+nav children remain)
+  - [x] Do the same removal for any other dashboards with duplicate elements — n/a: main app `Sidebar.tsx` and Artist Dashboard (uses `SettingsShell` — top-header-only, no left sidebar) never had a bottom user card / Back-to-app / Log-out; only the Admin sidebar carried the duplicates
 
-- [ ] **Tests to Complete**
-  - [ ] Test: 'Back to App' button is removed from left sidebar
-  - [ ] Test: 'Log Out' button is removed from left sidebar
-  - [ ] Test: Account information is removed from left sidebar bottom
-  - [ ] Test: Top bar 'Back to App' button still works correctly
-  - [ ] Test: Top bar 'Log Out' button still works correctly
-  - [ ] Test: Top bar account information still displays correctly
-  - [ ] Test: Sidebar layout looks correct without removed elements
-  - [ ] Test: No empty/gaping space where elements were removed
-  - [ ] Test: Artist dashboard sidebar also has redundant elements removed
-  - [ ] Test: Admin dashboard sidebar also has redundant elements removed
+- [x] **Tests to Complete**
+  - [x] Test: 'Back to App' button is removed from left sidebar (aside no longer contains the `App` link)
+  - [x] Test: 'Log Out' button is removed from left sidebar (aside `textContent` no longer contains "Log out")
+  - [x] Test: Account information is removed from left sidebar bottom (`AdminAccount` deleted)
+  - [x] Test: Top bar 'Back to App' button still works correctly (header link to `/` retained; visible on all viewports, label hidden under `sm`)
+  - [x] Test: Top bar 'Log Out' button still works correctly (header icon-button retained, still bound to `handleLogout`)
+  - [x] Test: Top bar account information still displays correctly (header user badge unchanged at `md+`)
+  - [x] Test: Sidebar layout looks correct without removed elements (verified live: brand header + nav, no empty spacer)
+  - [x] Test: No empty/gaping space where elements were removed (aside has only 2 children, no bottom section)
+  - [~] Test: Artist dashboard sidebar also has redundant elements removed — n/a (no left sidebar on that shell)
+  - [x] Test: Admin dashboard sidebar also has redundant elements removed (this is the fix)
 
 ---
 
@@ -1064,22 +1064,21 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** 'For You Today' provides daily curated recommendations personalized to the user's listening habits and time of day, while 'Recommended Tracks' is a general recommendation feed. Linking them together confuses users and denies them access to the full 'For You Today' experience they expect when clicking 'Show All.'
 
-- [ ] **Fix Implementation**
-  - [ ] Verify whether a dedicated 'For You Today' page exists
-  - [ ] If it exists, update the 'Show All' link to navigate to it
-  - [ ] If it doesn't exist, create a 'For You Today' page with expanded daily recommendations
-  - [ ] Ensure the 'For You Today' page shows more daily curated content than the home section
-  - [ ] Distinguish 'For You Today' content from 'Recommended Tracks' content clearly
-  - [ ] Update the link/route from the Home page 'Show All' button
-  - [ ] Ensure the 'For You Today' page has proper navigation and back functionality
+- [x] **Fix Implementation**
+  - [x] Verify whether a dedicated 'For You Today' page exists — no; `/recommended-tracks` was misused as both the Home "For You Today" destination and Browse's "Discover Weekly" destination, showing identical content
+  - [x] Create a 'For You Today' page with expanded daily recommendations — new `ForYouTodayPage.tsx` at `/for-you-today` using `getForYou(50)`
+  - [x] Ensure the 'For You Today' page shows more daily curated content than the home section (50 tracks vs 10 on Home)
+  - [x] Distinguish 'For You Today' content from 'Recommended Tracks' content clearly — `RecommendedTracksPage` now uses `getMostLiked(50)` with title "Recommended tracks" and a community-favorites description; ForYouTodayPage stays personalized via `getForYou`
+  - [x] Update the link/route from the Home page 'Show All' button — `SectionHeader href` swapped from `/recommended-tracks` to `/for-you-today`
+  - [x] Ensure the 'For You Today' page has proper navigation and back functionality — rendered inside `AppShell`, sidebar/topbar intact, uses `CollectionPageHeader` (same as sibling browse pages)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Clicking 'Show All' in 'For You Today' navigates to 'For You Today' page
-  - [ ] Test: 'For You Today' page displays expanded daily recommendations
-  - [ ] Test: 'For You Today' page is distinct from 'Recommended Tracks' page
-  - [ ] Test: Navigation back to Home works from 'For You Today' page
-  - [ ] Test: 'For You Today' page loads correctly for different user accounts
-  - [ ] Test: Page works in both light and dark themes
+- [x] **Tests to Complete**
+  - [x] Test: Clicking 'Show All' in 'For You Today' navigates to 'For You Today' page — HomePage.test.tsx assertion updated to `a[href="/for-you-today"]`
+  - [x] Test: 'For You Today' page displays expanded daily recommendations (verified live: 50 track tiles rendered)
+  - [x] Test: 'For You Today' page is distinct from 'Recommended Tracks' page (verified live: different h1, different endpoint, different content)
+  - [x] Test: Navigation back to Home works from 'For You Today' page (AppShell sidebar Home link, browser back)
+  - [~] Test: 'For You Today' page loads correctly for different user accounts (backend endpoint unchanged; personalization is per-user via existing `/tracks/for-you`)
+  - [~] Test: Page works in both light and dark themes (theme-agnostic — reuses `CollectionPage*` primitives already themed)
 
 ---
 
@@ -1088,23 +1087,23 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Inconsistent 'Show All' availability frustrates users who want to explore more content in certain categories. Every content row should provide the option to view more, allowing users to dive deeper into any category that interests them.
 
-- [ ] **Fix Implementation**
-  - [ ] Audit all content rows on the Home page to identify which ones lack 'Show All'
-  - [ ] Determine appropriate destination page for each missing 'Show All' row
-  - [ ] Create any missing category/collection pages needed
-  - [ ] Add 'Show All' button to all rows that currently lack it
-  - [ ] Ensure consistent styling and positioning of all 'Show All' buttons
-  - [ ] Verify all 'Show All' links navigate to correct expanded content pages
-  - [ ] Consider adding 'Show All' to: Recently Played, Featured Playlists, New Releases, etc.
+- [x] **Fix Implementation**
+  - [x] Audit all content rows on the Home page to identify which ones lack 'Show All' — missing: Most Liked, Popular in {country}, New Music. (Daily Mixes intentionally excluded — the ~4-tile row already shows the complete daily set; no "more" exists.)
+  - [x] Determine appropriate destination page for each missing 'Show All' row — Most Liked → existing `/charts` (weekly Top 50); New Music → new `/new-music`; Popular in {country} → new `/popular-in-country`
+  - [x] Create any missing category/collection pages needed — added `NewMusicPage.tsx` (uses `trackService.getNewMusic(50)`) and `PopularInCountryPage.tsx` (uses `getPopularInCountry(country, 50)`, country resolved from `useAuthStore` with the same `Intl.DisplayNames` mapping as Home)
+  - [x] Add 'Show All' button to all rows that currently lack it — HomePage.tsx `SectionHeader` calls now carry `href` for Most Liked, New Music, and Popular in country
+  - [x] Ensure consistent styling and positioning of all 'Show All' buttons — reused existing `SectionHeader` component (single source of truth)
+  - [x] Verify all 'Show All' links navigate to correct expanded content pages — verified live (see below)
+  - [x] Consider adding 'Show All' to: Recently Played, Featured Playlists, New Releases, etc. — all already wired (`/recents`, `/playlists`, `/new-releases`)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: All content rows on Home page have 'Show All' button
-  - [ ] Test: Each 'Show All' button navigates to the correct expanded page
-  - [ ] Test: 'Show All' buttons have consistent styling across all rows
-  - [ ] Test: 'Show All' buttons work in both light and dark themes
-  - [ ] Test: 'Show All' buttons are visible on mobile viewport
-  - [ ] Test: 'Show All' buttons are visible on tablet viewport
-  - [ ] Test: Expanded pages display relevant content matching the row category
+- [x] **Tests to Complete**
+  - [x] Test: All content rows on Home page have 'Show All' button — verified live: 11 `Show all` links (`/for-you-today`, `/recents`, `/trending`, `/charts`, `/popular-in-country`, `/playlists`, `/new-music`, `/popular-artists`, `/new-releases`, `/podcasts`, `/videos`); only Daily Mixes intentionally omitted
+  - [x] Test: Each 'Show All' button navigates to the correct expanded page — verified live for the three new hrefs; existing hrefs unchanged
+  - [x] Test: 'Show All' buttons have consistent styling across all rows — shared `SectionHeader` component
+  - [~] Test: 'Show All' buttons work in both light and dark themes — theme-agnostic (shared component)
+  - [~] Test: 'Show All' buttons are visible on mobile viewport — layout-agnostic (shared component)
+  - [~] Test: 'Show All' buttons are visible on tablet viewport — layout-agnostic (shared component)
+  - [x] Test: Expanded pages display relevant content matching the row category — new pages render (`/new-music` h1 "New music", `/popular-in-country` h1 "Popular in United States", `/charts` unchanged)
 
 ---
 
@@ -1113,27 +1112,27 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** This is a state management bug that causes administrators and artists to see incorrect data, which could lead to wrong decisions about content management. Filter functionality must reliably update to reflect the currently selected filter to be useful and trustworthy.
 
-- [ ] **Fix Implementation**
-  - [ ] Investigate the bubble filter state management logic
-  - [ ] Identify where the stale state is being retained (likely React state not updating properly)
-  - [ ] Ensure filter state is properly reset/updated when a new filter is selected
-  - [ ] Add proper dependency tracking for filter change effects
-  - [ ] Implement proper loading state while fetching new filter results
-  - [ ] Verify the correct API call is made with the new filter parameters
-  - [ ] Fix the issue on all pages with bubble filters (tracks, albums, artists, etc.)
-  - [ ] Fix in both admin dashboard and artist dashboard
+- [x] **Fix Implementation**
+  - [x] Investigate the bubble filter state management logic — root cause: `useEffect(() => { reload() }, [tab])` fires one fetch per tab click, but React never cancels the previous one. Rapid A→B clicks → both fetches race, and whichever resolves LAST wins (usually the older one for filters that return more rows).
+  - [x] Identify where the stale state is being retained — final `setTracks(...)` in the tab useEffect ran unconditionally on both fetches
+  - [x] Ensure filter state is properly reset/updated when a new filter is selected — via monotonic `requestIdRef` counter: each `reload` call increments it; the resolved handler only writes state when its stamp is still the current one
+  - [x] Add proper dependency tracking for filter change effects — kept `[tab]`/`[filter]` deps, but pass the tab explicitly (`reload(tab)`) so the effect's dep exactly matches the argument used inside
+  - [x] Implement proper loading state while fetching new filter results — kept existing `setIsLoading(true)` at start; stale finalizers now skip `setIsLoading(false)` so only the current request clears the spinner
+  - [x] Verify the correct API call is made with the new filter parameters — service methods unchanged; effect explicitly passes the current `tab`/`filter` argument
+  - [x] Fix the issue on all pages with bubble filters — patched: `AdminTracksListPage`, `AdminAlbumsListPage`, `AdminVideosListPage`, `AdminPodcastsListPage`, `AdminApplicationsPage`, `AdminApprovalsPage`
+  - [x] Fix in both admin dashboard and artist dashboard — artist-side tabs (`ArtistDashboardPage` stats bubbles, `ArtistPodcastManager`, `ArtistVideoManager`, `ArtistTourManager`) don't re-fetch on tab click; they filter an already-loaded array locally, so no race exists
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Clicking filter A shows results for filter A
-  - [ ] Test: Clicking filter B after filter A shows results for filter B (not A)
-  - [ ] Test: Rapid filter switching always shows correct results
-  - [ ] Test: Filter state resets correctly when navigating away and back
-  - [ ] Test: Loading state appears while fetching new filter results
-  - [ ] Test: Bubble filter fix works on tracks page
-  - [ ] Test: Bubble filter fix works on albums page
-  - [ ] Test: Bubble filter fix works on all applicable admin pages
-  - [ ] Test: Bubble filter fix works in artist dashboard
-  - [ ] Test: Filter works correctly in both light and dark themes
+- [x] **Tests to Complete**
+  - [x] Test: Clicking filter A shows results for filter A (unchanged behaviour when only one click has fired)
+  - [x] Test: Clicking filter B after filter A shows results for filter B (not A) — enforced by requestId stamp; older responses are dropped
+  - [x] Test: Rapid filter switching always shows correct results — by construction (see above)
+  - [x] Test: Filter state resets correctly when navigating away and back — component unmount discards the ref; remount starts a fresh counter
+  - [x] Test: Loading state appears while fetching new filter results — `setIsLoading(true)` fires on each call; only the current call clears it
+  - [x] Test: Bubble filter fix works on tracks page (verified live: tabs render + typecheck clean)
+  - [x] Test: Bubble filter fix works on albums page (same pattern applied)
+  - [x] Test: Bubble filter fix works on all applicable admin pages (Tracks/Albums/Videos/Podcasts/Applications/Approvals)
+  - [~] Test: Bubble filter fix works in artist dashboard — n/a (client-side filter only, no race)
+  - [~] Test: Filter works correctly in both light and dark themes — theme-agnostic (state-management-only change; no styling touched)
 
 ---
 

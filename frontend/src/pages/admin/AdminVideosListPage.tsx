@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useDebounce } from '@/hooks/useDebounce'
 import {
@@ -41,20 +41,26 @@ export function AdminVideosListPage() {
   const [historyOpen, setHistoryOpen] = useState<Set<string>>(new Set())
   const [historyLoading, setHistoryLoading] = useState<Set<string>>(new Set())
 
+  // Race-safe reload — see AdminTracksListPage for the rationale.
+  const requestIdRef = useRef(0)
   const reload = async (t: Tab = tab) => {
+    const myId = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
     setPlayingId(null)
     try {
-      setVideos(t === 'pending' ? await adminService.listPendingVideos() : await adminService.listVideos(t === 'all' ? undefined : t))
+      const data = t === 'pending' ? await adminService.listPendingVideos() : await adminService.listVideos(t === 'all' ? undefined : t)
+      if (myId !== requestIdRef.current) return
+      setVideos(data)
     } catch (err) {
+      if (myId !== requestIdRef.current) return
       setError(err instanceof Error ? err.message : 'Failed to load music videos')
     } finally {
-      setIsLoading(false)
+      if (myId === requestIdRef.current) setIsLoading(false)
     }
   }
 
-  useEffect(() => { reload() }, [tab])
+  useEffect(() => { reload(tab) }, [tab])
 
   const visibleVideos = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase()

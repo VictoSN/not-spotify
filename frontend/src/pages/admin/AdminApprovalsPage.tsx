@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { adminService, type PendingAction } from '@/services/adminService'
 import { useAuthStore } from '@/stores/authStore'
@@ -26,18 +26,24 @@ export function AdminApprovalsPage() {
   const [loading, setLoading] = useState(true)
   const [actingId, setActingId] = useState<string | null>(null)
 
+  // Race-safe reload — see AdminTracksListPage for the rationale.
+  const requestIdRef = useRef(0)
   const reload = async (f: Filter = filter) => {
+    const myId = ++requestIdRef.current
     setLoading(true)
     try {
-      setActions(await adminService.getApprovals(f === 'all' ? undefined : f))
+      const data = await adminService.getApprovals(f === 'all' ? undefined : f)
+      if (myId !== requestIdRef.current) return
+      setActions(data)
     } catch {
+      if (myId !== requestIdRef.current) return
       notify.error('Failed to load approvals.')
     } finally {
-      setLoading(false)
+      if (myId === requestIdRef.current) setLoading(false)
     }
   }
 
-  useEffect(() => { reload() }, [filter])
+  useEffect(() => { reload(filter) }, [filter])
 
   const review = async (a: PendingAction, action: 'approve' | 'reject') => {
     setActingId(a.id)

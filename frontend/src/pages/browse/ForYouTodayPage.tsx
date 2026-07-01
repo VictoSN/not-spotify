@@ -10,8 +10,8 @@ import {
   CollectionPageSkeleton,
 } from '@/components/common/CollectionPage'
 
-export function RecommendedTracksPage() {
-  useDocumentTitle('Recommended tracks')
+export function ForYouTodayPage() {
+  useDocumentTitle('For you today')
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -20,7 +20,7 @@ export function RecommendedTracksPage() {
 
     Promise.resolve().then(async () => {
       try {
-        const next = await trackService.getMostLiked(50)
+        const next = await trackService.getForYou(50)
         if (!cancelled) setTracks(next)
       } finally {
         if (!cancelled) setLoading(false)
@@ -32,13 +32,13 @@ export function RecommendedTracksPage() {
     }
   }, [])
 
-  if (loading) return <CollectionPageSkeleton label="Loading recommended tracks" />
+  if (loading) return <CollectionPageSkeleton label="Loading For you today" />
 
   return (
     <div className={COLLECTION_PAGE_CLASS}>
       <CollectionPageHeader
-        title="Recommended tracks"
-        description="Community favorites and buzzworthy tracks recommended for the whole audience."
+        title="For you today"
+        description="A fresh daily set of personalized picks based on what you're listening to right now."
       />
       {tracks.length === 0 ? (
         <p className="text-secondary">No recommendations yet.</p>

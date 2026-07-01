@@ -37,6 +37,9 @@ import { TrendingPage } from '@/pages/browse/TrendingPage'
 import { ChartsPage } from '@/pages/browse/ChartsPage'
 import { StatsPage } from '@/pages/StatsPage'
 import { RecommendedTracksPage } from '@/pages/browse/RecommendedTracksPage'
+import { ForYouTodayPage } from '@/pages/browse/ForYouTodayPage'
+import { NewMusicPage } from '@/pages/browse/NewMusicPage'
+import { PopularInCountryPage } from '@/pages/browse/PopularInCountryPage'
 import { RecentsPage } from '@/pages/browse/RecentsPage'
 import { RecommendedPlaylistsPage } from '@/pages/browse/RecommendedPlaylistsPage'
 import { PopularArtistsPage } from '@/pages/browse/PopularArtistsPage'
@@ -115,6 +118,9 @@ export const router = createBrowserRouter([
           { path: 'trending', element: <TrendingPage /> },
           { path: 'charts', element: <ChartsPage /> },
           { path: 'recommended-tracks', element: <RecommendedTracksPage /> },
+          { path: 'for-you-today', element: <ForYouTodayPage /> },
+          { path: 'new-music', element: <NewMusicPage /> },
+          { path: 'popular-in-country', element: <PopularInCountryPage /> },
           { path: 'recents', element: <RecentsPage /> },
           { path: 'history', element: <RecentsPage /> },
           { path: 'playlists', element: <RecommendedPlaylistsPage /> },

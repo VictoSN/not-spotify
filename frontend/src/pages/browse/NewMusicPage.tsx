@@ -10,8 +10,8 @@ import {
   CollectionPageSkeleton,
 } from '@/components/common/CollectionPage'
 
-export function RecommendedTracksPage() {
-  useDocumentTitle('Recommended tracks')
+export function NewMusicPage() {
+  useDocumentTitle('New music')
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -20,7 +20,7 @@ export function RecommendedTracksPage() {
 
     Promise.resolve().then(async () => {
       try {
-        const next = await trackService.getMostLiked(50)
+        const next = await trackService.getNewMusic(50)
         if (!cancelled) setTracks(next)
       } finally {
         if (!cancelled) setLoading(false)
@@ -32,16 +32,16 @@ export function RecommendedTracksPage() {
     }
   }, [])
 
-  if (loading) return <CollectionPageSkeleton label="Loading recommended tracks" />
+  if (loading) return <CollectionPageSkeleton label="Loading new music" />
 
   return (
     <div className={COLLECTION_PAGE_CLASS}>
       <CollectionPageHeader
-        title="Recommended tracks"
-        description="Community favorites and buzzworthy tracks recommended for the whole audience."
+        title="New music"
+        description="The newest tracks landing on not-spotify right now."
       />
       {tracks.length === 0 ? (
-        <p className="text-secondary">No recommendations yet.</p>
+        <p className="text-secondary">No new tracks yet.</p>
       ) : (
         <div className={COLLECTION_GRID_CLASS}>
           {tracks.map((t) => (

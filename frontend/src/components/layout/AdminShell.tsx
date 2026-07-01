@@ -124,7 +124,7 @@ export function AdminShell() {
 
   return (
     <div className="flex h-full overflow-hidden bg-base text-primary">
-      <AdminSidebar onLogout={handleLogout} />
+      <AdminSidebar />
 
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
@@ -147,7 +147,6 @@ export function AdminShell() {
               </button>
             </div>
             <AdminNav onNavigate={() => setMobileMenuOpen(false)} />
-            <AdminAccount onLogout={handleLogout} />
           </div>
         </div>
       )}
@@ -180,10 +179,10 @@ export function AdminShell() {
 
           <Link
             to="/"
-            className="hidden h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-secondary transition-colors hover:bg-elevated hover:text-primary sm:flex"
+            className="flex h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold text-secondary transition-colors hover:bg-elevated hover:text-primary"
           >
             <ArrowLeftIcon className="h-4 w-4" />
-            Back to app
+            <span className="hidden sm:inline">Back to app</span>
           </Link>
 
           <div className="hidden items-center gap-2 rounded-md border border-elevated/50 bg-surface px-2.5 py-1.5 md:flex">
@@ -213,14 +212,13 @@ export function AdminShell() {
   )
 }
 
-function AdminSidebar({ onLogout }: { onLogout: () => void }) {
+function AdminSidebar() {
   return (
     <aside className="hidden w-72 shrink-0 flex-col border-r border-elevated/40 bg-sidebar lg:flex">
       <div className="flex h-16 items-center border-b border-elevated/40 px-5">
         <AdminBrand />
       </div>
       <AdminNav />
-      <AdminAccount onLogout={onLogout} />
     </aside>
   )
 }
@@ -289,38 +287,3 @@ function AdminNavLink({ item, onNavigate }: { item: AdminNavItem; onNavigate?: (
   )
 }
 
-function AdminAccount({ onLogout }: { onLogout: () => void }) {
-  const user = useAuthStore((s) => s.user)
-
-  return (
-    <div className="border-t border-elevated/40 p-3">
-      <div className="mb-3 flex items-center gap-3 rounded-md bg-surface px-3 py-3">
-        <Avatar src={user?.avatarUrl} alt={user?.name ?? 'Admin'} size="sm" round />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-primary">{user?.name ?? 'Admin'}</p>
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-accent">
-            <ShieldCheckIcon className="h-3.5 w-3.5" />
-            Administrator
-          </p>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Link
-          to="/"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-elevated/55 text-sm font-semibold text-secondary transition-colors hover:border-accent/40 hover:text-primary"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          App
-        </Link>
-        <button
-          type="button"
-          onClick={onLogout}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-elevated/55 text-sm font-semibold text-secondary transition-colors hover:border-red-400/40 hover:text-primary"
-        >
-          <ArrowRightOnRectangleIcon className="h-4 w-4" />
-          Log out
-        </button>
-      </div>
-    </div>
-  )
-}

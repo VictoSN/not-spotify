@@ -294,7 +294,7 @@ describe('Home media interactions', () => {
     )
 
     await screen.findByRole('heading', { name: 'For you today' })
-    expect(document.querySelector('a[href="/recommended-tracks"]')).toHaveTextContent('Show all')
+    expect(document.querySelector('a[href="/for-you-today"]')).toHaveTextContent('Show all')
     expect(document.querySelector('a[href="/recents"]')).toHaveTextContent('Show all')
     expect(document.querySelector('a[href="/trending"]')).toHaveTextContent('Show all')
   })

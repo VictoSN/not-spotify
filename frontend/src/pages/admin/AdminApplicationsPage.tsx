@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { adminService, type ArtistApplication } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
@@ -26,19 +26,25 @@ export function AdminApplicationsPage() {
   type PendingReview = { id: string; action: 'approve' | 'reject'; note: string; saving: boolean }
   const [pendingReview, setPendingReview] = useState<PendingReview | null>(null)
 
+  // Race-safe reload — see AdminTracksListPage for the rationale.
+  const requestIdRef = useRef(0)
   const reload = async (f: Filter = filter) => {
+    const myId = ++requestIdRef.current
     setIsLoading(true)
     setError(null)
     try {
-      setApps(await adminService.listApplications(f === 'all' ? undefined : f))
+      const data = await adminService.listApplications(f === 'all' ? undefined : f)
+      if (myId !== requestIdRef.current) return
+      setApps(data)
     } catch {
+      if (myId !== requestIdRef.current) return
       setError('Failed to load applications.')
     } finally {
-      setIsLoading(false)
+      if (myId === requestIdRef.current) setIsLoading(false)
     }
   }
 
-  useEffect(() => { reload() }, [filter])
+  useEffect(() => { reload(filter) }, [filter])
 
   const visibleApps = useMemo(() => {
     const q = debouncedQuery.trim().toLowerCase()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -185,8 +185,8 @@ export function AdminArtistsListPage() {
                 </td></tr>
               )}
               {visibleArtists.map((a) => (
-                <>
-                  <tr key={a.id} className={`border-b border-elevated/20 hover:bg-elevated/30 transition-colors ${a.isRevoked ? 'opacity-60' : ''}`}>
+                <Fragment key={a.id}>
+                  <tr className={`border-b border-elevated/20 hover:bg-elevated/30 transition-colors ${a.isRevoked ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-3 w-16">
                       {a.imageUrl ? (
                         <img src={a.imageUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
@@ -290,7 +290,7 @@ export function AdminArtistsListPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

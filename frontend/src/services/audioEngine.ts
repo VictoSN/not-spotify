@@ -488,7 +488,7 @@ class AudioEngine {
     this.fadeRaf = requestAnimationFrame(step)
   }
 
-  private switchToTrack(track: Track, isPlaying: boolean, targetVol: number, playbackRate: number) {
+  private switchToTrack(track: Track, isPlaying: boolean, targetVol: number, playbackRate: number, startAt = 0) {
     if (isPlaying) this.resumeAudioGraph()
     this.cancelFade()
     const src = resolvePlaybackSrc(track)
@@ -500,7 +500,14 @@ class AudioEngine {
     if (this.srcs[newIndex] !== src) {
       this.loadSource(newIndex, src)
     }
-    newDeck.currentTime = 0
+    const safeStart = Number.isFinite(startAt) ? Math.max(0, startAt) : 0
+    try {
+      newDeck.currentTime = safeStart
+    } catch {
+      newDeck.addEventListener('loadedmetadata', () => {
+        try { newDeck.currentTime = safeStart } catch { /* ignore non-seekable sources */ }
+      }, { once: true })
+    }
     newDeck.playbackRate = playbackRate
     this.active = newIndex
     this.preloadedId = null
@@ -568,10 +575,10 @@ class AudioEngine {
 
       if (currentTrack) {
         if (currentTrack.id !== prevTrackId) {
-          this.switchToTrack(currentTrack, isPlaying, target, playbackRate)
+          this.switchToTrack(currentTrack, isPlaying, target, playbackRate, currentTime)
           prevTrackId = currentTrack.id
           prevIsPlaying = isPlaying
-          prevSeek = 0
+          prevSeek = currentTime
           prevContextKey = contextKey
           prevQueueIndex = queueIndex
         } else if (contextKey !== prevContextKey || queueIndex !== prevQueueIndex) {

@@ -491,6 +491,55 @@ describe('playerStore — playback context', () => {
   })
 })
 
+describe('playerStore - playback persistence', () => {
+  it('persists current track, position, queue, and now-playing panel state', () => {
+    setPremium()
+    const q = [track('a'), track('b'), track('c')]
+    usePlayerStore.getState().play(q[1], q)
+    usePlayerStore.getState().tick(64, 180)
+    usePlayerStore.getState().setNowPlayingExpanded(true)
+
+    const saved = JSON.parse(localStorage.getItem('ns-playback-state-v1') ?? 'null')
+    expect(saved.currentTrack.id).toBe('b')
+    expect(saved.currentTime).toBe(64)
+    expect(saved.duration).toBe(180)
+    expect(saved.wasPlaying).toBe(true)
+    expect(saved.queue.map((item: Track) => item.id)).toEqual(['a', 'b', 'c'])
+    expect(saved.queueIndex).toBe(1)
+    expect(saved.isNowPlayingOpen).toBe(true)
+    expect(saved.isNowPlayingExpanded).toBe(true)
+  })
+
+  it('hydrates persisted playback after a module reload', async () => {
+    setPremium()
+    const q = [track('a'), track('b'), track('c')]
+    usePlayerStore.getState().play(q[2], q)
+    usePlayerStore.getState().tick(93, 180)
+    usePlayerStore.getState().pause()
+
+    vi.resetModules()
+    const { usePlayerStore: freshPlayerStore } = await import('./playerStore')
+    const restored = freshPlayerStore.getState()
+
+    expect(restored.currentTrack?.id).toBe('c')
+    expect(restored.currentTime).toBe(93)
+    expect(restored.duration).toBe(180)
+    expect(restored.isPlaying).toBe(false)
+    expect(restored.queue.map((item) => item.id)).toEqual(['a', 'b', 'c'])
+    expect(restored.queueIndex).toBe(2)
+    expect(restored.isNowPlayingOpen).toBe(true)
+  })
+
+  it('clears persisted playback when no audio track is loaded', () => {
+    setPremium()
+    usePlayerStore.getState().play(track('a'))
+    expect(localStorage.getItem('ns-playback-state-v1')).toBeTruthy()
+
+    usePlayerStore.setState({ currentTrack: null, isPlaying: false, queue: [], queueIndex: -1 })
+    expect(localStorage.getItem('ns-playback-state-v1')).toBeNull()
+  })
+})
+
 describe('playerStore - music videos', () => {
   it('playVideo switches to video mode and clears audio playback', () => {
     setPremium()

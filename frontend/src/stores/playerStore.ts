@@ -13,6 +13,7 @@ import { recordPlay as recordContextPlay } from '@/utils/playHistory'
 // not part of the player's user-visible state.
 const RECENT_PLAY_DEDUPE_MS = 5000
 const lastRecordedAt = new Map<string, number>()
+const PLAYBACK_STATE_KEY = 'ns-playback-state-v1'
 
 function isPrivateListening(): boolean {
   try {
@@ -31,6 +32,106 @@ function recordPlay(trackId: string) {
   if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
   lastRecordedAt.set(trackId, now)
   trackService.recordPlay(trackId).catch(() => { })
+}
+
+type PersistedPlaybackState = {
+  version: 1
+  savedAt: number
+  currentTrack: Track
+  currentTime: number
+  duration: number
+  wasPlaying: boolean
+  queue: Track[]
+  queueIndex: number
+  currentContextType: PlayContextType | null
+  currentContextId: string | null
+  recommendedIds: string[]
+  history: Track[]
+  isNowPlayingOpen: boolean
+  isNowPlayingCollapsed: boolean
+  isNowPlayingExpanded: boolean
+}
+
+const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+
+function isPersistableTrack(value: unknown): value is Track {
+  if (!value || typeof value !== 'object') return false
+  const maybe = value as Partial<Track>
+  return typeof maybe.id === 'string' && typeof maybe.title === 'string' && typeof maybe.audioUrl === 'string'
+}
+
+function readPersistedPlaybackState(): Partial<PlayerState> {
+  if (!isBrowser()) return {}
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(PLAYBACK_STATE_KEY) ?? 'null') as Partial<PersistedPlaybackState> | null
+    if (!parsed || parsed.version !== 1 || !isPersistableTrack(parsed.currentTrack)) return {}
+
+    const queue = Array.isArray(parsed.queue) ? parsed.queue.filter(isPersistableTrack) : []
+    const queueIndex = typeof parsed.queueIndex === 'number' ? parsed.queueIndex : -1
+    const currentTrack = parsed.currentTrack
+    const queueHasCurrent = queue.some((track) => track.id === currentTrack.id)
+    const restoredQueue = queueHasCurrent ? queue : [currentTrack, ...queue]
+    const restoredIndex = queueHasCurrent
+      ? Math.max(0, Math.min(restoredQueue.length - 1, queueIndex))
+      : 0
+    const duration = Number.isFinite(parsed.duration) && parsed.duration! > 0
+      ? parsed.duration!
+      : currentTrack.durationMs / 1000
+    const currentTime = Number.isFinite(parsed.currentTime)
+      ? Math.max(0, Math.min(duration > 0 ? duration : Number.MAX_SAFE_INTEGER, parsed.currentTime!))
+      : 0
+
+    return {
+      playbackMode: 'audio',
+      currentTrack,
+      isPlaying: parsed.wasPlaying === true,
+      currentTime,
+      duration,
+      queue: restoredQueue,
+      queueIndex: restoredIndex,
+      currentContextType: parsed.currentContextType ?? null,
+      currentContextId: parsed.currentContextId ?? null,
+      recommendedIds: new Set(Array.isArray(parsed.recommendedIds) ? parsed.recommendedIds : []),
+      history: Array.isArray(parsed.history) ? parsed.history.filter(isPersistableTrack).slice(-50) : [],
+      isNowPlayingOpen: parsed.isNowPlayingOpen !== false,
+      isNowPlayingCollapsed: parsed.isNowPlayingCollapsed === true,
+      isNowPlayingExpanded: parsed.isNowPlayingExpanded === true,
+    }
+  } catch {
+    return {}
+  }
+}
+
+function persistPlaybackState(state: PlayerState) {
+  if (!isBrowser()) return
+  try {
+    if (state.playbackMode !== 'audio' || !state.currentTrack) {
+      window.localStorage.removeItem(PLAYBACK_STATE_KEY)
+      return
+    }
+
+    const payload: PersistedPlaybackState = {
+      version: 1,
+      savedAt: Date.now(),
+      currentTrack: state.currentTrack,
+      currentTime: state.currentTime,
+      duration: state.duration,
+      wasPlaying: state.isPlaying,
+      queue: state.queue,
+      queueIndex: state.queueIndex,
+      currentContextType: state.currentContextType,
+      currentContextId: state.currentContextId,
+      recommendedIds: Array.from(state.recommendedIds),
+      history: state.history,
+      isNowPlayingOpen: state.isNowPlayingOpen,
+      isNowPlayingCollapsed: state.isNowPlayingCollapsed,
+      isNowPlayingExpanded: state.isNowPlayingExpanded,
+    }
+    window.localStorage.setItem(PLAYBACK_STATE_KEY, JSON.stringify(payload))
+  } catch {
+    // Persistence is a convenience feature; storage quota/privacy failures
+    // should never interrupt playback.
+  }
 }
 
 /**
@@ -260,6 +361,8 @@ interface PlayerState {
   tick: (currentTime: number, duration: number) => void
 }
 
+const restoredPlaybackState = readPersistedPlaybackState()
+
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   playbackMode: 'audio',
   currentTrack: null,
@@ -289,6 +392,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   isNowPlayingExpanded: false,
   isKaraokeOpen: false,
   currentAd: null,
+  ...restoredPlaybackState,
 
   endAd: () => {
     const p = pendingAfterAd
@@ -622,11 +726,24 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   },
 }))
 
+usePlayerStore.subscribe((state) => {
+  persistPlaybackState(state)
+})
+
+if (isBrowser()) {
+  window.addEventListener('beforeunload', () => persistPlaybackState(usePlayerStore.getState()))
+}
+
 // Subscribe to auth state changes to pause and reset playback on logout
 useAuthStore.subscribe((state) => {
   if (!state.isAuthenticated) {
     pendingAfterAd = null
     tracksSinceAd = 0
+    try {
+      window.localStorage.removeItem(PLAYBACK_STATE_KEY)
+    } catch {
+      // Ignore storage access failures during logout cleanup.
+    }
     usePlayerStore.setState({
       playbackMode: 'audio',
       currentTrack: null,

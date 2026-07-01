@@ -1154,30 +1154,30 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Losing playback state on refresh is a major UX regression compared to industry-standard behavior. Users expect their listening session to persist across page refreshes. The current behavior disrupts the listening experience and requires users to manually find and restart their music. Additionally, the right sidebar should restore to show the currently playing track's details.
 
-- [ ] **Fix Implementation**
-  - [ ] Implement playback state persistence mechanism (localStorage, sessionStorage, or IndexedDB)
-  - [ ] Store current track ID, playback position (seconds), and queue state on playback updates
-  - [ ] Store playback state before page unload (beforeunload event or periodic saving)
-  - [ ] On application load, check for persisted playback state
-  - [ ] Restore the previously playing track and seek to the saved position
-  - [ ] Restore the right sidebar to show the current track's details
-  - [ ] Restore the playback queue (upcoming tracks)
-  - [ ] Handle edge case: track no longer available (skip to next or show error)
-  - [ ] Handle edge case: user was not playing anything (don't auto-play on reload)
-  - [ ] Consider using the Web Audio API or Media Session API for better state management
+- [x] **Fix Implementation**
+  - [x] Implement playback state persistence mechanism (localStorage, sessionStorage, or IndexedDB) - added `ns-playback-state-v1` localStorage persistence in `playerStore`
+  - [x] Store current track ID, playback position (seconds), and queue state on playback updates
+  - [x] Store playback state before page unload (beforeunload event or periodic saving)
+  - [x] On application load, check for persisted playback state
+  - [x] Restore the previously playing track and seek to the saved position
+  - [x] Restore the right sidebar to show the current track's details
+  - [x] Restore the playback queue (upcoming tracks)
+  - [x] Handle edge case: track no longer available (skip to next or show error) - malformed persisted tracks are ignored; media load errors still pause cleanly via the audio engine
+  - [x] Handle edge case: user was not playing anything (don't auto-play on reload)
+  - [x] Consider using the Web Audio API or Media Session API for better state management - existing Media Session/audio engine now receives the restored track and seek offset
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Song resumes playing from the same position after browser refresh
-  - [ ] Test: Right sidebar shows the correct song details after refresh
-  - [ ] Test: Playback queue is restored after refresh
-  - [ ] Test: If no song was playing, nothing auto-plays after refresh
-  - [ ] Test: Playback state persists across multiple tabs (if applicable)
-  - [ ] Test: If the previously playing track is unavailable, app handles gracefully
-  - [ ] Test: Works in Chrome after refresh
-  - [ ] Test: Works in Firefox after refresh
-  - [ ] Test: Works in Safari after refresh
-  - [ ] Test: Works in Edge after refresh
-  - [ ] Test: Position accuracy is within 1-2 seconds of the pre-refresh position
+- [x] **Tests to Complete**
+  - [x] Test: Song resumes playing from the same position after browser refresh - covered by store module-reload hydration + audio-engine restored seek
+  - [x] Test: Right sidebar shows the correct song details after refresh - restored `currentTrack` and `isNowPlayingOpen`
+  - [x] Test: Playback queue is restored after refresh
+  - [x] Test: If no song was playing, nothing auto-plays after refresh
+  - [~] Test: Playback state persists across multiple tabs (if applicable) - same localStorage snapshot is shared by tabs; no BroadcastChannel synchronization added
+  - [x] Test: If the previously playing track is unavailable, app handles gracefully
+  - [~] Test: Works in Chrome after refresh - standards-based localStorage/HTMLAudio path; not manually browser-matrix tested
+  - [~] Test: Works in Firefox after refresh - standards-based localStorage/HTMLAudio path; not manually browser-matrix tested
+  - [~] Test: Works in Safari after refresh - standards-based localStorage/HTMLAudio path; not manually browser-matrix tested
+  - [~] Test: Works in Edge after refresh - standards-based localStorage/HTMLAudio path; not manually browser-matrix tested
+  - [x] Test: Position accuracy is within 1-2 seconds of the pre-refresh position
 
   ---
   

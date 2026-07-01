@@ -982,25 +982,25 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Without specific play count breakdowns, administrators cannot accurately assess whether a track's popularity is recent or historical. Having both total and 30-day metrics side by side provides valuable insight into trending content versus evergreen popularity, enabling better content curation decisions.
 
-- [ ] **Fix Implementation**
-  - [ ] Add total all-time play count display for each track in the Top Music section
-  - [ ] Add 30-day play count display for each track with clear "Last 30 Days" label
-  - [ ] Visually distinguish between the two metrics (different font weight, color, or position)
-  - [ ] Add column headers clearly labeling each metric
-  - [ ] Ensure both counts update accurately based on actual play data
-  - [ ] Consider adding a trend indicator (up/down arrow) comparing recent vs. historical performance
-  - [ ] Make the 30-day count the primary sorting metric (as it's "Top Music in 30 Days")
+- [x] **Fix Implementation**
+  - [x] Add total all-time play count display for each track in the Top Music section
+  - [x] Add 30-day play count display for each track with clear "Last 30 Days" label
+  - [x] Visually distinguish between the two metrics (30-day count is accent/primary; all-time and listeners are secondary metrics)
+  - [x] Add column headers clearly labeling each metric
+  - [x] Ensure both counts update accurately based on actual play data (backend test covers `PlayCount` vs `PlayHistory` window counts)
+  - [x] Consider adding a trend indicator (up/down arrow) comparing recent vs. historical performance - added recent share chip with trend icon
+  - [x] Make the 30-day count the primary sorting metric (as it's "Top Music in 30 Days") - existing backend ordering by `PlaysInWindow` is now covered by a test
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Each track shows total all-time play count
-  - [ ] Test: Each track shows 30-day play count with clear label
-  - [ ] Test: The two metrics are visually distinguishable
-  - [ ] Test: Column headers clearly label each metric
-  - [ ] Test: Play counts update when tracks are played
-  - [ ] Test: 30-day count only reflects plays within the last 30 days
-  - [ ] Test: Section sorts correctly by 30-day play count
-  - [ ] Test: Metrics display correctly in light and dark themes
-  - [ ] Test: Metrics display correctly on mobile and tablet viewports
+- [x] **Tests to Complete**
+  - [x] Test: Each track shows total all-time play count
+  - [x] Test: Each track shows 30-day play count with clear label
+  - [x] Test: The two metrics are visually distinguishable
+  - [x] Test: Column headers clearly label each metric
+  - [x] Test: Play counts update when tracks are played
+  - [x] Test: 30-day count only reflects plays within the last 30 days
+  - [x] Test: Section sorts correctly by 30-day play count
+  - [~] Test: Metrics display correctly in light and dark themes - uses existing theme tokens; visual browser check still useful
+  - [~] Test: Metrics display correctly on mobile and tablet viewports - responsive grid/classes added; visual browser check still useful
 
 ---
 

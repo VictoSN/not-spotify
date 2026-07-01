@@ -40,6 +40,11 @@ function formatRelativeTime(value: string) {
   return `${days}d ago`
 }
 
+function recentSharePercent(recentPlays: number, allTimePlays: number) {
+  if (allTimePlays <= 0) return recentPlays > 0 ? 100 : 0
+  return Math.min(100, Math.round((recentPlays / allTimePlays) * 100))
+}
+
 function StatCard({
   label,
   value,
@@ -311,26 +316,53 @@ export function AdminDashboardPage() {
             <EmptyPanel>No plays recorded yet.</EmptyPanel>
           ) : (
             <div className="space-y-3">
+              <div className="hidden grid-cols-[minmax(0,1fr)_112px_96px_88px_84px] items-center gap-3 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted md:grid">
+                <span>Track</span>
+                <span className="text-right">Last 30 days</span>
+                <span className="text-right">All time</span>
+                <span className="text-right">Listeners</span>
+                <span className="text-right">Trend</span>
+              </div>
               {stats.topTracks.map((track, index) => {
                 const width = Math.max(5, Math.round((track.playsInWindow / topTrackMax) * 100))
+                const recentShare = recentSharePercent(track.playsInWindow, track.playCount)
                 return (
                   <div key={track.id} className="rounded-lg border border-elevated/35 bg-base/35 p-3">
-                    <div className="flex items-center gap-3">
-                      <span className="w-6 text-center text-sm font-bold text-muted">{index + 1}</span>
-                      {track.coverUrl ? (
-                        <img src={track.coverUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-md bg-elevated text-muted">
-                          <MusicalNoteIcon className="h-6 w-6" />
+                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_112px_96px_88px_84px] md:items-center">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="w-6 text-center text-sm font-bold text-muted">{index + 1}</span>
+                        {track.coverUrl ? (
+                          <img src={track.coverUrl} alt="" className="h-12 w-12 rounded-md object-cover" />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md bg-elevated text-muted">
+                            <MusicalNoteIcon className="h-6 w-6" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-bold text-primary">{track.title}</p>
+                          <p className="truncate text-sm text-secondary">{track.artistName} - {track.albumTitle}</p>
                         </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-bold text-primary">{track.title}</p>
-                        <p className="truncate text-sm text-secondary">{track.artistName} - {track.albumTitle}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-primary">{formatNumber(track.playsInWindow)}</p>
-                        <p className="text-[11px] text-muted">{formatNumber(track.uniqueListeners)} listeners</p>
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:contents">
+                        <div className="rounded-md bg-accent/10 px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-accent md:hidden">Last 30 days</p>
+                          <p className="text-lg font-extrabold text-accent md:text-base">{formatNumber(track.playsInWindow)}</p>
+                        </div>
+                        <div className="rounded-md bg-elevated/30 px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted md:hidden">All time</p>
+                          <p className="font-bold text-primary">{formatNumber(track.playCount)}</p>
+                        </div>
+                        <div className="rounded-md bg-elevated/30 px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted md:hidden">Listeners</p>
+                          <p className="font-semibold text-secondary">{formatNumber(track.uniqueListeners)}</p>
+                        </div>
+                        <div className="rounded-md bg-elevated/30 px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted md:hidden">Trend</p>
+                          <span className="inline-flex items-center justify-end gap-1 rounded-full bg-accent/10 px-2 py-1 text-xs font-bold text-accent">
+                            <ArrowTrendingUpIcon className="h-3.5 w-3.5" />
+                            {recentShare}%
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-elevated">

@@ -12,8 +12,8 @@ import {
   UserGroupIcon,
 } from '@heroicons/react/24/outline'
 import { adminService, type AdminDashboardStats, type AdminTrendPoint } from '@/services/adminService'
-import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart, type AreaPoint } from '@/components/common/AreaChart'
+import { AdminStatTilesSkeleton } from '@/components/common/AdminSkeleton'
 
 /** Maps an admin trend series to the AreaChart's point shape. */
 function toAreaData(data: AdminTrendPoint[]): AreaPoint[] {
@@ -119,8 +119,20 @@ export function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        <div className="space-y-2">
+          <div className="h-4 w-32 rounded bg-elevated/60 animate-pulse" />
+          <div className="h-8 w-64 rounded bg-elevated/70 animate-pulse" />
+          <div className="h-3 w-96 max-w-full rounded bg-elevated/50 animate-pulse" />
+        </div>
+        <AdminStatTilesSkeleton />
+        <div className="bg-surface rounded-lg border border-elevated/40 p-5">
+          <div className="mb-4 h-4 w-40 rounded bg-elevated/60 animate-pulse" />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="h-40 rounded-md bg-elevated/40 animate-pulse" />
+            <div className="h-40 rounded-md bg-elevated/40 animate-pulse" />
+          </div>
+        </div>
       </div>
     )
   }

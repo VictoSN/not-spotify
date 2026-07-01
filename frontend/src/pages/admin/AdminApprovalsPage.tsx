@@ -3,7 +3,7 @@ import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { adminService, type PendingAction } from '@/services/adminService'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { notify } from '@/utils/toast'
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all'
@@ -87,7 +87,7 @@ export function AdminApprovalsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : actions.length === 0 ? (
         <div className="rounded-lg border border-elevated/40 bg-surface px-6 py-12 text-center text-secondary">
           No {filter === 'all' ? '' : filter} requests.

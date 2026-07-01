@@ -13,6 +13,7 @@ import { adminService, downloadAlbumZip, type ReviewHistoryEntry } from '@/servi
 import { trackService } from '@/services/trackService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { notify } from '@/utils/toast'
@@ -397,7 +398,7 @@ export function AdminAlbumsListPage() {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : sortedArtists.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary text-sm">
           {isSearching

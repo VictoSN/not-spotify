@@ -3,7 +3,7 @@ import { ShieldCheckIcon, UserPlusIcon, NoSymbolIcon } from '@heroicons/react/24
 import { adminService, type TeamMember } from '@/services/adminService'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { useConfirm } from '@/hooks/useConfirm'
 import { notify } from '@/utils/toast'
 
@@ -102,7 +102,7 @@ export function AdminTeamPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : (
         <div className="flex flex-col gap-2">
           {members.map((m) => (

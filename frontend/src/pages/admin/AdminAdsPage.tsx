@@ -7,6 +7,7 @@ import type { AdAdmin, AdSettings, UpsertAdPayload } from '@/types/ad'
 import { adminAdService } from '@/services/adService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { useConfirm } from '@/hooks/useConfirm'
 import { notify } from '@/utils/toast'
@@ -361,7 +362,7 @@ export function AdminAdsPage() {
 
       {/* Ad list */}
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : (
         <div className="bg-surface rounded-lg border border-elevated/40 overflow-x-auto">
           <table className="w-full min-w-[720px]">

@@ -8,6 +8,7 @@ import type { Episode, Podcast, PodcastSummary } from '@/types/podcast'
 import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { StatusBadge } from '@/components/common/StatusBadge'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
@@ -223,7 +224,7 @@ export function AdminPodcastsListPage() {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : visiblePodcasts.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary text-sm">
           {debouncedQuery.trim()

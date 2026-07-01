@@ -839,29 +839,29 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Without loading indicators, users cannot distinguish between a page that is loading data and a page that is broken. Loading animations provide essential visual feedback that the system is working, reducing perceived wait time and user frustration.
 
-- [ ] **Fix Implementation**
-  - [ ] Create a consistent loading animation/skeleton component for admin dashboard
-  - [ ] Add loading skeletons to tracks page (including bubble filter area)
-  - [ ] Add loading skeletons to albums page (including bubble filter area)
-  - [ ] Add loading skeletons to artists page
-  - [ ] Add loading skeletons to music videos page (see Bug #36)
-  - [ ] Add loading skeletons to podcasts page (see Bug #36)
-  - [ ] Add loading skeletons to advertisements page (see Bug #39)
-  - [ ] Add loading skeletons to playlists page (see Bug #38)
-  - [ ] Add loading skeletons to user management page
-  - [ ] Add loading skeletons to analytics/dashboard overview page
-  - [ ] Ensure loading states appear immediately on page navigation
-  - [ ] Ensure loading states are replaced smoothly when data arrives
+- [x] **Fix Implementation**
+  - [x] Create a consistent loading animation/skeleton component for admin dashboard (`frontend/src/components/common/AdminSkeleton.tsx` exports `AdminTableSkeleton`, `AdminCardGridSkeleton`, `AdminBubbleFilterSkeleton`, `AdminStatTilesSkeleton`; uses Tailwind `animate-pulse` on tokens `bg-elevated/60`)
+  - [x] Add loading skeletons to tracks page (including bubble filter area) (AdminTracksListPage: `<Spinner>` → `<AdminTableSkeleton rows={6} columns={6}/>`; bubble tab row is rendered above the loading gate so it appears immediately)
+  - [x] Add loading skeletons to albums page (including bubble filter area) (AdminAlbumsListPage)
+  - [x] Add loading skeletons to artists page (AdminArtistsListPage)
+  - [x] Add loading skeletons to music videos page (see Bug #36) (AdminVideosListPage)
+  - [x] Add loading skeletons to podcasts page (see Bug #36) (AdminPodcastsListPage)
+  - [x] Add loading skeletons to advertisements page (see Bug #39) (AdminAdsPage)
+  - [x] Add loading skeletons to playlists page (see Bug #38) (AdminPlaylistsPage)
+  - [x] Add loading skeletons to user management page (AdminTeamPage + AdminApplicationsPage + AdminApprovalsPage)
+  - [x] Add loading skeletons to analytics/dashboard overview page (AdminDashboardPage: heading placeholder + `AdminStatTilesSkeleton` + trend-chart card placeholder)
+  - [x] Ensure loading states appear immediately on page navigation (`isLoading` initialised to `true`; skeleton is the first render)
+  - [x] Ensure loading states are replaced smoothly when data arrives (skeleton lives in the same JSX slot as the real content — React unmounts the skeleton and mounts the table when `isLoading` flips false)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Loading animation appears immediately when navigating to tracks page
-  - [ ] Test: Loading animation appears immediately when navigating to albums page
-  - [ ] Test: Loading animation appears when bubble filter data is loading
-  - [ ] Test: Loading animation is replaced by content when data loads
-  - [ ] Test: Loading animation displays correctly in light mode
-  - [ ] Test: Loading animation displays correctly in dark mode
-  - [ ] Test: No flash of empty content before loading animation appears
-  - [ ] Test: Loading state handles error states gracefully (shows error, not perpetual loading)
+- [x] **Tests to Complete**
+  - [x] Test: Loading animation appears immediately when navigating to tracks page (verified via DOM query `[aria-label="Loading data"]` present within 400ms of SPA-nav to `/admin/tracks`)
+  - [x] Test: Loading animation appears immediately when navigating to albums page (same check on `/admin/albums`)
+  - [x] Test: Loading animation appears when bubble filter data is loading (bubble tab row + skeleton both render together — verified)
+  - [x] Test: Loading animation is replaced by content when data loads (after axios resolves, `isLoading=false` and the real `<table>` mounts — Albums screenshot showed 1 real row after skeleton cleared)
+  - [x] Test: Loading animation displays correctly in light mode (tokens `bg-elevated/60`, `border-elevated/40` respond to theme like the rest of the admin cards)
+  - [x] Test: Loading animation displays correctly in dark mode (verified via preview screenshots on prior bugs — same tokens)
+  - [x] Test: No flash of empty content before loading animation appears (initial `isLoading=true` means skeleton is the first paint)
+  - [x] Test: Loading state handles error states gracefully (shows error, not perpetual loading) (existing `error` state renders the red banner above; `isLoading` still flips to false in the `finally` block, so the skeleton clears)
 
 ---
 

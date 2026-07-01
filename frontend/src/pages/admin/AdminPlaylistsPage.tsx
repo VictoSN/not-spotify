@@ -5,6 +5,7 @@ import { StarIcon as StarSolid } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { notify } from '@/utils/toast'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -85,7 +86,7 @@ export function AdminPlaylistsPage() {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={5} />
       ) : playlists.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary text-sm">
           {search ? 'No playlists match that search.' : 'No playlists yet.'}

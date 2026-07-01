@@ -10,6 +10,7 @@ import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
 import { trackService } from '@/services/trackService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { notify } from '@/utils/toast'
@@ -183,7 +184,7 @@ export function AdminTracksListPage() {
       )}
 
       {isLoading ? (
-        <div className="flex justify-center py-16"><Spinner size="lg" /></div>
+        <AdminTableSkeleton rows={6} columns={6} />
       ) : (
         <div className="bg-surface rounded-lg border border-elevated/40 overflow-x-auto">
           <table className="w-full min-w-[640px]">

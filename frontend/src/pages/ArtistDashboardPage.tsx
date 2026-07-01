@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
   MusicalNoteIcon, CloudArrowUpIcon, CheckCircleIcon, ClockIcon,
-  XCircleIcon, PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
+  PlusCircleIcon, ChevronDownIcon, ChevronUpIcon,
   PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon, ArrowPathIcon,
   UserCircleIcon, GlobeAltIcon, LinkIcon, PlayIcon, StopCircleIcon, ArrowDownTrayIcon,
   StarIcon, HeartIcon,
@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
 import { SearchInput } from '@/components/common/SearchInput'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { ArtistPodcastManager } from '@/components/artist/ArtistPodcastManager'
 import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
 import { ArtistVideoManager } from '@/components/artist/ArtistVideoManager'
@@ -29,23 +30,6 @@ import { ImageCropModal } from '@/components/common/ImageCropModal'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 import { useDebounce } from '@/hooks/useDebounce'
-
-const STATUS_CONFIG = {
-  approved: { label: 'Live', icon: CheckCircleIcon, cls: 'text-green-400', bg: 'bg-green-500/15' },
-  pending: { label: 'Pending', icon: ClockIcon, cls: 'text-yellow-400', bg: 'bg-yellow-500/15' },
-  rejected: { label: 'Rejected', icon: XCircleIcon, cls: 'text-red-400', bg: 'bg-red-500/15' },
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending
-  const Icon = cfg.icon
-  return (
-    <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${cfg.bg} ${cfg.cls}`}>
-      <Icon className="w-3.5 h-3.5" />
-      {cfg.label}
-    </span>
-  )
-}
 
 function fmtDuration(ms: number) {
   const s = Math.floor(ms / 1000)

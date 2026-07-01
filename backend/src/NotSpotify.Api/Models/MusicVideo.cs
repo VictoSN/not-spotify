@@ -30,4 +30,10 @@ public class MusicVideo
     public long ViewCount { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    // approved | pending | rejected  (admin/import-created videos are approved by default)
+    public string Status { get; set; } = "approved";
+    public string? ReviewNote { get; set; }
+    public Guid? SubmittedByUserId { get; set; }
+    public ApplicationUser? SubmittedBy { get; set; }
 }

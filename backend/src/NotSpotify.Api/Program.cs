@@ -493,15 +493,18 @@ using (var scope = app.Services.CreateScope())
     // catalogue so episodes actually play through the unchanged audio engine.
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""Podcasts"" (
-            ""Id""          uuid NOT NULL,
-            ""Title""       text NOT NULL,
-            ""Author""      text NOT NULL DEFAULT '',
-            ""Description"" text NULL,
-            ""Category""    text NULL,
-            ""ImageUrl""    text NULL,
-            ""ImageKey""    text NULL,
-            ""ArtistId""    uuid NULL,
-            ""CreatedAt""   timestamp with time zone NOT NULL DEFAULT now(),
+            ""Id""               uuid NOT NULL,
+            ""Title""            text NOT NULL,
+            ""Author""           text NOT NULL DEFAULT '',
+            ""Description""      text NULL,
+            ""Category""         text NULL,
+            ""ImageUrl""         text NULL,
+            ""ImageKey""         text NULL,
+            ""ArtistId""         uuid NULL,
+            ""CreatedAt""        timestamp with time zone NOT NULL DEFAULT now(),
+            ""Status""           text NOT NULL DEFAULT 'approved',
+            ""ReviewNote""       text NULL,
+            ""SubmittedByUserId"" uuid NULL,
             CONSTRAINT ""PK_Podcasts"" PRIMARY KEY (""Id""),
             CONSTRAINT ""FK_Podcasts_Artists_ArtistId""
                 FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE SET NULL
@@ -524,6 +527,9 @@ using (var scope = app.Services.CreateScope())
             ""EpisodeNumber"" integer NOT NULL DEFAULT 0,
             ""PublishedAt""   timestamp with time zone NOT NULL DEFAULT now(),
             ""CreatedAt""     timestamp with time zone NOT NULL DEFAULT now(),
+            ""Status""            text NOT NULL DEFAULT 'approved',
+            ""ReviewNote""        text NULL,
+            ""SubmittedByUserId"" uuid NULL,
             CONSTRAINT ""PK_Episodes"" PRIMARY KEY (""Id""),
             CONSTRAINT ""FK_Episodes_Podcasts_PodcastId""
                 FOREIGN KEY (""PodcastId"") REFERENCES ""Podcasts""(""Id"") ON DELETE CASCADE
@@ -549,7 +555,38 @@ using (var scope = app.Services.CreateScope())
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'Explicit') THEN
                 ALTER TABLE ""Episodes"" ADD COLUMN ""Explicit"" boolean NOT NULL DEFAULT false;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Podcasts' AND column_name = 'Status') THEN
+                ALTER TABLE ""Podcasts"" ADD COLUMN ""Status"" text NOT NULL DEFAULT 'approved';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Podcasts' AND column_name = 'ReviewNote') THEN
+                ALTER TABLE ""Podcasts"" ADD COLUMN ""ReviewNote"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Podcasts' AND column_name = 'SubmittedByUserId') THEN
+                ALTER TABLE ""Podcasts"" ADD COLUMN ""SubmittedByUserId"" uuid NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Podcasts_AspNetUsers_SubmittedByUserId') THEN
+                ALTER TABLE ""Podcasts"" ADD CONSTRAINT ""FK_Podcasts_AspNetUsers_SubmittedByUserId""
+                    FOREIGN KEY (""SubmittedByUserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE SET NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'Status') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""Status"" text NOT NULL DEFAULT 'approved';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'ReviewNote') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""ReviewNote"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'Episodes' AND column_name = 'SubmittedByUserId') THEN
+                ALTER TABLE ""Episodes"" ADD COLUMN ""SubmittedByUserId"" uuid NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Episodes_AspNetUsers_SubmittedByUserId') THEN
+                ALTER TABLE ""Episodes"" ADD CONSTRAINT ""FK_Episodes_AspNetUsers_SubmittedByUserId""
+                    FOREIGN KEY (""SubmittedByUserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE SET NULL;
+            END IF;
         END $$;
+
+        CREATE INDEX IF NOT EXISTS ""IX_Podcasts_Status"" ON ""Podcasts""(""Status"");
+        CREATE INDEX IF NOT EXISTS ""IX_Podcasts_SubmittedByUserId"" ON ""Podcasts""(""SubmittedByUserId"");
+        CREATE INDEX IF NOT EXISTS ""IX_Episodes_Status"" ON ""Episodes""(""Status"");
+        CREATE INDEX IF NOT EXISTS ""IX_Episodes_SubmittedByUserId"" ON ""Episodes""(""SubmittedByUserId"");
 
         DO $$
         DECLARE p1 uuid; p2 uuid;
@@ -700,6 +737,9 @@ using (var scope = app.Services.CreateScope())
             ""DurationMs""   bigint NOT NULL DEFAULT 0,
             ""ViewCount""    bigint NOT NULL DEFAULT 0,
             ""CreatedAt""    timestamp with time zone NOT NULL DEFAULT now(),
+            ""Status""            text NOT NULL DEFAULT 'approved',
+            ""ReviewNote""        text NULL,
+            ""SubmittedByUserId"" uuid NULL,
             CONSTRAINT ""PK_MusicVideos"" PRIMARY KEY (""Id""),
             CONSTRAINT ""FK_MusicVideos_Artists_ArtistId""
                 FOREIGN KEY (""ArtistId"") REFERENCES ""Artists""(""Id"") ON DELETE CASCADE,
@@ -713,7 +753,23 @@ using (var scope = app.Services.CreateScope())
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'MusicVideos' AND column_name = 'Description') THEN
                 ALTER TABLE ""MusicVideos"" ADD COLUMN ""Description"" text NULL;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'MusicVideos' AND column_name = 'Status') THEN
+                ALTER TABLE ""MusicVideos"" ADD COLUMN ""Status"" text NOT NULL DEFAULT 'approved';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'MusicVideos' AND column_name = 'ReviewNote') THEN
+                ALTER TABLE ""MusicVideos"" ADD COLUMN ""ReviewNote"" text NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'MusicVideos' AND column_name = 'SubmittedByUserId') THEN
+                ALTER TABLE ""MusicVideos"" ADD COLUMN ""SubmittedByUserId"" uuid NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_MusicVideos_AspNetUsers_SubmittedByUserId') THEN
+                ALTER TABLE ""MusicVideos"" ADD CONSTRAINT ""FK_MusicVideos_AspNetUsers_SubmittedByUserId""
+                    FOREIGN KEY (""SubmittedByUserId"") REFERENCES ""AspNetUsers""(""Id"") ON DELETE SET NULL;
+            END IF;
         END $$;
+
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideos_Status"" ON ""MusicVideos""(""Status"");
+        CREATE INDEX IF NOT EXISTS ""IX_MusicVideos_SubmittedByUserId"" ON ""MusicVideos""(""SubmittedByUserId"");
 
         INSERT INTO ""MusicVideos""
             (""Id"",""Title"",""ArtistId"",""TrackId"",""VideoUrl"",""ThumbnailUrl"",""DurationMs"",""ViewCount"",""CreatedAt"")

@@ -165,7 +165,9 @@ public class MediaMapper
             v.DurationMs,
             v.ViewCount,
             v.CreatedAt,
-            v.Description
+            v.Description,
+            v.Status,
+            v.ReviewNote
         );
     }
 
@@ -218,7 +220,9 @@ public class MediaMapper
             ep.EpisodeNumber,
             ResolveImage(ep.ImageKey, ep.ImageUrl) ?? ResolveImage(ep.Podcast?.ImageKey, ep.Podcast?.ImageUrl),
             ep.PublishedAt,
-            ep.Explicit
+            ep.Explicit,
+            ep.Status,
+            ep.ReviewNote
         );
     }
 
@@ -230,7 +234,9 @@ public class MediaMapper
         p.Category,
         ResolveImage(p.ImageKey, p.ImageUrl),
         p.Episodes?.Count ?? 0,
-        p.CreatedAt
+        p.CreatedAt,
+        p.Status,
+        p.ReviewNote
     );
 
     public async Task<PodcastDto> ToDtoAsync(Podcast p, CancellationToken ct = default)
@@ -249,7 +255,9 @@ public class MediaMapper
             p.Category,
             ResolveImage(p.ImageKey, p.ImageUrl),
             p.CreatedAt,
-            episodes
+            episodes,
+            p.Status,
+            p.ReviewNote
         );
     }
 

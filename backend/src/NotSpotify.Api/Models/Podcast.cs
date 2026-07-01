@@ -23,5 +23,11 @@ public class Podcast
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // approved | pending | rejected  (admin/import-created shows are approved by default)
+    public string Status { get; set; } = "approved";
+    public string? ReviewNote { get; set; }
+    public Guid? SubmittedByUserId { get; set; }
+    public ApplicationUser? SubmittedBy { get; set; }
+
     public ICollection<Episode> Episodes { get; set; } = new List<Episode>();
 }

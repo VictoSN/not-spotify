@@ -55,6 +55,8 @@ import { AdminTeamPage } from '@/pages/admin/AdminTeamPage'
 import { AdminApprovalsPage } from '@/pages/admin/AdminApprovalsPage'
 import { AdminPlaylistsPage } from '@/pages/admin/AdminPlaylistsPage'
 import { AdminAdsPage } from '@/pages/admin/AdminAdsPage'
+import { AdminVideosListPage } from '@/pages/admin/AdminVideosListPage'
+import { AdminPodcastsListPage } from '@/pages/admin/AdminPodcastsListPage'
 import { ArtistDashboardPage } from '@/pages/ArtistDashboardPage'
 import { UserProfilePage } from '@/pages/UserProfilePage'
 import { TrackDetailPage } from '@/pages/TrackDetailPage'
@@ -174,6 +176,8 @@ export const router = createBrowserRouter([
               { path: 'admin/tracks/new', element: <AdminTrackFormPage /> },
               { path: 'admin/tracks/:id/edit', element: <AdminTrackFormPage /> },
               { path: 'admin/playlists', element: <AdminPlaylistsPage /> },
+              { path: 'admin/videos', element: <AdminVideosListPage /> },
+              { path: 'admin/podcasts', element: <AdminPodcastsListPage /> },
               { path: 'admin/ads', element: <AdminAdsPage /> },
               { path: 'admin/applications', element: <AdminApplicationsPage /> },
               { path: 'admin/team', element: <AdminTeamPage /> },

@@ -14,6 +14,7 @@ import { VideoMenu } from '@/components/cards/VideoMenu'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SearchInput } from '@/components/common/SearchInput'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useDebounce } from '@/hooks/useDebounce'
 import {
@@ -47,13 +48,10 @@ function fmtDuration(ms: number) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-function DirectPublishedBadge() {
-  return <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-300">Direct published</span>
-}
-
 export function ArtistVideoManager({ tracks, disabled = false }: Props) {
   const confirm = useConfirm()
   const [videos, setVideos] = useState<MusicVideo[] | null>(null)
+  const [resubmittingId, setResubmittingId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebounce(query, 200)
   const [showForm, setShowForm] = useState(false)
@@ -153,6 +151,20 @@ export function ArtistVideoManager({ tracks, disabled = false }: Props) {
       notify.error('Could not update this video.')
     } finally {
       setSavingEdit(false)
+    }
+  }
+
+  const resubmitVideo = async (video: MusicVideo) => {
+    if (disabled) return
+    setResubmittingId(video.id)
+    try {
+      const updated = await artistMediaService.resubmitVideo(video.id)
+      setVideos((cur) => (cur ?? []).map((item) => (item.id === video.id ? updated : item)))
+      notify.success('Video resubmitted for review.')
+    } catch {
+      notify.error('Could not resubmit this video.')
+    } finally {
+      setResubmittingId(null)
     }
   }
 
@@ -325,11 +337,14 @@ export function ArtistVideoManager({ tracks, disabled = false }: Props) {
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate font-semibold text-primary">{video.title}</p>
-                          <DirectPublishedBadge />
+                          <StatusBadge status={video.status ?? 'approved'} />
                         </div>
                         <p className="mt-0.5 flex items-center gap-1 text-xs text-secondary">
                           <LinkIcon className="h-3.5 w-3.5" /> {trackTitle(video.trackId)} - {fmtDuration(video.durationMs)}
                         </p>
+                        {video.status === 'rejected' && video.reviewNote && (
+                          <p className="mt-1 text-xs italic text-red-400">Rejection note: {video.reviewNote}</p>
+                        )}
                       </div>
                       <VideoMenu video={video} alwaysVisible triggerClassName="h-9 w-9" />
                     </div>
@@ -344,6 +359,17 @@ export function ArtistVideoManager({ tracks, disabled = false }: Props) {
                       <Link to={`/videos/${video.id}`} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary hover:bg-elevated/60 hover:text-primary" title="Open public video">
                         <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                       </Link>
+                      {video.status === 'rejected' && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => resubmitVideo(video)}
+                          disabled={disabled || resubmittingId === video.id}
+                        >
+                          {resubmittingId === video.id ? <Spinner size="sm" /> : 'Resubmit for review'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>

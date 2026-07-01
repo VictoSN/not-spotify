@@ -12,6 +12,8 @@ export interface Episode {
   imageUrl: string | null
   publishedAt: string
   explicit?: boolean
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }
 
 export interface PodcastSummary {
@@ -23,6 +25,8 @@ export interface PodcastSummary {
   imageUrl: string | null
   episodeCount: number
   createdAt: string
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }
 
 export interface Podcast {
@@ -34,6 +38,8 @@ export interface Podcast {
   imageUrl: string | null
   createdAt: string
   episodes: Episode[]
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }
 
 /**

@@ -537,9 +537,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .WithMany(a => a.Podcasts)
                 .HasForeignKey(x => x.ArtistId)
                 .OnDelete(DeleteBehavior.SetNull);
+            e.HasOne(x => x.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(x => x.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => x.Title);
             e.HasIndex(x => x.CreatedAt);
             e.HasIndex(x => x.ArtistId);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.SubmittedByUserId);
         });
 
         b.Entity<Episode>(e =>
@@ -549,8 +555,15 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(x => x.PodcastId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            e.HasOne(x => x.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(x => x.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             // "Episodes for podcast X, newest first" — the primary read query.
             e.HasIndex(x => new { x.PodcastId, x.PublishedAt });
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.SubmittedByUserId);
         });
 
         b.Entity<Advertisement>(e =>
@@ -595,7 +608,14 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(x => x.TrackId)
                 .OnDelete(DeleteBehavior.SetNull);
 
+            e.HasOne(x => x.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(x => x.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.SubmittedByUserId);
         });
 
         b.Entity<PlanMembership>(e =>

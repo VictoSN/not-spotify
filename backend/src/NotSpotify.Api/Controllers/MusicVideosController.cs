@@ -27,6 +27,7 @@ public class MusicVideosController : ControllerBase
     {
         var videos = await _db.MusicVideos
             .Include(v => v.Artist)
+            .Where(v => v.Status == "approved")
             .OrderByDescending(v => v.CreatedAt)
             .ToListAsync(ct);
 
@@ -39,7 +40,8 @@ public class MusicVideosController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<MusicVideoDto>> Get(Guid id, CancellationToken ct = default)
     {
-        var video = await _db.MusicVideos.Include(v => v.Artist).FirstOrDefaultAsync(v => v.Id == id, ct);
+        var video = await _db.MusicVideos.Include(v => v.Artist)
+            .FirstOrDefaultAsync(v => v.Id == id && v.Status == "approved", ct);
         if (video is null) return NotFound();
 
         await _db.MusicVideos.Where(v => v.Id == id)
@@ -55,7 +57,7 @@ public class MusicVideosController : ControllerBase
     {
         var video = await _db.MusicVideos
             .Include(v => v.Artist)
-            .FirstOrDefaultAsync(v => v.TrackId == trackId, ct);
+            .FirstOrDefaultAsync(v => v.TrackId == trackId && v.Status == "approved", ct);
         if (video is null) return NotFound();
         return Ok(await _mapper.ToDtoAsync(video, ct));
     }

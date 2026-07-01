@@ -95,6 +95,11 @@ export const artistMediaService = {
     await api.delete(`/me/artist-podcasts/${id}`)
   },
 
+  async resubmitPodcast(id: string, note?: string): Promise<Podcast> {
+    const res = await api.post<Podcast>(`/me/artist-podcasts/${id}/resubmit`, { note: note || null })
+    return res.data
+  },
+
   async uploadEpisode(podcastId: string, payload: ArtistEpisodeUploadPayload, onProgress?: ProgressHandler): Promise<Episode> {
     const fd = new FormData()
     appendIfValue(fd, 'title', payload.title)
@@ -120,6 +125,11 @@ export const artistMediaService = {
 
   async deleteEpisode(id: string): Promise<void> {
     await api.delete(`/me/artist-episodes/${id}`)
+  },
+
+  async resubmitEpisode(id: string, note?: string): Promise<Episode> {
+    const res = await api.post<Episode>(`/me/artist-episodes/${id}/resubmit`, { note: note || null })
+    return res.data
   },
 
   async listVideos(): Promise<MusicVideo[]> {
@@ -150,5 +160,10 @@ export const artistMediaService = {
 
   async deleteVideo(id: string): Promise<void> {
     await api.delete(`/me/artist-videos/${id}`)
+  },
+
+  async resubmitVideo(id: string, note?: string): Promise<MusicVideo> {
+    const res = await api.post<MusicVideo>(`/me/artist-videos/${id}/resubmit`, { note: note || null })
+    return res.data
   },
 }

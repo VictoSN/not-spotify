@@ -249,7 +249,9 @@ public record EpisodeDto(
     int EpisodeNumber,
     string? ImageUrl,
     DateTime PublishedAt,
-    bool Explicit = false
+    bool Explicit = false,
+    string? Status = null,
+    string? ReviewNote = null
 );
 
 public record PodcastSummaryDto(
@@ -260,7 +262,9 @@ public record PodcastSummaryDto(
     string? Category,
     string? ImageUrl,
     int EpisodeCount,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    string? Status = null,
+    string? ReviewNote = null
 );
 
 public record PodcastDto(
@@ -271,7 +275,9 @@ public record PodcastDto(
     string? Category,
     string? ImageUrl,
     DateTime CreatedAt,
-    IEnumerable<EpisodeDto> Episodes
+    IEnumerable<EpisodeDto> Episodes,
+    string? Status = null,
+    string? ReviewNote = null
 );
 
 public record AdDto(
@@ -329,7 +335,9 @@ public record MusicVideoDto(
     long DurationMs,
     long ViewCount,
     DateTime CreatedAt,
-    string? Description = null
+    string? Description = null,
+    string? Status = null,
+    string? ReviewNote = null
 );
 
 public record UserUploadDto(

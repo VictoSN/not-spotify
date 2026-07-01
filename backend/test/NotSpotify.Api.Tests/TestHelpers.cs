@@ -26,11 +26,17 @@ namespace NotSpotify.Api.Tests;
 /// </summary>
 internal static class TestHelpers
 {
-    /// <summary>A fresh, uniquely-named InMemory AppDbContext (isolated per test).</summary>
-    public static AppDbContext NewDb()
+    /// <summary>
+    /// A fresh, uniquely-named InMemory AppDbContext (isolated per test). Pass an explicit
+    /// <paramref name="name"/> to open a second, independently-tracked context over the same
+    /// underlying store — mirrors production's per-request scoped context and avoids stale
+    /// change-tracker/fixup state when a test simulates multiple requests (e.g. upload → admin
+    /// approval → public read) against what should look like fresh reads each time.
+    /// </summary>
+    public static AppDbContext NewDb(string? name = null)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase($"test-{Guid.NewGuid()}")
+            .UseInMemoryDatabase(name ?? $"test-{Guid.NewGuid()}")
             .EnableSensitiveDataLogging()
             .Options;
         return new AppDbContext(options);

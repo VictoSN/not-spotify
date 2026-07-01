@@ -2,6 +2,8 @@ import type { Artist } from '@/types/artist'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import type { MoodTag } from '@/types/mood'
+import type { MusicVideo } from '@/types/musicVideo'
+import type { Podcast, PodcastSummary } from '@/types/podcast'
 import { api } from './api'
 
 export interface ArtistApplication {
@@ -117,6 +119,32 @@ export interface ReviewHistoryEntry {
   note: string | null
   reviewedByName: string | null
   reviewedAt: string
+}
+
+// ── Music videos ──────────────────────────────────────────────────────────────
+
+export interface UpdateMusicVideoPayload {
+  title?: string
+  description?: string | null
+  trackId?: string | null
+  clearTrack?: boolean
+}
+
+// ── Podcasts ──────────────────────────────────────────────────────────────────
+
+export interface UpsertPodcastPayload {
+  title: string
+  description?: string | null
+  category?: string | null
+}
+
+export interface UpdateEpisodePayload {
+  title?: string
+  description?: string | null
+  durationMs?: number
+  episodeNumber?: number
+  explicit?: boolean
+  publishedAt?: string
 }
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
@@ -330,6 +358,98 @@ export const adminService = {
 
   async getTrackReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
     const res = await api.get<ReviewHistoryEntry[]>(`/admin/tracks/${id}/review-history`)
+    return res.data
+  },
+
+  // Music videos
+  async listVideos(status?: string): Promise<MusicVideo[]> {
+    const res = await api.get<MusicVideo[]>('/admin/videos', { params: status ? { status } : undefined })
+    return res.data
+  },
+
+  async listPendingVideos(): Promise<MusicVideo[]> {
+    const res = await api.get<MusicVideo[]>('/admin/videos/pending')
+    return res.data
+  },
+
+  async updateVideo(id: string, payload: UpdateMusicVideoPayload): Promise<MusicVideo> {
+    const res = await api.patch<MusicVideo>(`/admin/videos/${id}`, payload)
+    return res.data
+  },
+
+  async deleteVideo(id: string): Promise<void> {
+    await api.delete(`/admin/videos/${id}`)
+  },
+
+  async approveVideo(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/videos/${id}/approve`, { note: note || null })
+  },
+
+  async rejectVideo(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/videos/${id}/reject`, { note: note || null })
+  },
+
+  async getVideoReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
+    const res = await api.get<ReviewHistoryEntry[]>(`/admin/videos/${id}/review-history`)
+    return res.data
+  },
+
+  // Podcasts
+  async listPodcasts(status?: string): Promise<PodcastSummary[]> {
+    const res = await api.get<PodcastSummary[]>('/admin/podcasts', { params: status ? { status } : undefined })
+    return res.data
+  },
+
+  async listPendingPodcasts(): Promise<PodcastSummary[]> {
+    const res = await api.get<PodcastSummary[]>('/admin/podcasts/pending')
+    return res.data
+  },
+
+  async getPodcast(id: string): Promise<Podcast> {
+    const res = await api.get<Podcast>(`/admin/podcasts/${id}`)
+    return res.data
+  },
+
+  async updatePodcast(id: string, payload: UpsertPodcastPayload): Promise<Podcast> {
+    const res = await api.patch<Podcast>(`/admin/podcasts/${id}`, payload)
+    return res.data
+  },
+
+  async deletePodcast(id: string): Promise<void> {
+    await api.delete(`/admin/podcasts/${id}`)
+  },
+
+  async approvePodcast(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/podcasts/${id}/approve`, { note: note || null })
+  },
+
+  async rejectPodcast(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/podcasts/${id}/reject`, { note: note || null })
+  },
+
+  async getPodcastReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
+    const res = await api.get<ReviewHistoryEntry[]>(`/admin/podcasts/${id}/review-history`)
+    return res.data
+  },
+
+  async updateEpisode(id: string, payload: UpdateEpisodePayload): Promise<void> {
+    await api.patch(`/admin/podcasts/episodes/${id}`, payload)
+  },
+
+  async deleteEpisode(id: string): Promise<void> {
+    await api.delete(`/admin/podcasts/episodes/${id}`)
+  },
+
+  async approveEpisode(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/podcasts/episodes/${id}/approve`, { note: note || null })
+  },
+
+  async rejectEpisode(id: string, note?: string): Promise<void> {
+    await api.patch(`/admin/podcasts/episodes/${id}/reject`, { note: note || null })
+  },
+
+  async getEpisodeReviewHistory(id: string): Promise<ReviewHistoryEntry[]> {
+    const res = await api.get<ReviewHistoryEntry[]>(`/admin/podcasts/episodes/${id}/review-history`)
     return res.data
   },
 

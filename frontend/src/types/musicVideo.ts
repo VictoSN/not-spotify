@@ -11,4 +11,6 @@ export interface MusicVideo {
   durationMs: number
   viewCount: number
   createdAt: string
+  status?: 'approved' | 'pending' | 'rejected'
+  reviewNote?: string | null
 }

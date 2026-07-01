@@ -13,6 +13,7 @@ import { EpisodeMenu } from '@/components/cards/EpisodeMenu'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { SearchInput } from '@/components/common/SearchInput'
+import { StatusBadge } from '@/components/common/StatusBadge'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useDebounce } from '@/hooks/useDebounce'
 import {
@@ -51,13 +52,11 @@ function toDateInput(iso: string) {
   return iso.slice(0, 10)
 }
 
-function DirectPublishedBadge() {
-  return <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-300">Direct published</span>
-}
-
 export function ArtistPodcastManager({ disabled = false }: Props) {
   const confirm = useConfirm()
   const [podcasts, setPodcasts] = useState<Podcast[] | null>(null)
+  const [resubmittingPodcastId, setResubmittingPodcastId] = useState<string | null>(null)
+  const [resubmittingEpisodeId, setResubmittingEpisodeId] = useState<string | null>(null)
   const [showQuery, setShowQuery] = useState('')
   const debouncedShowQuery = useDebounce(showQuery, 200)
   const [episodeQuery, setEpisodeQuery] = useState('')
@@ -189,6 +188,20 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
     }
   }
 
+  const resubmitPodcast = async (podcast: Podcast) => {
+    if (disabled) return
+    setResubmittingPodcastId(podcast.id)
+    try {
+      const updated = await artistMediaService.resubmitPodcast(podcast.id)
+      setPodcasts((cur) => (cur ?? []).map((p) => (p.id === podcast.id ? updated : p)))
+      notify.success('Show resubmitted for review.')
+    } catch {
+      notify.error('Could not resubmit this show.')
+    } finally {
+      setResubmittingPodcastId(null)
+    }
+  }
+
   const uploadEpisode = async (e: React.FormEvent) => {
     e.preventDefault()
     if (disabled || !selectedPodcast) return
@@ -285,6 +298,23 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
     }
   }
 
+  const resubmitEpisode = async (episode: Episode) => {
+    if (disabled) return
+    setResubmittingEpisodeId(episode.id)
+    try {
+      const updated = await artistMediaService.resubmitEpisode(episode.id)
+      setPodcasts((cur) => (cur ?? []).map((p) => ({
+        ...p,
+        episodes: p.episodes.map((ep) => (ep.id === episode.id ? updated : ep)),
+      })))
+      notify.success('Episode resubmitted for review.')
+    } catch {
+      notify.error('Could not resubmit this episode.')
+    } finally {
+      setResubmittingEpisodeId(null)
+    }
+  }
+
   if (podcasts === null) {
     return <div className="flex justify-center py-8"><Spinner /></div>
   }
@@ -376,10 +406,13 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-base font-bold text-primary">{selectedPodcast.title}</h3>
-                      <DirectPublishedBadge />
+                      <StatusBadge status={selectedPodcast.status ?? 'approved'} />
                     </div>
                     <p className="mt-1 max-w-2xl text-sm text-secondary">{selectedPodcast.description || 'No description yet.'}</p>
                     {selectedPodcast.category && <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-muted">{selectedPodcast.category}</p>}
+                    {selectedPodcast.status === 'rejected' && selectedPodcast.reviewNote && (
+                      <p className="mt-1 text-xs italic text-red-400">Rejection note: {selectedPodcast.reviewNote}</p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button type="button" size="icon" variant="ghost" onClick={() => openEditPodcast(selectedPodcast)} disabled={disabled} title="Edit show">
@@ -391,6 +424,17 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                     <Link to={`/podcasts/${selectedPodcast.id}`} className="inline-flex h-9 w-9 items-center justify-center rounded-full text-secondary hover:bg-elevated/60 hover:text-primary" title="Open public show">
                       <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                     </Link>
+                    {selectedPodcast.status === 'rejected' && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => resubmitPodcast(selectedPodcast)}
+                        disabled={disabled || resubmittingPodcastId === selectedPodcast.id}
+                      >
+                        {resubmittingPodcastId === selectedPodcast.id ? <Spinner size="sm" /> : 'Resubmit for review'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -574,13 +618,16 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-semibold text-primary">{episode.title}</p>
-                              <DirectPublishedBadge />
+                              <StatusBadge status={episode.status ?? 'approved'} />
                               {episode.explicit && <span className="rounded bg-elevated px-1 text-xs font-bold text-secondary">E</span>}
                             </div>
                             <p className="mt-0.5 text-xs text-secondary">
                               Episode {episode.episodeNumber} - {fmtDuration(episode.durationMs)} - {new Date(episode.publishedAt).toLocaleDateString()}
                             </p>
                             {episode.description && <p className="mt-1 line-clamp-2 text-sm text-secondary">{episode.description}</p>}
+                            {episode.status === 'rejected' && episode.reviewNote && (
+                              <p className="mt-1 text-xs italic text-red-400">Rejection note: {episode.reviewNote}</p>
+                            )}
                           </div>
                           <div className="flex shrink-0 items-center gap-1">
                             <EpisodeMenu
@@ -595,6 +642,17 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
                             <Button type="button" size="icon" variant="ghost" onClick={() => deleteEpisode(episode)} disabled={disabled} title="Delete episode">
                               <TrashIcon className="h-4 w-4 text-red-300" />
                             </Button>
+                            {episode.status === 'rejected' && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => resubmitEpisode(episode)}
+                                disabled={disabled || resubmittingEpisodeId === episode.id}
+                              >
+                                {resubmittingEpisodeId === episode.id ? <Spinner size="sm" /> : 'Resubmit'}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}

@@ -110,6 +110,8 @@ public class MeCreatorMediaController : ControllerBase
             Description = Clean(req.Description),
             Category = Clean(req.Category),
             CreatedAt = DateTime.UtcNow,
+            Status = "pending",
+            SubmittedByUserId = user!.Id,
         };
         _db.Podcasts.Add(podcast);
         await _db.SaveChangesAsync(ct);
@@ -167,6 +169,48 @@ public class MeCreatorMediaController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("artist-podcasts/{id:guid}/resubmit")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<PodcastDto>> ResubmitArtistPodcast(Guid id, [FromBody] ResubmitRequest? req = null, CancellationToken ct = default)
+    {
+        var (user, error) = await CurrentArtistUserAsync();
+        if (error is not null) return error;
+
+        var podcast = await _db.Podcasts
+            .Include(p => p.Episodes)
+            .FirstOrDefaultAsync(p => p.Id == id && p.ArtistId == user!.ArtistId, ct);
+        if (podcast is null) return NotFound();
+        if (podcast.Status != "rejected")
+            return Conflict(new { message = "Only rejected shows can be resubmitted." });
+
+        podcast.Status = "pending";
+        // ReviewNote intentionally preserved so artist retains rejection history
+
+        var reviewerName = User.FindFirstValue("name");
+        var resubmitNote = string.IsNullOrWhiteSpace(req?.Note) ? null : req.Note.Trim();
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "podcast", EntityId = id,
+            Action = "resubmitted", Note = resubmitNote,
+            ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+        });
+
+        foreach (var ep in podcast.Episodes.Where(e => e.Status == "rejected"))
+        {
+            ep.Status = "pending";
+            _db.ReviewHistories.Add(new ReviewHistory
+            {
+                EntityType = "episode", EntityId = ep.Id,
+                Action = "resubmitted", Note = resubmitNote,
+                ReviewedByName = reviewerName, ReviewedAt = DateTime.UtcNow,
+            });
+        }
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await _mapper.ToDtoAsync(podcast, ct));
+    }
+
     [HttpPost("artist-podcasts/{podcastId:guid}/episodes")]
     [Authorize(Roles = "Artist")]
     [RequestSizeLimit(170_000_000)]
@@ -205,6 +249,8 @@ public class MeCreatorMediaController : ControllerBase
             Explicit = form.Explicit,
             PublishedAt = form.PublishedAt ?? DateTime.UtcNow,
             CreatedAt = DateTime.UtcNow,
+            Status = "pending",
+            SubmittedByUserId = user!.Id,
         };
         _db.Episodes.Add(episode);
         await _db.SaveChangesAsync(ct);
@@ -252,6 +298,35 @@ public class MeCreatorMediaController : ControllerBase
         _db.Episodes.Remove(episode);
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpPost("artist-episodes/{id:guid}/resubmit")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<EpisodeDto>> ResubmitArtistEpisode(Guid id, [FromBody] ResubmitRequest? req = null, CancellationToken ct = default)
+    {
+        var (user, error) = await CurrentArtistUserAsync();
+        if (error is not null) return error;
+
+        var episode = await _db.Episodes
+            .Include(e => e.Podcast)
+            .FirstOrDefaultAsync(e => e.Id == id && e.Podcast.ArtistId == user!.ArtistId, ct);
+        if (episode is null) return NotFound();
+        if (episode.Status != "rejected")
+            return Conflict(new { message = "Only rejected episodes can be resubmitted." });
+
+        episode.Status = "pending";
+        // ReviewNote intentionally preserved so artist retains rejection history
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "episode", EntityId = id,
+            Action = "resubmitted",
+            Note = string.IsNullOrWhiteSpace(req?.Note) ? null : req.Note.Trim(),
+            ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await _mapper.ToDtoAsync(episode, ct));
     }
 
     [HttpGet("artist-videos")]
@@ -308,6 +383,8 @@ public class MeCreatorMediaController : ControllerBase
             ThumbnailKey = thumbnailKey,
             DurationMs = form.DurationMs,
             CreatedAt = DateTime.UtcNow,
+            Status = "pending",
+            SubmittedByUserId = user!.Id,
         };
         _db.MusicVideos.Add(video);
         await _db.SaveChangesAsync(ct);
@@ -355,6 +432,35 @@ public class MeCreatorMediaController : ControllerBase
         _db.MusicVideos.Remove(video);
         await _db.SaveChangesAsync(ct);
         return NoContent();
+    }
+
+    [HttpPost("artist-videos/{id:guid}/resubmit")]
+    [Authorize(Roles = "Artist")]
+    public async Task<ActionResult<MusicVideoDto>> ResubmitArtistVideo(Guid id, [FromBody] ResubmitRequest? req = null, CancellationToken ct = default)
+    {
+        var (user, error) = await CurrentArtistUserAsync();
+        if (error is not null) return error;
+
+        var video = await _db.MusicVideos
+            .Include(v => v.Artist)
+            .FirstOrDefaultAsync(v => v.Id == id && v.ArtistId == user!.ArtistId, ct);
+        if (video is null) return NotFound();
+        if (video.Status != "rejected")
+            return Conflict(new { message = "Only rejected videos can be resubmitted." });
+
+        video.Status = "pending";
+        // ReviewNote intentionally preserved so artist retains rejection history
+
+        _db.ReviewHistories.Add(new ReviewHistory
+        {
+            EntityType = "video", EntityId = id,
+            Action = "resubmitted",
+            Note = string.IsNullOrWhiteSpace(req?.Note) ? null : req.Note.Trim(),
+            ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
+        });
+
+        await _db.SaveChangesAsync(ct);
+        return Ok(await _mapper.ToDtoAsync(video, ct));
     }
 
     private async Task<bool> OwnsTrackAsync(Guid artistId, Guid trackId, CancellationToken ct)

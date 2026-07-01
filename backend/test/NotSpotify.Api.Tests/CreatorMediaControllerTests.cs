@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using NotSpotify.Api.Controllers;
+using NotSpotify.Api.Controllers.Admin;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
 using NotSpotify.Api.Models;
@@ -99,9 +100,10 @@ public class CreatorMediaControllerTests
     }
 
     [Fact]
-    public async Task UploadArtistEpisode_CreatesPublicEpisodeAndUploadsMedia()
+    public async Task UploadArtistEpisode_StartsPendingAndBecomesVisibleOnlyAfterApproval()
     {
-        await using var db = TestHelpers.NewDb();
+        var dbName = $"episode-review-{Guid.NewGuid()}";
+        await using var db = TestHelpers.NewDb(dbName);
         var (artist, user) = ArtistUser();
         var podcast = new Podcast
         {
@@ -132,6 +134,7 @@ public class CreatorMediaControllerTests
 
         Assert.Equal("Pilot", dto.Title);
         Assert.True(dto.Explicit);
+        Assert.Equal("pending", dto.Status);
         Assert.Contains("/audio/", dto.AudioUrl);
         Assert.Contains("/covers/", dto.ImageUrl);
         storage.Verify(s => s.UploadAsync(
@@ -145,11 +148,30 @@ public class CreatorMediaControllerTests
             "image/png",
             It.IsAny<CancellationToken>()), Times.Once);
 
-        var publicController = new PodcastsController(db, new MediaMapper(storage.Object));
-        var publicOk = Assert.IsType<OkObjectResult>((await publicController.Get(podcast.Id)).Result);
-        var publicDto = Assert.IsType<PodcastDto>(publicOk.Value);
-        Assert.Single(publicDto.Episodes);
-        Assert.Equal("Pilot", publicDto.Episodes.Single().Title);
+        var mapper = new MediaMapper(storage.Object);
+
+        // Each phase below opens its own context over the same underlying store — mirrors
+        // production's per-request scoped DbContext and avoids stale change-tracker/fixup
+        // state from the shared `db` instance used for the upload above.
+        await using (var beforeDb = TestHelpers.NewDb(dbName))
+        {
+            var beforeApproval = Assert.IsType<OkObjectResult>((await new PodcastsController(beforeDb, mapper).Get(podcast.Id)).Result);
+            Assert.Empty(Assert.IsType<PodcastDto>(beforeApproval.Value).Episodes);
+        }
+
+        await using (var adminDb = TestHelpers.NewDb(dbName))
+        {
+            var adminController = new AdminPodcastsController(
+                    adminDb, mapper, TestHelpers.NewNotifications(adminDb), storage.Object, NullLogger<AdminPodcastsController>.Instance)
+                .AsUser(Guid.NewGuid(), "Admin");
+            Assert.IsType<NoContentResult>(await adminController.ApproveEpisode(dto.Id, null));
+        }
+
+        await using var afterDb = TestHelpers.NewDb(dbName);
+        var afterApproval = Assert.IsType<OkObjectResult>((await new PodcastsController(afterDb, mapper).Get(podcast.Id)).Result);
+        var afterDto = Assert.IsType<PodcastDto>(afterApproval.Value);
+        Assert.Single(afterDto.Episodes);
+        Assert.Equal("Pilot", afterDto.Episodes.Single().Title);
     }
 
     [Fact]
@@ -178,7 +200,7 @@ public class CreatorMediaControllerTests
     }
 
     [Fact]
-    public async Task UploadArtistVideo_CreatesPublicVideoAndUploadsMedia()
+    public async Task UploadArtistVideo_StartsPendingAndBecomesVisibleOnlyAfterApproval()
     {
         await using var db = TestHelpers.NewDb();
         var (artist, user) = ArtistUser();
@@ -202,6 +224,7 @@ public class CreatorMediaControllerTests
 
         Assert.Equal("Single Video", dto.Title);
         Assert.Equal("Official visual.", dto.Description);
+        Assert.Equal("pending", dto.Status);
         Assert.Contains("/videos/", dto.VideoUrl);
         Assert.Contains("/covers/", dto.ThumbnailUrl);
         storage.Verify(s => s.UploadAsync(
@@ -215,7 +238,15 @@ public class CreatorMediaControllerTests
             "image/webp",
             It.IsAny<CancellationToken>()), Times.Once);
 
-        var publicController = new MusicVideosController(db, new MediaMapper(storage.Object));
+        var mapper = new MediaMapper(storage.Object);
+        var publicController = new MusicVideosController(db, mapper);
+        Assert.IsType<NotFoundResult>((await publicController.GetByTrack(track.Id)).Result);
+
+        var adminController = new AdminMusicVideosController(
+                db, mapper, TestHelpers.NewNotifications(db), storage.Object, NullLogger<AdminMusicVideosController>.Instance)
+            .AsUser(Guid.NewGuid(), "Admin");
+        Assert.IsType<NoContentResult>(await adminController.Approve(dto.Id, null));
+
         var publicOk = Assert.IsType<OkObjectResult>((await publicController.GetByTrack(track.Id)).Result);
         var publicDto = Assert.IsType<MusicVideoDto>(publicOk.Value);
         Assert.Equal("Single Video", publicDto.Title);

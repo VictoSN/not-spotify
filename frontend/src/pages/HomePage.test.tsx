@@ -7,6 +7,7 @@ import { useDragStore } from '@/stores/dragStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { PODCAST_DND_MIME, VIDEO_DND_MIME } from '@/utils/trackDnd'
 import type { MusicVideo } from '@/types/musicVideo'
@@ -352,5 +353,54 @@ describe('Home media interactions', () => {
     await waitFor(() => {
       expect(second.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
+  })
+
+  // Bug #35: Daily Mix must be available to every tier, not premium-only.
+  const freeUser = {
+    id: 'free-user',
+    name: 'Free Tester',
+    country: 'US',
+    plan: 'free',
+    capabilities: { unlimitedPlayback: false, customPlaylistPictures: false },
+  } as never
+
+  it('shows Daily Mixes to a free-tier user (feature is not premium-gated)', async () => {
+    useAuthStore.setState({ isAuthenticated: true, user: freeUser })
+    dailyMixesMock.mockResolvedValue(dailyMixes)
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    // The "Made for you" Daily Mix row and its tiles render for the free account.
+    expect(await screen.findByText('First Daily Mix')).toBeInTheDocument()
+    expect(screen.getByText('Second Daily Mix')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Made for you' })).toBeInTheDocument()
+  })
+
+  it('lets a free-tier user play a Daily Mix instead of hitting an upgrade/auth wall', async () => {
+    const playContext = vi.fn()
+    usePlayerStore.setState({ playContext })
+    const openAuthPrompt = vi.fn()
+    useAuthPromptStore.setState({ open: openAuthPrompt })
+
+    useAuthStore.setState({ isAuthenticated: true, user: freeUser })
+    dailyMixesMock.mockResolvedValue([
+      { id: 'mix-playable', title: 'Playable Mix', subtitle: 'Daily Mix', color: '#1db954', tracks: [homeTrack] },
+    ])
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Play Playable Mix' }))
+
+    // Playback starts for the free user; the guest auth-prompt never opens.
+    expect(playContext).toHaveBeenCalledWith({ type: 'mix', id: 'mix-playable' }, [homeTrack], 0)
+    expect(openAuthPrompt).not.toHaveBeenCalled()
   })
 })

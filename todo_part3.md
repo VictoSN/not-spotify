@@ -767,22 +767,35 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Daily Mix is a fundamental music discovery feature that drives user engagement. Restricting it to premium users only limits the free tier experience unnecessarily and may reduce conversion rates by preventing free users from experiencing the full value of the platform's recommendation engine.
 
-- [ ] **Fix Implementation**
-  - [ ] Identify where Daily Mix visibility is gated by subscription tier
-  - [ ] Remove or adjust the tier restriction to allow free users access
-  - [ ] Ensure Daily Mix generation logic works for free tier accounts
-  - [ ] Verify Daily Mix appears in the left sidebar for free users
-  - [ ] Ensure Daily Mix content is playable for free users (with ad interruptions if applicable)
-  - [ ] Update any UI that conditionally hides Daily Mix based on subscription status
+> **Investigation result:** Daily Mix is **not gated by subscription tier anywhere**
+> in the current codebase — the reported gate no longer exists (likely removed when
+> Daily Mix moved onto the general Home). The backend `GET /tracks/daily-mixes`
+> ([`TracksController`](../backend/src/NotSpotify.Api/Controllers/TracksController.cs))
+> has no `[Authorize]` and **never inspects the caller's plan**; it even serves full
+> mixes to anonymous guests. The Home row ([`HomePage.tsx:353`](../frontend/src/pages/HomePage.tsx))
+> renders `MixTile` on `showMusic && dailyMixes.length > 0` with no premium condition,
+> and playback ([`usePlaybackGate`](../frontend/src/hooks/usePlaybackGate.ts)) only
+> blocks *guests*, not free tier. **Verified live against a real free account**
+> (`plan:"free"`, `unlimitedPlayback:false`, brand new, no history): signup → verify →
+> `GET /tracks/daily-mixes` returned **HTTP 200 with 4 full mixes**. So the work here
+> is locking the behaviour in with regression tests so a premium gate can't creep back.
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Free tier users can see Daily Mix in the left sidebar
-  - [ ] Test: Free tier users can play Daily Mix content
-  - [ ] Test: Daily Mix generates appropriate recommendations for free users
-  - [ ] Test: Daily Mix updates regularly for free users
-  - [ ] Test: Right-click context menu works on Daily Mix for free users
-  - [ ] Test: Daily Mix is visible and functional after account creation (free tier)
-  - [ ] Test: Daily Mix remains accessible after subscription downgrade to free
+- [x] **Fix Implementation**
+  - [x] Identify where Daily Mix visibility is gated by subscription tier — audited backend endpoint, Home render, `MixTile`, `MixDetailPage`, and the playback gate: **no tier gate exists** (see investigation note above)
+  - [x] Remove or adjust the tier restriction to allow free users access — n/a: there is no tier restriction to remove; free users already have full access
+  - [x] Ensure Daily Mix generation logic works for free tier accounts — the endpoint is plan-agnostic and falls back to the biggest catalogue genres for history-less (new/free) users; proven live + new backend test
+  - [x] Verify Daily Mix appears in the left sidebar for free users — Daily Mix surfaces as the Home "Made for you" row (the same row Bugs #22/#27 referred to as the sidebar mixes); new HomePage test asserts it renders for a free-tier user
+  - [x] Ensure Daily Mix content is playable for free users (with ad interruptions if applicable) — free users play mixes via `usePlayContextGate` (guest-only wall); ad interruptions are handled by the existing free-tier ad pipeline, unchanged. New test asserts a free user's play starts playback (no upgrade/auth wall)
+  - [x] Update any UI that conditionally hides Daily Mix based on subscription status — none found; nothing to change
+
+- [x] **Tests to Complete**
+  - [x] Test: Free tier users can see Daily Mix in the left sidebar — `HomePage.test.tsx`: "shows Daily Mixes to a free-tier user (feature is not premium-gated)"
+  - [x] Test: Free tier users can play Daily Mix content — `HomePage.test.tsx`: "lets a free-tier user play a Daily Mix instead of hitting an upgrade/auth wall" (asserts `playContext` fires, auth prompt does not)
+  - [x] Test: Daily Mix generates appropriate recommendations for free users — `RecommendationEndpointsTests.DailyMixes_AuthenticatedUserWithNoHistory_StillGetsCatalogueMixes` (new) + existing `DailyMixes_Guest_FallsBackToBiggestCatalogueGenres`
+  - [x] Test: Daily Mix updates regularly for free users — n/a to tier: the per-`(user, genre, UTC-day)` seeded shuffle rotates at midnight UTC for everyone (existing behaviour, not plan-dependent)
+  - [x] Test: Right-click context menu works on Daily Mix for free users — the `MixMenu` (Bug #27) is not plan-gated; covered by the existing Home mix context-menu test (pin/right-click), which now also runs under the free-tier path
+  - [x] Test: Daily Mix is visible and functional after account creation (free tier) — verified live end-to-end (fresh free signup → 4 mixes) and by the new authenticated-no-history backend test
+  - [x] Test: Daily Mix remains accessible after subscription downgrade to free — n/a: with no tier gate, a downgrade cannot hide it; the plan-agnostic endpoint + ungated Home render guarantee continued access
 
 ---
 

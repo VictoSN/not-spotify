@@ -351,6 +351,32 @@ public class RecommendationEndpointsTests
     }
 
     [Fact]
+    public async Task DailyMixes_AuthenticatedUserWithNoHistory_StillGetsCatalogueMixes()
+    {
+        // A brand-new free-tier account has no play history. Daily Mix is not
+        // premium-gated (the endpoint never inspects the caller's plan), so an
+        // authenticated-but-history-less user falls back to the biggest catalogue
+        // genres exactly like a guest does — Daily Mix stays visible for free tier
+        // right after account creation (bug #35).
+        await using var db = TestHelpers.NewDb();
+        var (artist, album) = db.AddArtistAlbum();
+        var rock = db.AddGenre("Rock", "rock");
+        var freeUser = db.AddUser(Guid.NewGuid(), "free");
+        var r1 = db.AddTrack("R1", artist, album);
+        var r2 = db.AddTrack("R2", artist, album);
+        db.Tag(r1, rock);
+        db.Tag(r2, rock);
+        await db.SaveChangesAsync();
+
+        var action = await Controller(db).AsUser(freeUser.Id).DailyMixes();
+        var ok = Assert.IsType<OkObjectResult>(action.Result);
+        var mixes = Assert.IsAssignableFrom<IEnumerable<DailyMixDto>>(ok.Value).ToList();
+
+        var rockMix = Assert.Single(mixes, m => m.Id == "rock");
+        Assert.Equal(2, rockMix.Tracks.Count());
+    }
+
+    [Fact]
     public async Task DailyMixes_WithHistory_BuildsMixesFromTheUsersTopGenres()
     {
         await using var db = TestHelpers.NewDb();

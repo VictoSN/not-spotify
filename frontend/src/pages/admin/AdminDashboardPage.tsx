@@ -344,7 +344,7 @@ export function AdminDashboardPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:contents">
-                        <div className="top-music-window-metric rounded-md px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
+                        <div className="rounded-md bg-elevated/30 px-3 py-2 text-left md:bg-transparent md:px-0 md:py-0 md:text-right">
                           <p className="top-music-window-label text-[11px] font-bold uppercase tracking-[0.12em] md:hidden">Last 30 days</p>
                           <p className="top-music-window-value text-lg font-extrabold md:text-base">{formatNumber(track.playsInWindow)}</p>
                         </div>

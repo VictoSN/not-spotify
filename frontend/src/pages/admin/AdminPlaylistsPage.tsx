@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { StarIcon as StarOutline } from '@heroicons/react/24/outline'
+import { StarIcon as StarOutline, TrashIcon } from '@heroicons/react/24/outline'
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
@@ -9,6 +9,7 @@ import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { notify } from '@/utils/toast'
 import { useDebounce } from '@/hooks/useDebounce'
+import { useConfirm } from '@/hooks/useConfirm'
 
 export function AdminPlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
@@ -17,6 +18,8 @@ export function AdminPlaylistsPage() {
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, 300)
   const [actingId, setActingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const confirm = useConfirm()
 
   const reload = async (q?: string) => {
     setIsLoading(true)
@@ -43,6 +46,26 @@ export function AdminPlaylistsPage() {
       notify.error(err instanceof Error ? err.message : 'Failed to update featured status')
     } finally {
       setActingId(null)
+    }
+  }
+
+  const handleDelete = async (p: Playlist) => {
+    const ok = await confirm({
+      title: `Delete "${p.name}"?`,
+      message: `This playlist (${p.tracks?.length ?? 0} tracks, owned by ${p.owner.name}) will be removed from the platform. It is soft-deleted and stays recoverable for 30 days.`,
+      confirmText: 'Delete playlist',
+      danger: true,
+    })
+    if (!ok) return
+    setDeletingId(p.id)
+    try {
+      await playlistService.adminDelete(p.id)
+      setPlaylists((prev) => prev.filter((x) => x.id !== p.id))
+      notify.success(`"${p.name}" deleted`)
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : 'Failed to delete playlist')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -102,6 +125,7 @@ export function AdminPlaylistsPage() {
                 <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-secondary">Visibility</th>
                 <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-secondary">Featured</th>
                 <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-secondary">Sort #</th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-secondary">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -167,6 +191,18 @@ export function AdminPlaylistsPage() {
                       }}
                       className="w-16 bg-elevated border border-elevated/50 focus:border-accent text-primary text-sm text-center rounded px-2 py-1 focus:outline-none transition-colors"
                     />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(p)}
+                      disabled={deletingId === p.id}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded text-secondary hover:bg-red-500/15 hover:text-red-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete playlist"
+                      aria-label={`Delete playlist ${p.name}`}
+                    >
+                      {deletingId === p.id ? <Spinner size="sm" /> : <TrashIcon className="w-4 h-4" />}
+                    </button>
                   </td>
                 </tr>
               ))}

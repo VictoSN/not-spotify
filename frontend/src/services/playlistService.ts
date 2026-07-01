@@ -120,4 +120,8 @@ export const playlistService = {
     const res = await api.patch<Playlist>(`/admin/playlists/${playlistId}/feature`, { isFeatured, sortOrder })
     return res.data
   },
+
+  async adminDelete(playlistId: string, reason?: string): Promise<void> {
+    await api.delete(`/admin/playlists/${playlistId}`, { data: { reason: reason ?? null } })
+  },
 }

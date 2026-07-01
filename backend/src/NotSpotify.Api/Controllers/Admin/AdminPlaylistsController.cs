@@ -1,8 +1,11 @@
+using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
+using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Controllers.Admin;
@@ -14,11 +17,13 @@ public class AdminPlaylistsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
+    private readonly ILogger<AdminPlaylistsController> _logger;
 
-    public AdminPlaylistsController(AppDbContext db, MediaMapper mapper)
+    public AdminPlaylistsController(AppDbContext db, MediaMapper mapper, ILogger<AdminPlaylistsController> logger)
     {
         _db = db;
         _mapper = mapper;
+        _logger = logger;
     }
 
     /// <summary>
@@ -79,6 +84,58 @@ public class AdminPlaylistsController : ControllerBase
 
         return Ok(_mapper.ToSummary(p));
     }
+
+    /// <summary>
+    /// Admin soft-delete: snapshot the playlist into DeletedPlaylists (30-day
+    /// recoverable window, same as owner-initiated delete) and remove it. The
+    /// acting admin id is logged for traceability; the DeletedPlaylist.UserId
+    /// stays as the original owner so restore workflows work unchanged.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromBody] AdminDeletePlaylistRequest? req,
+        CancellationToken ct = default)
+    {
+        var p = await _db.Playlists
+            .Include(x => x.PlaylistTracks)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (p is null) return NotFound();
+
+        var snapshotTracks = p.PlaylistTracks
+            .OrderBy(pt => pt.Position)
+            .Select(pt => new { pt.TrackId, pt.Position })
+            .ToList();
+
+        _db.DeletedPlaylists.Add(new DeletedPlaylist
+        {
+            Id = Guid.NewGuid(),
+            OriginalPlaylistId = p.Id,
+            UserId = p.OwnerId,
+            Name = p.Name,
+            Description = p.Description,
+            CoverUrl = p.CoverUrl,
+            CoverKey = p.CoverKey,
+            IsPublic = p.IsPublic,
+            Visibility = p.Visibility,
+            Rules = p.Rules,
+            TracksJson = JsonSerializer.Serialize(snapshotTracks),
+            DeletedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(30),
+        });
+
+        _db.Playlists.Remove(p);
+        await _db.SaveChangesAsync(ct);
+
+        var adminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        _logger.LogInformation(
+            "Admin {AdminId} deleted playlist {PlaylistId} '{PlaylistName}' owned by {OwnerId}. Reason: {Reason}",
+            adminId, p.Id, p.Name, p.OwnerId, req?.Reason ?? "(none)");
+
+        return NoContent();
+    }
 }
 
 public record SetFeaturedRequest(bool? IsFeatured = null, int? SortOrder = null);
+
+public record AdminDeletePlaylistRequest(string? Reason = null);

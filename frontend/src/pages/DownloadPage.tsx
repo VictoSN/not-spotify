@@ -6,13 +6,10 @@ import {
   ChevronDown,
   Download,
   Headphones,
-  Laptop,
   LogOut,
   MonitorDown,
   Music2,
   ShieldCheck,
-  Smartphone,
-  Tablet,
   UserRound,
 } from 'lucide-react'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
@@ -256,12 +253,27 @@ function WindowsDownloadButton({ className }: { className?: string }) {
   )
 }
 
+const STEPS_OPEN_KEY = 'ns-download-steps-open'
+
 export function DownloadPage() {
   useDocumentTitle('Download')
   const [platform] = useState(detectDownloadPlatform)
-  const [showInstructions, setShowInstructions] = useState(false)
+  // Non-Windows visitors need the manual steps to install at all, so default
+  // them open; Windows visitors get a real installer and only need this on
+  // request. Persisted per-tab so the choice survives navigating away and back.
+  const [stepsOpen, setStepsOpen] = useState(() => {
+    const stored = sessionStorage.getItem(STEPS_OPEN_KEY)
+    return stored !== null ? stored === 'true' : detectDownloadPlatform() !== 'windows'
+  })
   const platformLabel = PLATFORM_LABELS[platform]
   const recommendsWindowsInstaller = platform === 'windows'
+
+  const setSteps = (open: boolean) => {
+    sessionStorage.setItem(STEPS_OPEN_KEY, String(open))
+    setStepsOpen(open)
+  }
+  const openSteps = () => setSteps(true)
+  const toggleSteps = () => setSteps(!stepsOpen)
 
   return (
     <div className="min-h-screen bg-white text-black antialiased">
@@ -290,7 +302,7 @@ export function DownloadPage() {
                   <>
                     <WebAppInstallButton
                       className="bg-accent text-black hover:bg-[#3be477]"
-                      onInstructions={() => setShowInstructions(true)}
+                      onInstructions={openSteps}
                     />
                     <WindowsDownloadButton className="border border-white/20 bg-white/10 text-white hover:bg-white/15" />
                   </>
@@ -352,40 +364,48 @@ export function DownloadPage() {
             </p>
 
             <div className="mt-8 flex justify-center">
-              <WebAppInstallButton onInstructions={() => setShowInstructions(true)} />
+              <WebAppInstallButton onInstructions={openSteps} />
             </div>
 
-            {(showInstructions || platform !== 'windows') && (
-              <div
-                className="mx-auto mt-8 max-w-xl rounded-2xl bg-[#f2f2f2] p-5 text-left"
-                aria-live="polite"
-                data-testid="manual-install-steps"
+            <div className="mx-auto mt-8 max-w-xl text-left">
+              <button
+                type="button"
+                onClick={toggleSteps}
+                aria-expanded={stepsOpen}
+                aria-controls="manual-install-steps"
+                className="mx-auto flex items-center gap-1.5 text-sm font-bold text-[#16883e] transition hover:text-[#117a37]"
               >
-                <p className="font-black">Install on {platformLabel}</p>
-                <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#555]">
-                  {MANUAL_INSTALL_STEPS[platform].map((step, index) => (
-                    <li key={step} className="flex gap-3">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-black text-black">
-                        {index + 1}
-                      </span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
+                <ChevronDown
+                  className={cn('h-4 w-4 transition-transform', stepsOpen && 'rotate-180')}
+                  aria-hidden="true"
+                />
+                {stepsOpen ? 'Hide install steps' : 'Show install steps'}
+              </button>
 
-            <div className="mx-auto mt-12 grid max-w-2xl grid-cols-3 gap-4" aria-label="Supported devices">
-              {[
-                { Icon: Smartphone, label: 'Mobile' },
-                { Icon: Tablet, label: 'Tablet' },
-                { Icon: Laptop, label: 'Computer' },
-              ].map(({ Icon, label }) => (
-                <div key={label} className="flex flex-col items-center gap-3 rounded-2xl bg-[#f7f7f7] px-3 py-5">
-                  <Icon className="h-7 w-7" aria-hidden="true" />
-                  <span className="text-sm font-black">{label}</span>
+              <div
+                id="manual-install-steps"
+                data-testid="manual-install-steps"
+                className={cn(
+                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
+                  stepsOpen ? 'mt-4 max-h-96 opacity-100' : 'max-h-0 opacity-0',
+                )}
+              >
+                <div>
+                  <div className="rounded-2xl bg-[#f2f2f2] p-5" aria-live="polite">
+                    <p className="font-black">Install on {platformLabel}</p>
+                    <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#555]">
+                      {MANUAL_INSTALL_STEPS[platform].map((step, index) => (
+                        <li key={step} className="flex gap-3">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-black text-black">
+                            {index + 1}
+                          </span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         </section>

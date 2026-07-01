@@ -716,24 +716,26 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** This is a critical accessibility and usability issue. White text on a white background is completely unreadable, rendering important download and installation information useless for light mode users. The redundant device icons clutter the UI without adding value, and a toggleable install steps section gives users control over the information density.
 
-- [ ] **Fix Implementation**
-  - [ ] Audit all text elements on the Download page in light mode for color contrast issues
-  - [ ] Apply appropriate text colors (dark/black) for light mode backgrounds
-  - [ ] Ensure all text passes WCAG AA contrast ratio minimums
-  - [ ] Restructure installation guide for clearer step-by-step presentation
-  - [ ] Remove mobile, tablet, and computer icons from the page
-  - [ ] Add toggle functionality to 'Show install steps' section with smooth expand/collapse animation
-  - [ ] Ensure toggle state is preserved during the session
+- [x] **Fix Implementation**
+  - [x] Audit all text elements on the Download page in light mode for color contrast issues — audited the whole page (it's a standalone marketing-style page, always light, independent of the app's dark/light theme toggle); no white-on-white text found in the current implementation (this page was substantially rewritten for Bug #15's "Support page and download page" fix, which appears to have already resolved the original literal white-on-white issue as a side effect)
+  - [x] Apply appropriate text colors (dark/black) for light mode backgrounds — confirmed already correct: `text-[#5f5f5f]`/`text-[#555]` body copy on white/`#f2f2f2`, black/dark text on accent and light chips
+  - [x] Ensure all text passes WCAG AA contrast ratio minimums — verified `#5f5f5f` on white (~6.4:1) and `#555` on `#f2f2f2` (~7:1), both pass AA
+  - [x] Restructure installation guide for clearer step-by-step presentation — kept the existing numbered per-platform steps (already clear); moved it into a proper labeled, toggleable disclosure
+  - [x] Remove mobile, tablet, and computer icons from the page — deleted the `Smartphone`/`Tablet`/`Laptop` icon grid (and now-unused imports) from the "Listen on mobile and tablet, too" section
+  - [x] Add toggle functionality to 'Show install steps' section with smooth expand/collapse animation — added a real `stepsOpen` toggle button (chevron + "Show/Hide install steps", `aria-expanded`/`aria-controls`) with a `max-height`/`opacity` CSS transition (the `grid-template-rows: fr` trick was tried first but doesn't animate in this environment — see note below)
+  - [x] Ensure toggle state is preserved during the session — persisted to `sessionStorage` (`ns-download-steps-open`); defaults to open on non-Windows platforms (steps are required to install) and closed on Windows (native installer is primary)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: All text is clearly readable on the Download page in light mode
-  - [ ] Test: All text is clearly readable on the Download page in dark mode
-  - [ ] Test: No white-on-white text remains anywhere on the page
-  - [ ] Test: Installation guide steps are clear and logically ordered
-  - [ ] Test: Mobile, tablet, and computer icons are completely removed
-  - [ ] Test: 'Show install steps' toggle expands and collapses correctly
-  - [ ] Test: Toggle works in both light and dark themes
-  - [ ] Test: Toggle works on mobile and desktop viewports
+- [x] **Tests to Complete**
+  - [x] Test: All text is clearly readable on the Download page in light mode (manual contrast audit above; page has no separate dark mode — see next item)
+  - [x] Test: All text is clearly readable on the Download page in dark mode — n/a: this page intentionally does not participate in the app's theme system (standalone marketing page, always rendered light, like `/support`)
+  - [x] Test: No white-on-white text remains anywhere on the page (audited; none present)
+  - [x] Test: Installation guide steps are clear and logically ordered (unchanged numbered steps, now behind a labeled toggle)
+  - [x] Test: Mobile, tablet, and computer icons are completely removed (new RTL test: `does not render the mobile/tablet/computer device icon grid`)
+  - [x] Test: 'Show install steps' toggle expands and collapses correctly (new RTL test: `toggles the install steps section open and closed`, asserts `aria-expanded` + label flip both ways)
+  - [~] Test: Toggle works in both light and dark themes — n/a, page has no dark variant (see above)
+  - [~] Test: Toggle works on mobile and desktop viewports — layout-agnostic (plain block toggle button + collapsible div, no viewport-specific styling)
+
+> Verified live: fresh-mount computed styles are correct at both open (`opacity:1`/`max-height:384px`) and closed (`opacity:0`/`max-height:0`, `offsetHeight:0`) states, and `aria-expanded`/button label flip correctly and instantly on click. The CSS transition itself couldn't be visually confirmed *animating* in this session's headless preview browser — traced it to `requestAnimationFrame` not ticking in that browser context (confirmed via a raw rAF-polling loop that never fired), a headless-rendering limitation, not a bug: isolated synthetic elements using the identical Tailwind classes compute correctly at rest, and `max-height`/`opacity` transitions are standard, universally-supported CSS that will animate normally in a real browser tab. New test: `persists the install-steps toggle state across remounts within the session` confirms the `sessionStorage` persistence.
 
 ---
 

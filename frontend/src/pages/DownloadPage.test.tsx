@@ -99,3 +99,45 @@ describe('DownloadPage (bug #15)', () => {
     await waitFor(() => expect(promptInstall).toHaveBeenCalledTimes(1))
   })
 })
+
+describe('DownloadPage (bug #33)', () => {
+  beforeEach(() => {
+    promptInstall.mockClear()
+    sessionStorage.clear()
+  })
+
+  it('does not render the mobile/tablet/computer device icon grid', () => {
+    renderDownloadPage()
+
+    expect(screen.queryByLabelText('Supported devices')).not.toBeInTheDocument()
+  })
+
+  it('toggles the install steps section open and closed', () => {
+    renderDownloadPage()
+
+    const toggle = screen.getByRole('button', { name: /install steps/i })
+    const wasExpanded = toggle.getAttribute('aria-expanded') === 'true'
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', String(!wasExpanded))
+    expect(toggle).toHaveTextContent(wasExpanded ? 'Show install steps' : 'Hide install steps')
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', String(wasExpanded))
+  })
+
+  it('persists the install-steps toggle state across remounts within the session', () => {
+    const { unmount } = renderDownloadPage()
+
+    const toggle = screen.getByRole('button', { name: /install steps/i })
+    const initial = toggle.getAttribute('aria-expanded')
+    fireEvent.click(toggle)
+    const flipped = toggle.getAttribute('aria-expanded')
+    expect(flipped).not.toBe(initial)
+
+    unmount()
+    renderDownloadPage()
+
+    expect(screen.getByRole('button', { name: /install steps/i })).toHaveAttribute('aria-expanded', flipped)
+  })
+})

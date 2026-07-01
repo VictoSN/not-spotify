@@ -1166,7 +1166,7 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
   ---
   
 ## Final Checklist Before Marking All Tasks Complete
-- [ ] All 32 bugs/features have been fixed
+- [ ] All 48 bugs/features have been fixed
 - [ ] All tests for each bug have passed
 - [ ] No new bugs have been introduced
 - [ ] Code has been committed with descriptive messages

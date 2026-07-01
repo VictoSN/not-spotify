@@ -39,10 +39,11 @@ public record ForgotPasswordRequest(
     [Required, EmailAddress] string Email
 );
 
-/// <summary>Returned by /auth/forgot-password. <see cref="Code"/> is the 6-digit OTP
-/// (always returned so the flow works without a mailer). <see cref="ResetUrl"/> is
-/// the old token-based link — only populated in Development for testability.</summary>
-public record ForgotPasswordResponse(string Message, string Code, string? ResetUrl);
+/// <summary>Returned by /auth/forgot-password. The 6-digit code is emailed to the
+/// user; it is exposed here only in Development. <see cref="DevelopmentCode"/> is the
+/// plaintext OTP and <see cref="ResetUrl"/> a one-click link — both are null in
+/// Production so the code is never leaked in the API response.</summary>
+public record ForgotPasswordResponse(string Message, string? DevelopmentCode, string? ResetUrl);
 
 public record ResetPasswordRequest(
     [Required, EmailAddress] string Email,

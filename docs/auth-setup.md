@@ -37,22 +37,20 @@ No configuration needed.
 
 ---
 
-## 2. Reset password ("forgot password") — works in dev, needs a mailer for prod
+## 2. Reset password ("forgot password") — emails a code, same SMTP as signup
 
-- **Endpoints:** `POST /auth/forgot-password` `{ email }` → `POST /auth/reset-password` `{ email, token, newPassword }`.
-- Uses Identity's `GeneratePasswordResetTokenAsync` / `ResetPasswordAsync`.
-- **Anti-enumeration:** `forgot-password` always returns the same generic message whether or not the email exists.
+- **Endpoints:** `POST /auth/forgot-password` `{ email }` → `POST /auth/reset-password` `{ email, code, newPassword }`.
+- `forgot-password` generates a cryptographically random **6-digit code**, stores only an **HMAC-SHA256 hash** (never the plaintext), and emails the code (plus a one-click `/reset-password?email=&code=` link) through the same SMTP mailer as signup verification. Codes expire after **10 minutes**, are **single-use**, and a fresh one can be requested after a **60-second** cooldown ([`PasswordResetService`](../backend/src/NotSpotify.Api/Services/PasswordResetService.cs)).
+- `reset-password` validates + consumes the code, then uses Identity's `GeneratePasswordResetTokenAsync` / `ResetPasswordAsync` to set the new password.
+- **Anti-enumeration:** `forgot-password` always returns the same generic message whether or not the email exists, and only issues/emails a code for a real account.
 - **A successful reset revokes all of the user's sessions** (a reset means "I lost access").
-- **Where:** login page → **Forgot your password?** → `/forgot-password` → email → `/reset-password?email=&token=`.
+- **Where:** login page → **Forgot your password?** → `/forgot-password` → email → "Check your email" → `/reset-password?email=&code=`.
 
-### The email gap (by design, for now)
-There is **no mailer** configured in this project. So:
+### Configuration
+Uses the **same `Email:Smtp:*` settings as registration verification** (see the top of this doc). No extra configuration.
 
-- **In Development** (`ASPNETCORE_ENVIRONMENT=Development`), `forgot-password` **returns the reset link in the JSON response** and logs it to the console. The forgot-password page shows a clickable "Open reset link →" so the whole flow is testable without email. This is the same "feature degrades gracefully until configured" pattern as Stripe/S3.
-- **In Production**, the link is **never** returned or logged. Until you add a mailer, prod users can't self-serve a reset.
-
-### To make it real later
-Add an `IEmailSender` (SMTP via `System.Net.Mail`, or SendGrid/SES), inject it into `AuthController`, and in `ForgotPassword` send `resetUrl` by email instead of returning it. Everything else already works.
+- **In Development** without SMTP, `forgot-password` logs the code and also returns it as `developmentCode` (with a dev reset link) so the flow is testable without a mailer — the forgot-password page shows the code and an "Enter reset code" button.
+- **In Production**, the code is **never** returned or logged; it's delivered only by email. If SMTP is unconfigured, the endpoint fails closed rather than leaking the code.
 
 ---
 

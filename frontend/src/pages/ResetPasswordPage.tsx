@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeftIcon, EyeIcon, EyeSlashIcon, MusicalNoteIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { SpotifyMark } from '@/components/common/SpotifyMark'
+import { Spinner } from '@/components/ui/Spinner'
 import { authService } from '@/services/authService'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { Button } from '@/components/ui/Button'
-import { Spinner } from '@/components/ui/Spinner'
 import { notify } from '@/utils/toast'
+
+// Shared classes keep this page visually identical to the Login/Register pages.
+const inputClass = 'h-12 w-full rounded border border-secondary bg-elevated px-3 text-sm font-semibold text-primary placeholder:text-muted outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary'
+const labelClass = 'mb-2 block text-sm font-bold text-primary'
+const primaryButtonClass = 'mt-2 flex h-12 w-full items-center justify-center rounded-full bg-accent px-8 text-sm font-bold text-black transition-transform hover:scale-[1.02] hover:bg-accent/80 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70'
 
 export function ResetPasswordPage() {
   useDocumentTitle('Set a new password')
@@ -36,7 +41,7 @@ export function ResetPasswordPage() {
       setError('Passwords do not match.')
       return
     }
-    if (code.trim().length !== 6 || !/^\d{6}$/.test(code.trim())) {
+    if (!/^\d{6}$/.test(code.trim())) {
       setError('Please enter a valid 6-digit code.')
       return
     }
@@ -54,35 +59,38 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-base px-4 py-8 text-primary">
-      <Link to="/login" className="inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
+    <div className="relative min-h-screen bg-page px-6 py-8 text-primary">
+      <Link to="/login" className="absolute left-6 top-8 inline-flex items-center gap-2 text-sm font-semibold text-secondary transition-colors hover:text-primary">
         <ArrowLeftIcon className="h-4 w-4" />
         Back to log in
       </Link>
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md flex-col justify-center">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <MusicalNoteIcon className="mb-5 h-11 w-11 text-accent" />
-          <h1 className="text-4xl font-black leading-tight text-primary">Set a new password</h1>
-          <p className="mt-3 text-sm font-medium text-secondary">
-            Enter the 6-digit code sent to your email and choose a new password.
-          </p>
-        </div>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[348px] flex-col items-center pt-[6vh] sm:pt-[7vh]">
+        <SpotifyMark className="mb-7 h-9 w-9 text-primary" />
+        <h1 className="text-center text-[2.35rem] font-black leading-[1.05] text-primary sm:text-[2.55rem]">
+          Set a new password
+        </h1>
+        <p className="mt-4 text-center text-sm font-medium leading-relaxed text-secondary">
+          Enter the 6-digit code sent to your email and choose a new password.
+        </p>
+
+        <form onSubmit={onSubmit} className="mt-8 flex w-full flex-col gap-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-primary">Email</label>
+            <label htmlFor="reset-email" className={labelClass}>Email</label>
             <input
+              id="reset-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              className={inputClass}
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-primary">6-digit reset code</label>
+            <label htmlFor="reset-code" className={labelClass}>6-digit reset code</label>
             <input
+              id="reset-code"
               type="text"
               inputMode="numeric"
               maxLength={6}
@@ -90,25 +98,26 @@ export function ResetPasswordPage() {
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               required
-              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-center text-2xl font-black tracking-[0.3em] text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              className={`${inputClass} text-center text-xl tracking-[0.45em]`}
               placeholder="000000"
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-primary">New password</label>
+            <label htmlFor="reset-password" className={labelClass}>New password</label>
             <div className="relative">
               <input
+                id="reset-password"
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 pr-11 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+                className={`${inputClass} pr-11`}
                 placeholder="At least 8 characters"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-secondary"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted transition-colors hover:text-primary"
                 tabIndex={-1}
                 aria-label={showPw ? 'Hide password' : 'Show password'}
               >
@@ -117,34 +126,35 @@ export function ResetPasswordPage() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-primary">Confirm new password</label>
+            <label htmlFor="reset-confirm" className={labelClass}>Confirm new password</label>
             <input
+              id="reset-confirm"
               type={showPw ? 'text' : 'password'}
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               required
-              className="w-full rounded-md border border-elevated/50 bg-elevated px-4 py-3 text-sm text-primary transition-colors placeholder:text-muted focus:border-accent focus:outline-none"
+              className={inputClass}
               placeholder="Re-enter your new password"
             />
           </div>
 
           {error && (
-            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3">
+            <div className="rounded border border-red-500/30 bg-red-500/10 px-4 py-3">
               <p className="text-sm text-red-400">{error}</p>
             </div>
           )}
 
-          <Button type="submit" size="lg" className="mt-2 w-full" disabled={loading || !canSubmit}>
+          <button type="submit" className={primaryButtonClass} disabled={loading || !canSubmit}>
             {loading ? <Spinner size="sm" /> : 'Update password'}
-          </Button>
+          </button>
         </form>
 
-        <div className="mt-8 text-center">
-          <Link to="/forgot-password" className="text-sm font-semibold text-secondary transition-colors hover:text-primary">
+        <div className="mt-10 text-center">
+          <Link to="/forgot-password" className="inline-flex text-sm font-black text-primary underline transition-colors hover:text-accent">
             Request a new code
           </Link>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

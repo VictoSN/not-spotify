@@ -133,6 +133,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IRegistrationEmailSender, SmtpRegistrationEmailSender>();
 builder.Services.AddScoped<RegistrationVerificationService>();
+builder.Services.AddScoped<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
+builder.Services.AddScoped<PasswordResetService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -463,15 +465,20 @@ using (var scope = app.Services.CreateScope())
             ON ""PushSubscriptions""(""UserId"");
     ");
 
-    // Password reset OTP codes — 6-digit, 10-minute expiry, single-use.
+    // Password reset OTP codes — 6-digit, 10-minute expiry, single-use. The ""Code""
+    // column stores an HMAC hash of the emailed code, never the plaintext. ""SentAt""
+    // drives the resend cooldown; added idempotently for databases created earlier.
     await db.Database.ExecuteSqlRawAsync(@"
         CREATE TABLE IF NOT EXISTS ""PasswordResetOtps"" (
             ""Id""        uuid NOT NULL PRIMARY KEY,
             ""Email""     text NOT NULL,
             ""Code""      text NOT NULL,
             ""ExpiresAt"" timestamptz NOT NULL,
+            ""SentAt""    timestamptz NOT NULL DEFAULT now(),
             ""IsUsed""    boolean NOT NULL DEFAULT false
         );
+        ALTER TABLE ""PasswordResetOtps""
+            ADD COLUMN IF NOT EXISTS ""SentAt"" timestamptz NOT NULL DEFAULT now();
         CREATE INDEX IF NOT EXISTS ""IX_PasswordResetOtps_Email_Code""
             ON ""PasswordResetOtps""(""Email"", ""Code"");
     ");

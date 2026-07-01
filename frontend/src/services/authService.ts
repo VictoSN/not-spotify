@@ -62,8 +62,10 @@ export const authService = {
     return res.data
   },
 
-  async forgotPassword(email: string): Promise<{ message: string; code: string; resetUrl?: string | null }> {
-    const res = await api.post<{ message: string; code: string; resetUrl?: string | null }>('/auth/forgot-password', { email })
+  async forgotPassword(email: string): Promise<{ message: string; developmentCode?: string | null; resetUrl?: string | null }> {
+    // The 6-digit code is emailed to the user. `developmentCode`/`resetUrl` are only
+    // populated by the backend in Development, so the flow stays testable without SMTP.
+    const res = await api.post<{ message: string; developmentCode?: string | null; resetUrl?: string | null }>('/auth/forgot-password', { email })
     return res.data
   },
 

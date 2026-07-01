@@ -309,19 +309,19 @@ You are tasked with systematically fixing all 24 bugs listed below. Please follo
 
 **Explanation:** This breaks the visual consistency and leaves a critical security feature (password recovery) non-functional. Users cannot reset their passwords.
 
-- [ ] **Fix Implementation**
-  - [ ] Apply consistent CSS theming and background colors from Login/Register pages
-  - [ ] Implement email-sending logic for password reset
-  - [ ] Integrate with email service (e.g., SendGrid, Mailgun) or SMTP server
-  - [ ] Send secure password reset link to user's registered email address
-  - [ ] Create secure token generation and validation system
+- [x] **Fix Implementation**
+  - [x] Apply consistent CSS theming and background colors from Login/Register pages — retooled `ForgotPasswordPage`/`ResetPasswordPage` to the exact Login/Signup shell (`bg-page`, `SpotifyMark`, `max-w-[348px]` main, shared input/label/pill-button classes). They previously used `bg-base` + `MusicalNoteIcon` + `max-w-md` + the generic `Button`. Verified live: all three pages compute `bg-page` (rgb(18,18,18) dark).
+  - [x] Implement email-sending logic for password reset — new `PasswordResetService` generates a crypto 6-digit code, emails it (+ one-click link) via `IPasswordResetEmailSender`, and the controller no longer dumps the code in the API response
+  - [x] Integrate with email service (e.g., SendGrid, Mailgun) or SMTP server — `SmtpPasswordResetEmailSender` reuses the existing `Email:Smtp:*` config (same mailer as Bug #17 signup OTP); dev-without-SMTP logs the code and fails closed in prod
+  - [x] Send secure password reset link to user's registered email address — email carries the code and a `${FrontendUrl}/reset-password?email=&code=` deep link; only issued for real accounts (anti-enumeration keeps the response generic either way)
+  - [x] Create secure token generation and validation system — `RandomNumberGenerator` code, stored only as an **HMAC-SHA256 hash** (never plaintext), 10-min expiry, single-use (`IsUsed`), 60s resend cooldown; a successful reset revokes all sessions. `code` (not the old `token`) now matches what the reset page reads.
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Password reset page has consistent background
-  - [ ] Test: Email is sent to user's registered email address
-  - [ ] Test: Reset link is unique and expires after reasonable time
-  - [ ] Test: User can reset password using the link
-  - [ ] Test: Invalid/expired links show appropriate error
+- [x] **Tests to Complete**
+  - [x] Test: Password reset page has consistent background — `ForgotPasswordPage.test.tsx`/`ResetPasswordPage.test.tsx` assert `.bg-page` present and old `.bg-base` gone; confirmed live
+  - [x] Test: Email is sent to user's registered email address — `PasswordResetServiceTests.Issue_EmailsSixDigitCodeAndLinkButStoresOnlyAHash` (asserts normalized recipient, 6-digit code, link, and hash-only storage)
+  - [x] Test: Reset link is unique and expires after reasonable time — `Code_ExpiresAfterTenMinutes` + `Issue_IsRateLimitedWithinTheCooldownThenAllowsANewCode` (fresh random code per issue)
+  - [x] Test: User can reset password using the link — `CorrectCode_IsAcceptedOnceThenConsumed` (service) + `ResetPasswordPage` valid-submit test; verified live end-to-end (alex@example.com → dev code → prefilled reset page)
+  - [x] Test: Invalid/expired links show appropriate error — `IncorrectCode_IsRejected`, `Code_ExpiresAfterTenMinutes`, and `ResetPasswordPage` invalid-code error test
 
 ---
 

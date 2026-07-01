@@ -27,6 +27,7 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _users;
     private readonly TokenService _tokens;
     private readonly RegistrationVerificationService _registration;
+    private readonly PasswordResetService _passwordReset;
     private readonly AppDbContext _db;
     private readonly JwtOptions _jwt;
     private readonly MediaMapper _mapper;
@@ -39,6 +40,7 @@ public class AuthController : ControllerBase
         UserManager<ApplicationUser> users,
         TokenService tokens,
         RegistrationVerificationService registration,
+        PasswordResetService passwordReset,
         AppDbContext db,
         JwtOptions jwt,
         MediaMapper mapper,
@@ -50,6 +52,7 @@ public class AuthController : ControllerBase
         _users = users;
         _tokens = tokens;
         _registration = registration;
+        _passwordReset = passwordReset;
         _db = db;
         _jwt = jwt;
         _mapper = mapper;
@@ -303,51 +306,32 @@ public class AuthController : ControllerBase
     {
         // Always return the same generic message regardless of whether the account
         // exists — this prevents account-enumeration via the reset endpoint.
-        const string generic = "If an account exists for that email, a 6-digit code has been generated.";
+        const string generic = "If an account exists for that email, we've sent a 6-digit code to reset your password.";
 
-        // Rate-limit: at most one OTP per email every 60 seconds (prevents flooding).
-        var recent = await _db.PasswordResetOtps
-            .Where(o => o.Email == req.Email && o.ExpiresAt > DateTime.UtcNow.AddMinutes(-9))
-            .OrderByDescending(o => o.ExpiresAt)
-            .FirstOrDefaultAsync();
-        if (recent is not null)
+        var email = req.Email.Trim().ToLowerInvariant();
+        var user = await _users.FindByEmailAsync(email);
+
+        // Only issue (and email) a code for a real account. We still return the same
+        // generic body + 200 either way so the response is indistinguishable.
+        PasswordResetIssue? issued = null;
+        if (user is not null)
         {
-            // Return the existing code — don't generate a new one within the window.
-            return Ok(new ForgotPasswordResponse(generic, recent.Code, null));
+            var resetUrlBase = $"{FrontendBaseUrl()}/reset-password";
+            issued = await _passwordReset.IssueAsync(user.Email!, resetUrlBase, DateTime.UtcNow);
         }
 
-        var user = await _users.FindByEmailAsync(req.Email);
-        if (user is null)
+        // Never leak the code (or the link) outside Development — it's delivered by email.
+        if (_env.IsDevelopment() && issued is not null)
         {
-            // Still return a fake code so the timing/enumeration surface is identical.
-            var dummyCode = Random.Shared.Next(100000, 999999).ToString();
-            return Ok(new ForgotPasswordResponse(generic, dummyCode, null));
-        }
-
-        var code = Random.Shared.Next(100000, 999999).ToString();
-        _db.PasswordResetOtps.Add(new PasswordResetOtp
-        {
-            Id = Guid.NewGuid(),
-            Email = user.Email!,
-            Code = code,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(10),
-        });
-        await _db.SaveChangesAsync();
-
-        // In Development also build the old token-based URL for testability.
-        string? resetUrl = null;
-        if (_env.IsDevelopment())
-        {
-            var token = await _users.GeneratePasswordResetTokenAsync(user);
-            resetUrl = QueryHelpers.AddQueryString($"{FrontendBaseUrl()}/reset-password", new Dictionary<string, string?>
+            var resetUrl = QueryHelpers.AddQueryString($"{FrontendBaseUrl()}/reset-password", new Dictionary<string, string?>
             {
-                ["email"] = user.Email,
-                ["token"] = token,
+                ["email"] = user!.Email,
+                ["code"] = issued.Code,
             });
-            _logger.LogInformation("[Auth] Password reset OTP for {Email}: {Code}  (link fallback: {Url})", user.Email, code, resetUrl);
+            return Ok(new ForgotPasswordResponse(generic, issued.Code, resetUrl));
         }
 
-        return Ok(new ForgotPasswordResponse(generic, code, resetUrl));
+        return Ok(new ForgotPasswordResponse(generic, null, null));
     }
 
     [HttpPost("reset-password")]
@@ -357,17 +341,9 @@ public class AuthController : ControllerBase
         if (user is null)
             return BadRequest(new { message = "Invalid or expired code. Request a new one." });
 
-        // Verify the OTP: must exist, be unused, and not expired.
-        var otp = await _db.PasswordResetOtps
-            .Where(o => o.Email == req.Email && o.Code == req.Code && !o.IsUsed && o.ExpiresAt > DateTime.UtcNow)
-            .FirstOrDefaultAsync();
-
-        if (otp is null)
+        // Verify + consume the OTP (single-use, unexpired, hash-matched).
+        if (!await _passwordReset.TryConsumeAsync(user.Email!, req.Code, DateTime.UtcNow))
             return BadRequest(new { message = "Invalid or expired code. Request a new one." });
-
-        // Mark the code as consumed so it can't be reused.
-        otp.IsUsed = true;
-        await _db.SaveChangesAsync();
 
         // Actually reset the password.
         var resetToken = await _users.GeneratePasswordResetTokenAsync(user);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -9,11 +9,15 @@ import type { Artist } from '@/types/artist'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export function AdminArtistsListPage() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [artists, setArtists] = useState<Artist[]>([])
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -40,6 +44,12 @@ export function AdminArtistsListPage() {
   useEffect(() => {
     reload()
   }, [])
+
+  const visibleArtists = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return artists
+    return artists.filter((a) => a.name.toLowerCase().includes(q))
+  }, [artists, debouncedQuery])
 
   const handleDelete = async (artist: Artist) => {
     if (!(await confirm({
@@ -145,6 +155,14 @@ export function AdminArtistsListPage() {
         </div>
       )}
 
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search artists by name…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search artists"
+      />
+
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : (
@@ -160,10 +178,12 @@ export function AdminArtistsListPage() {
               </tr>
             </thead>
             <tbody>
-              {artists.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-secondary">No artists yet.</td></tr>
+              {visibleArtists.length === 0 && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-secondary">
+                  {debouncedQuery.trim() ? 'No results found.' : 'No artists yet.'}
+                </td></tr>
               )}
-              {artists.map((a) => (
+              {visibleArtists.map((a) => (
                 <>
                   <tr key={a.id} className={`border-b border-elevated/20 hover:bg-elevated/30 transition-colors ${a.isRevoked ? 'opacity-60' : ''}`}>
                     <td className="px-4 py-3 w-16">

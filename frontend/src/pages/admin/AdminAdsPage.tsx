@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckCircleIcon, XCircleIcon,
   MegaphoneIcon, SpeakerWaveIcon,
@@ -7,8 +7,10 @@ import type { AdAdmin, AdSettings, UpsertAdPayload } from '@/types/ad'
 import { adminAdService } from '@/services/adService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { useConfirm } from '@/hooks/useConfirm'
 import { notify } from '@/utils/toast'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const inputCls =
   'w-full bg-elevated border border-elevated/50 focus:border-accent text-primary rounded-md px-4 py-2.5 text-sm focus:outline-none'
@@ -75,6 +77,8 @@ function adToForm(ad: AdAdmin): FormState {
 export function AdminAdsPage() {
   const confirm = useConfirm()
   const [ads, setAds] = useState<AdAdmin[]>([])
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [settings, setSettings] = useState<AdSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -176,6 +180,15 @@ export function AdminAdsPage() {
       setActingId(null)
     }
   }
+
+  const visibleAds = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return ads
+    return ads.filter((ad) =>
+      ad.title.toLowerCase().includes(q) ||
+      (ad.advertiser ?? '').toLowerCase().includes(q)
+    )
+  }, [ads, debouncedQuery])
 
   const saveSettings = async () => {
     if (!settings) return
@@ -338,6 +351,14 @@ export function AdminAdsPage() {
         </form>
       )}
 
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by title or advertiser…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search advertisements"
+      />
+
       {/* Ad list */}
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
@@ -356,10 +377,12 @@ export function AdminAdsPage() {
               </tr>
             </thead>
             <tbody>
-              {ads.length === 0 && (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-secondary">No advertisements yet.</td></tr>
+              {visibleAds.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-secondary">
+                  {debouncedQuery.trim() ? 'No results found.' : 'No advertisements yet.'}
+                </td></tr>
               )}
-              {ads.map((ad) => (
+              {visibleAds.map((ad) => (
                 <tr key={ad.id} className="border-b border-elevated/20 hover:bg-elevated/30 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-primary font-medium">{ad.title}</span>

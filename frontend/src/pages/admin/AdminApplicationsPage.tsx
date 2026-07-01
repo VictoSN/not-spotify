@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline'
 import { adminService, type ArtistApplication } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
+import { useDebounce } from '@/hooks/useDebounce'
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -15,6 +17,8 @@ const STATUS_COLORS: Record<string, string> = {
 
 export function AdminApplicationsPage() {
   const [filter, setFilter] = useState<Filter>('pending')
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [apps, setApps] = useState<ArtistApplication[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +39,16 @@ export function AdminApplicationsPage() {
   }
 
   useEffect(() => { reload() }, [filter])
+
+  const visibleApps = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return apps
+    return apps.filter((a) =>
+      a.displayName.toLowerCase().includes(q) ||
+      a.userName.toLowerCase().includes(q) ||
+      a.userEmail.toLowerCase().includes(q)
+    )
+  }, [apps, debouncedQuery])
 
   const startReview = (app: ArtistApplication, action: 'approve' | 'reject') =>
     setPendingReview({ id: app.id, action, note: '', saving: false })
@@ -83,6 +97,14 @@ export function AdminApplicationsPage() {
         ))}
       </div>
 
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by artist name, username, or email…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search applications"
+      />
+
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
           <p className="text-red-400 text-sm">{error}</p>
@@ -91,13 +113,13 @@ export function AdminApplicationsPage() {
 
       {isLoading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-      ) : apps.length === 0 ? (
+      ) : visibleApps.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary">
-          No {filter === 'all' ? '' : filter} applications.
+          {debouncedQuery.trim() ? 'No results found.' : `No ${filter === 'all' ? '' : filter} applications.`}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {apps.map((app) => (
+          {visibleApps.map((app) => (
             <div key={app.id} className="bg-surface border border-elevated/40 rounded-lg overflow-hidden">
               <div className="flex items-start justify-between gap-4 p-5">
                 <div className="min-w-0 flex-1">

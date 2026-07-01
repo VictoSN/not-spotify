@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { MagnifyingGlassIcon, StarIcon as StarOutline } from '@heroicons/react/24/outline'
+import { StarIcon as StarOutline } from '@heroicons/react/24/outline'
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid'
 import type { Playlist } from '@/types/playlist'
 import { playlistService } from '@/services/playlistService'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { notify } from '@/utils/toast'
+import { useDebounce } from '@/hooks/useDebounce'
 
 export function AdminPlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const debouncedSearch = useDebounce(search, 300)
   const [actingId, setActingId] = useState<string | null>(null)
 
   const reload = async (q?: string) => {
@@ -27,12 +30,7 @@ export function AdminPlaylistsPage() {
     }
   }
 
-  useEffect(() => { reload() }, [])
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    reload(search)
-  }
+  useEffect(() => { reload(debouncedSearch) }, [debouncedSearch])
 
   const toggleFeatured = async (p: Playlist) => {
     setActingId(p.id)
@@ -71,24 +69,13 @@ export function AdminPlaylistsPage() {
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="mb-4 flex gap-2 max-w-md">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search playlists…"
-            className="w-full bg-elevated border border-elevated/50 focus:border-accent text-primary placeholder:text-muted rounded-md pl-9 pr-4 py-2 text-sm focus:outline-none transition-colors"
-          />
-        </div>
-        <button
-          type="submit"
-          className="px-4 py-2 rounded-md bg-accent text-black text-sm font-semibold hover:bg-accent/90 transition-colors"
-        >
-          Search
-        </button>
-      </form>
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="Search playlists by name or owner…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search playlists"
+      />
 
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3 flex items-center justify-between gap-3">

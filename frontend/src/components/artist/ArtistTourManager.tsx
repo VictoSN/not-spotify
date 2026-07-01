@@ -4,10 +4,12 @@ import {
   MusicalNoteIcon, CheckIcon, XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useDebounce } from '@/hooks/useDebounce'
 import { meService, type TourDatePayload } from '@/services/meService'
 import type { TourDate } from '@/types/artist'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { notify } from '@/utils/toast'
 
 interface Props {
@@ -28,6 +30,8 @@ function toLocalInput(iso: string): string {
 export function ArtistTourManager({ tracks }: Props) {
   const confirm = useConfirm()
   const [dates, setDates] = useState<TourDate[] | null>(null)
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<TourDatePayload>(emptyForm())
@@ -46,6 +50,16 @@ export function ArtistTourManager({ tracks }: Props) {
     const m = new Map(tracks.map((t) => [t.id, t.title]))
     return (id: string) => m.get(id) ?? 'Unknown track'
   }, [tracks])
+
+  const visibleDates = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return dates ?? []
+    return (dates ?? []).filter((d) =>
+      d.city.toLowerCase().includes(q) ||
+      d.venue.toLowerCase().includes(q) ||
+      (d.country ?? '').toLowerCase().includes(q)
+    )
+  }, [dates, debouncedQuery])
 
   const openCreate = () => { setForm(emptyForm()); setEditingId(null); setShowForm(true) }
   const openEdit = (d: TourDate) => {
@@ -208,8 +222,16 @@ export function ArtistTourManager({ tracks }: Props) {
         </p>
       )}
 
+      {dates.length > 0 && (
+        <SearchInput value={query} onChange={setQuery} placeholder="Search by city, venue, or country…" className="max-w-md" ariaLabel="Search tour dates" />
+      )}
+
+      {dates.length > 0 && visibleDates.length === 0 && (
+        <p className="rounded-xl bg-surface px-4 py-8 text-center text-sm text-secondary">No results found.</p>
+      )}
+
       <div className="space-y-2">
-        {dates.map((d) => {
+        {visibleDates.map((d) => {
           const date = new Date(d.eventDate)
           const isEditingSetlist = setlistFor === d.id
           return (

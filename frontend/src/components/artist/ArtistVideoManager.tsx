@@ -13,7 +13,9 @@ import {
 import { VideoMenu } from '@/components/cards/VideoMenu'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useDebounce } from '@/hooks/useDebounce'
 import {
   artistMediaService,
   readVideoDuration,
@@ -52,6 +54,8 @@ function DirectPublishedBadge() {
 export function ArtistVideoManager({ tracks, disabled = false }: Props) {
   const confirm = useConfirm()
   const [videos, setVideos] = useState<MusicVideo[] | null>(null)
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(emptyForm())
   const [uploading, setUploading] = useState(false)
@@ -72,6 +76,12 @@ export function ArtistVideoManager({ tracks, disabled = false }: Props) {
     const map = new Map(tracks.map((track) => [track.id, track.title]))
     return (id: string | null) => (id ? map.get(id) ?? 'Linked track' : 'No linked track')
   }, [tracks])
+
+  const visibleVideos = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return videos ?? []
+    return (videos ?? []).filter((v) => v.title.toLowerCase().includes(q))
+  }, [videos, debouncedQuery])
 
   const onVideoFile = async (file: File | null) => {
     setForm((cur) => ({ ...cur, video: file }))
@@ -259,13 +269,19 @@ export function ArtistVideoManager({ tracks, disabled = false }: Props) {
         </form>
       )}
 
+      {videos.length > 0 && (
+        <SearchInput value={query} onChange={setQuery} placeholder="Search music videos…" className="max-w-md" ariaLabel="Search music videos" />
+      )}
+
       {videos.length === 0 ? (
         <p className="rounded-xl bg-surface px-4 py-8 text-center text-sm text-secondary">
           No music videos yet. Upload a video to make it available in the public video catalogue.
         </p>
+      ) : visibleVideos.length === 0 ? (
+        <p className="rounded-xl bg-surface px-4 py-8 text-center text-sm text-secondary">No results found.</p>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {videos.map((video) => (
+          {visibleVideos.map((video) => (
             <div key={video.id} className="rounded-xl bg-surface p-4">
               {editingId === video.id ? (
                 <div className="space-y-3">

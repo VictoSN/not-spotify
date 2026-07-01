@@ -12,7 +12,9 @@ import {
 import { EpisodeMenu } from '@/components/cards/EpisodeMenu'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useDebounce } from '@/hooks/useDebounce'
 import {
   artistMediaService,
   type ArtistEpisodeUpdatePayload,
@@ -56,6 +58,10 @@ function DirectPublishedBadge() {
 export function ArtistPodcastManager({ disabled = false }: Props) {
   const confirm = useConfirm()
   const [podcasts, setPodcasts] = useState<Podcast[] | null>(null)
+  const [showQuery, setShowQuery] = useState('')
+  const debouncedShowQuery = useDebounce(showQuery, 200)
+  const [episodeQuery, setEpisodeQuery] = useState('')
+  const debouncedEpisodeQuery = useDebounce(episodeQuery, 200)
   const [showForm, setShowForm] = useState(false)
   const [editingPodcastId, setEditingPodcastId] = useState<string | null>(null)
   const [podcastForm, setPodcastForm] = useState<ArtistPodcastPayload>(emptyPodcast())
@@ -94,6 +100,19 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
     () => podcasts?.find((p) => p.id === selectedPodcastId) ?? podcasts?.[0] ?? null,
     [podcasts, selectedPodcastId],
   )
+
+  const visiblePodcasts = useMemo(() => {
+    const q = debouncedShowQuery.trim().toLowerCase()
+    if (!q) return podcasts ?? []
+    return (podcasts ?? []).filter((p) => p.title.toLowerCase().includes(q))
+  }, [podcasts, debouncedShowQuery])
+
+  const visibleEpisodes = useMemo(() => {
+    const episodes = selectedPodcast?.episodes ?? []
+    const q = debouncedEpisodeQuery.trim().toLowerCase()
+    const filtered = q ? episodes.filter((e) => e.title.toLowerCase().includes(q)) : episodes
+    return filtered.slice().sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+  }, [selectedPodcast, debouncedEpisodeQuery])
 
   useEffect(() => {
     if (!selectedPodcast) return
@@ -328,7 +347,11 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(220px,0.42fr)_minmax(0,1fr)]">
           <div className="space-y-2">
-            {podcasts.map((podcast) => (
+            <SearchInput value={showQuery} onChange={setShowQuery} placeholder="Search shows…" ariaLabel="Search shows" />
+            {visiblePodcasts.length === 0 && (
+              <p className="rounded-xl bg-surface px-4 py-6 text-center text-sm text-secondary">No results found.</p>
+            )}
+            {visiblePodcasts.map((podcast) => (
               <button
                 key={podcast.id}
                 type="button"
@@ -476,11 +499,14 @@ export function ArtistPodcastManager({ disabled = false }: Props) {
               </form>
 
               <div className="space-y-2">
+                {selectedPodcast.episodes.length > 0 && (
+                  <SearchInput value={episodeQuery} onChange={setEpisodeQuery} placeholder="Search episodes…" ariaLabel="Search episodes" />
+                )}
                 {selectedPodcast.episodes.length === 0 ? (
                   <p className="rounded-xl bg-surface px-4 py-6 text-center text-sm text-secondary">No episodes for this show yet.</p>
-                ) : selectedPodcast.episodes
-                  .slice()
-                  .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
+                ) : visibleEpisodes.length === 0 ? (
+                  <p className="rounded-xl bg-surface px-4 py-6 text-center text-sm text-secondary">No results found.</p>
+                ) : visibleEpisodes
                   .map((episode) => (
                     <div key={episode.id} className="rounded-xl bg-surface p-4">
                       {editingEpisodeId === episode.id ? (

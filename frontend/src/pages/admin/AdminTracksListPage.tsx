@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -10,8 +10,10 @@ import { adminService, type ReviewHistoryEntry } from '@/services/adminService'
 import { trackService } from '@/services/trackService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { notify } from '@/utils/toast'
+import { useDebounce } from '@/hooks/useDebounce'
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -24,6 +26,8 @@ export function AdminTracksListPage() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('all')
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [tracks, setTracks] = useState<Track[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +120,16 @@ export function AdminTracksListPage() {
 
   const togglePlay = (id: string) => setPlayingId((prev) => (prev === id ? null : id))
 
+  const visibleTracks = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return tracks
+    return tracks.filter((t) =>
+      t.title.toLowerCase().includes(q) ||
+      t.artist.name.toLowerCase().includes(q) ||
+      t.album.title.toLowerCase().includes(q)
+    )
+  }, [tracks, debouncedQuery])
+
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
@@ -147,6 +161,14 @@ export function AdminTracksListPage() {
         ))}
       </div>
 
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by title, artist, or album…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search tracks"
+      />
+
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
           <p className="text-red-400 text-sm">{error}</p>
@@ -169,12 +191,14 @@ export function AdminTracksListPage() {
               </tr>
             </thead>
             <tbody>
-              {tracks.length === 0 && (
+              {visibleTracks.length === 0 && (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-secondary">
-                  {tab === 'pending' ? 'No tracks awaiting review.' : tab === 'approved' ? 'No approved tracks.' : tab === 'rejected' ? 'No rejected tracks.' : 'No tracks yet.'}
+                  {debouncedQuery.trim()
+                    ? 'No results found.'
+                    : tab === 'pending' ? 'No tracks awaiting review.' : tab === 'approved' ? 'No approved tracks.' : tab === 'rejected' ? 'No rejected tracks.' : 'No tracks yet.'}
                 </td></tr>
               )}
-              {tracks.map((t) => (
+              {visibleTracks.map((t) => (
                 <React.Fragment key={t.id}>
                   <tr className="border-b border-elevated/20 hover:bg-elevated/30 transition-colors">
                     <td className="px-4 py-3 text-secondary text-sm">{t.trackNumber}</td>

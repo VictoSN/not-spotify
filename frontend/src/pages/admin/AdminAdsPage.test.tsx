@@ -95,6 +95,34 @@ describe('AdminAdsPage', () => {
     expect(create).not.toHaveBeenCalled()
   })
 
+  it('filters ads by title or advertiser, case-insensitively, and shows a no-results state', async () => {
+    list.mockResolvedValue([
+      makeAd({ id: 'ad-1', title: 'Summer sale', advertiser: 'ACME' }),
+      makeAd({ id: 'ad-2', title: 'Winter promo', advertiser: 'BrandX' }),
+    ])
+    render(<AdminAdsPage />)
+
+    expect(await screen.findByText('Summer sale')).toBeInTheDocument()
+    expect(screen.getByText('Winter promo')).toBeInTheDocument()
+
+    const search = screen.getByLabelText('Search advertisements')
+    fireEvent.change(search, { target: { value: 'SUMMER' } })
+
+    await waitFor(() => expect(screen.queryByText('Winter promo')).not.toBeInTheDocument())
+    expect(screen.getByText('Summer sale')).toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: 'brandx' } })
+    await waitFor(() => expect(screen.getByText('Winter promo')).toBeInTheDocument())
+    expect(screen.queryByText('Summer sale')).not.toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: 'nonexistent' } })
+    expect(await screen.findByText('No results found.')).toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: '' } })
+    await waitFor(() => expect(screen.getByText('Summer sale')).toBeInTheDocument())
+    expect(screen.getByText('Winter promo')).toBeInTheDocument()
+  })
+
   it('saves the global serving settings', async () => {
     updateSettings.mockResolvedValue({ adsPerNTracks: 5, isEnabled: false })
     render(<AdminAdsPage />)

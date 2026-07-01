@@ -35,7 +35,13 @@ public class AdminPlaylistsController : ControllerBase
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            q = q.Where(p => p.Name.Contains(search) || (p.Description != null && p.Description.Contains(search)));
+        {
+            var like = $"%{search}%";
+            q = q.Where(p =>
+                EF.Functions.ILike(p.Name, like) ||
+                (p.Description != null && EF.Functions.ILike(p.Description, like)) ||
+                EF.Functions.ILike(p.Owner.Name, like));
+        }
 
         var playlists = await q
             .OrderByDescending(p => p.IsFeatured)

@@ -13,8 +13,10 @@ import { adminService, downloadAlbumZip, type ReviewHistoryEntry } from '@/servi
 import { trackService } from '@/services/trackService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { notify } from '@/utils/toast'
+import { useDebounce } from '@/hooks/useDebounce'
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -79,6 +81,8 @@ export function AdminAlbumsListPage() {
   const navigate = useNavigate()
   const confirm = useConfirm()
   const [tab, setTab] = useState<Tab>('pending')
+  const [query, setQuery] = useState('')
+  const debouncedQuery = useDebounce(query, 200)
   const [albums, setAlbums] = useState<Album[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -164,14 +168,29 @@ export function AdminAlbumsListPage() {
     return Array.from(map.values())
   }, [albums])
 
+  // Search: matching artist name keeps all their albums; otherwise keep only albums whose title matches
+  const filteredArtistGroups = useMemo((): ArtistGroup[] => {
+    const q = debouncedQuery.trim().toLowerCase()
+    if (!q) return artistGroups
+    return artistGroups
+      .map((g) => {
+        const nameMatches = g.name.toLowerCase().includes(q)
+        const albums = nameMatches ? g.albums : g.albums.filter((a) => a.title.toLowerCase().includes(q))
+        return { ...g, albums }
+      })
+      .filter((g) => g.albums.length > 0)
+  }, [artistGroups, debouncedQuery])
+
   // Sorted artist groups
   const sortedArtists = useMemo(() => {
-    return [...artistGroups].sort((a, b) =>
+    return [...filteredArtistGroups].sort((a, b) =>
       artistSort.field === 'name'
         ? cmp(a.name.toLowerCase(), b.name.toLowerCase(), artistSort.dir)
         : cmp(a.albums.length, b.albums.length, artistSort.dir)
     )
-  }, [artistGroups, artistSort])
+  }, [filteredArtistGroups, artistSort])
+
+  const isSearching = debouncedQuery.trim().length > 0
 
   const sortAlbums = (albs: Album[]) =>
     [...albs].sort((a, b) => {
@@ -357,6 +376,14 @@ export function AdminAlbumsListPage() {
         ))}
       </div>
 
+      <SearchInput
+        value={query}
+        onChange={setQuery}
+        placeholder="Search by artist or album title…"
+        className="mb-4 max-w-md"
+        ariaLabel="Search albums"
+      />
+
       {error && (
         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3 flex items-center justify-between gap-3">
           <p className="text-red-400 text-sm">{error}</p>
@@ -368,7 +395,9 @@ export function AdminAlbumsListPage() {
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : sortedArtists.length === 0 ? (
         <div className="bg-surface rounded-lg border border-elevated/40 px-6 py-12 text-center text-secondary text-sm">
-          {tab === 'pending' ? 'No albums awaiting review.' : tab === 'approved' ? 'No approved albums.' : tab === 'rejected' ? 'No rejected albums.' : 'No albums yet.'}
+          {isSearching
+            ? 'No results found.'
+            : tab === 'pending' ? 'No albums awaiting review.' : tab === 'approved' ? 'No approved albums.' : tab === 'rejected' ? 'No rejected albums.' : 'No albums yet.'}
         </div>
       ) : (
         <div className="space-y-3">
@@ -388,7 +417,7 @@ export function AdminAlbumsListPage() {
           </div>
 
           {sortedArtists.map((artist) => {
-            const isArtistOpen = openArtists.has(artist.id)
+            const isArtistOpen = isSearching || openArtists.has(artist.id)
             const sorted = sortAlbums(artist.albums)
 
             return (

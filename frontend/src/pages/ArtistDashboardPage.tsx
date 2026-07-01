@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -21,12 +21,14 @@ import { meService, type ArtistStats } from '@/services/meService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AreaChart } from '@/components/common/AreaChart'
+import { SearchInput } from '@/components/common/SearchInput'
 import { ArtistPodcastManager } from '@/components/artist/ArtistPodcastManager'
 import { ArtistTourManager } from '@/components/artist/ArtistTourManager'
 import { ArtistVideoManager } from '@/components/artist/ArtistVideoManager'
 import { ImageCropModal } from '@/components/common/ImageCropModal'
 import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const STATUS_CONFIG = {
   approved: { label: 'Live', icon: CheckCircleIcon, cls: 'text-green-400', bg: 'bg-green-500/15' },
@@ -59,6 +61,16 @@ export function ArtistDashboardPage() {
   const confirm = useConfirm()
 
   const [albums, setAlbums] = useState<AlbumWithTracks[]>([])
+  const [releaseQuery, setReleaseQuery] = useState('')
+  const debouncedReleaseQuery = useDebounce(releaseQuery, 200)
+  const visibleAlbums = useMemo(() => {
+    const q = debouncedReleaseQuery.trim().toLowerCase()
+    if (!q) return albums
+    return albums.filter((a) =>
+      a.title.toLowerCase().includes(q) ||
+      a.trackList.some((t) => t.title.toLowerCase().includes(q))
+    )
+  }, [albums, debouncedReleaseQuery])
   const [artistStats, setArtistStats] = useState<ArtistStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [isRevoked, setIsRevoked] = useState(false)
@@ -984,6 +996,16 @@ export function ArtistDashboardPage() {
           )}
         </div>
 
+      {!loading && albums.length > 0 && (
+        <SearchInput
+          value={releaseQuery}
+          onChange={setReleaseQuery}
+          placeholder="Search releases by album or track title…"
+          className="mb-4 max-w-md"
+          ariaLabel="Search releases"
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : albums.length === 0 ? (
@@ -991,9 +1013,13 @@ export function ArtistDashboardPage() {
           <MusicalNoteIcon className="w-10 h-10 text-secondary mx-auto mb-3" />
           <p className="text-secondary text-sm">No releases yet. Hit "New release" to get started.</p>
         </div>
+      ) : visibleAlbums.length === 0 ? (
+        <div className="bg-surface border border-elevated/40 rounded-lg px-6 py-12 text-center text-secondary text-sm">
+          No results found.
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
-          {albums.map((album) => {
+          {visibleAlbums.map((album) => {
             const isOpen = expandedAlbum === album.id
             const addingHere = addingTrackToAlbum === album.id
 

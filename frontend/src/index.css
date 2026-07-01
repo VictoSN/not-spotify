@@ -753,6 +753,34 @@ html[data-theme="light"] .search-skeleton-shimmer {
   background-size: 220% 100%;
 }
 
+.top-music-window-metric,
+.top-music-trend-chip {
+  background-color: color-mix(in srgb, var(--c-accent) 10%, transparent);
+}
+
+.top-music-window-label,
+.top-music-window-value,
+.top-music-trend-chip {
+  color: var(--c-accent);
+}
+
+html[data-theme="light"] .top-music-window-metric,
+html[data-theme="light"] .top-music-trend-chip {
+  background-color: #dff4e7;
+}
+
+html[data-theme="light"] .top-music-window-label,
+html[data-theme="light"] .top-music-window-value,
+html[data-theme="light"] .top-music-trend-chip {
+  color: #116530;
+}
+
+@media (min-width: 768px) {
+  .top-music-window-metric {
+    background-color: transparent;
+  }
+}
+
 @keyframes auth-overlay-in {
   from {
     opacity: 0;

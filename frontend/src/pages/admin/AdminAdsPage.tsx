@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   PlusCircleIcon, PencilSquareIcon, TrashIcon, CheckCircleIcon, XCircleIcon,
-  MegaphoneIcon, SpeakerWaveIcon,
+  MegaphoneIcon, SpeakerWaveIcon, PlayIcon,
 } from '@heroicons/react/24/outline'
+import { Fragment } from 'react'
+import { AdPreviewPlayer } from '@/components/admin/AdPreviewPlayer'
 import type { AdAdmin, AdSettings, UpsertAdPayload } from '@/types/ad'
 import { adminAdService } from '@/services/adService'
 import { Button } from '@/components/ui/Button'
@@ -92,6 +94,7 @@ export function AdminAdsPage() {
   const [formError, setFormError] = useState<string | null>(null)
 
   const [savingSettings, setSavingSettings] = useState(false)
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -384,7 +387,8 @@ export function AdminAdsPage() {
                 </td></tr>
               )}
               {visibleAds.map((ad) => (
-                <tr key={ad.id} className="border-b border-elevated/20 hover:bg-elevated/30 transition-colors">
+                <Fragment key={ad.id}>
+                <tr className="border-b border-elevated/20 hover:bg-elevated/30 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-primary font-medium">{ad.title}</span>
                   </td>
@@ -405,6 +409,15 @@ export function AdminAdsPage() {
                   <td className="px-4 py-3 text-secondary text-sm">{ad.impressionCount.toLocaleString()}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="inline-flex gap-2 items-center justify-end">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setPreviewingId((cur) => (cur === ad.id ? null : ad.id))}
+                        aria-label={previewingId === ad.id ? `Stop preview of ${ad.title}` : `Preview ${ad.title}`}
+                      >
+                        <PlayIcon className="w-4 h-4" />
+                        {previewingId === ad.id ? 'Hide' : 'Preview'}
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => openEdit(ad)}>
                         <PencilSquareIcon className="w-4 h-4" />
                         Edit
@@ -416,6 +429,14 @@ export function AdminAdsPage() {
                     </div>
                   </td>
                 </tr>
+                {previewingId === ad.id && (
+                  <tr className="border-b border-elevated/20 bg-elevated/10">
+                    <td colSpan={7} className="px-4 py-3">
+                      <AdPreviewPlayer ad={ad} onEnded={() => setPreviewingId(null)} />
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

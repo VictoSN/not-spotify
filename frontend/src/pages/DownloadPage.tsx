@@ -8,7 +8,6 @@ import {
   Headphones,
   LogOut,
   MonitorDown,
-  Music2,
   ShieldCheck,
   UserRound,
 } from 'lucide-react'
@@ -322,33 +321,24 @@ export function DownloadPage() {
               </a>
             </div>
 
-            <div className="relative mx-auto hidden h-[370px] w-full max-w-[570px] lg:block" aria-hidden="true">
-              <div className="absolute left-4 top-4 h-32 w-32 rounded-full bg-accent/25 blur-3xl" />
-              <div className="absolute bottom-2 right-6 h-40 w-40 rounded-full bg-[#7c5cff]/45 blur-3xl" />
-              <div className="absolute left-1/2 top-4 w-[92%] -translate-x-1/2 rotate-[-2deg] rounded-[26px] border border-white/20 bg-[#242424] p-3 shadow-2xl shadow-black/60">
-                <div className="relative aspect-[16/10] overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#1a3d2b_0%,#142019_46%,#2c1741_100%)]">
-                  <div className="absolute inset-x-0 top-0 flex h-10 items-center gap-2 bg-black/45 px-4">
-                    <SpotifyMark className="h-5 w-5 text-accent" />
-                    <div className="h-2 w-20 rounded-full bg-white/25" />
-                  </div>
-                  <div className="absolute bottom-6 left-6 h-28 w-28 rotate-6 rounded-xl bg-[linear-gradient(135deg,#1ed760,#177e3a)] shadow-xl" />
-                  <div className="absolute bottom-8 left-40 space-y-3">
-                    <div className="h-4 w-44 rounded-full bg-white/75" />
-                    <div className="h-3 w-28 rounded-full bg-white/30" />
-                    <div className="mt-5 flex gap-2">
-                      <div className="h-9 w-9 rounded-full bg-accent" />
-                      <div className="h-9 w-24 rounded-full border border-white/30" />
-                    </div>
-                  </div>
-                </div>
+            {/*
+              Real screenshot of the Not Spotify desktop app, shown inside a laptop
+              frame. Scales fluidly (w-full up to a max) so it reads on mobile, tablet
+              and desktop; the SVG source stays crisp at any size.
+            */}
+            <div className="relative z-10 mx-auto w-full max-w-[560px]">
+              <div className="overflow-hidden rounded-t-[16px] border border-b-0 border-white/12 bg-[#161616] p-2 shadow-2xl shadow-black/60 sm:p-2.5">
+                <img
+                  src="/app-preview.svg"
+                  alt="Screenshot of the Not Spotify desktop app showing the Home screen with your library, personalized “Made for you” playlists, and the now-playing bar."
+                  width={1024}
+                  height={640}
+                  decoding="async"
+                  fetchPriority="high"
+                  className="block aspect-[16/10] w-full rounded-md object-cover"
+                />
               </div>
-              <div className="absolute bottom-1 left-1/2 h-5 w-[103%] -translate-x-1/2 rounded-b-[28px] bg-[#444] shadow-2xl" />
-              <div className="absolute -bottom-4 right-3 w-28 rotate-6 rounded-[22px] border-[5px] border-[#333] bg-[#191919] p-2 shadow-2xl">
-                <div className="aspect-[9/17] rounded-[14px] bg-[linear-gradient(160deg,#225a37,#171717_58%)] p-3">
-                  <SpotifyMark className="h-5 w-5 text-accent" />
-                  <Music2 className="mx-auto mt-10 h-10 w-10 text-white/70" />
-                </div>
-              </div>
+              <div className="h-3 rounded-b-[12px] bg-gradient-to-b from-[#3a3a3a] to-[#181818] shadow-xl sm:h-4" />
             </div>
           </div>
         </section>

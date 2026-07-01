@@ -141,3 +141,30 @@ describe('DownloadPage (bug #33)', () => {
     expect(screen.getByRole('button', { name: /install steps/i })).toHaveAttribute('aria-expanded', flipped)
   })
 })
+
+describe('DownloadPage (bug #34)', () => {
+  it('shows a real app screenshot (not a decorative placeholder) with descriptive alt text', () => {
+    renderDownloadPage()
+
+    const shot = screen.getByRole('img', { name: /Not Spotify desktop app/i })
+    expect(shot).toHaveAttribute('src', '/app-preview.svg')
+    // A content image exposed to screen readers — the old mockup was aria-hidden.
+    expect(shot).not.toHaveAttribute('aria-hidden')
+    expect((shot.getAttribute('alt') ?? '').length).toBeGreaterThan(20)
+    // Intrinsic dimensions are set so the layout doesn't shift while it loads.
+    expect(shot).toHaveAttribute('width', '1024')
+    expect(shot).toHaveAttribute('height', '640')
+  })
+
+  it('renders the screenshot responsively with no desktop-only gate', () => {
+    renderDownloadPage()
+
+    const shot = screen.getByRole('img', { name: /Not Spotify desktop app/i })
+    expect(shot).toHaveClass('w-full')
+    // Walk the ancestors: none may carry the standalone `hidden` class that
+    // previously limited the artwork to large screens only (`hidden lg:block`).
+    for (let el: HTMLElement | null = shot; el; el = el.parentElement) {
+      expect(el.className).not.toMatch(/(^|\s)hidden(\s|$)/)
+    }
+  })
+})

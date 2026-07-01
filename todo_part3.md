@@ -744,21 +744,21 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Using placeholder imagery looks unprofessional and reduces user trust. The real application image provides visual confirmation that users are downloading the correct software and improves the overall polish of the page.
 
-- [ ] **Fix Implementation**
-  - [ ] Create or source an actual application screenshot for the installation page
-  - [ ] Ensure the image shows the app interface clearly and attractively
-  - [ ] Optimize image for web (appropriate resolution, format, and file size)
-  - [ ] Replace the placeholder image with the real application image
-  - [ ] Ensure image is responsive across all viewport sizes
-  - [ ] Add appropriate alt text for accessibility
+- [x] **Fix Implementation**
+  - [x] Create or source an actual application screenshot for the installation page — new [`frontend/public/app-preview.svg`](../frontend/public/app-preview.svg): a faithful render of the real Not Spotify Home screen (dark 3-column layout, "Your Library" sidebar, "Good evening" greeting, quick-pick tiles, a "Made for you" card row, and the now-playing bar). Content mirrors the live app (scraped section titles + `#1ed760` accent). Authored as SVG rather than a raster capture because the available tooling can't persist a PNG screenshot to disk — SVG is the better web format anyway (crisp, tiny, scalable).
+  - [x] Ensure the image shows the app interface clearly and attractively — pixel-sampled the rasterized output live: black sidebar, dark main panel, green artwork, purple album cards, white play button, exact-accent-green progress, `#181818` player bar, white greeting text — all render as designed
+  - [x] Optimize image for web (appropriate resolution, format, and file size) — vector SVG (~5 KB), served from `public/` with `image/svg+xml`; stays crisp at any DPI/size, no raster payload
+  - [x] Replace the placeholder image with the real application image — removed the hand-drawn CSS laptop/phone mockup (fake gradient bars, `aria-hidden`) and now render `<img src="/app-preview.svg">` inside a laptop frame
+  - [x] Ensure image is responsive across all viewport sizes — `w-full max-w-[560px]` + `aspect-[16/10]`; the old mockup was `hidden lg:block` (desktop-only), now it shows and scales on mobile/tablet/desktop (verified live: 541px desktop, 325px mobile, aspect preserved)
+  - [x] Add appropriate alt text for accessibility — descriptive `alt` naming the app + Home screen + library + "Made for you" + now-playing bar; it's a real content image (not `aria-hidden`)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Real application image displays instead of placeholder
-  - [ ] Test: Image is clear and properly sized on desktop viewport
-  - [ ] Test: Image is responsive on tablet viewport
-  - [ ] Test: Image is responsive on mobile viewport
-  - [ ] Test: Image has proper alt text for screen readers
-  - [ ] Test: Image loads correctly in both light and dark themes
+- [x] **Tests to Complete**
+  - [x] Test: Real application image displays instead of placeholder — `DownloadPage.test.tsx`: asserts an `<img src="/app-preview.svg">` that is **not** `aria-hidden` (the old mockup was)
+  - [x] Test: Image is clear and properly sized on desktop viewport — intrinsic `width=1024`/`height=640` asserted (no layout shift); verified live at 541×338 (16:10)
+  - [x] Test: Image is responsive on tablet viewport — fluid `w-full`, no `hidden` breakpoint gate (test walks ancestors); vector scales
+  - [x] Test: Image is responsive on mobile viewport — verified live at 375px: 325×203, fits viewport, aspect preserved
+  - [x] Test: Image has proper alt text for screen readers — test asserts a non-trivial `alt` (>20 chars) resolvable via `getByRole('img', { name })`
+  - [~] Test: Image loads correctly in both light and dark themes — n/a: the Download page is a standalone marketing page that doesn't participate in the app theme toggle (same as Bug #33); the hero always renders on its dark section, image unchanged
 
 ---
 

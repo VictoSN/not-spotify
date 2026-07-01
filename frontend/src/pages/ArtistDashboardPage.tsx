@@ -7,7 +7,11 @@ import {
   PhotoIcon, TrashIcon, Bars3Icon, PencilSquareIcon, ArrowPathIcon,
   UserCircleIcon, GlobeAltIcon, LinkIcon, PlayIcon, StopCircleIcon, ArrowDownTrayIcon,
   StarIcon, HeartIcon,
+  ChartBarSquareIcon, RectangleStackIcon, VideoCameraIcon, MicrophoneIcon,
+  MapPinIcon, ChevronRightIcon, XMarkIcon,
 } from '@heroicons/react/24/outline'
+import type { ComponentType, SVGProps } from 'react'
+import { cn } from '@/utils/cn'
 import { useAuthStore } from '@/stores/authStore'
 import { api } from '@/services/api'
 import type { Track } from '@/types/track'
@@ -39,10 +43,76 @@ function fmtDuration(ms: number) {
 type AlbumWithTracks = Album & { trackList: Track[] }
 type CropKind = 'profile' | 'header' | 'album'
 
+type SectionKey = 'overview' | 'profile' | 'releases' | 'videos' | 'podcasts' | 'tours'
+type IconType = ComponentType<SVGProps<SVGSVGElement>>
+type NavItem = { key: SectionKey; label: string; description: string; icon: IconType }
+
+const navSections: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Insights',
+    items: [
+      { key: 'overview', label: 'Overview', description: 'Stats and recent plays', icon: ChartBarSquareIcon },
+    ],
+  },
+  {
+    label: 'Presence',
+    items: [
+      { key: 'profile', label: 'Profile', description: 'Public artist page details', icon: UserCircleIcon },
+    ],
+  },
+  {
+    label: 'Catalog',
+    items: [
+      { key: 'releases', label: 'Releases', description: 'Albums, singles and tracks', icon: RectangleStackIcon },
+      { key: 'videos', label: 'Music Videos', description: 'Upload and manage videos', icon: VideoCameraIcon },
+      { key: 'podcasts', label: 'Podcasts', description: 'Shows and episodes', icon: MicrophoneIcon },
+    ],
+  },
+  {
+    label: 'Live',
+    items: [
+      { key: 'tours', label: 'Tours & concerts', description: 'Upcoming events and dates', icon: MapPinIcon },
+    ],
+  },
+]
+
+const navItems: NavItem[] = navSections.flatMap((s) => s.items)
+
+function readSectionFromHash(): SectionKey {
+  if (typeof window === 'undefined') return 'overview'
+  const raw = window.location.hash.replace(/^#/, '') as SectionKey
+  return navItems.some((i) => i.key === raw) ? raw : 'overview'
+}
+
 export function ArtistDashboardPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const confirm = useConfirm()
+
+  const [activeSection, setActiveSection] = useState<SectionKey>(readSectionFromHash)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  useEffect(() => {
+    const onHash = () => setActiveSection(readSectionFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  useEffect(() => {
+    if (readSectionFromHash() !== activeSection) {
+      window.history.replaceState(null, '', `#${activeSection}`)
+    }
+  }, [activeSection])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileNavOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileNavOpen])
+
+  const currentNav = navItems.find((i) => i.key === activeSection) ?? navItems[0]
+  const CurrentIcon = currentNav.icon
 
   const [albums, setAlbums] = useState<AlbumWithTracks[]>([])
   const [releaseQuery, setReleaseQuery] = useState('')
@@ -608,8 +678,62 @@ export function ArtistDashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* ── Revocation banner ─────────────────────────────────────────────── */}
+    <div className="flex h-full min-h-0 overflow-hidden bg-base text-primary">
+      <ArtistSidebar active={activeSection} onSelect={setActiveSection} />
+
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/65"
+            onClick={() => setMobileNavOpen(false)}
+            aria-label="Close artist navigation"
+          />
+          <div className="relative flex h-full w-[min(21rem,calc(100vw-2rem))] flex-col bg-sidebar shadow-2xl">
+            <div className="flex h-16 items-center justify-between border-b border-elevated/45 px-4">
+              <span className="text-xs font-bold uppercase tracking-[0.16em] text-accent">Artist</span>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-md text-secondary transition-colors hover:bg-elevated hover:text-primary"
+                aria-label="Close artist navigation"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <ArtistNav active={activeSection} onSelect={(k) => { setActiveSection(k); setMobileNavOpen(false) }} />
+          </div>
+        </div>
+      )}
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-elevated/40 bg-base/95 px-3 backdrop-blur-xl sm:px-5">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-secondary transition-colors hover:bg-elevated hover:text-primary lg:hidden"
+            aria-label="Open artist navigation"
+          >
+            <Bars3Icon className="h-5 w-5" />
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <span className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-md bg-accent/15 text-accent sm:flex">
+              <CurrentIcon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-muted">
+                <span>Artist</span>
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+                <span className="truncate">{currentNav.label}</span>
+              </div>
+              <h1 className="truncate text-lg font-bold text-primary sm:text-xl">{currentNav.label}</h1>
+            </div>
+          </div>
+        </header>
+
+        <div className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto bg-page">
+          <div className="flex flex-col gap-6 px-4 py-6 sm:px-6">
+      {/* ── Revocation banner (always visible) ────────────────────────────── */}
       {isRevoked && (
         <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-5 py-4">
           <p className="font-semibold text-red-400">Your artist account has been revoked.</p>
@@ -620,19 +744,14 @@ export function ArtistDashboardPage() {
         </div>
       )}
 
-      {/* ── Page header ───────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-3xl font-bold text-primary">Artist Dashboard</h1>
-        <p className="text-secondary text-sm mt-1">Manage your profile, releases, and submissions.</p>
-      </div>
-
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-md px-4 py-3">
           <p className="text-red-400 text-sm">{error}</p>
         </div>
       )}
 
-      {/* ── Profile card ──────────────────────────────────────────────────── */}
+      {/* ── Profile section (Profile card) ─────────────────────────────────── */}
+      <div className={cn('flex flex-col gap-6', activeSection !== 'profile' && 'hidden')}>
       <div className="bg-surface border border-elevated/40 rounded-xl overflow-hidden">
         {/* Header / banner strip */}
         <label className="relative block h-24 cursor-pointer group overflow-hidden">
@@ -805,7 +924,10 @@ export function ArtistDashboardPage() {
           )}
         </div>
       </div>
+      </div>{/* /profile section */}
 
+      {/* ── Overview section (Stats strip + Performance chart) ─────────────── */}
+      <div className={cn('flex flex-col gap-6', activeSection !== 'overview' && 'hidden')}>
       {/* ── Stats strip ───────────────────────────────────────────────────── */}
       {!loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -883,7 +1005,10 @@ export function ArtistDashboardPage() {
           </div>
         </div>
       )}
+      </div>{/* /overview section */}
 
+      {/* ── Releases section (new release form + releases list) ────────────── */}
+      <div className={cn('flex flex-col gap-6', activeSection !== 'releases' && 'hidden')}>
       {/* ── New release form ──────────────────────────────────────────────── */}
       {showAlbumForm && (
         <form onSubmit={handleCreateAlbum} className="bg-surface border border-elevated/40 rounded-xl p-6 flex flex-col gap-4">
@@ -1708,21 +1833,24 @@ export function ArtistDashboardPage() {
         </div>
       )}
       </div>
+      </div>{/* /releases section */}
 
-      {/* Creator media */}
-      {!loading && (
-        <>
-          <ArtistPodcastManager disabled={isRevoked} />
-          <ArtistVideoManager disabled={isRevoked} tracks={allTracks} />
-        </>
-      )}
+      {/* ── Podcasts section ───────────────────────────────────────────────── */}
+      <div className={cn(activeSection !== 'podcasts' && 'hidden')}>
+        {!loading && <ArtistPodcastManager disabled={isRevoked} />}
+      </div>
 
-      {/* ── Tours & concerts ──────────────────────────────────────────────── */}
-      {!loading && (
-        <div className="mt-8">
+      {/* ── Videos section ─────────────────────────────────────────────────── */}
+      <div className={cn(activeSection !== 'videos' && 'hidden')}>
+        {!loading && <ArtistVideoManager disabled={isRevoked} tracks={allTracks} />}
+      </div>
+
+      {/* ── Tours section ──────────────────────────────────────────────────── */}
+      <div className={cn(activeSection !== 'tours' && 'hidden')}>
+        {!loading && (
           <ArtistTourManager tracks={albums.flatMap((a) => a.trackList).map((t) => ({ id: t.id, title: t.title }))} />
-        </div>
-      )}
+        )}
+      </div>
 
       <ImageCropModal
         file={cropRequest?.file ?? null}
@@ -1732,6 +1860,63 @@ export function ArtistDashboardPage() {
         onCancel={() => setCropRequest(null)}
         onCrop={handleCropComplete}
       />
+          </div>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function ArtistSidebar({ active, onSelect }: { active: SectionKey; onSelect: (k: SectionKey) => void }) {
+  return (
+    <aside className="hidden w-72 shrink-0 flex-col border-r border-elevated/40 bg-sidebar lg:flex">
+      <div className="flex h-14 items-center border-b border-elevated/40 px-5">
+        <span className="text-xs font-bold uppercase tracking-[0.16em] text-accent">Artist</span>
+      </div>
+      <ArtistNav active={active} onSelect={onSelect} />
+    </aside>
+  )
+}
+
+function ArtistNav({ active, onSelect }: { active: SectionKey; onSelect: (k: SectionKey) => void }) {
+  return (
+    <nav className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4" aria-label="Artist dashboard navigation">
+      {navSections.map((section) => (
+        <div key={section.label} className="mb-5 last:mb-0">
+          <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted">{section.label}</p>
+          <div className="space-y-1">
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const isActive = item.key === active
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => onSelect(item.key)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'group flex w-full min-h-14 items-center gap-3 rounded-md px-3 py-2.5 text-left transition-colors',
+                    isActive ? 'bg-accent/15 text-primary' : 'text-secondary hover:bg-elevated/70 hover:text-primary',
+                  )}
+                >
+                  <span className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-md transition-colors',
+                    isActive ? 'bg-accent text-black' : 'bg-elevated text-secondary group-hover:text-primary',
+                  )}>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={cn('block truncate text-sm font-bold', isActive ? 'text-primary' : 'text-inherit')}>
+                      {item.label}
+                    </span>
+                    <span className="block truncate text-xs font-medium text-muted">{item.description}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
   )
 }

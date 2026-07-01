@@ -22,6 +22,7 @@ export function SettingsShell() {
   const isArtist = user?.roles?.includes('Artist') ?? false
   const onAccountPage = location.pathname === '/account'
   const onArtistDashboard = location.pathname === '/artist-dashboard'
+  const fullWidth = onArtistDashboard
 
   useEffect(() => {
     if (!menuOpen) return
@@ -44,7 +45,7 @@ export function SettingsShell() {
     <div className="flex h-full flex-col bg-page text-primary">
       {/* Black top header matching Spotify account page */}
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
-        <div className="mx-auto flex h-full max-w-[960px] items-center px-6">
+        <div className={`flex h-full items-center px-6 ${fullWidth ? '' : 'mx-auto max-w-[960px]'}`}>
           {/* Logo */}
           <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Home">
             <SpotifyMark className="h-8 w-8 text-primary" />
@@ -132,10 +133,14 @@ export function SettingsShell() {
         </div>
       </header>
 
-      <main className="spotify-scrollbar flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-[780px] px-4 py-8">
+      <main className="spotify-scrollbar min-h-0 flex-1 overflow-y-auto">
+        {location.pathname === '/artist-dashboard' ? (
           <Outlet />
-        </div>
+        ) : (
+          <div className="mx-auto max-w-[780px] px-4 py-8">
+            <Outlet />
+          </div>
+        )}
       </main>
 
       {isMobile && <BottomPlayerBar />}

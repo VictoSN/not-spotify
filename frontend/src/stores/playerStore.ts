@@ -734,9 +734,12 @@ if (isBrowser()) {
   window.addEventListener('beforeunload', () => persistPlaybackState(usePlayerStore.getState()))
 }
 
-// Subscribe to auth state changes to pause and reset playback on logout
-useAuthStore.subscribe((state) => {
-  if (!state.isAuthenticated) {
+// Subscribe to auth state changes to pause and reset playback on real logout.
+// During a browser refresh the auth store starts unauthenticated, then runs
+// hydrateFromCookie(); intermediate loading updates must not wipe the restored
+// player snapshot before the cookie refresh resolves.
+useAuthStore.subscribe((state, previous) => {
+  if (previous.isAuthenticated && !state.isAuthenticated) {
     pendingAfterAd = null
     tracksSinceAd = 0
     try {

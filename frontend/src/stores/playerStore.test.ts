@@ -538,6 +538,31 @@ describe('playerStore - playback persistence', () => {
     usePlayerStore.setState({ currentTrack: null, isPlaying: false, queue: [], queueIndex: -1 })
     expect(localStorage.getItem('ns-playback-state-v1')).toBeNull()
   })
+
+  it('keeps restored playback during unauthenticated startup loading updates', () => {
+    useAuthStore.setState({ isAuthenticated: false, user: null, isLoading: false, isInitializing: true })
+    usePlayerStore.getState().play(track('a'))
+    usePlayerStore.getState().tick(37, 180)
+    const saved = localStorage.getItem('ns-playback-state-v1')
+    expect(saved).toBeTruthy()
+
+    useAuthStore.setState({ isLoading: true })
+
+    expect(localStorage.getItem('ns-playback-state-v1')).toBe(saved)
+    expect(usePlayerStore.getState().currentTrack?.id).toBe('a')
+    expect(usePlayerStore.getState().currentTime).toBe(37)
+  })
+
+  it('clears restored playback on a real authenticated logout transition', () => {
+    setPremium()
+    usePlayerStore.getState().play(track('a'))
+    expect(localStorage.getItem('ns-playback-state-v1')).toBeTruthy()
+
+    useAuthStore.setState({ isAuthenticated: false, user: null })
+
+    expect(localStorage.getItem('ns-playback-state-v1')).toBeNull()
+    expect(usePlayerStore.getState().currentTrack).toBeNull()
+  })
 })
 
 describe('playerStore - music videos', () => {

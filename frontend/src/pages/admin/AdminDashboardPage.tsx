@@ -213,14 +213,14 @@ export function AdminDashboardPage() {
                 <span className="text-sm font-semibold text-primary">Site visits</span>
                 <span className="text-xs font-semibold text-accent">{formatNumber(stats.totalVisits)} total</span>
               </div>
-              <AreaChart data={toAreaData(stats.visitsTrend)} height={150} color="var(--c-accent, #1db954)" formatValue={(n) => `${formatNumber(n)} visits`} />
+              <AreaChart data={toAreaData(stats.visitsTrend)} height={150} color="var(--c-accent, #1db954)" seriesLabel="Site visits" formatValue={(n) => `${formatNumber(n)} visits`} />
             </div>
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-sm font-semibold text-primary">Music plays</span>
                 <span className="text-xs font-semibold text-sky-300">{formatNumber(stats.playsLast7Days)} this week</span>
               </div>
-              <AreaChart data={toAreaData(stats.playsTrend)} height={150} color="#38bdf8" formatValue={(n) => `${formatNumber(n)} plays`} />
+              <AreaChart data={toAreaData(stats.playsTrend)} height={150} color="#38bdf8" seriesLabel="Music plays" formatValue={(n) => `${formatNumber(n)} plays`} />
             </div>
           </div>
         </div>

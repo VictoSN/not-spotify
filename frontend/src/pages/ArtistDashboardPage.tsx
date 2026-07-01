@@ -975,6 +975,7 @@ export function ArtistDashboardPage() {
                 value: d.count,
               }))}
               height={180}
+              seriesLabel="Plays"
               formatValue={(n) => `${formatNumber(n)} plays`}
             />
           </div>

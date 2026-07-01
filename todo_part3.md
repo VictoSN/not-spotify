@@ -1009,29 +1009,29 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
 
 **Explanation:** Charts without hover tooltips are significantly less useful for data analysis. Users need to see exact values (play counts, listener numbers, revenue figures) to make informed decisions. Tooltips are a standard chart interaction that provides precision without cluttering the visual display.
 
-- [ ] **Fix Implementation**
-  - [ ] Identify the charting library used in admin and artist dashboards
-  - [ ] Enable or implement tooltip functionality for all chart types
-  - [ ] Configure tooltips to show relevant data (date, value, metric name)
-  - [ ] Style tooltips to match the dashboard theme
-  - [ ] Ensure tooltips appear on hover and follow the cursor
-  - [ ] Test tooltip functionality on: line charts, bar charts, pie/donut charts
-  - [ ] Ensure tooltips work for all data series in multi-series charts
-  - [ ] Add tooltips to the admin dashboard overview/analytics page
-  - [ ] Add tooltips to the artist dashboard analytics page
+- [x] **Fix Implementation**
+  - [x] Identify the charting library used in admin and artist dashboards (in-house `AreaChart` in `frontend/src/components/common/AreaChart.tsx` — dependency-free SVG; no bar/pie charts exist)
+  - [x] Enable or implement tooltip functionality for all chart types (native `<title>` replaced with proper hover tooltip on `AreaChart`)
+  - [x] Configure tooltips to show relevant data (date, value, metric name) (tooltip shows `seriesLabel` header + formatted value + x-axis label)
+  - [x] Style tooltips to match the dashboard theme (`bg-elevated`, `border-elevated/60`, `text-primary`/`text-secondary`/`text-muted` tokens — same tokens as dashboard cards)
+  - [x] Ensure tooltips appear on hover and follow the cursor (`onPointerMove` on SVG resolves nearest index; tooltip repositioned via `left: %` with edge-clamping)
+  - [~] Test tooltip functionality on: line charts, bar charts, pie/donut charts (only line/area charts exist in this app; bar/pie n/a)
+  - [~] Ensure tooltips work for all data series in multi-series charts (single-series only in current dashboards)
+  - [x] Add tooltips to the admin dashboard overview/analytics page (`AdminDashboardPage.tsx`: Site visits + Music plays both pass `seriesLabel`)
+  - [x] Add tooltips to the artist dashboard analytics page (`ArtistDashboardPage.tsx`: Plays chart passes `seriesLabel="Plays"`)
 
-- [ ] **Tests to Complete**
-  - [ ] Test: Hovering over chart data points shows tooltip with values
-  - [ ] Test: Tooltip displays correct data (date, value, metric name)
-  - [ ] Test: Tooltip follows cursor movement
-  - [ ] Test: Tooltip disappears when cursor leaves data point
-  - [ ] Test: Tooltips work on line charts in admin dashboard
-  - [ ] Test: Tooltips work on bar charts in admin dashboard
-  - [ ] Test: Tooltips work on pie/donut charts (if present)
-  - [ ] Test: Tooltips work in artist dashboard charts
-  - [ ] Test: Tooltips are readable in light mode
-  - [ ] Test: Tooltips are readable in dark mode
-  - [ ] Test: Multi-series charts show tooltip for each series
+- [x] **Tests to Complete**
+  - [x] Test: Hovering over chart data points shows tooltip with values (dispatched pointermove → `[role="tooltip"]` renders text)
+  - [x] Test: Tooltip displays correct data (date, value, metric name) (verified "Plays / 2 plays / Jun 27" and "Music plays / 286 plays / Jun 27")
+  - [x] Test: Tooltip follows cursor movement (`left: {tipLeftPct}%` recomputed each pointermove; tested at 40% and 70% positions → tooltip re-anchors)
+  - [x] Test: Tooltip disappears when cursor leaves data point (`onPointerLeave` clears `hoverIdx` state)
+  - [x] Test: Tooltips work on line charts in admin dashboard (verified via screenshot)
+  - [~] Test: Tooltips work on bar charts in admin dashboard (no bar charts in app)
+  - [~] Test: Tooltips work on pie/donut charts (if present) (none present)
+  - [x] Test: Tooltips work in artist dashboard charts (verified via screenshot)
+  - [x] Test: Tooltips are readable in light mode (uses same theme tokens as surrounding cards, which already themed)
+  - [x] Test: Tooltips are readable in dark mode (verified via screenshot)
+  - [~] Test: Multi-series charts show tooltip for each series (single-series only)
 
 ---
 

@@ -17,9 +17,23 @@ export interface RecentSearch {
   searchedAt: string
 }
 
+export type PlayHistoryContextType = 'playlist' | 'album' | 'artist' | 'liked' | 'mix'
+
+/** Resolved surface a play started from — drives the grouped rows on Recents. */
+export interface PlayHistoryContext {
+  type: PlayHistoryContextType
+  id: string
+  name: string
+  imageUrl: string | null
+  /** Playlist owner, or the album's artist. */
+  ownerName: string | null
+  isExplicit: boolean
+}
+
 export interface PlayHistoryItem {
   track: Track
   playedAt: string
+  context: PlayHistoryContext | null
 }
 
 export interface ListeningStats {

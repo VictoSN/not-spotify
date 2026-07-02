@@ -19,7 +19,21 @@ public record RecentSearchRequest([Required, StringLength(120, MinimumLength = 1
 
 public record RecentSearchDto(Guid Id, string Term, DateTime SearchedAt);
 
-public record PlayHistoryDto(TrackDto Track, DateTime PlayedAt);
+/// <summary>
+/// Resolved display data for the surface a play started from. Name/ImageUrl come
+/// from the referenced playlist/album/artist/genre; OwnerName is the playlist
+/// owner (or the album's artist); IsExplicit marks albums with explicit tracks.
+/// </summary>
+public record PlayContextDto(
+    string Type,
+    string Id,
+    string Name,
+    string? ImageUrl,
+    string? OwnerName,
+    bool IsExplicit
+);
+
+public record PlayHistoryDto(TrackDto Track, DateTime PlayedAt, PlayContextDto? Context = null);
 
 // ── Personal listening stats ("mini-Wrapped") ──────────────────────────────
 public record StatTrackDto(TrackDto Track, int PlayCount);

@@ -198,7 +198,8 @@ describe('cross-cutting · library/recents registration across media types', () 
     // Unique id: recordPlay dedupes within a 5s window via a module-scoped map
     // that survives across tests, so reusing a common id would no-op here.
     usePlayerStore.getState().play(track('reg-song'))
-    expect(trackService.recordPlay).toHaveBeenCalledWith('reg-song')
+    // Standalone plays record without a queue context.
+    expect(trackService.recordPlay).toHaveBeenCalledWith('reg-song', null)
 
     usePlayerStore.getState().playVideo(video('mv1'))
     // savedVideos doubles as the MV recents list — most-recent-first.

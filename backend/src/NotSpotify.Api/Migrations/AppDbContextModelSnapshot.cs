@@ -672,6 +672,12 @@ namespace NotSpotify.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ContextId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContextType")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("PlayedAt")
                         .HasColumnType("timestamp with time zone");
 

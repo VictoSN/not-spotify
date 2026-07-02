@@ -140,8 +140,12 @@ export const trackService = {
     return res.data
   },
 
-  async recordPlay(trackId: string): Promise<void> {
-    await api.post('/me/plays', { trackId })
+  async recordPlay(trackId: string, context?: { type: string; id: string } | null): Promise<void> {
+    await api.post('/me/plays', {
+      trackId,
+      contextType: context?.type ?? null,
+      contextId: context?.id ?? null,
+    })
   },
 
   async like(trackId: string): Promise<void> {

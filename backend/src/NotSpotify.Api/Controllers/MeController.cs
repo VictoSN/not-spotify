@@ -339,7 +339,7 @@ public class MeController : ControllerBase
                     u.CreatedAt,
                 }),
             },
-            ListeningHistory = history.Select(h => new { h.PlayedAt, Track = TrackExport(h.Track) }),
+            ListeningHistory = history.Select(h => new { h.PlayedAt, h.ContextType, h.ContextId, Track = TrackExport(h.Track) }),
             RecentSearches = recentSearches.Select(s => new { s.Id, s.Term, s.SearchedAt }),
             Notifications = notifications.Select(n => new
             {
@@ -795,12 +795,16 @@ public class MeController : ControllerBase
         await _db.Database.ExecuteSqlRawAsync(
             @"UPDATE ""Tracks"" SET ""PlayCount"" = ""PlayCount"" + 1 WHERE ""Id"" = {0}", req.TrackId);
 
+        var (contextType, contextId) = SanitizePlayContext(req.ContextType, req.ContextId);
+
         _db.PlayHistories.Add(new PlayHistory
         {
             Id = Guid.NewGuid(),
             UserId = me.Value,
             TrackId = req.TrackId,
             PlayedAt = DateTime.UtcNow,
+            ContextType = contextType,
+            ContextId = contextId,
         });
 
         // Update LastSeenAt so friends can see this user is online.
@@ -859,7 +863,9 @@ public class MeController : ControllerBase
         var me = CurrentUserId();
         if (me is null) return Unauthorized();
 
-        limit = Math.Clamp(limit, 1, 100);
+        // The recents page groups several days of plays client-side, so it asks
+        // for a few hundred rows at once — hence the higher cap than most lists.
+        limit = Math.Clamp(limit, 1, 500);
         offset = Math.Max(0, offset);
 
         var rows = await _db.PlayHistories
@@ -872,11 +878,130 @@ public class MeController : ControllerBase
             .Include(h => h.Track).ThenInclude(t => t.TrackGenres).ThenInclude(tg => tg.Genre)
             .ToListAsync(ct);
 
+        var contexts = await ResolvePlayContextsAsync(rows, ct);
+
         var result = new List<PlayHistoryDto>(rows.Count);
         foreach (var row in rows)
-            result.Add(new PlayHistoryDto(await _mapper.ToDtoAsync(row.Track, ct), row.PlayedAt));
+        {
+            var context = row.ContextType is not null && row.ContextId is not null
+                ? contexts.GetValueOrDefault((row.ContextType, row.ContextId))
+                : null;
+            result.Add(new PlayHistoryDto(await _mapper.ToDtoAsync(row.Track, ct), row.PlayedAt, context));
+        }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Allowed values for <see cref="PlayHistory.ContextType"/> as sent by the player.
+    /// </summary>
+    private static readonly HashSet<string> AllowedPlayContextTypes =
+        new(StringComparer.Ordinal) { "playlist", "album", "artist", "liked", "mix" };
+
+    /// <summary>
+    /// Normalizes the optional play context from the client. Unknown types or
+    /// malformed ids are dropped (recorded as a context-less play) rather than
+    /// rejected — play tracking is fire-and-forget and must never fail the call.
+    /// </summary>
+    private static (string? Type, string? Id) SanitizePlayContext(string? type, string? id)
+    {
+        type = type?.Trim().ToLowerInvariant();
+        id = id?.Trim();
+        if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(id)) return (null, null);
+        if (!AllowedPlayContextTypes.Contains(type) || id.Length > 100) return (null, null);
+
+        // Entity-backed contexts must be Guids; normalize formatting so history
+        // resolution can match on Guid.ToString() output.
+        if (type is "playlist" or "album" or "artist")
+            return Guid.TryParse(id, out var guid) ? (type, guid.ToString()) : (null, null);
+
+        return (type, id);
+    }
+
+    /// <summary>
+    /// Batch-resolves the distinct play contexts of a history page into display
+    /// data (name, artwork, owner). Contexts whose entity no longer exists — a
+    /// deleted playlist, say — are simply absent from the result and render as
+    /// anonymous "N songs played" rows.
+    /// </summary>
+    private async Task<Dictionary<(string Type, string Id), PlayContextDto>> ResolvePlayContextsAsync(
+        List<PlayHistory> rows, CancellationToken ct)
+    {
+        var result = new Dictionary<(string, string), PlayContextDto>();
+        var keys = rows
+            .Where(r => r.ContextType is not null && r.ContextId is not null)
+            .Select(r => (Type: r.ContextType!, Id: r.ContextId!))
+            .Distinct()
+            .ToList();
+        if (keys.Count == 0) return result;
+
+        static List<Guid> GuidIds(IEnumerable<(string Type, string Id)> keys, string type) =>
+            keys.Where(k => k.Type == type)
+                .Select(k => Guid.TryParse(k.Id, out var g) ? g : Guid.Empty)
+                .Where(g => g != Guid.Empty)
+                .Distinct()
+                .ToList();
+
+        var playlistIds = GuidIds(keys, "playlist");
+        if (playlistIds.Count > 0)
+        {
+            var playlists = await _db.Playlists.AsNoTracking()
+                .Where(p => playlistIds.Contains(p.Id))
+                .Select(p => new { p.Id, p.Name, p.CoverUrl, OwnerName = p.Owner.Name })
+                .ToListAsync(ct);
+            foreach (var p in playlists)
+                result[("playlist", p.Id.ToString())] =
+                    new PlayContextDto("playlist", p.Id.ToString(), p.Name, p.CoverUrl, p.OwnerName, false);
+        }
+
+        var albumIds = GuidIds(keys, "album");
+        if (albumIds.Count > 0)
+        {
+            var albums = await _db.Albums.AsNoTracking()
+                .Where(a => albumIds.Contains(a.Id))
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Title,
+                    a.CoverUrl,
+                    ArtistName = a.Artist.Name,
+                    IsExplicit = a.Tracks.Any(t => t.Explicit),
+                })
+                .ToListAsync(ct);
+            foreach (var a in albums)
+                result[("album", a.Id.ToString())] =
+                    new PlayContextDto("album", a.Id.ToString(), a.Title, a.CoverUrl, a.ArtistName, a.IsExplicit);
+        }
+
+        var artistIds = GuidIds(keys, "artist");
+        if (artistIds.Count > 0)
+        {
+            var artists = await _db.Artists.AsNoTracking()
+                .Where(a => artistIds.Contains(a.Id))
+                .Select(a => new { a.Id, a.Name, a.ImageUrl })
+                .ToListAsync(ct);
+            foreach (var a in artists)
+                result[("artist", a.Id.ToString())] =
+                    new PlayContextDto("artist", a.Id.ToString(), a.Name, a.ImageUrl, null, false);
+        }
+
+        // Daily-mix ids are genre slugs; title them like the mix pages do.
+        var mixSlugs = keys.Where(k => k.Type == "mix").Select(k => k.Id).Distinct().ToList();
+        if (mixSlugs.Count > 0)
+        {
+            var genres = await _db.Genres.AsNoTracking()
+                .Where(g => mixSlugs.Contains(g.Slug))
+                .Select(g => new { g.Slug, g.Name })
+                .ToListAsync(ct);
+            foreach (var g in genres)
+                result[("mix", g.Slug)] =
+                    new PlayContextDto("mix", g.Slug, $"{g.Name} Mix", null, null, false);
+        }
+
+        if (keys.Any(k => k.Type == "liked"))
+            result[("liked", "liked")] = new PlayContextDto("liked", "liked", "Liked Songs", null, null, false);
+
+        return result;
     }
 
     /// <summary>
@@ -2147,4 +2272,4 @@ public class MeController : ControllerBase
     }
 }
 
-public record RecordPlayRequest(Guid TrackId);
+public record RecordPlayRequest(Guid TrackId, string? ContextType = null, string? ContextId = null);

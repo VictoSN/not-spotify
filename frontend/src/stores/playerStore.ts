@@ -23,7 +23,7 @@ function isPrivateListening(): boolean {
   }
 }
 
-function recordPlay(trackId: string) {
+function recordPlay(trackId: string, contextOverride?: PlayContext | null) {
   if (!useAuthStore.getState().isAuthenticated) return
   // Private listening: skip server-side play history + LastSeenAt bump
   // so other users can't see what or when you're listening.
@@ -31,7 +31,17 @@ function recordPlay(trackId: string) {
   const now = Date.now()
   if (now - (lastRecordedAt.get(trackId) ?? 0) < RECENT_PLAY_DEDUPE_MS) return
   lastRecordedAt.set(trackId, now)
-  trackService.recordPlay(trackId).catch(() => { })
+  // Recents groups plays by the queue's context. Callers that set the store
+  // before recording rely on the store read; callers that record mid-update
+  // pass the context (or null) explicitly.
+  let context = contextOverride ?? null
+  if (contextOverride === undefined) {
+    const { currentContextType, currentContextId } = usePlayerStore.getState()
+    context = currentContextType && currentContextId
+      ? { type: currentContextType, id: currentContextId }
+      : null
+  }
+  trackService.recordPlay(trackId, context).catch(() => { })
 }
 
 type PersistedPlaybackState = {
@@ -656,10 +666,12 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   playNext: (track) =>
     set((s) => {
-      // Nothing playing — just start it.
+      // Nothing playing — just start it. A "play next" fresh start is a
+      // standalone play, so clear any leftover context rather than recording
+      // against a queue that's no longer active.
       if (!s.currentTrack) {
-        recordPlay(track.id)
-        return { playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0 }
+        recordPlay(track.id, null)
+        return { playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0, currentContextType: null, currentContextId: null }
       }
       const newQueue = [...s.queue]
       newQueue.splice(s.queueIndex + 1, 0, track)

@@ -42,6 +42,10 @@ public class StorageProxyController : ControllerBase
             ".gif" => "image/gif",
             ".svg" => "image/svg+xml",
             ".ico" => "image/x-icon",
+            ".woff2" => "font/woff2",
+            ".woff" => "font/woff",
+            ".ttf" => "font/ttf",
+            ".otf" => "font/otf",
             _ => "application/octet-stream",
         };
 

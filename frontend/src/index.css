@@ -33,8 +33,9 @@
   --color-secondary: var(--c-secondary);
   --color-muted: var(--c-muted);
 
-  /* Fonts */
-  --font-sans: "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* Fonts. Circular Std (loaded from S3 in config/fonts.ts) is Spotify's face;
+     Montserrat stays bundled as the fallback while Circular swaps in / if S3 is down. */
+  --font-sans: "Circular Std", "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /*

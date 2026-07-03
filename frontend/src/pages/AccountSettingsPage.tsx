@@ -1,5 +1,5 @@
 import { Children, cloneElement, isValidElement, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useConfirm } from '@/hooks/useConfirm'
 import {
@@ -148,6 +148,7 @@ export function AccountSettingsPage() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const confirm = useConfirm()
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [subscriptionLoaded, setSubscriptionLoaded] = useState(false)
@@ -194,6 +195,21 @@ export function AccountSettingsPage() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [panel])
+
+  // Deep-link from /premium ("Manage members") — wait until we know the tier so
+  // the section is actually rendered, then expand + scroll into view, and strip
+  // the flag from the URL so a refresh doesn't repeat the scroll.
+  useEffect(() => {
+    if (searchParams.get('members') !== '1') return
+    if (!subscriptionLoaded) return
+    setShowPlanMembers(true)
+    requestAnimationFrame(() => {
+      document.getElementById('plan-members-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+    const next = new URLSearchParams(searchParams)
+    next.delete('members')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, setSearchParams, subscriptionLoaded])
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -171,16 +171,28 @@ public class StripeBillingService
             ?? throw new InvalidOperationException("Stripe did not return a price id.");
     }
 
+    // Stripe has no true "delete" for a Price/Product once it exists — the only
+    // supported way to remove it from active use is to set active:false. Treat a
+    // resource that's already gone (deleted directly in the Stripe dashboard) as
+    // success too, since the desired end state (not active) already holds.
     public async Task ArchivePriceAsync(string priceId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(priceId)) return;
-        await PostFormAsync($"prices/{Uri.EscapeDataString(priceId)}", new[] { Pair("active", "false") }, ct);
+        try
+        {
+            await PostFormAsync($"prices/{Uri.EscapeDataString(priceId)}", new[] { Pair("active", "false") }, ct);
+        }
+        catch (StripeResourceMissingException) { }
     }
 
     public async Task ArchiveProductAsync(string productId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(productId)) return;
-        await PostFormAsync($"products/{Uri.EscapeDataString(productId)}", new[] { Pair("active", "false") }, ct);
+        try
+        {
+            await PostFormAsync($"products/{Uri.EscapeDataString(productId)}", new[] { Pair("active", "false") }, ct);
+        }
+        catch (StripeResourceMissingException) { }
     }
 
     public async Task<string> CreateCheckoutSessionAsync(ApplicationUser user, string priceId, PlanInfo plan, CancellationToken ct = default)
@@ -262,7 +274,12 @@ public class StripeBillingService
         using var res = await _http.SendAsync(req, ct);
         var body = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
-            throw new InvalidOperationException($"Stripe request failed ({(int)res.StatusCode}): {ExtractStripeError(body) ?? res.ReasonPhrase}");
+        {
+            var (message, code) = ExtractStripeError(body);
+            if (res.StatusCode == System.Net.HttpStatusCode.NotFound || code == "resource_missing")
+                throw new StripeResourceMissingException(message ?? res.ReasonPhrase ?? "Stripe resource not found.");
+            throw new InvalidOperationException($"Stripe request failed ({(int)res.StatusCode}): {message ?? res.ReasonPhrase}");
+        }
 
         using var doc = JsonDocument.Parse(body);
         return doc.RootElement.Clone();
@@ -274,21 +291,29 @@ public class StripeBillingService
             throw new InvalidOperationException("Stripe secret key is not configured.");
     }
 
-    private static string? ExtractStripeError(string body)
+    private static (string? Message, string? Code) ExtractStripeError(string body)
     {
         try
         {
             using var doc = JsonDocument.Parse(body);
-            return doc.RootElement
-                .GetProperty("error")
-                .GetProperty("message")
-                .GetString();
+            var error = doc.RootElement.GetProperty("error");
+            var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;
+            var code = error.TryGetProperty("code", out var c) ? c.GetString() : null;
+            return (message, code);
         }
         catch
         {
-            return null;
+            return (null, null);
         }
     }
 
     private static KeyValuePair<string, string> Pair(string key, string value) => new(key, value);
+}
+
+// Thrown when Stripe reports the price/product/etc. no longer exists (404 or
+// error.code = "resource_missing"). Distinct from other failures so archive
+// calls can treat "already gone" as success instead of blocking the caller.
+public sealed class StripeResourceMissingException : InvalidOperationException
+{
+    public StripeResourceMissingException(string message) : base(message) { }
 }

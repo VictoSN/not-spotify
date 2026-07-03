@@ -213,16 +213,28 @@ public partial class BillingController : ControllerBase
         );
     }
 
+    // Prefer the stored id only when it's actually populated AND the row is truly
+    // Stripe-managed (i.e. this app created a Product/Price for it). Anything else
+    // — default-order overrides, legacy rows that predate the IsStripeManaged
+    // column, or any row that ended up with a blank stored id — resolves live from
+    // Stripe:*PriceId config so setting a user-secret and restarting takes effect.
+    private string ResolvedPriceId(BillingPlan plan)
+        => plan.IsStripeManaged && !string.IsNullOrWhiteSpace(plan.StripePriceId)
+            ? plan.StripePriceId
+            : _stripe.PriceIdForPlan(plan.Plan) ?? string.Empty;
+
     private BillingPlanDto BuildManagedPlan(BillingPlan plan)
-        => new(
+    {
+        var priceId = ResolvedPriceId(plan);
+        return new(
             plan.Plan,
             plan.Tier,
             plan.MaxMembers,
             plan.Interval,
             plan.Label,
             string.IsNullOrWhiteSpace(plan.CardTitle) ? DefaultCardTitle(plan.Plan, plan.Label) : plan.CardTitle,
-            plan.StripePriceId,
-            _stripe.HasSecretKey && !string.IsNullOrWhiteSpace(plan.StripePriceId),
+            priceId,
+            _stripe.HasSecretKey && !string.IsNullOrWhiteSpace(priceId),
             plan.DiscountLabel,
             SplitPerks(plan.Perks, plan.Plan, plan.MaxMembers),
             string.IsNullOrWhiteSpace(plan.FinePrint) ? DefaultFinePrint(plan.Plan) : plan.FinePrint,
@@ -232,10 +244,11 @@ public partial class BillingController : ControllerBase
             FormatPrice(plan.UnitAmount, plan.Currency, plan.Interval),
             !_stripe.HasSecretKey
                 ? "Configure Stripe secret key."
-                : string.IsNullOrWhiteSpace(plan.StripePriceId)
+                : string.IsNullOrWhiteSpace(priceId)
                     ? "Stripe price id is missing."
                     : null
         );
+    }
 
     private static string DefaultCardTitle(string plan, string label)
         => plan switch
@@ -314,7 +327,8 @@ public partial class BillingController : ControllerBase
                 managed.Label,
                 managed.DiscountLabel,
                 FormatPrice(managed.UnitAmount, managed.Currency, managed.Interval));
-            return (info, string.IsNullOrWhiteSpace(managed.StripePriceId) ? null : managed.StripePriceId);
+            var priceId = ResolvedPriceId(managed);
+            return (info, string.IsNullOrWhiteSpace(priceId) ? null : priceId);
         }
 
         var fallback = StripeBillingService.PlanFor(normalized);

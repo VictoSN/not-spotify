@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
-import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon } from '@heroicons/react/24/outline'
+import { ArrowTopRightOnSquareIcon, CheckIcon, MinusIcon, UsersIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Button } from '@/components/ui/Button'
 import { billingService, type BillingPlan, type BillingSubscription } from '@/services/billingService'
@@ -523,14 +523,28 @@ export function PremiumPage() {
                 )}
               </div>
               {isPremium ? (
-                <button
-                  onClick={manageBilling}
-                  disabled={busyPlan === 'portal'}
-                  className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:opacity-50"
-                >
-                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                  {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Shortcut for Duo/Family owners — the seat-invite UI lives on the
+                      Account page (Manage members section). Deep-linking here saves
+                      users from hunting for it. */}
+                  {planOverview?.isOwner && planOverview.maxMembers > 1 && (
+                    <Link
+                      to="/account?members=1"
+                      className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-bold text-black transition-all hover:scale-105 hover:bg-accent-dark active:scale-95"
+                    >
+                      <UsersIcon className="h-4 w-4" />
+                      Manage members
+                    </Link>
+                  )}
+                  <button
+                    onClick={manageBilling}
+                    disabled={busyPlan === 'portal'}
+                    className="inline-flex items-center gap-2 rounded-full border border-secondary/50 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:scale-105 hover:border-primary active:scale-95 disabled:opacity-50"
+                  >
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                    {busyPlan === 'portal' ? 'Opening…' : 'Manage billing'}
+                  </button>
+                </div>
               ) : (
                 <button
                   type="button"

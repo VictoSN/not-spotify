@@ -61,11 +61,28 @@ public class AdminBillingPlansController : ControllerBase
         var validation = Validate(req, out var normalized);
         if (validation is not null) return BadRequest(new { message = validation });
 
-        if (await _db.BillingPlans.AnyAsync(p => p.Plan == normalized.Plan, ct))
+        // A row for this key may already exist in either of two harmless states:
+        //   1. Inactive (soft-deleted built-in like duo/family/monthly/…) — we keep
+        //      the row on delete to stop the default from reappearing, so re-creation
+        //      would otherwise be blocked forever by the unique-key check.
+        //   2. Unmanaged default-order override (IsStripeManaged = false, carries a
+        //      SortOrder change only) — no real Stripe objects to preserve.
+        // Both cases should reactivate/replace the row with fresh Stripe objects
+        // rather than reject as "already exists".
+        var existing = await _db.BillingPlans.FirstOrDefaultAsync(p => p.Plan == normalized.Plan, ct);
+        if (existing is not null && existing.IsActive && existing.IsStripeManaged)
             return BadRequest(new { message = "A plan with that key already exists." });
 
         try
         {
+            // If reactivating a previously-managed row, archive its old Stripe
+            // objects first so we don't leave dangling active Products/Prices.
+            if (existing is not null && existing.IsStripeManaged)
+            {
+                await _stripe.ArchivePriceAsync(existing.StripePriceId, ct);
+                await _stripe.ArchiveProductAsync(existing.StripeProductId, ct);
+            }
+
             var productId = await _stripe.CreateProductAsync(normalized.Label, normalized.DiscountLabel, normalized.Plan, ct);
             var priceId = await _stripe.CreateRecurringPriceAsync(
                 productId,
@@ -77,30 +94,31 @@ public class AdminBillingPlansController : ControllerBase
                 normalized.Tier,
                 ct);
 
-            var plan = new BillingPlan
-            {
-                Plan = normalized.Plan,
-                Tier = normalized.Tier,
-                MaxMembers = normalized.MaxMembers,
-                Interval = normalized.Interval,
-                Label = normalized.Label,
-                CardTitle = normalized.CardTitle,
-                DiscountLabel = normalized.DiscountLabel,
-                Perks = string.Join('\n', normalized.Perks),
-                FinePrint = normalized.FinePrint,
-                AccentColor = normalized.AccentColor,
-                ButtonColor = normalized.ButtonColor,
-                ButtonTextColor = normalized.ButtonTextColor,
-                Currency = normalized.Currency,
-                UnitAmount = normalized.UnitAmount,
-                StripeProductId = productId,
-                StripePriceId = priceId,
-                IsActive = normalized.IsActive,
-                SortOrder = Math.Max(0, normalized.SortOrder),
-            };
+            var plan = existing ?? new BillingPlan();
+            plan.Plan = normalized.Plan;
+            plan.Tier = normalized.Tier;
+            plan.MaxMembers = normalized.MaxMembers;
+            plan.Interval = normalized.Interval;
+            plan.Label = normalized.Label;
+            plan.CardTitle = normalized.CardTitle;
+            plan.DiscountLabel = normalized.DiscountLabel;
+            plan.Perks = string.Join('\n', normalized.Perks);
+            plan.FinePrint = normalized.FinePrint;
+            plan.AccentColor = normalized.AccentColor;
+            plan.ButtonColor = normalized.ButtonColor;
+            plan.ButtonTextColor = normalized.ButtonTextColor;
+            plan.Currency = normalized.Currency;
+            plan.UnitAmount = normalized.UnitAmount;
+            plan.StripeProductId = productId;
+            plan.StripePriceId = priceId;
+            plan.IsStripeManaged = true;
+            plan.IsActive = normalized.IsActive;
+            plan.SortOrder = Math.Max(0, normalized.SortOrder);
+            plan.UpdatedAt = DateTime.UtcNow;
 
-            _db.BillingPlans.Add(plan);
+            if (existing is null) _db.BillingPlans.Add(plan);
             await _db.SaveChangesAsync(ct);
+
             if (!plan.IsActive)
             {
                 await _stripe.ArchivePriceAsync(plan.StripePriceId, ct);
@@ -256,7 +274,12 @@ public class AdminBillingPlansController : ControllerBase
         {
             if (plan is not null)
             {
-                if (_stripe.HasSecretKey && plan.IsStripeManaged)
+                // Archive whenever the row actually carries Stripe ids we created —
+                // not gated on IsStripeManaged, so a plan never loses its Stripe
+                // archiving just because that flag drifted from reality. Rows with no
+                // real ids (e.g. a default-order override) simply no-op here, since
+                // ArchivePriceAsync/ArchiveProductAsync skip blank ids.
+                if (_stripe.HasSecretKey)
                 {
                     await _stripe.ArchivePriceAsync(plan.StripePriceId, ct);
                     await _stripe.ArchiveProductAsync(plan.StripeProductId, ct);
@@ -335,6 +358,14 @@ public class AdminBillingPlansController : ControllerBase
         return plan;
     }
 
+    // IsStripeManaged = false rows exist only to carry a SortOrder/IsActive override
+    // for a built-in plan (created by drag-reordering or soft-deleting a default plan
+    // that had never been customized). They must NOT freeze a Stripe price id here —
+    // doing so previously meant that once one of these rows existed, setting
+    // Stripe:DuoPriceId/FamilyPriceId (etc.) via user-secrets and restarting the
+    // backend had no visible effect, because ResolvedPriceId always deferred to this
+    // stale/blank stored value instead of the live config. Leaving StripePriceId
+    // blank here means it's resolved live from config every time (see ResolvedPriceId).
     private BillingPlan CreateDefaultOverride(string planKey)
     {
         var info = StripeBillingService.AvailableCatalogue.First(p => string.Equals(p.Plan, planKey, StringComparison.OrdinalIgnoreCase));
@@ -355,12 +386,23 @@ public class AdminBillingPlansController : ControllerBase
             ButtonTextColor = "#000000",
             Currency = currency,
             UnitAmount = unitAmount,
-            StripePriceId = _stripe.PriceIdForPlan(info.Plan) ?? string.Empty,
             IsStripeManaged = false,
             IsActive = true,
             SortOrder = BuiltInSortOrder(info.Plan),
         };
     }
+
+    // If the row carries a real Stripe price id we created, use it. Otherwise —
+    // including for default-order overrides (IsStripeManaged = false) and legacy
+    // rows that predate this column (IsStripeManaged silently defaulted to true
+    // when the column was added, so a blank StripePriceId there means "never had
+    // one", not "managed with an empty id") — resolve live from the current
+    // Stripe:*PriceId user-secret/config so that adding a secret + restarting the
+    // backend takes effect immediately.
+    private string ResolvedPriceId(BillingPlan plan)
+        => plan.IsStripeManaged && !string.IsNullOrWhiteSpace(plan.StripePriceId)
+            ? plan.StripePriceId
+            : _stripe.PriceIdForPlan(plan.Plan) ?? string.Empty;
 
     private static string? Validate(UpsertAdminBillingPlanRequest req, out NormalizedPlan normalized)
     {
@@ -395,7 +437,7 @@ public class AdminBillingPlansController : ControllerBase
         return null;
     }
 
-    private static AdminBillingPlanDto ToDto(BillingPlan plan)
+    private AdminBillingPlanDto ToDto(BillingPlan plan)
         => new(
             plan.Id,
             true,
@@ -416,7 +458,7 @@ public class AdminBillingPlansController : ControllerBase
             plan.UnitAmount,
             FormatPrice(plan.UnitAmount, plan.Currency, plan.Interval),
             plan.StripeProductId,
-            plan.StripePriceId,
+            ResolvedPriceId(plan),
             plan.IsActive,
             plan.SortOrder,
             plan.CreatedAt,

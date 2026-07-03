@@ -14,6 +14,7 @@ import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { notify } from '@/utils/toast'
+import { adminPageClass } from './adminPageLayout'
 import { useDebounce } from '@/hooks/useDebounce'
 
 type Tab = 'pending' | 'approved' | 'rejected' | 'all'
@@ -139,7 +140,7 @@ export function AdminTracksListPage() {
   }, [tracks, debouncedQuery])
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className={adminPageClass}>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">Tracks</h1>

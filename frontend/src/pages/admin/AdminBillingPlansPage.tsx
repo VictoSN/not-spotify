@@ -14,6 +14,7 @@ import {
   type AdminBillingPlan,
   type UpsertBillingPlanPayload,
 } from '@/services/adminService'
+import { adminPageClass } from './adminPageLayout'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
@@ -306,7 +307,7 @@ export function AdminBillingPlansPage() {
     runOrPrompt(() => void movePlan(plan, direction))
 
   return (
-    <div className="mx-auto max-w-6xl p-4 sm:p-6">
+    <div className={adminPageClass}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-primary sm:text-3xl">Billing plans</h1>

@@ -28,6 +28,7 @@ public class AuthController : ControllerBase
     private readonly TokenService _tokens;
     private readonly RegistrationVerificationService _registration;
     private readonly PasswordResetService _passwordReset;
+    private readonly CaptchaService _captcha;
     private readonly AppDbContext _db;
     private readonly JwtOptions _jwt;
     private readonly MediaMapper _mapper;
@@ -41,6 +42,7 @@ public class AuthController : ControllerBase
         TokenService tokens,
         RegistrationVerificationService registration,
         PasswordResetService passwordReset,
+        CaptchaService captcha,
         AppDbContext db,
         JwtOptions jwt,
         MediaMapper mapper,
@@ -53,6 +55,7 @@ public class AuthController : ControllerBase
         _tokens = tokens;
         _registration = registration;
         _passwordReset = passwordReset;
+        _captcha = captcha;
         _db = db;
         _jwt = jwt;
         _mapper = mapper;
@@ -62,9 +65,17 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>Whether the SPA should render the reCAPTCHA widget on login/signup, and with which site key.</summary>
+    [HttpGet("captcha")]
+    public ActionResult<CaptchaConfigResponse> CaptchaConfig()
+        => Ok(new CaptchaConfigResponse(_captcha.IsEnabled, _captcha.IsEnabled ? _captcha.SiteKey : null));
+
     [HttpPost("signup")]
     public async Task<ActionResult<SignupStartResponse>> Signup([FromBody] SignupRequest req)
     {
+        if (!await VerifyCaptchaAsync(req.CaptchaToken))
+            return BadRequest(new { message = "CAPTCHA verification failed. Please try again." });
+
         var email = req.Email.Trim().ToLowerInvariant();
         var existing = await _users.FindByEmailAsync(email);
         if (existing is not null)
@@ -185,6 +196,9 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest req)
     {
+        if (!await VerifyCaptchaAsync(req.CaptchaToken))
+            return BadRequest(new { message = "CAPTCHA verification failed. Please try again." });
+
         var user = await _users.FindByEmailAsync(req.Email);
         if (user is null || !await _users.CheckPasswordAsync(user, req.Password))
             return Unauthorized(new { message = "Invalid email or password." });
@@ -743,6 +757,9 @@ public class AuthController : ControllerBase
         var port = uri.Port == defaultPort ? string.Empty : $":{uri.Port}";
         return $"{uri.Scheme}://{uri.Host}{port}";
     }
+
+    private Task<bool> VerifyCaptchaAsync(string? token)
+        => _captcha.VerifyAsync(token, HttpContext.Connection.RemoteIpAddress?.ToString(), HttpContext.RequestAborted);
 
     private async Task RevokeAllRefreshTokensAsync(Guid userId)
     {

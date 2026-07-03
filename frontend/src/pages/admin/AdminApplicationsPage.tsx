@@ -6,6 +6,7 @@ import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { ReviewNoteForm } from '@/components/admin/ReviewNoteForm'
 import { useDebounce } from '@/hooks/useDebounce'
+import { adminPageClass } from './adminPageLayout'
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -80,7 +81,7 @@ export function AdminApplicationsPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className={adminPageClass}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-primary">Artist Applications</h1>
         <p className="text-secondary text-sm mt-1">Review requests from users who want to publish music.</p>

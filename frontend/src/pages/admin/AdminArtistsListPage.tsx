@@ -12,6 +12,7 @@ import { Spinner } from '@/components/ui/Spinner'
 import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { SearchInput } from '@/components/common/SearchInput'
 import { useDebounce } from '@/hooks/useDebounce'
+import { adminPageClass } from './adminPageLayout'
 
 export function AdminArtistsListPage() {
   const navigate = useNavigate()
@@ -126,7 +127,7 @@ export function AdminArtistsListPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className={adminPageClass}>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">Artists</h1>

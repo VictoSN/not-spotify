@@ -225,6 +225,7 @@ builder.Services.AddScoped<NotSpotify.Api.Services.WebPushService>();
 builder.Services.AddScoped<SmartPlaylistService>();
 builder.Services.AddScoped<AudioWaveformService>();
 builder.Services.AddHttpClient(); // IHttpClientFactory for AuthController's Google OAuth code flow
+builder.Services.AddSingleton<CaptchaService>();
 builder.Services.Configure<StripeBillingOptions>(builder.Configuration.GetSection("Stripe"));
 builder.Services.AddHttpClient<StripeBillingService>();
 builder.Services.Configure<TicketmasterOptions>(builder.Configuration.GetSection("Ticketmaster"));

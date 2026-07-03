@@ -7,6 +7,7 @@ import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { ImageCropModal } from '@/components/common/ImageCropModal'
+import { adminPageNarrowClass } from './adminPageLayout'
 
 interface FormValues {
   name: string
@@ -95,7 +96,7 @@ export function AdminArtistFormPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className={adminPageNarrowClass}>
       <Link to="/admin/artists" className="inline-flex items-center gap-1 text-secondary hover:text-primary text-sm mb-4">
         <ArrowLeftIcon className="w-4 h-4" />
         Back to artists

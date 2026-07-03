@@ -10,6 +10,7 @@ import { SearchInput } from '@/components/common/SearchInput'
 import { notify } from '@/utils/toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useConfirm } from '@/hooks/useConfirm'
+import { adminPageClass } from './adminPageLayout'
 
 export function AdminPlaylistsPage() {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
@@ -82,7 +83,7 @@ export function AdminPlaylistsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className={adminPageClass}>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">Playlists</h1>

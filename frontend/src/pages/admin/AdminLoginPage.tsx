@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -8,8 +8,10 @@ import {
   ShieldCheckIcon,
   ShieldExclamationIcon,
 } from '@heroicons/react/24/outline'
+import { CaptchaWidget, type CaptchaWidgetHandle } from '@/components/auth/CaptchaWidget'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
+import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -33,6 +35,9 @@ export function AdminLoginPage() {
   const { login, logout, isLoading, error, isAuthenticated, user, clearError } = useAuthStore()
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
   const [showPw, setShowPw] = useState(false)
+  const [captcha, setCaptcha] = useState<CaptchaConfig | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaWidgetHandle>(null)
 
   const isAdmin = user?.roles?.includes('Admin') ?? false
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/admin'
@@ -42,9 +47,24 @@ export function AdminLoginPage() {
     if (isAuthenticated && isAdmin) navigate(from, { replace: true })
   }, [isAuthenticated, isAdmin, from, navigate])
 
+  useEffect(() => {
+    let active = true
+    authService.captchaConfig()
+      .then((config) => { if (active) setCaptcha(config) })
+      .catch(() => { /* endpoint unavailable — render without captcha */ })
+    return () => { active = false }
+  }, [])
+
+  const captchaRequired = (captcha?.enabled ?? false) && !captchaToken
+
   const onSubmit = async (data: FormValues) => {
     clearError()
-    await login(data.email, data.password)
+    try {
+      await login(data.email, data.password, captchaToken)
+    } catch {
+      // reCAPTCHA tokens are single-use — require a fresh solve after a rejection.
+      captchaRef.current?.reset()
+    }
   }
 
   return (
@@ -139,7 +159,16 @@ export function AdminLoginPage() {
               </div>
             )}
 
-            <Button type="submit" size="lg" className="mt-1 w-full" disabled={isLoading}>
+            {captcha?.enabled && captcha.siteKey && (
+              <CaptchaWidget
+                ref={captchaRef}
+                siteKey={captcha.siteKey}
+                onToken={setCaptchaToken}
+                className="flex justify-center"
+              />
+            )}
+
+            <Button type="submit" size="lg" className="mt-1 w-full" disabled={isLoading || captchaRequired}>
               {isLoading ? <Spinner size="sm" /> : (
                 <span className="inline-flex items-center gap-2">
                   <ShieldCheckIcon className="h-5 w-5" />

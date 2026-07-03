@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { notify } from '@/utils/toast'
+import { adminPageMediumClass } from './adminPageLayout'
 
 type Filter = 'pending' | 'approved' | 'rejected' | 'all'
 
@@ -62,7 +63,7 @@ export function AdminApprovalsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className={adminPageMediumClass}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-primary">Approvals</h1>
         <p className="mt-1 text-sm text-secondary">

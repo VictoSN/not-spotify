@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, ArrowPathIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { CaptchaWidget, type CaptchaWidgetHandle } from '@/components/auth/CaptchaWidget'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Spinner } from '@/components/ui/Spinner'
@@ -9,7 +10,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useTranslation } from '@/i18n/useTranslation'
 import { api } from '@/services/api'
 import { authService } from '@/services/authService'
-import type { SignupStartResult } from '@/services/authService'
+import type { CaptchaConfig, SignupStartResult } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
@@ -47,10 +48,21 @@ export function SignupPage() {
   const [otp, setOtp] = useState('')
   const [resending, setResending] = useState(false)
   const [verificationNotice, setVerificationNotice] = useState<string | null>(null)
+  const [captcha, setCaptcha] = useState<CaptchaConfig | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaWidgetHandle>(null)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
+
+  useEffect(() => {
+    let active = true
+    authService.captchaConfig()
+      .then((config) => { if (active) setCaptcha(config) })
+      .catch(() => { /* endpoint unavailable — render without captcha */ })
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -67,9 +79,16 @@ export function SignupPage() {
   const onSubmit = async (data: FormValues) => {
     clearError()
     setSocialNotice(null)
-    const result = await signup(data.name, data.email, data.password)
-    setPending({ ...result, wantsArtist: data.wantsArtist, name: data.name })
+    try {
+      const result = await signup(data.name, data.email, data.password, captchaToken)
+      setPending({ ...result, wantsArtist: data.wantsArtist, name: data.name })
+    } catch {
+      // reCAPTCHA tokens are single-use — require a fresh solve after a rejection.
+      captchaRef.current?.reset()
+    }
   }
+
+  const captchaRequired = (captcha?.enabled ?? false) && !captchaToken
 
   const verifyOtp = async (event: FormEvent) => {
     event.preventDefault()
@@ -280,7 +299,16 @@ export function SignupPage() {
             </div>
           )}
 
-          <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+          {captcha?.enabled && captcha.siteKey && (
+            <CaptchaWidget
+              ref={captchaRef}
+              siteKey={captcha.siteKey}
+              onToken={setCaptchaToken}
+              className="flex justify-center"
+            />
+          )}
+
+          <button type="submit" className={primaryButtonClass} disabled={isLoading || captchaRequired}>
             {isLoading ? <Spinner size="sm" /> : t('auth.signup.submit')}
           </button>
         </form>

@@ -1,8 +1,8 @@
 import type { User } from '@/types/user'
 import { api } from './api'
 
-interface LoginPayload { email: string; password: string }
-interface SignupPayload { name: string; email: string; password: string }
+interface LoginPayload { email: string; password: string; captchaToken?: string | null }
+interface SignupPayload { name: string; email: string; password: string; captchaToken?: string | null }
 export interface AuthTokens { accessToken: string; user: User }
 export interface SignupStartResult {
   message: string
@@ -10,6 +10,11 @@ export interface SignupStartResult {
   expiresAt: string
   developmentCode?: string | null
 }
+export interface CaptchaConfig {
+  enabled: boolean
+  siteKey: string | null
+}
+
 export interface ExternalAuthProviderState {
   enabled: boolean
   configured: boolean
@@ -71,6 +76,11 @@ export const authService = {
 
   async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
     await api.post('/auth/reset-password', { email, code, newPassword })
+  },
+
+  async captchaConfig(): Promise<CaptchaConfig> {
+    const res = await api.get<CaptchaConfig>('/auth/captcha')
+    return res.data
   },
 
   async externalProviders(): Promise<ExternalAuthProviders> {

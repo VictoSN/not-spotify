@@ -14,6 +14,7 @@ import { SearchInput } from '@/components/common/SearchInput'
 import { useConfirm } from '@/hooks/useConfirm'
 import { notify } from '@/utils/toast'
 import { useDebounce } from '@/hooks/useDebounce'
+import { adminPageClass } from './adminPageLayout'
 
 const inputCls =
   'w-full bg-elevated border border-elevated/50 focus:border-accent text-primary rounded-md px-4 py-2.5 text-sm focus:outline-none'
@@ -209,7 +210,7 @@ export function AdminAdsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto">
+    <div className={adminPageClass}>
       <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">Advertisements</h1>

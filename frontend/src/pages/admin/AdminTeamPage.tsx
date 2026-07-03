@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { AdminTableSkeleton } from '@/components/common/AdminSkeleton'
 import { useConfirm } from '@/hooks/useConfirm'
 import { notify } from '@/utils/toast'
+import { adminPageMediumClass } from './adminPageLayout'
 
 export function AdminTeamPage() {
   const confirm = useConfirm()
@@ -72,7 +73,7 @@ export function AdminTeamPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    <div className={adminPageMediumClass}>
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-primary">Team &amp; roles</h1>
         <p className="mt-1 text-sm text-secondary">

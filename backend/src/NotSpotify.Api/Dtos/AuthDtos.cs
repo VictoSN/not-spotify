@@ -6,7 +6,8 @@ public record SignupRequest(
     [Required, EmailAddress] string Email,
     [Required, MinLength(8)] string Password,
     [Required] string Name,
-    string? Country
+    string? Country,
+    string? CaptchaToken
 );
 
 public record SignupStartResponse(
@@ -27,7 +28,8 @@ public record ResendSignupOtpRequest(
 
 public record LoginRequest(
     [Required, EmailAddress] string Email,
-    [Required] string Password
+    [Required] string Password,
+    string? CaptchaToken
 );
 
 public record ChangePasswordRequest(
@@ -55,6 +57,9 @@ public record ResetPasswordRequest(
 public record AuthResponse(string AccessToken, UserDto User);
 
 public record AccessTokenResponse(string AccessToken);
+
+/// <summary>Tells the SPA whether to render the reCAPTCHA widget (SiteKey is public by design).</summary>
+public record CaptchaConfigResponse(bool Enabled, string? SiteKey);
 
 /// <summary>External login provider state. Available means visible/usable on the public auth pages.</summary>
 public record ExternalAuthProviderDto(bool Enabled, bool Configured, bool Available);

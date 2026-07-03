@@ -11,8 +11,8 @@ interface AuthState {
   isInitializing: boolean
   error: string | null
 
-  login: (email: string, password: string) => Promise<void>
-  signup: (name: string, email: string, password: string) => Promise<SignupStartResult>
+  login: (email: string, password: string, captchaToken?: string | null) => Promise<void>
+  signup: (name: string, email: string, password: string, captchaToken?: string | null) => Promise<SignupStartResult>
   verifySignup: (email: string, code: string) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   logout: () => Promise<void>
@@ -30,10 +30,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   isInitializing: true,
   error: null,
 
-  login: async (email, password) => {
+  login: async (email, password, captchaToken) => {
     set({ isLoading: true, error: null })
     try {
-      const { accessToken, user } = await authService.login({ email, password })
+      const { accessToken, user } = await authService.login({ email, password, captchaToken })
       ;(window as { __authToken?: string }).__authToken = accessToken
       set({ user, accessToken, isAuthenticated: true, isLoading: false })
     } catch (err) {
@@ -44,10 +44,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signup: async (name, email, password) => {
+  signup: async (name, email, password, captchaToken) => {
     set({ isLoading: true, error: null })
     try {
-      const result = await authService.signup({ name, email, password })
+      const result = await authService.signup({ name, email, password, captchaToken })
       set({ isLoading: false })
       return result
     } catch (err) {

@@ -14,6 +14,7 @@ import {
 import { adminService, type AdminDashboardStats, type AdminTrendPoint } from '@/services/adminService'
 import { AreaChart, type AreaPoint } from '@/components/common/AreaChart'
 import { AdminStatTilesSkeleton } from '@/components/common/AdminSkeleton'
+import { adminPageClass } from './adminPageLayout'
 
 /** Maps an admin trend series to the AreaChart's point shape. */
 function toAreaData(data: AdminTrendPoint[]): AreaPoint[] {
@@ -119,7 +120,7 @@ export function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+      <div className={`${adminPageClass} space-y-6`}>
         <div className="space-y-2">
           <div className="h-4 w-32 rounded bg-elevated/60 animate-pulse" />
           <div className="h-8 w-64 rounded bg-elevated/70 animate-pulse" />
@@ -139,7 +140,7 @@ export function AdminDashboardPage() {
 
   if (!stats) {
     return (
-      <div className="mx-auto max-w-4xl p-6">
+      <div className={adminPageClass}>
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
           {error ?? 'Dashboard unavailable.'}
         </div>
@@ -150,7 +151,7 @@ export function AdminDashboardPage() {
   const totalPending = stats.pendingApplications + stats.pendingAlbums + stats.pendingTracks
 
   return (
-    <div className="mx-auto max-w-7xl p-5 sm:p-6 lg:p-8">
+    <div className={adminPageClass}>
       <div className="mb-7 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-accent">

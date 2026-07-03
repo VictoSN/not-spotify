@@ -9,6 +9,7 @@ import type { MoodTag } from '@/types/mood'
 import { adminService } from '@/services/adminService'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { adminPageNarrowClass } from './adminPageLayout'
 
 interface FormValues {
   title: string
@@ -149,7 +150,7 @@ export function AdminTrackFormPage() {
   const inputCls = 'w-full bg-elevated border border-elevated/50 focus:border-accent text-primary rounded-md px-4 py-3 text-sm focus:outline-none'
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className={adminPageNarrowClass}>
       {/* Hidden audio element for duration detection */}
       <audio ref={audioRef} className="hidden" />
 

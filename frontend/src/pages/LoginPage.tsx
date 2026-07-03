@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { CaptchaWidget, type CaptchaWidgetHandle } from '@/components/auth/CaptchaWidget'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Spinner } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useTranslation } from '@/i18n/useTranslation'
-import { authService } from '@/services/authService'
+import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
@@ -39,10 +40,21 @@ export function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
   const [facebookEnabled, setFacebookEnabled] = useState(false)
+  const [captcha, setCaptcha] = useState<CaptchaConfig | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const captchaRef = useRef<CaptchaWidgetHandle>(null)
 
   useEffect(() => {
     if (isAuthenticated) navigate('/', { replace: true })
   }, [isAuthenticated, navigate])
+
+  useEffect(() => {
+    let active = true
+    authService.captchaConfig()
+      .then((config) => { if (active) setCaptcha(config) })
+      .catch(() => { /* endpoint unavailable — render without captcha */ })
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -62,17 +74,21 @@ export function LoginPage() {
     else if (oauth === 'unconfigured') setSocialNotice(t('auth.login.socialUnavailable', { provider: 'Google' }))
   }, [params, t])
 
-  const onSubmit = async (data: FormValues) => {
+  // reCAPTCHA tokens are single-use: after a rejected login the widget must be
+  // solved again, so reset it on every failure.
+  const doLogin = async (email: string, password: string) => {
     clearError()
     setSocialNotice(null)
-    await login(data.email, data.password)
+    try {
+      await login(email, password, captchaToken)
+    } catch {
+      captchaRef.current?.reset()
+    }
   }
 
-  const devLogin = (email: string, password: string) => {
-    clearError()
-    setSocialNotice(null)
-    login(email, password)
-  }
+  const onSubmit = (data: FormValues) => doLogin(data.email, data.password)
+
+  const captchaRequired = (captcha?.enabled ?? false) && !captchaToken
 
   const DEV_ACCOUNTS = [
     { label: 'alex (admin)', email: 'alex@example.com', password: 'Password123!' },
@@ -146,14 +162,23 @@ export function LoginPage() {
             </div>
           )}
 
-          <button type="submit" className={primaryButtonClass} disabled={isLoading}>
+          {captcha?.enabled && captcha.siteKey && (
+            <CaptchaWidget
+              ref={captchaRef}
+              siteKey={captcha.siteKey}
+              onToken={setCaptchaToken}
+              className="flex justify-center"
+            />
+          )}
+
+          <button type="submit" className={primaryButtonClass} disabled={isLoading || captchaRequired}>
             {isLoading ? <Spinner size="sm" /> : t('auth.login.submit')}
           </button>
 
           <button
             type="button"
-            onClick={() => devLogin('alex@example.com', 'Password123!')}
-            disabled={isLoading}
+            onClick={() => void doLogin('alex@example.com', 'Password123!')}
+            disabled={isLoading || captchaRequired}
             className="h-12 w-full rounded-full border border-secondary/60 bg-transparent px-8 text-sm font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-70"
           >
             {t('auth.login.admin')}
@@ -168,8 +193,8 @@ export function LoginPage() {
                 <button
                   key={email}
                   type="button"
-                  onClick={() => devLogin(email, password)}
-                  disabled={isLoading}
+                  onClick={() => void doLogin(email, password)}
+                  disabled={isLoading || captchaRequired}
                   className="rounded border border-elevated/60 bg-elevated px-3 py-1.5 text-xs font-semibold text-secondary transition-colors hover:bg-elevated/80 hover:text-primary"
                 >
                   {label}

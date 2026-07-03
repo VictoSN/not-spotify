@@ -4,6 +4,7 @@ import { adminService, type AdminAuthProviders } from '@/services/adminService'
 import { useConfirm } from '@/hooks/useConfirm'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { adminPageMediumClass } from './adminPageLayout'
 
 export function AdminDevPage() {
   const confirm = useConfirm()
@@ -67,7 +68,7 @@ export function AdminDevPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className={adminPageMediumClass}>
       <h1 className="text-3xl font-bold text-primary mb-1">Dev Tools</h1>
       <p className="text-secondary text-sm mb-8">Development-only utilities. Do not use in production.</p>
 

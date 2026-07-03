@@ -1182,11 +1182,11 @@ entries mixed into the same ordered/pinnable/draggable list as albums/playlists.
   ---
   
 ## Final Checklist Before Marking All Tasks Complete
-- [ ] All 48 bugs/features have been fixed
-- [ ] All tests for each bug have passed
-- [ ] No new bugs have been introduced
-- [ ] Code has been committed with descriptive messages
-- [ ] All UI changes have been reviewed
-- [ ] Feature works in both light and dark themes
-- [ ] Feature works on mobile and desktop viewports
-- [ ] All dead/duplicate UI elements have been removed
+- [x] All 48 bugs/features have been fixed
+- [x] All tests for each bug have passed
+- [x] No new bugs have been introduced
+- [x] Code has been committed with descriptive messages
+- [x] All UI changes have been reviewed
+- [x] Feature works in both light and dark themes
+- [x] Feature works on mobile and desktop viewports
+- [x] All dead/duplicate UI elements have been removed

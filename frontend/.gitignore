@@ -11,6 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+public/app-preview.svg
+public/favicon.svg
+public/icons.svg
+public/icons/
+src/assets/fonts/
+src-tauri/icons/*.png
+src-tauri/icons/*.ico
+src-tauri/icons/*.icns
+src-tauri/icons/ios/
+src-tauri/icons/android/**/*.png
 
 # Editor directories and files
 .vscode/*

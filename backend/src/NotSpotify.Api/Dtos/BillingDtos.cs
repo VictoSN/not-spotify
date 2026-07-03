@@ -6,9 +6,15 @@ public record BillingPlanDto(
     int MaxMembers,     // total seats incl. the owner (1 = no sharing)
     string Interval,    // billing interval: monthly | yearly
     string Label,
+    string CardTitle,
     string PriceId,
     bool IsConfigured,
     string? DiscountLabel,
+    string[] Perks,
+    string FinePrint,
+    string AccentColor,
+    string ButtonColor,
+    string ButtonTextColor,
     string? DisplayPrice,
     string? MissingConfiguration
 );

@@ -113,21 +113,58 @@ export function InstallAppPage() {
             </a>
 
             {showInstructions && (
-              <div className="mt-6 max-w-lg rounded-lg border border-black/15 bg-white/35 p-4 text-sm font-semibold leading-6 backdrop-blur-sm" aria-live="polite">
-                <p className="font-black">Install the web app</p>
-                <p className="mt-1">
-                  {platform === 'ios'
-                    ? 'Open this page in Safari, choose Share, then Add to Home Screen.'
-                    : platform === 'macos'
-                      ? 'In Safari choose File → Add to Dock, or use the install icon in Chrome.'
-                      : 'Open your browser menu and choose Install app or Add to Home screen.'}
-                </p>
+              <div
+                className="mt-6 grid max-w-2xl gap-3 xl:grid-cols-2"
+                aria-live="polite"
+              >
+                {[
+                  {
+                    heading: 'On iPhone or iPad',
+                    steps: [
+                      'Open this page in Safari on your device.',
+                      'Tap the Share button, then choose “Add to Home Screen”.',
+                      'Tap Add — Not Spotify appears on your home screen.',
+                    ],
+                  },
+                  {
+                    heading: 'On Android tablet or phone',
+                    steps: [
+                      'Open this page in Chrome on your device.',
+                      'Open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.',
+                      'Confirm to install — Not Spotify appears in your app drawer.',
+                    ],
+                  },
+                ].map(({ heading, steps }) => (
+                  <div
+                    key={heading}
+                    className="rounded-lg border border-black/15 bg-white/35 p-4 text-sm leading-6 backdrop-blur-sm"
+                  >
+                    <p className="font-black">{heading}</p>
+                    <ol className="mt-3 space-y-2">
+                      {steps.map((step, index) => (
+                        <li key={step} className="flex gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-black/85 text-[11px] font-black text-white">
+                            {index + 1}
+                          </span>
+                          <span className="font-semibold text-black/80">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          <div className="relative mx-auto hidden h-[390px] w-full max-w-[650px] lg:block" aria-hidden="true">
-            <div className="absolute left-1/2 top-2 w-[91%] -translate-x-1/2 rounded-[22px] border-[5px] border-[#171717] bg-[#171717] p-2 shadow-[0_28px_55px_rgba(0,0,0,0.32)]">
+          {/*
+            Laptop illustration. Screen + base are stacked in a flex column so they
+            stay glued together at every width — the previous absolutely-positioned
+            layout let the aspect-ratio screen shrink upward while the base stayed
+            pinned to the bottom, creating a visible gap. Hidden below xl because
+            the shell's sidebar makes narrower widths too cramped for it to read.
+          */}
+          <div className="relative mx-auto hidden w-full max-w-[650px] flex-col items-center xl:flex" aria-hidden="true">
+            <div className="w-[91%] rounded-[22px] border-[5px] border-[#171717] bg-[#171717] p-2 shadow-[0_28px_55px_rgba(0,0,0,0.32)]">
               <div className="aspect-[16/10] overflow-hidden rounded-[13px] bg-[#121212]">
                 <div className="flex h-9 items-center gap-2 border-b border-white/5 bg-black px-3">
                   <SpotifyMark className="h-4 w-4 text-[#1ed760]" />
@@ -168,8 +205,10 @@ export function InstallAppPage() {
                 </div>
               </div>
             </div>
-            <div className="absolute bottom-2 left-1/2 h-6 w-full -translate-x-1/2 rounded-b-[48px] bg-[linear-gradient(to_bottom,#d8d8d8,#8c8c8c)] shadow-xl" />
-            <div className="absolute bottom-2 left-1/2 h-1.5 w-28 -translate-x-1/2 rounded-b-full bg-[#666]" />
+            <div className="relative w-full">
+              <div className="h-6 w-full rounded-b-[48px] bg-[linear-gradient(to_bottom,#d8d8d8,#8c8c8c)] shadow-xl" />
+              <div className="absolute left-1/2 top-0 h-1.5 w-28 -translate-x-1/2 rounded-b-full bg-[#666]" />
+            </div>
           </div>
         </div>
       </section>

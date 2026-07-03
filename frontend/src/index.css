@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "./assets/fonts/gotham.css";
-@import "./assets/fonts/circular.css";
 
 :root {
   --track-actions-width: 114px;
@@ -36,7 +34,7 @@
   --color-muted: var(--c-muted);
 
   /* Fonts */
-  --font-sans: "Circular Std", "Gotham", "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: "Montserrat Variable", "Montserrat", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
 /*

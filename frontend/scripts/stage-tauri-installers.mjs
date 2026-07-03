@@ -1,9 +1,9 @@
-import { copyFileSync, mkdirSync, readdirSync, statSync } from 'node:fs'
-import { dirname, extname, resolve } from 'node:path'
+import { readdirSync, statSync } from 'node:fs'
+import { dirname, extname, relative, resolve } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
 const frontendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const repoRoot = resolve(frontendRoot, '..')
 const bundleRoot = resolve(
   frontendRoot,
   'src-tauri',
@@ -11,14 +11,8 @@ const bundleRoot = resolve(
   'release',
   'bundle',
 )
-const downloadsRoot = resolve(
-  repoRoot,
-  'backend',
-  'src',
-  'NotSpotify.Api',
-  'wwwroot',
-  'downloads',
-)
+const s3Bucket = process.env.INSTALLER_S3_BUCKET
+const s3Prefix = (process.env.INSTALLER_S3_PREFIX || 'downloads').replace(/^\/|\/$/g, '')
 
 function newestFile(folder, extension) {
   const directory = resolve(bundleRoot, folder)
@@ -62,9 +56,33 @@ const targets =
           },
         ]
 
-mkdirSync(downloadsRoot, { recursive: true })
 for (const { source, destination } of targets) {
-  const output = resolve(downloadsRoot, destination)
-  copyFileSync(source, output)
-  console.log(`Staged ${source} -> ${output}`)
+  if (!s3Bucket) {
+    console.log(
+      `Built ${relative(frontendRoot, source)}; set INSTALLER_S3_BUCKET to upload ${destination}.`,
+    )
+    continue
+  }
+
+  const s3Target = `s3://${s3Bucket}/${s3Prefix}/${destination}`
+  const result = spawnSync(
+    'aws',
+    [
+      's3',
+      'cp',
+      source,
+      s3Target,
+      '--cache-control',
+      'public,max-age=86400',
+      '--content-disposition',
+      `attachment; filename="${destination}"`,
+    ],
+    { stdio: 'inherit' },
+  )
+
+  if (result.status !== 0) {
+    throw new Error(`Failed to upload ${destination} to ${s3Target}`)
+  }
+
+  console.log(`Uploaded ${source} -> ${s3Target}`)
 }

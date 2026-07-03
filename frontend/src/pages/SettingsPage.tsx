@@ -11,6 +11,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { LANGUAGES } from '@/i18n/translations'
 import { OfflineDownloads } from '@/components/settings/OfflineDownloads'
 import { Slider } from '@/components/ui/Slider'
+import { APP_ICON_192_URL } from '@/config/assets'
 import { useAppZoomPreference } from '@/hooks/useAppZoom'
 import { useAutostart } from '@/hooks/useAutostart'
 import {
@@ -335,7 +336,7 @@ export function SettingsPage() {
         await fireNotification(
           'NotSpotify (local test)',
           'If you see this bottom-right toast, OS notifications work in this browser.',
-          '/icons/icon-192.png',
+          APP_ICON_192_URL,
           '/settings',
         )
       } catch (e) {
@@ -368,7 +369,7 @@ export function SettingsPage() {
       toast.error('Allow notifications first (Windows may have blocked it).')
       return
     }
-    await fireNotification('NotSpotify', 'Native notifications are working 🎉', '/icons/icon-192.png', '/')
+    await fireNotification('NotSpotify', 'Native notifications are working 🎉', APP_ICON_192_URL, '/')
     toast.success('Test sent — watch for a Windows toast (Action Center if not on screen).')
   }
 

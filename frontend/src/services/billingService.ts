@@ -1,6 +1,6 @@
 import { api } from './api'
 
-export type PlanKey = 'monthly' | 'yearly' | 'duo' | 'family' | 'student'
+export type PlanKey = string
 export type PlanTier = 'individual' | 'duo' | 'family' | 'student'
 
 export interface BillingPlan {
@@ -9,9 +9,15 @@ export interface BillingPlan {
   maxMembers: number
   interval: 'monthly' | 'yearly'
   label: string
+  cardTitle: string
   priceId: string
   isConfigured: boolean
   discountLabel: string | null
+  perks: string[]
+  finePrint: string
+  accentColor: string
+  buttonColor: string
+  buttonTextColor: string
   displayPrice: string | null
   missingConfiguration: string | null
 }

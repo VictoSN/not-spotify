@@ -15,12 +15,10 @@ public class DownloadsController : ControllerBase
         };
 
     private readonly IStorageService _storage;
-    private readonly IWebHostEnvironment _env;
 
-    public DownloadsController(IStorageService storage, IWebHostEnvironment env)
+    public DownloadsController(IStorageService storage)
     {
         _storage = storage;
-        _env = env;
     }
 
     [HttpGet("{fileName}")]
@@ -36,13 +34,6 @@ public class DownloadsController : ControllerBase
         var bytes = await _storage.ReadAsync($"downloads/{fileName}", ct);
         if (bytes is not null)
             return File(bytes, contentType, fileName, enableRangeProcessing: true);
-
-        var webRootPath = string.IsNullOrWhiteSpace(_env.WebRootPath)
-            ? Path.Combine(_env.ContentRootPath, "wwwroot")
-            : _env.WebRootPath;
-        var localPath = Path.Combine(webRootPath, "downloads", fileName);
-        if (System.IO.File.Exists(localPath))
-            return PhysicalFile(localPath, contentType, fileName, enableRangeProcessing: true);
 
         return NotFound();
     }

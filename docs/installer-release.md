@@ -7,16 +7,11 @@ The public `/download` page uses a native Windows installer and the installable 
 From `frontend/` on Windows:
 
 ```powershell
+$env:INSTALLER_S3_BUCKET = "<bucket>"
 npm run tauri:build
 ```
 
-The command builds the production frontend, creates NSIS (`.exe`) and MSI installers, and stages stable copies in:
-
-```text
-backend/src/NotSpotify.Api/wwwroot/downloads/
-```
-
-The backend publishes `wwwroot` automatically. Its static-file middleware serves installer extensions as attachments with CDN-friendly cache headers. In production, the existing CloudFront API origin therefore exposes:
+The command builds the production frontend, creates NSIS (`.exe`) and MSI installers, and uploads stable copies to S3 under `downloads/`. In production, the existing CloudFront/API origin exposes:
 
 ```text
 https://<api-or-cdn>/downloads/not-spotify-windows-x64-setup.exe
@@ -25,15 +20,14 @@ https://<api-or-cdn>/downloads/not-spotify-windows-x64.msi
 
 `VITE_INSTALLER_BASE_URL` can point the frontend at a separate S3/CloudFront distribution. If it is unset, the download page uses `VITE_API_URL`.
 
-## Optional separate S3 upload
+## Upload options
 
-After building, teams that keep release artifacts in a dedicated bucket can sync the staged directory with their normal deployment credentials:
+The release helper reads these optional environment variables:
 
-```powershell
-aws s3 sync ..\backend\src\NotSpotify.Api\wwwroot\downloads s3://<bucket>/downloads --cache-control "public,max-age=86400" --content-disposition "attachment"
-```
+- `INSTALLER_S3_BUCKET`: bucket to upload to.
+- `INSTALLER_S3_PREFIX`: object prefix, default `downloads`.
 
-Set `VITE_INSTALLER_BASE_URL` to that bucket's CloudFront origin before building the frontend. Do not commit AWS credentials.
+Set `VITE_INSTALLER_BASE_URL` to the bucket's CloudFront origin before building the frontend when installers are served outside the API domain. Do not commit AWS credentials or installer binaries.
 
 ## Release checks
 

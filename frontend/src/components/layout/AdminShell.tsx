@@ -7,6 +7,7 @@ import {
   ChartBarSquareIcon,
   ChevronRightIcon,
   ClipboardDocumentListIcon,
+  CreditCardIcon,
   MegaphoneIcon,
   MicrophoneIcon,
   MusicalNoteIcon,
@@ -58,6 +59,7 @@ const navSections: { label: string; items: AdminNavItem[] }[] = [
   {
     label: 'Monetization',
     items: [
+      { to: '/admin/billing/plans', label: 'Billing plans', description: 'Stripe products and prices', icon: CreditCardIcon },
       { to: '/admin/ads', label: 'Advertisements', description: 'House ads for the free tier', icon: MegaphoneIcon },
     ],
   },

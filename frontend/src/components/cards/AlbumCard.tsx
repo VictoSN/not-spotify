@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Album } from '@/types/album'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
+import { useHueStore } from '@/stores/hueStore'
 import { trackService } from '@/services/trackService'
+import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { usePlaybackContext } from '@/hooks/usePlaybackContext'
 import { useAuthStore } from '@/stores/authStore'
@@ -32,6 +34,8 @@ export function AlbumCard({ album, tracks, flush = false, fluid = false, boldTit
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const setDraggedAlbum = useDragStore((s) => s.setDraggedAlbum)
+  const setHoverColor = useHueStore((s) => s.setHoverColor)
+  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const menuTriggerRef = useRef<AlbumMenuHandle>(null)
   const [loading, setLoading] = useState(false)
 
@@ -83,6 +87,16 @@ export function AlbumCard({ album, tracks, flush = false, fluid = false, boldTit
         e.preventDefault()
         menuTriggerRef.current?.openAt(e.clientX, e.clientY)
       }}
+      onMouseEnter={() => {
+        if (album.coverUrl) {
+          getDominantColor(album.coverUrl).then((c) => {
+            if (c) { setHoverColor(c); setLastCoverColor(c) }
+          })
+        } else {
+          setHoverColor('hsl(0 0% 33%)')
+        }
+      }}
+      onMouseLeave={() => setHoverColor(null)}
     >
       <Link
         to={`/album/${album.id}`}

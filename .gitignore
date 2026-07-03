@@ -18,12 +18,33 @@ Thumbs.db
 
 # Dependencies (restored via `npm install` from the committed lockfiles)
 node_modules/
+frontend/public/app-preview.svg
+frontend/public/favicon.svg
+frontend/public/icons.svg
+frontend/public/icons/
+frontend/src/assets/fonts/
+frontend/src-tauri/icons/*.png
+frontend/src-tauri/icons/*.ico
+frontend/src-tauri/icons/*.icns
+frontend/src-tauri/icons/ios/
+frontend/src-tauri/icons/android/**/*.png
 
 # Build output
 bin/
 obj/
 dist/
 node_modules
+*.zip
+*.msi
+*.exe
+*.dmg
+*.AppImage
+*.deb
+
+# Local test/build output folders that are easy to create by accident
+backend/.test-bin-*/
+backend/test/**/bin/
+backend/test/**/obj/
 
 # Temp / scratch build + verification output (not source)
 .tmp-backend-build/

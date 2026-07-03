@@ -3,6 +3,13 @@ bin/
 obj/
 out/
 publish/
+.test-bin-*/
+*.zip
+*.msi
+*.exe
+*.dmg
+*.AppImage
+*.deb
 
 # IDE
 .vs/

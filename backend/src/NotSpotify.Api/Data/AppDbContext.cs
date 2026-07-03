@@ -54,6 +54,7 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
     public DbSet<DeletedPlaylist> DeletedPlaylists => Set<DeletedPlaylist>();
     public DbSet<PasswordResetOtp> PasswordResetOtps => Set<PasswordResetOtp>();
     public DbSet<PromoCodeRedemption> PromoCodeRedemptions => Set<PromoCodeRedemption>();
+    public DbSet<BillingPlan> BillingPlans => Set<BillingPlan>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -679,6 +680,27 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .OnDelete(DeleteBehavior.Cascade);
             e.Property(x => x.Code).HasMaxLength(80);
             e.HasIndex(x => new { x.UserId, x.Code }).IsUnique();
+        });
+
+        b.Entity<BillingPlan>(e =>
+        {
+            e.Property(x => x.Plan).HasMaxLength(80);
+            e.Property(x => x.Tier).HasMaxLength(40);
+            e.Property(x => x.Interval).HasMaxLength(20);
+            e.Property(x => x.Label).HasMaxLength(160);
+            e.Property(x => x.CardTitle).HasMaxLength(160);
+            e.Property(x => x.DiscountLabel).HasMaxLength(160);
+            e.Property(x => x.FinePrint).HasMaxLength(500);
+            e.Property(x => x.AccentColor).HasMaxLength(16);
+            e.Property(x => x.ButtonColor).HasMaxLength(16);
+            e.Property(x => x.ButtonTextColor).HasMaxLength(16);
+            e.Property(x => x.Currency).HasMaxLength(8);
+            e.Property(x => x.StripeProductId).HasMaxLength(120);
+            e.Property(x => x.StripePriceId).HasMaxLength(120);
+            e.Property(x => x.IsStripeManaged).HasDefaultValue(true);
+            e.HasIndex(x => x.Plan).IsUnique();
+            e.HasIndex(x => new { x.IsActive, x.SortOrder });
+            e.HasIndex(x => x.StripePriceId);
         });
     }
 }

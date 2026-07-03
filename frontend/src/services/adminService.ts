@@ -186,6 +186,52 @@ export interface AdminAuthProviders {
   apple: AdminAuthProviderState
 }
 
+export interface AdminBillingPlan {
+  id: string
+  isManaged: boolean
+  source: string
+  plan: string
+  tier: 'individual' | 'duo' | 'family' | 'student'
+  maxMembers: number
+  interval: 'monthly' | 'yearly'
+  label: string
+  cardTitle: string
+  discountLabel: string | null
+  perks: string[]
+  finePrint: string
+  accentColor: string
+  buttonColor: string
+  buttonTextColor: string
+  currency: string
+  unitAmount: number
+  displayPrice: string
+  stripeProductId: string
+  stripePriceId: string
+  isActive: boolean
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UpsertBillingPlanPayload {
+  plan: string
+  tier: 'individual' | 'duo' | 'family' | 'student'
+  maxMembers: number
+  interval: 'monthly' | 'yearly'
+  label: string
+  cardTitle?: string | null
+  discountLabel?: string | null
+  perks?: string[] | null
+  finePrint?: string | null
+  accentColor?: string | null
+  buttonColor?: string | null
+  buttonTextColor?: string | null
+  currency: string
+  unitAmount: number
+  isActive: boolean
+  sortOrder: number
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const adminService = {
@@ -528,6 +574,30 @@ export const adminService = {
 
   async updateAuthProviders(payload: { google: boolean; facebook: boolean; apple: boolean }): Promise<AdminAuthProviders> {
     const res = await api.put<AdminAuthProviders>('/admin/dev/auth-providers', payload)
+    return res.data
+  },
+
+  async listBillingPlans(): Promise<AdminBillingPlan[]> {
+    const res = await api.get<AdminBillingPlan[]>('/admin/billing/plans')
+    return res.data
+  },
+
+  async createBillingPlan(payload: UpsertBillingPlanPayload): Promise<AdminBillingPlan> {
+    const res = await api.post<AdminBillingPlan>('/admin/billing/plans', payload)
+    return res.data
+  },
+
+  async updateBillingPlan(id: string, payload: UpsertBillingPlanPayload): Promise<AdminBillingPlan> {
+    const res = await api.put<AdminBillingPlan>(`/admin/billing/plans/${id}`, payload)
+    return res.data
+  },
+
+  async deleteBillingPlan(id: string): Promise<void> {
+    await api.delete(`/admin/billing/plans/${id}`)
+  },
+
+  async reorderBillingPlans(planIds: string[]): Promise<AdminBillingPlan[]> {
+    const res = await api.patch<AdminBillingPlan[]>('/admin/billing/plans/order', { planIds })
     return res.data
   },
 }

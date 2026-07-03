@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Avatar } from '@/components/ui/Avatar'
+import { APP_PREVIEW_URL } from '@/config/assets'
 import {
   detectDownloadPlatform,
   PLATFORM_LABELS,
@@ -20,39 +21,32 @@ import {
   WINDOWS_MSI_URL,
   WINDOWS_SETUP_FILENAME,
   WINDOWS_SETUP_URL,
-  type DownloadPlatform,
 } from '@/config/downloads'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useInstallApp } from '@/hooks/useInstallApp'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
 
-const MANUAL_INSTALL_STEPS: Record<DownloadPlatform, string[]> = {
-  windows: [
-    'Open this page in Chrome or Edge.',
-    'Select the install icon in the address bar, or open the browser menu and choose “Install not-spotify”.',
-  ],
-  macos: [
-    'In Safari, choose File → Add to Dock. In Chrome, select the install icon in the address bar.',
-    'Confirm Add or Install when your browser asks.',
-  ],
-  ios: [
-    'Open this page in Safari and tap the Share button.',
-    'Choose “Add to Home Screen”, then tap Add.',
-  ],
-  android: [
-    'Open this page in Chrome and open the browser menu.',
-    'Choose “Install app” or “Add to Home screen”, then confirm.',
-  ],
-  linux: [
-    'Open this page in Chrome or Edge.',
-    'Select the install icon in the address bar, or choose “Install not-spotify” from the browser menu.',
-  ],
-  other: [
-    'Open your browser menu and look for “Install app” or “Add to Home Screen”.',
-    'If that option is unavailable, keep using not-spotify in this browser.',
-  ],
-}
+// Shown in the "Listen on mobile and tablet, too" section, which is about phones/tablets
+// specifically — so the steps stay mobile-focused regardless of the visitor's desktop OS.
+const MOBILE_INSTALL_STEPS: Array<{ heading: string; steps: string[] }> = [
+  {
+    heading: 'On iPhone or iPad',
+    steps: [
+      'Open this page in Safari on your device.',
+      'Tap the Share button, then choose “Add to Home Screen”.',
+      'Tap Add — Not Spotify appears on your home screen.',
+    ],
+  },
+  {
+    heading: 'On Android tablet or phone',
+    steps: [
+      'Open this page in Chrome on your device.',
+      'Open the browser menu (⋮) and choose “Install app” or “Add to Home screen”.',
+      'Confirm to install — Not Spotify appears in your app drawer.',
+    ],
+  },
+]
 
 function DownloadHeader() {
   const { user, isAuthenticated, logout } = useAuthStore()
@@ -252,27 +246,14 @@ function WindowsDownloadButton({ className }: { className?: string }) {
   )
 }
 
-const STEPS_OPEN_KEY = 'ns-download-steps-open'
-
 export function DownloadPage() {
   useDocumentTitle('Download')
   const [platform] = useState(detectDownloadPlatform)
-  // Non-Windows visitors need the manual steps to install at all, so default
-  // them open; Windows visitors get a real installer and only need this on
-  // request. Persisted per-tab so the choice survives navigating away and back.
-  const [stepsOpen, setStepsOpen] = useState(() => {
-    const stored = sessionStorage.getItem(STEPS_OPEN_KEY)
-    return stored !== null ? stored === 'true' : detectDownloadPlatform() !== 'windows'
-  })
   const platformLabel = PLATFORM_LABELS[platform]
   const recommendsWindowsInstaller = platform === 'windows'
-
-  const setSteps = (open: boolean) => {
-    sessionStorage.setItem(STEPS_OPEN_KEY, String(open))
-    setStepsOpen(open)
-  }
-  const openSteps = () => setSteps(true)
-  const toggleSteps = () => setSteps(!stepsOpen)
+  // Mobile/tablet steps are always visible now, so the button's fallback for
+  // "prompt not available" has nowhere to send the user — treat it as a no-op.
+  const openSteps = () => {}
 
   return (
     <div className="min-h-screen bg-white text-black antialiased">
@@ -329,7 +310,7 @@ export function DownloadPage() {
             <div className="relative z-10 mx-auto w-full max-w-[560px]">
               <div className="overflow-hidden rounded-t-[16px] border border-b-0 border-white/12 bg-[#161616] p-2 shadow-2xl shadow-black/60 sm:p-2.5">
                 <img
-                  src="/app-preview.svg"
+                  src={APP_PREVIEW_URL}
                   alt="Screenshot of the Not Spotify desktop app showing the Home screen with your library, personalized “Made for you” playlists, and the now-playing bar."
                   width={1024}
                   height={640}
@@ -349,53 +330,30 @@ export function DownloadPage() {
             <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
               Listen on mobile and tablet, too
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#5f5f5f]">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-neutral-600">
               Add the installable web app to your home screen or Dock. It opens in its own window and updates automatically.
             </p>
 
-            <div className="mt-8 flex justify-center">
-              <WebAppInstallButton onInstructions={openSteps} />
-            </div>
-
-            <div className="mx-auto mt-8 max-w-xl text-left">
-              <button
-                type="button"
-                onClick={toggleSteps}
-                aria-expanded={stepsOpen}
-                aria-controls="manual-install-steps"
-                className="mx-auto flex items-center gap-1.5 text-sm font-bold text-[#16883e] transition hover:text-[#117a37]"
-              >
-                <ChevronDown
-                  className={cn('h-4 w-4 transition-transform', stepsOpen && 'rotate-180')}
-                  aria-hidden="true"
-                />
-                {stepsOpen ? 'Hide install steps' : 'Show install steps'}
-              </button>
-
-              <div
-                id="manual-install-steps"
-                data-testid="manual-install-steps"
-                className={cn(
-                  'overflow-hidden transition-[max-height,opacity] duration-300 ease-out',
-                  stepsOpen ? 'mt-4 max-h-96 opacity-100' : 'max-h-0 opacity-0',
-                )}
-              >
-                <div>
-                  <div className="rounded-2xl bg-[#f2f2f2] p-5" aria-live="polite">
-                    <p className="font-black">Install on {platformLabel}</p>
-                    <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#555]">
-                      {MANUAL_INSTALL_STEPS[platform].map((step, index) => (
-                        <li key={step} className="flex gap-3">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-black text-black">
-                            {index + 1}
-                          </span>
-                          <span>{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
+            <div
+              id="manual-install-steps"
+              data-testid="manual-install-steps"
+              className="mx-auto mt-10 grid max-w-3xl gap-4 text-left sm:grid-cols-2"
+            >
+              {MOBILE_INSTALL_STEPS.map(({ heading, steps }) => (
+                <div key={heading} className="rounded-2xl bg-[#f2f2f2] p-5">
+                  <p className="font-black">{heading}</p>
+                  <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#555]">
+                    {steps.map((step, index) => (
+                      <li key={step} className="flex gap-3">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-black text-black">
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
         </section>

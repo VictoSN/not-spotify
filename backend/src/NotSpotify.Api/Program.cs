@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
@@ -67,6 +68,14 @@ if (args.Contains("ensure-s3-cors"))
         Console.WriteLine($"[S3 CORS] FAILED: {ex.Message}");
         Console.WriteLine("[S3 CORS] If this is a permissions error, apply the CORS rule from the AWS console instead (S3 → bucket → Permissions → CORS).");
     }
+    return;
+}
+
+// One-time app asset upload (`dotnet run -- upload-app-assets`): copies frontend
+// static media/fonts/icons to S3 under app-assets/ so the repo can stay source-only.
+if (args.Contains("upload-app-assets"))
+{
+    await UploadAppAssetsAsync(builder.Configuration);
     return;
 }
 
@@ -923,6 +932,65 @@ using (var scope = app.Services.CreateScope())
         CREATE INDEX IF NOT EXISTS ""IX_PlanMemberships_InvitedEmail"" ON ""PlanMemberships""(""InvitedEmail"");
     ");
 
+    // Admin-managed Stripe products/prices. Rows here override the built-in
+    // env-based catalogue by plan key, so admins can configure Premium plans
+    // without editing Stripe directly or changing user-secrets.
+    await db.Database.ExecuteSqlRawAsync(@"
+        CREATE TABLE IF NOT EXISTS ""BillingPlans"" (
+            ""Id""              uuid NOT NULL,
+            ""Plan""            character varying(80) NOT NULL,
+            ""Tier""            character varying(40) NOT NULL DEFAULT 'individual',
+            ""MaxMembers""      integer NOT NULL DEFAULT 1,
+            ""Interval""        character varying(20) NOT NULL DEFAULT 'monthly',
+            ""Label""           character varying(160) NOT NULL DEFAULT '',
+            ""CardTitle""       character varying(160) NOT NULL DEFAULT '',
+            ""DiscountLabel""   character varying(160) NULL,
+            ""Perks""           text NOT NULL DEFAULT '',
+            ""FinePrint""       character varying(500) NOT NULL DEFAULT '',
+            ""AccentColor""     character varying(16) NOT NULL DEFAULT '#ffd2d7',
+            ""ButtonColor""     character varying(16) NOT NULL DEFAULT '#ffd2d7',
+            ""ButtonTextColor"" character varying(16) NOT NULL DEFAULT '#000000',
+            ""Currency""        character varying(8) NOT NULL DEFAULT 'myr',
+            ""UnitAmount""      bigint NOT NULL DEFAULT 0,
+            ""StripeProductId"" character varying(120) NOT NULL DEFAULT '',
+            ""StripePriceId""   character varying(120) NOT NULL DEFAULT '',
+            ""IsStripeManaged"" boolean NOT NULL DEFAULT true,
+            ""IsActive""        boolean NOT NULL DEFAULT true,
+            ""SortOrder""       integer NOT NULL DEFAULT 0,
+            ""CreatedAt""       timestamp with time zone NOT NULL DEFAULT now(),
+            ""UpdatedAt""       timestamp with time zone NOT NULL DEFAULT now(),
+            CONSTRAINT ""PK_BillingPlans"" PRIMARY KEY (""Id"")
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_BillingPlans_Plan"" ON ""BillingPlans""(""Plan"");
+        CREATE INDEX IF NOT EXISTS ""IX_BillingPlans_IsActive_SortOrder"" ON ""BillingPlans""(""IsActive"",""SortOrder"");
+        CREATE INDEX IF NOT EXISTS ""IX_BillingPlans_StripePriceId"" ON ""BillingPlans""(""StripePriceId"");
+
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'CardTitle') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""CardTitle"" character varying(160) NOT NULL DEFAULT '';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'Perks') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""Perks"" text NOT NULL DEFAULT '';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'FinePrint') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""FinePrint"" character varying(500) NOT NULL DEFAULT '';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'AccentColor') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""AccentColor"" character varying(16) NOT NULL DEFAULT '#ffd2d7';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'ButtonColor') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""ButtonColor"" character varying(16) NOT NULL DEFAULT '#ffd2d7';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'ButtonTextColor') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""ButtonTextColor"" character varying(16) NOT NULL DEFAULT '#000000';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'BillingPlans' AND column_name = 'IsStripeManaged') THEN
+                ALTER TABLE ""BillingPlans"" ADD COLUMN ""IsStripeManaged"" boolean NOT NULL DEFAULT true;
+            END IF;
+        END $$;
+    ");
+
     // Runtime feature flags and lightweight app settings. Auth provider toggles live here
     // so admins can show/hide providers without a deploy.
     await db.Database.ExecuteSqlRawAsync(@"
@@ -1332,4 +1400,55 @@ static async Task RepairKnownInstrumentalLyricsAsync(AppDbContext db)
         await db.SaveChangesAsync();
         Console.WriteLine($"[SeedRepair] Cleared lyrics for {tracks.Count} known RADWIMPS instrumental track(s).");
     }
+}
+
+static async Task UploadAppAssetsAsync(IConfiguration config)
+{
+    var s3Opt = config.GetSection("S3Storage").Get<S3StorageOptions>();
+    if (s3Opt is null || string.IsNullOrWhiteSpace(s3Opt.BucketName))
+    {
+        Console.WriteLine("[AppAssets] No 'S3Storage:BucketName' configured. Aborting.");
+        return;
+    }
+
+    var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+    var roots = new[]
+    {
+        Path.Combine(repoRoot, "frontend", "public"),
+        Path.Combine(repoRoot, "frontend", "src", "assets", "fonts"),
+        Path.Combine(repoRoot, "frontend", "src-tauri", "icons"),
+    };
+    var mediaExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".icns",
+        ".ttf", ".otf", ".woff", ".woff2",
+    };
+    var contentTypes = new FileExtensionContentTypeProvider();
+    contentTypes.Mappings[".icns"] = "application/octet-stream";
+    contentTypes.Mappings[".otf"] = "font/otf";
+    contentTypes.Mappings[".ttf"] = "font/ttf";
+    contentTypes.Mappings[".woff"] = "font/woff";
+    contentTypes.Mappings[".woff2"] = "font/woff2";
+
+    var storage = new S3StorageService(Options.Create(s3Opt));
+    var uploaded = 0;
+    foreach (var root in roots.Where(Directory.Exists))
+    {
+        foreach (var file in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        {
+            if (!mediaExtensions.Contains(Path.GetExtension(file))) continue;
+
+            var relative = Path.GetRelativePath(repoRoot, file).Replace('\\', '/');
+            var key = $"app-assets/{relative}";
+            if (!contentTypes.TryGetContentType(file, out var contentType))
+                contentType = "application/octet-stream";
+
+            await using var stream = File.OpenRead(file);
+            await storage.UploadAsync(key, stream, contentType);
+            Console.WriteLine($"[AppAssets] Uploaded {relative} -> {key}");
+            uploaded++;
+        }
+    }
+
+    Console.WriteLine($"[AppAssets] Uploaded {uploaded} file(s) to bucket '{s3Opt.BucketName}'.");
 }

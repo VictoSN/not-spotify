@@ -89,6 +89,7 @@ export function TopBar() {
   const isHome = location.pathname === '/'
   const currentQuery = searchParams.get('q') ?? ''
   const isArtist = user?.roles?.includes('Artist') ?? false
+  const isAdmin = user?.roles?.includes('Admin') ?? false
   const isBrowse = location.pathname === '/search' && currentQuery.trim().length === 0
 
   const [showMenu, setShowMenu] = useState(false)
@@ -882,8 +883,15 @@ export function TopBar() {
                   {t('topbar.artistDashboard')}
                 </Link>
               )}
-              {/* No "Admin Dashboard" link here by design — the admin console is
-                  reached only via the dedicated /adminlogin entrance. */}
+              {isAdmin && (
+                <Link
+                  to="/admin/dashboard"
+                  onClick={() => setShowMenu(false)}
+                  className={userMenuItemClass}
+                >
+                  {t('topbar.adminDashboard')}
+                </Link>
+              )}
               <button
                 onClick={() => {
                   setShowMenu(false)

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
@@ -17,10 +16,7 @@ public class DownloadsControllerTests
         storage
             .Setup(s => s.ReadAsync("downloads/not-spotify-windows-x64-setup.exe", It.IsAny<CancellationToken>()))
             .ReturnsAsync([1, 2, 3]);
-        var env = new Mock<IWebHostEnvironment>();
-        env.Setup(e => e.ContentRootPath).Returns(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N")));
-        env.Setup(e => e.WebRootPath).Returns(string.Empty);
-        var controller = CreateController(storage.Object, env.Object);
+        var controller = CreateController(storage.Object);
 
         var result = await controller.GetInstaller("not-spotify-windows-x64-setup.exe");
 
@@ -34,8 +30,7 @@ public class DownloadsControllerTests
     public async Task GetInstaller_RejectsUnknownFileNames()
     {
         var storage = new Mock<IStorageService>();
-        var env = new Mock<IWebHostEnvironment>();
-        var controller = CreateController(storage.Object, env.Object);
+        var controller = CreateController(storage.Object);
 
         var result = await controller.GetInstaller("../secret.txt");
 
@@ -43,8 +38,8 @@ public class DownloadsControllerTests
         storage.Verify(s => s.ReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private static DownloadsController CreateController(IStorageService storage, IWebHostEnvironment env) =>
-        new(storage, env)
+    private static DownloadsController CreateController(IStorageService storage) =>
+        new(storage)
         {
             ControllerContext = new ControllerContext
             {

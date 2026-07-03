@@ -30,6 +30,7 @@ const CACHE_VERSION = 'v2'
 const SHELL_CACHE = `ns-shell-${CACHE_VERSION}`
 const ASSET_CACHE = `ns-assets-${CACHE_VERSION}`
 const OFFLINE_CACHE = 'ns-offline-audio'
+const APP_ASSET_BASE_URL = 'https://d1vs28dc5v6abn.cloudfront.net/storage/app-assets'
 // Keyed entries inside OFFLINE_CACHE live under this path prefix.
 const OFFLINE_DATA_PREFIX = '/_offline-audio-data/'
 const OFFLINE_PLAY_PATH = '/_offline-audio'
@@ -38,9 +39,6 @@ const SHELL_URLS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/favicon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
 ]
 
 self.addEventListener('install', (event) => {
@@ -83,8 +81,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'NotSpotify'
   const options = {
     body: data.body || '',
-    icon: data.icon || '/icons/icon-192.png',
-    badge: '/icons/icon-192.png',
+    icon: data.icon || `${APP_ASSET_BASE_URL}/frontend/public/icons/icon-192.png`,
+    badge: `${APP_ASSET_BASE_URL}/frontend/public/icons/icon-192.png`,
     tag: data.tag || 'ns-notification',
     // Without this, Windows replaces a same-tag toast silently in Action
     // Center; with it, the bottom-right banner is shown again each time.

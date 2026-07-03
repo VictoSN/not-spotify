@@ -11,6 +11,15 @@ const tauriConf = JSON.parse(
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      '/storage': {
+        target: process.env.VITE_API_URL || 'https://localhost:7045',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   build: {
     rolldownOptions: {
       checks: {

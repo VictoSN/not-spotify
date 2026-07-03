@@ -10,6 +10,7 @@
  */
 
 import { notificationService } from './notificationService'
+import { APP_ICON_192_URL } from '@/config/assets'
 import { useAuthStore } from '@/stores/authStore'
 import type { AppNotification } from '@/types/notification'
 
@@ -184,8 +185,8 @@ async function showServiceWorkerNotification(title: string, body: string, icon?:
     const reg = await navigator.serviceWorker.ready
     const options: ShowNotificationOptions = {
       body,
-      icon: icon ?? '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: icon ?? APP_ICON_192_URL,
+      badge: APP_ICON_192_URL,
       tag: `ns-local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       renotify: true,
       data: { url: link ?? '/' },

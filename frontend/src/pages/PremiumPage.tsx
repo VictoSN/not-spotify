@@ -53,7 +53,7 @@ const FREE_PERKS = [
 
 const PAYMENT_METHODS = ['Mastercard', 'American Express', 'UnionPay', 'Visa']
 
-const PLAN_TONES: Record<BillingPlan['plan'] | 'free', { title: string; button: string }> = {
+const PLAN_TONES: Record<string, { title: string; button: string }> = {
   free: {
     title: 'premium-plan-title-free',
     button: 'premium-plan-button-free',
@@ -80,7 +80,7 @@ const PLAN_TONES: Record<BillingPlan['plan'] | 'free', { title: string; button: 
   },
 }
 
-const PLAN_FINE_PRINT: Record<BillingPlan['plan'] | 'free', string> = {
+const PLAN_FINE_PRINT: Record<string, string> = {
   free: 'Start listening with ads and limited playback controls.',
   monthly: 'Terms apply.',
   yearly: 'Annual billing terms apply.',
@@ -89,7 +89,7 @@ const PLAN_FINE_PRINT: Record<BillingPlan['plan'] | 'free', string> = {
   student: 'Offer available only to students at an accredited higher education institution. Terms apply.',
 }
 
-const PLAN_DISPLAY_NAME: Record<BillingPlan['plan'], string> = {
+const PLAN_DISPLAY_NAME: Record<string, string> = {
   monthly: 'Individual',
   yearly: 'Individual Yearly',
   duo: 'Duo',
@@ -97,7 +97,7 @@ const PLAN_DISPLAY_NAME: Record<BillingPlan['plan'], string> = {
   student: 'Student',
 }
 
-const PLAN_PERKS: Record<BillingPlan['plan'], string[]> = {
+const PLAN_PERKS: Record<string, string[]> = {
   monthly: ['1 Premium account', 'Ad-free music listening', 'Cancel anytime'],
   yearly: ['1 Premium account', 'Annual billing savings', 'Cancel anytime'],
   duo: ['2 Premium accounts', 'Ad-free music listening for two people', 'Cancel anytime'],
@@ -108,6 +108,36 @@ const PLAN_PERKS: Record<BillingPlan['plan'], string[]> = {
     'Cancel anytime',
   ],
   student: ['1 verified Premium account', 'Discount for eligible students', 'Cancel anytime'],
+}
+
+function planTone(plan: string) {
+  return PLAN_TONES[plan] ?? PLAN_TONES.monthly
+}
+
+function planName(plan: BillingPlan) {
+  return plan.cardTitle || PLAN_DISPLAY_NAME[plan.plan] || plan.label?.replace(/^Premium\s+/i, '') || plan.plan
+}
+
+function planFinePrint(plan: BillingPlan) {
+  return plan.finePrint || PLAN_FINE_PRINT[plan.plan] || 'Terms apply. Cancel anytime.'
+}
+
+function planPerks(plan: BillingPlan) {
+  if (Array.isArray(plan.perks) && plan.perks.length > 0) return plan.perks
+  return PLAN_PERKS[plan.plan] ?? [
+    `${plan.maxMembers} Premium ${plan.maxMembers === 1 ? 'account' : 'accounts'}`,
+    'Ad-free music listening',
+    'Cancel anytime',
+  ]
+}
+
+function readableTextColor(hex: string | undefined) {
+  const normalized = /^#[0-9a-f]{6}$/i.test(hex ?? '') ? hex!.slice(1) : 'ffd2d7'
+  const r = parseInt(normalized.slice(0, 2), 16)
+  const g = parseInt(normalized.slice(2, 4), 16)
+  const b = parseInt(normalized.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.62 ? '#000000' : '#ffffff'
 }
 
 function PaymentBadge({ method }: { method: string }) {
@@ -169,30 +199,34 @@ function PlanCard({
   eyebrow,
   name,
   tone,
+  accentColor,
   price,
   priceSub,
   perks,
   footer,
   finePrint,
+  className,
 }: {
   eyebrow: string
   name: string
   tone: { title: string }
+  accentColor?: string
   price: string
   priceSub?: string
   perks: string[]
   footer: React.ReactNode
   finePrint: string
+  className?: string
 }) {
   return (
-    <section className="premium-plan-card flex min-h-[20.5rem] flex-col rounded-lg p-4">
+    <section className={cn('premium-plan-card flex min-h-[20.5rem] flex-col rounded-lg p-4', className)}>
       <div className="flex items-start justify-between gap-2">
         <span className="premium-plan-eyebrow flex items-center gap-1.5 text-sm font-bold leading-none">
           <SpotifyMark className="premium-plan-mark h-5 w-5" />
           {eyebrow}
         </span>
       </div>
-      <h3 className={cn('mt-3 text-[1.75rem] font-black leading-none', tone.title)}>{name}</h3>
+      <h3 className={cn('mt-3 text-[1.75rem] font-black leading-none', tone.title)} style={accentColor ? { color: accentColor } : undefined}>{name}</h3>
       <p className="premium-plan-price mt-2 text-[0.9375rem] font-black leading-tight">{price}</p>
       {priceSub && <p className="premium-plan-sub mt-1 text-[0.75rem] font-semibold leading-snug">{priceSub}</p>}
       <div className="premium-plan-divider mt-4 h-px" />
@@ -347,8 +381,8 @@ export function PremiumPage() {
         {hasMissingBillingConfig && (
           <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-secondary/20 bg-surface px-4 py-3 text-sm text-secondary">
             <span className="font-bold text-primary">Billing setup required.</span> Add the Stripe secret key plus the
-            plan Price IDs (monthly, yearly, duo, family, student) in backend user-secrets to enable checkout. Plans
-            without a configured Price ID stay disabled.
+            plan Price IDs (monthly, yearly, duo, family, student) in backend user-secrets to complete checkout. If a
+            Price ID is missing, Stripe checkout will show the setup message for that plan.
           </div>
         )}
 
@@ -414,11 +448,12 @@ export function PremiumPage() {
           <h2 className="text-center text-2xl font-black text-primary">Pick the plan that fits you</h2>
           <p className="mt-1 text-center text-sm text-secondary">Choose a plan and listen ad-free. Cancel anytime.</p>
 
-          <div className="mt-7 grid gap-4 lg:grid-cols-3">
+          <div className="mt-7 flex flex-wrap justify-center gap-4">
             <PlanCard
               eyebrow="Free plan"
               name="Free"
               tone={PLAN_TONES.free}
+              className="w-full sm:w-[min(20rem,calc(50%-0.5rem))] lg:w-[calc(33.333%-0.75rem)]"
               price="$0"
               priceSub="The current baseline account."
               perks={FREE_PERKS}
@@ -431,25 +466,32 @@ export function PremiumPage() {
             />
 
             {plans.map((plan) => {
-              const tone = PLAN_TONES[plan.plan]
+              const tone = planTone(plan.plan)
+              const name = planName(plan)
               return (
                 <PlanCard
                   key={plan.plan}
                   eyebrow="Premium"
-                  name={PLAN_DISPLAY_NAME[plan.plan]}
+                  name={name}
                   tone={tone}
+                  accentColor={plan.accentColor}
+                  className="w-full sm:w-[min(20rem,calc(50%-0.5rem))] lg:w-[calc(33.333%-0.75rem)]"
                   price={plan.displayPrice ?? 'Not configured'}
                   priceSub={plan.isConfigured ? undefined : (plan.missingConfiguration ?? 'Billing not configured')}
-                  finePrint={PLAN_FINE_PRINT[plan.plan]}
-                  perks={PLAN_PERKS[plan.plan]}
+                  finePrint={planFinePrint(plan)}
+                  perks={planPerks(plan)}
                   footer={
                     <Button
                       onClick={() => checkout(plan.plan)}
-                      disabled={!plan.isConfigured || busyPlan === plan.plan}
+                      disabled={busyPlan === plan.plan}
                       className={cn('w-full gap-2 text-sm font-black', tone.button)}
+                      style={{
+                        backgroundColor: plan.buttonColor || plan.accentColor || undefined,
+                        color: plan.buttonTextColor || readableTextColor(plan.buttonColor || plan.accentColor),
+                      }}
                     >
                       <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                      {busyPlan === plan.plan ? 'Opening…' : `Get Premium ${PLAN_DISPLAY_NAME[plan.plan]}`}
+                      {busyPlan === plan.plan ? 'Opening…' : `Get Premium ${name}`}
                     </Button>
                   }
                 />

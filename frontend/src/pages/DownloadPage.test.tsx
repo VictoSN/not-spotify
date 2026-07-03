@@ -112,33 +112,12 @@ describe('DownloadPage (bug #33)', () => {
     expect(screen.queryByLabelText('Supported devices')).not.toBeInTheDocument()
   })
 
-  it('toggles the install steps section open and closed', () => {
+  it('shows mobile install steps for both iOS and Android without a toggle', () => {
     renderDownloadPage()
 
-    const toggle = screen.getByRole('button', { name: /install steps/i })
-    const wasExpanded = toggle.getAttribute('aria-expanded') === 'true'
-
-    fireEvent.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', String(!wasExpanded))
-    expect(toggle).toHaveTextContent(wasExpanded ? 'Show install steps' : 'Hide install steps')
-
-    fireEvent.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', String(wasExpanded))
-  })
-
-  it('persists the install-steps toggle state across remounts within the session', () => {
-    const { unmount } = renderDownloadPage()
-
-    const toggle = screen.getByRole('button', { name: /install steps/i })
-    const initial = toggle.getAttribute('aria-expanded')
-    fireEvent.click(toggle)
-    const flipped = toggle.getAttribute('aria-expanded')
-    expect(flipped).not.toBe(initial)
-
-    unmount()
-    renderDownloadPage()
-
-    expect(screen.getByRole('button', { name: /install steps/i })).toHaveAttribute('aria-expanded', flipped)
+    expect(screen.queryByRole('button', { name: /install steps/i })).not.toBeInTheDocument()
+    expect(screen.getByText(/On iPhone or iPad/i)).toBeInTheDocument()
+    expect(screen.getByText(/On Android tablet or phone/i)).toBeInTheDocument()
   })
 })
 
@@ -147,7 +126,10 @@ describe('DownloadPage (bug #34)', () => {
     renderDownloadPage()
 
     const shot = screen.getByRole('img', { name: /Not Spotify desktop app/i })
-    expect(shot).toHaveAttribute('src', '/app-preview.svg')
+    expect(shot).toHaveAttribute(
+      'src',
+      'https://d1vs28dc5v6abn.cloudfront.net/storage/app-assets/frontend/public/app-preview.svg',
+    )
     // A content image exposed to screen readers — the old mockup was aria-hidden.
     expect(shot).not.toHaveAttribute('aria-hidden')
     expect((shot.getAttribute('alt') ?? '').length).toBeGreaterThan(20)

@@ -119,6 +119,70 @@ public class StripeBillingService
             ?? throw new InvalidOperationException("Stripe did not return a customer id.");
     }
 
+    public async Task<string> CreateProductAsync(string name, string? description, string planKey, CancellationToken ct = default)
+    {
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            Pair("name", name),
+            Pair("metadata[plan]", planKey),
+        };
+        if (!string.IsNullOrWhiteSpace(description)) fields.Add(Pair("description", description));
+
+        var root = await PostFormAsync("products", fields, ct);
+        return root.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException("Stripe did not return a product id.");
+    }
+
+    public async Task UpdateProductAsync(string productId, string name, string? description, bool active, CancellationToken ct = default)
+    {
+        var fields = new List<KeyValuePair<string, string>>
+        {
+            Pair("name", name),
+            Pair("active", active ? "true" : "false"),
+        };
+        if (!string.IsNullOrWhiteSpace(description)) fields.Add(Pair("description", description));
+
+        await PostFormAsync($"products/{Uri.EscapeDataString(productId)}", fields, ct);
+    }
+
+    public async Task<string> CreateRecurringPriceAsync(
+        string productId,
+        long unitAmount,
+        string currency,
+        string interval,
+        string nickname,
+        string planKey,
+        string tier,
+        CancellationToken ct = default)
+    {
+        var stripeInterval = interval == "yearly" ? "year" : "month";
+        var root = await PostFormAsync("prices", new[]
+        {
+            Pair("product", productId),
+            Pair("unit_amount", unitAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            Pair("currency", currency),
+            Pair("recurring[interval]", stripeInterval),
+            Pair("nickname", nickname),
+            Pair("metadata[plan]", planKey),
+            Pair("metadata[tier]", tier),
+        }, ct);
+
+        return root.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException("Stripe did not return a price id.");
+    }
+
+    public async Task ArchivePriceAsync(string priceId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(priceId)) return;
+        await PostFormAsync($"prices/{Uri.EscapeDataString(priceId)}", new[] { Pair("active", "false") }, ct);
+    }
+
+    public async Task ArchiveProductAsync(string productId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(productId)) return;
+        await PostFormAsync($"products/{Uri.EscapeDataString(productId)}", new[] { Pair("active", "false") }, ct);
+    }
+
     public async Task<string> CreateCheckoutSessionAsync(ApplicationUser user, string priceId, PlanInfo plan, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(user.StripeCustomerId))

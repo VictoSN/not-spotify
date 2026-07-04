@@ -2,8 +2,6 @@ import { useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Track } from '@/types/track'
 import { usePlayerStore } from '@/stores/playerStore'
-import { useHueStore } from '@/stores/hueStore'
-import { getDominantColor } from '@/hooks/useDominantColor'
 import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
@@ -30,8 +28,6 @@ export function TrackTile({ track, queue, flush = false, fluid = false, boldTitl
   const playWithGate = usePlaybackGate()
   const navigate = useNavigate()
   const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
-  const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
   const isCurrent = currentTrack?.id === track.id
   const isTrackSurfaceActive = isCurrent && currentContextType == null
@@ -68,16 +64,6 @@ export function TrackTile({ track, queue, flush = false, fluid = false, boldTitl
         e.currentTarget.style.opacity = ''
       }}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
-      onMouseEnter={() => {
-        if (track.album.coverUrl) {
-          getDominantColor(track.album.coverUrl).then((c) => {
-            if (c) { setHoverColor(c); setLastCoverColor(c) }
-          })
-        } else {
-          setHoverColor('hsl(0 0% 33%)')
-        }
-      }}
-      onMouseLeave={() => setHoverColor(null)}
     >
       <Link
         to={`/track/${track.id}`}

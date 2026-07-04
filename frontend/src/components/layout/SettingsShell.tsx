@@ -47,9 +47,9 @@ export function SettingsShell() {
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
         <div className={`flex h-full items-center px-6 ${fullWidth ? '' : 'mx-auto max-w-[960px]'}`}>
           {/* Logo */}
-          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Home">
+          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Not Spotify home">
             <SpotifyMark className="h-8 w-8 text-primary" />
-            <span className="hidden text-[18px] font-black tracking-tight text-primary sm:block">Spotify</span>
+            <span className="hidden text-[18px] font-black tracking-tight text-primary sm:block">Not Spotify</span>
           </Link>
 
           {/* Nav links */}

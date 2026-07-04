@@ -32,6 +32,14 @@ describe('SettingsShell context-aware account menu (bug 14)', () => {
     useAuthStore.setState({ user: null, isAuthenticated: false })
   })
 
+  it('uses Not Spotify branding in the header', () => {
+    renderShell('/account')
+
+    expect(screen.getByRole('link', { name: 'Not Spotify home' })).toHaveAttribute('href', '/')
+    expect(screen.getByText('Not Spotify')).toBeInTheDocument()
+    expect(screen.queryByText('Spotify')).not.toBeInTheDocument()
+  })
+
   it('hides "Account" and shows "Artist Dashboard" on the Account page', () => {
     renderShell('/account', ['Artist'])
 

@@ -62,13 +62,39 @@ export function getHomeFilterVisibility(filter: HomeFilter) {
   }
 }
 
+export function getHomeHueSeed(isAuthenticated: boolean, playlists: Playlist[]) {
+  return isAuthenticated ? (playlists[0]?.coverUrl ?? null) : null
+}
+
+function HomeHueLayer({ baseColor, isAuthenticated }: { baseColor: string | null; isAuthenticated: boolean }) {
+  // Keep this subscription out of HomePage: changing hover hue should repaint
+  // only this layer, not rerender every Home section and playlist control.
+  const hoverColor = useHueStore((s) => s.hoverColor)
+  const color = isAuthenticated ? (hoverColor ?? baseColor) : null
+
+  return (
+    <div
+      aria-hidden
+      data-testid="home-hue"
+      className={cn(
+        'pointer-events-none absolute inset-x-0 top-0 h-80 transition-[background-color,opacity] duration-[450ms] ease-in-out motion-reduce:transition-none',
+        color ? 'opacity-60' : 'opacity-0',
+      )}
+      style={{
+        backgroundColor: color ?? 'transparent',
+        maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
+        WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
+      }}
+    />
+  )
+}
+
 export function HomePage() {
   const { t } = useTranslation()
   const outletContext = useOutletContext<AppShellOutletContext | null>()
   const setPageLoading = outletContext?.setPageLoading
   useDocumentTitle(t('topbar.home'))
   const { user, isAuthenticated } = useAuthStore()
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const libraryLoading = useLibraryStore((s) => s.isLoading)
   const [trending, setTrending] = useState<Track[]>([])
@@ -144,31 +170,19 @@ export function HomePage() {
     }
   }, [isAuthenticated, user?.country])
 
-  // Cover-derived hue for the top of the page (reflects what's playing, else a featured cover).
-  const heroSeed =
-    currentTrack?.album.coverUrl ??
-    forYou[0]?.album.coverUrl ??
-    trending[0]?.album.coverUrl ??
-    savedPlaylists.find((p) => p.coverUrl)?.coverUrl ??
-    null
-  const baseColor = useDominantColor(heroSeed)
-  const hoverColor = useHueStore((s) => s.hoverColor)
+  // Home's resting hue always belongs to the first quick-access playlist.
+  // resetOnChange ensures signing out immediately drops a previously resolved hue.
+  const heroSeed = getHomeHueSeed(isAuthenticated, savedPlaylists)
+  const baseColor = useDominantColor(heroSeed, { resetOnChange: true })
   const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const lastCoverColor = useHueStore((s) => s.lastCoverColor)
   // Whether the main content area is scrolled past the hero (set by AppShell);
   // drives the Home filter bar's locked-hue background — the global header is unaffected.
   const headerScrolled = useHueStore((s) => s.headerScrolled)
-  // Hovering a card tints the hue toward that cover; otherwise follow the playing track.
-  // Neutral grey used only while the cursor rests on a card that has no cover
-  // image (or as the ultimate fallback when nothing at all provides a hue).
-  const DEFAULT_HERO = 'hsl(0 0% 33%)'
-  // hoverColor is the card currently under the cursor (may be DEFAULT_HERO for
-  // no-cover cards). lastCoverColor remembers the last card that had an actual
-  // cover, so the tint sticks after the cursor leaves. baseColor comes from the
-  // playing track / featured items.
-  const heroColor = hoverColor ?? lastCoverColor ?? baseColor ?? DEFAULT_HERO
 
-  useEffect(() => () => setHoverColor(null), [setHoverColor])
+  useEffect(() => {
+    if (!isAuthenticated) setHoverColor(null)
+    return () => setHoverColor(null)
+  }, [isAuthenticated, setHoverColor])
 
   useEffect(() => {
     const syncPinned = () => setPinnedKeys(getPinnedKeys())
@@ -208,10 +222,11 @@ export function HomePage() {
   const quickPicks = savedPlaylists.slice(0, 8)
   // At the top the bar is transparent so it blends seamlessly into the hero hue
   // gradient (no separate brown strip). Once scrolled it becomes a solid header
-  // that mirrors the hero hue at the SAME ratio (via hueHeaderBackground), driven
-  // by the SAME colour the hero uses (`heroColor`, incl. the hovered-card tint),
-  // so it reads as the same hue rather than a separate browner strip.
-  const homeHeaderBackground = headerScrolled ? hueHeaderBackground(heroColor) : 'transparent'
+  // that mirrors the resting playlist hue at the SAME ratio. Hover colour stays
+  // inside HomeHueLayer so it cannot rerender the rest of Home.
+  const homeHeaderBackground = headerScrolled
+    ? hueHeaderBackground(isAuthenticated ? baseColor : null)
+    : 'transparent'
 
   // ISO alpha-2 → display name (e.g. "US" → "United States"); falls back to the code.
   const countryCode = (user?.country || 'US').toUpperCase()
@@ -224,16 +239,8 @@ export function HomePage() {
 
   return (
     <div className="relative">
-      {/* Dynamic colour hue — smoothly crossfades to the hovered card's colour */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-80 opacity-60 transition-[background-color] duration-700 ease-in-out motion-reduce:transition-none"
-        style={{
-          backgroundColor: heroColor,
-          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
-          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1), rgba(0,0,0,0))',
-        }}
-      />
+      {/* Dynamic colour hue — only quick-access playlist hover can override it. */}
+      <HomeHueLayer baseColor={baseColor} isAuthenticated={isAuthenticated} />
 
       {/* Home filter bar — a Home-page-only sticky header (All / Music / Podcasts).
           It locks to the top of the content scroll area and adopts the page hue once
@@ -561,8 +568,9 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
   const startContext = usePlayContextGate()
   const togglePlayPause = usePlayerStore((s) => s.togglePlayPause)
   const { isActiveContext, isPlayingContext } = usePlaybackContext({ type: 'playlist', id: playlist.id })
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const setHoverColor = useHueStore((s) => s.setHoverColor)
-  const setLastCoverColor = useHueStore((s) => s.setLastCoverColor)
+  const hoverRequestRef = useRef(0)
   // Neutral grey for cards without cover art — avoids the hero snapping to blue
   // or the default when hovering an empty-cover playlist.
   const NO_COVER_HUE = 'hsl(0 0% 33%)'
@@ -593,19 +601,23 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
       <Link
         to={`/playlist/${playlist.id}`}
         onMouseEnter={() => {
+          if (!isAuthenticated) return
+          const request = ++hoverRequestRef.current
           if (playlist.coverUrl) {
             getDominantColor(playlist.coverUrl).then((color) => {
-              if (color) {
+              if (color && hoverRequestRef.current === request) {
                 setHoverColor(color)
-                setLastCoverColor(color)
               }
             })
           } else {
             setHoverColor(NO_COVER_HUE)
           }
         }}
-        onMouseLeave={() => setHoverColor(null)}
-        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-primary/10 backdrop-blur-sm transition-colors hover:bg-primary/20"
+        onMouseLeave={() => {
+          hoverRequestRef.current++
+          setHoverColor(null)
+        }}
+        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-primary/10 transition-colors duration-150 hover:bg-primary/20"
       >
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
           {playlist.coverUrl ? (
@@ -624,7 +636,7 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           <button
             type="button"
             onClick={handlePlay}
-            className="absolute inset-0 flex h-12 w-12 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-all hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
+            className="absolute inset-0 flex h-12 w-12 translate-y-0 items-center justify-center rounded-full bg-accent shadow-lg transition-transform duration-100 ease-out will-change-transform hover:scale-105 active:scale-95 md:translate-y-1 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
             aria-label={isPlayingContext ? `Pause ${playlist.name}` : t('home.playPlaylist', { name: playlist.name })}
           >
             {isPlayingContext ? (

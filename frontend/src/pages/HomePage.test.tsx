@@ -2,7 +2,14 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { HomePage, HomePodcastTile, HomeQuickPlaylist, HomeVideoTile, getHomeFilterVisibility } from './HomePage'
+import {
+  HomePage,
+  HomePodcastTile,
+  HomeQuickPlaylist,
+  HomeVideoTile,
+  getHomeFilterVisibility,
+  getHomeHueSeed,
+} from './HomePage'
 import { useDragStore } from '@/stores/dragStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useHueStore } from '@/stores/hueStore'
@@ -166,6 +173,8 @@ function dataTransfer() {
 
 describe('Home media interactions', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
+    dominantColorMock.mockResolvedValue('hsl(280 42% 38%)')
     window.localStorage.clear()
     dailyMixesMock.mockResolvedValue([])
     recommendedPlaylistsMock.mockResolvedValue([])
@@ -182,7 +191,7 @@ describe('Home media interactions', () => {
       draggedVideo: null,
       draggedPodcast: null,
     })
-    useHueStore.setState({ hoverColor: null, lastCoverColor: null })
+    useHueStore.setState({ hoverColor: null })
   })
 
   it('maps the Music Video filter to video-only content', () => {
@@ -190,6 +199,13 @@ describe('Home media interactions', () => {
     expect(getHomeFilterVisibility('music')).toEqual({ showMusic: true, showPodcasts: false, showVideos: false })
     expect(getHomeFilterVisibility('podcasts')).toEqual({ showMusic: false, showPodcasts: true, showVideos: false })
     expect(getHomeFilterVisibility('videos')).toEqual({ showMusic: false, showPodcasts: false, showVideos: true })
+  })
+
+  it('uses only the first playlist cover as the signed-in Home hue seed', () => {
+    const second = { ...playlist, id: 'playlist-2', coverUrl: '/playlist-2.jpg' }
+
+    expect(getHomeHueSeed(true, [playlist, second])).toBe('/playlist.jpg')
+    expect(getHomeHueSeed(false, [playlist, second])).toBeNull()
   })
 
   it('renders the Music Video category chip and surfaces music video content', async () => {
@@ -249,7 +265,8 @@ describe('Home media interactions', () => {
     )
 
     const playlistLink = screen.getByRole('link', { name: 'Home Playlist' })
-    expect(playlistLink).toHaveClass('bg-primary/10', 'hover:bg-primary/20', 'backdrop-blur-sm')
+    expect(playlistLink).toHaveClass('bg-primary/10', 'hover:bg-primary/20', 'duration-150')
+    expect(playlistLink).not.toHaveClass('backdrop-blur-sm')
     fireEvent.contextMenu(playlistLink, {
       clientX: 120,
       clientY: 80,
@@ -279,6 +296,12 @@ describe('Home media interactions', () => {
 
     expect(await screen.findByRole('button', { name: 'Music Video' })).toBeInTheDocument()
     expect(screen.getByText('Home Playlist')).toBeInTheDocument()
+    expect(screen.getByTestId('home-hue')).toHaveClass(
+      'transition-[background-color,opacity]',
+      'duration-[450ms]',
+      'opacity-0',
+    )
+    expect(screen.getByTestId('home-hue').style.backgroundColor).toBe('transparent')
     expect(screen.queryByTestId('home-loading-skeleton')).not.toBeInTheDocument()
   })
 
@@ -301,6 +324,7 @@ describe('Home media interactions', () => {
   })
 
   it('uses artwork hue only when hovering a top quick-access playlist', async () => {
+    useAuthStore.setState({ isAuthenticated: true })
     render(
       <MemoryRouter>
         <HomeQuickPlaylist playlist={playlist} />
@@ -312,9 +336,40 @@ describe('Home media interactions', () => {
 
     await waitFor(() => expect(useHueStore.getState().hoverColor).toBe('hsl(280 42% 38%)'))
     expect(dominantColorMock).toHaveBeenCalledWith('/playlist.jpg')
-    expect(useHueStore.getState().lastCoverColor).toBe('hsl(280 42% 38%)')
-
     fireEvent.mouseLeave(playlistLink)
+    expect(useHueStore.getState().hoverColor).toBeNull()
+  })
+
+  it('does not calculate or apply playlist hover hue while logged out', () => {
+    render(
+      <MemoryRouter>
+        <HomeQuickPlaylist playlist={playlist} />
+      </MemoryRouter>,
+    )
+
+    fireEvent.mouseEnter(screen.getByRole('link', { name: 'Home Playlist' }))
+
+    expect(dominantColorMock).not.toHaveBeenCalled()
+    expect(useHueStore.getState().hoverColor).toBeNull()
+  })
+
+  it('ignores a playlist hue that finishes loading after hover ends', async () => {
+    useAuthStore.setState({ isAuthenticated: true })
+    let resolveColor!: (color: string) => void
+    dominantColorMock.mockReturnValueOnce(new Promise((resolve) => {
+      resolveColor = resolve
+    }))
+    render(
+      <MemoryRouter>
+        <HomeQuickPlaylist playlist={playlist} />
+      </MemoryRouter>,
+    )
+
+    const playlistLink = screen.getByRole('link', { name: 'Home Playlist' })
+    fireEvent.mouseEnter(playlistLink)
+    fireEvent.mouseLeave(playlistLink)
+    await React.act(async () => resolveColor('hsl(280 42% 38%)'))
+
     expect(useHueStore.getState().hoverColor).toBeNull()
   })
 
@@ -332,7 +387,12 @@ describe('Home media interactions', () => {
     )
 
     expect(screen.getByRole('img', { name: 'Now playing' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: `Pause ${playlist.name}` })).toHaveClass('h-12', 'w-12')
+    expect(screen.getByRole('button', { name: `Pause ${playlist.name}` })).toHaveClass(
+      'h-12',
+      'w-12',
+      'transition-transform',
+      'duration-100',
+    )
   })
 
   it('moves a Daily Mix to the front immediately when it is pinned', async () => {

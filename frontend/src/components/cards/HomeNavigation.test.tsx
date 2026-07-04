@@ -104,7 +104,7 @@ describe('Home card navigation', () => {
     window.localStorage.clear()
     useAuthStore.setState({ isAuthenticated: true })
     useLibraryStore.setState({ savedPlaylists: [], savedVideoIds: new Set() })
-    useHueStore.setState({ hoverColor: null, lastCoverColor: null })
+    useHueStore.setState({ hoverColor: null })
     usePlayerStore.setState({
       currentTrack: null,
       currentContextType: null,
@@ -167,7 +167,6 @@ describe('Home card navigation', () => {
     fireEvent.mouseEnter(screen.getByText(track.title).closest('.group')!)
 
     expect(useHueStore.getState().hoverColor).toBeNull()
-    expect(useHueStore.getState().lastCoverColor).toBeNull()
   })
 
   it('does not navigate when nested play or menu controls are clicked', async () => {

@@ -200,6 +200,41 @@ export const curatedBrowseCategories: BrowseCategorySeed[] = [
 
 export const fallbackBrowseColor = '#477d95'
 
+// A saturated palette in the spirit of Spotify's browse categories, so every
+// card gets a distinct, vivid background instead of the flat gray many backend
+// genres ship with.
+export const browseColorPalette = [
+  '#e13300', '#1e3264', '#e8115b', '#148a08', '#8d67ab', '#b06239',
+  '#0d72ea', '#af2896', '#7358ff', '#e91429', '#dc148c', '#006450',
+  '#8400e7', '#a56752', '#bc5900', '#2d46b9', '#509bf5', '#ba5d07',
+  '#d84000', '#503750', '#158a08', '#5179a1', '#c39687', '#b49bc8',
+]
+
+/** A stable palette color for a slug — the same slug always maps to the same hue. */
+export function browseColorForSlug(slug: string): string {
+  let hash = 0
+  for (let i = 0; i < slug.length; i += 1) hash = (hash * 31 + slug.charCodeAt(i)) >>> 0
+  return browseColorPalette[hash % browseColorPalette.length]
+}
+
+/**
+ * True when a hex color is vivid enough to use as a card background. Rejects the
+ * grays / near-black / washed-out values that make the browse grid look bland.
+ */
+export function isVividColor(color: string | null | undefined): color is string {
+  if (!color) return false
+  const match = /^#?([0-9a-f]{6})$/i.exec(color.trim())
+  if (!match) return false
+  const n = parseInt(match[1], 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const saturation = max === 0 ? 0 : (max - min) / max
+  return saturation >= 0.28 && max >= 70
+}
+
 export function getBrowseCategoryBySlug(slug: string) {
   return curatedBrowseCategories.find((category) => category.slug === slug)
 }

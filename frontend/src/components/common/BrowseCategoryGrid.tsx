@@ -4,7 +4,8 @@ import { useTranslation } from '@/i18n/useTranslation'
 import type { Genre } from '@/types/genre'
 import {
   curatedBrowseCategories,
-  fallbackBrowseColor,
+  browseColorForSlug,
+  isVividColor,
   getBrowseCoverUrl,
   type BrowseCategorySeed,
   type BrowseFilter,
@@ -45,7 +46,9 @@ function buildBrowseCategories(genres: Genre[]): BrowseCategory[] {
     return {
       ...category,
       id: genre?.id ?? `browse-${category.slug}`,
-      color: genre?.color ?? category.color,
+      // Curated colors are hand-picked; only let a backend color override when it
+      // is actually vivid, so a dull/gray genre color can't wash out the card.
+      color: isVividColor(genre?.color) ? genre!.color : category.color,
       kind: category.kind ?? 'music',
       imageUrl: getBrowseCoverUrl(category.slug, genre?.imageUrl),
       to: category.to ?? (genre ? `/genres/${genre.slug}` : `/genres/${category.slug}`),
@@ -58,7 +61,9 @@ function buildBrowseCategories(genres: Genre[]): BrowseCategory[] {
       id: genre.id,
       name: genre.name,
       slug: genre.slug,
-      color: genre.color || fallbackBrowseColor,
+      // Keep a vivid backend color; otherwise fall to a stable palette hue so the
+      // grid stays colorful instead of a wall of gray.
+      color: isVividColor(genre.color) ? genre.color : browseColorForSlug(genre.slug),
       kind: 'music' as const,
       coverUrl: getBrowseCoverUrl(genre.slug, genre.imageUrl),
       imageUrl: getBrowseCoverUrl(genre.slug, genre.imageUrl),

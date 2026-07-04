@@ -157,9 +157,11 @@ function CalendarMonth({
   )
 }
 
-/** Spotify-style two-month date picker modal. */
+/**
+ * Spotify-style two-month date picker modal. Mounted only while open (see the
+ * caller) so the visible months re-anchor on the selection each time it opens.
+ */
 function EventDatePicker({
-  open,
   onClose,
   customDate,
   dateFilter,
@@ -167,7 +169,6 @@ function EventDatePicker({
   onSelectWeekend,
   onClear,
 }: {
-  open: boolean
   onClose: () => void
   customDate: string
   dateFilter: DateFilter
@@ -176,26 +177,19 @@ function EventDatePicker({
   onClear: () => void
 }) {
   const today = useMemo(() => startOfDay(new Date()), [])
-  const [cursor, setCursor] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }))
-
-  // Re-anchor the visible months on the selected date (or today) each open.
-  useEffect(() => {
-    if (!open) return
+  const [cursor, setCursor] = useState(() => {
     const base = customDate ? new Date(`${customDate}T00:00:00`) : today
-    setCursor({ year: base.getFullYear(), month: base.getMonth() })
-  }, [open, customDate, today])
+    return { year: base.getFullYear(), month: base.getMonth() }
+  })
 
   // Escape closes, matching the location popover's dismiss behaviour.
   useEffect(() => {
-    if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
+  }, [onClose])
 
   const secondMonth = addMonths(cursor, 1)
   const canGoPrev = cursor.year > today.getFullYear() || (cursor.year === today.getFullYear() && cursor.month > today.getMonth())
@@ -716,15 +710,16 @@ export function LiveEventsPage() {
         )}
       </main>
 
-      <EventDatePicker
-        open={datePickerOpen}
-        onClose={() => setDatePickerOpen(false)}
-        customDate={customDate}
-        dateFilter={dateFilter}
-        onSelectDate={(iso) => { setCustomDate(iso); setDateFilter('custom') }}
-        onSelectWeekend={(which) => { setCustomDate(''); setDateFilter(dateFilter === which ? 'all' : which) }}
-        onClear={() => { setCustomDate(''); setDateFilter('all') }}
-      />
+      {datePickerOpen && (
+        <EventDatePicker
+          onClose={() => setDatePickerOpen(false)}
+          customDate={customDate}
+          dateFilter={dateFilter}
+          onSelectDate={(iso) => { setCustomDate(iso); setDateFilter('custom') }}
+          onSelectWeekend={(which) => { setCustomDate(''); setDateFilter(dateFilter === which ? 'all' : which) }}
+          onClear={() => { setCustomDate(''); setDateFilter('all') }}
+        />
+      )}
     </div>
   )
 }

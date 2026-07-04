@@ -147,6 +147,80 @@ public class ArtistsController : ControllerBase
         return Ok(artists.Select(a => _mapper.ToDto(a)));
     }
 
+    /// <summary>
+    /// Aggregate upcoming events for the Live Events discovery page. The feed is
+    /// backed by the same artist-authored + Ticketmaster-cached rows as artist
+    /// profiles, and defaults to the United States market.
+    /// </summary>
+    [HttpGet("events")]
+    public async Task<ActionResult<IEnumerable<LiveEventDto>>> Events(
+        [FromQuery] string country = "US",
+        [FromQuery] int limit = 80,
+        CancellationToken ct = default)
+    {
+        limit = Math.Clamp(limit, 1, 200);
+        var normalizedCountry = string.IsNullOrWhiteSpace(country) ? "US" : country.Trim().ToUpperInvariant();
+
+        var query = _db.TourDates.Where(t => t.EventDate >= DateTime.UtcNow);
+        // "all" opens the feed to every market — the discovery page filters by
+        // city client-side, and the catalogue's tours span many countries.
+        if (normalizedCountry != "ALL")
+        {
+            var acceptedCountries = normalizedCountry switch
+            {
+                "US" or "USA" or "UNITED STATES" => new[] { "US", "USA", "UNITED STATES" },
+                _ => new[] { normalizedCountry },
+            };
+            query = query.Where(t => acceptedCountries.Contains(t.Country.ToUpper()));
+        }
+
+        var dates = await query
+            .Include(t => t.Artist)
+            .Include(t => t.Setlist).ThenInclude(s => s.Track).ThenInclude(tr => tr.Artist)
+            .OrderBy(t => t.EventDate)
+            .Take(limit * 2)
+            .ToListAsync(ct);
+
+        var artistIds = dates.Select(t => t.ArtistId).Distinct().ToList();
+        var genreRows = await _db.TrackGenres
+            .Where(tg => artistIds.Contains(tg.Track.ArtistId))
+            .Select(tg => new { tg.Track.ArtistId, tg.Genre.Slug })
+            .Distinct()
+            .ToListAsync(ct);
+        var genresByArtist = genreRows
+            .GroupBy(row => row.ArtistId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<string>)group.Select(row => row.Slug).OrderBy(slug => slug).ToList());
+
+        var seen = new HashSet<(Guid ArtistId, DateTime Day, string Venue)>();
+        var result = new List<LiveEventDto>();
+        foreach (var date in dates.OrderByDescending(t => t.Source == "artist").ThenBy(t => t.EventDate))
+        {
+            var key = (date.ArtistId, date.EventDate.Date, date.Venue.Trim().ToLowerInvariant());
+            if (!seen.Add(key)) continue;
+
+            var tour = ToDto(date);
+            var artistGenres = genresByArtist.GetValueOrDefault(date.ArtistId, Array.Empty<string>());
+            var artist = _mapper.ToDto(date.Artist, artistGenres);
+            result.Add(new LiveEventDto(
+                tour.Id,
+                tour.EventDate,
+                tour.City,
+                tour.Venue,
+                tour.Country,
+                tour.TicketUrl,
+                tour.Songs,
+                new LiveEventArtistDto(
+                    artist.Id.ToString(),
+                    artist.Name,
+                    artist.ImageUrl,
+                    artist.HeaderImageUrl,
+                    artist.MonthlyListeners,
+                    artist.Genres.ToList())));
+        }
+
+        return Ok(result.OrderBy(item => item.EventDate).Take(limit));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ArtistDto>> Get(Guid id, CancellationToken ct = default)
     {

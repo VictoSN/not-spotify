@@ -155,6 +155,17 @@ describe('Home card navigation', () => {
     )
   })
 
+  it('renders the Daily Mix thumbnail label and zero-padded number as separate blocks', () => {
+    renderCards(<MixTile mix={{ ...mix, subtitle: 'Daily Mix 2' }} />)
+
+    expect(screen.getByTestId('daily-mix-thumbnail-label')).toHaveTextContent('Daily Mix')
+    expect(screen.getByTestId('daily-mix-thumbnail-label')).toHaveStyle({ backgroundColor: '#e8f31d' })
+    expect(screen.getByTestId('daily-mix-thumbnail-number')).toHaveTextContent('02')
+    expect(screen.getByTestId('daily-mix-thumbnail-number')).toHaveStyle({ backgroundColor: '#e8f31d' })
+    expect(screen.getByTestId('daily-mix-thumbnail-number')).toHaveClass('font-normal', 'min-w-[3rem]')
+    expect(screen.getByTestId('daily-mix-thumbnail-number').firstElementChild).toHaveClass('scale-x-[1.2]')
+  })
+
   it('does not change the Home hue from regular playlist or track cards', () => {
     renderCards(
       <>

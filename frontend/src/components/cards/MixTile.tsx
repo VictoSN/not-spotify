@@ -15,6 +15,15 @@ interface MixTileProps {
   boldTitle?: boolean
 }
 
+const DAILY_MIX_ACCENTS = [
+  '#16e5dc',
+  '#e8f31d',
+  '#ff3b30',
+  '#ef8acb',
+  '#c9f24a',
+  '#aeb6ff',
+]
+
 /**
  * A "Daily Mix" tile: a 2x2 mosaic of the mix's album covers with a
  * genre-colored title band. Clicking the tile opens the mix detail page;
@@ -45,7 +54,13 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
     playMix()
   }
 
-  const accent = mix.color ?? '#1db954'
+  const numberedSubtitle = mix.subtitle.match(/^(.*?)(?:\s+(\d+))$/)
+  const thumbnailLabel = numberedSubtitle?.[1] ?? mix.subtitle
+  const thumbnailNumber = numberedSubtitle?.[2]?.padStart(2, '0') ?? null
+  const mixOrdinal = numberedSubtitle?.[2] ? Number.parseInt(numberedSubtitle[2], 10) : null
+  const accent = mixOrdinal && mixOrdinal > 0
+    ? DAILY_MIX_ACCENTS[(mixOrdinal - 1) % DAILY_MIX_ACCENTS.length]
+    : (mix.color ?? '#16e5dc')
 
   return (
     <div
@@ -69,12 +84,24 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
             <div className="h-full w-full" style={{ backgroundColor: accent }} />
           )}
 
-          {/* Genre-colored gradient band with the mix label */}
-          <div
-            className="absolute inset-x-0 bottom-0 px-2 py-2"
-            style={{ background: `linear-gradient(to top, ${accent}f2, ${accent}00)` }}
-          >
-            <p className="text-xs font-black uppercase tracking-wide text-white drop-shadow">{mix.subtitle}</p>
+          {/* Reference-style split label: title left, zero-padded mix number right. */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex items-end justify-between gap-2 px-1">
+            <span
+              data-testid="daily-mix-thumbnail-label"
+              className="rounded-[2px] px-1 py-0.5 text-sm font-black leading-none tracking-[-0.04em] text-black sm:text-base"
+              style={{ backgroundColor: accent }}
+            >
+              {thumbnailLabel}
+            </span>
+            {thumbnailNumber && (
+              <span
+                data-testid="daily-mix-thumbnail-number"
+                className="flex min-w-[3rem] items-center justify-center rounded-[2px] px-1 text-[1.75rem] font-normal leading-[0.88] text-black sm:min-w-[3.25rem] sm:text-[2rem]"
+                style={{ backgroundColor: accent }}
+              >
+                <span className="inline-block scale-x-[1.2]">{thumbnailNumber}</span>
+              </span>
+            )}
           </div>
 
           <CardPlayButton

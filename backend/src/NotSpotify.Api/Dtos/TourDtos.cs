@@ -19,6 +19,27 @@ public record TourDateDto(
     IReadOnlyList<TourSongDto> Songs
 );
 
+/// <summary>An upcoming event enriched with the artist data needed by Live Events discovery.</summary>
+public record LiveEventArtistDto(
+    string Id,
+    string Name,
+    string? ImageUrl,
+    string? HeaderImageUrl,
+    long MonthlyListeners,
+    IReadOnlyList<string> Genres
+);
+
+public record LiveEventDto(
+    string Id,
+    DateTime EventDate,
+    string City,
+    string Venue,
+    string Country,
+    string? TicketUrl,
+    IReadOnlyList<TourSongDto> Songs,
+    LiveEventArtistDto Artist
+);
+
 /// <summary>Create/update payload for an artist-managed tour date.</summary>
 public record TourDateUpsertRequest(
     DateTime EventDate,

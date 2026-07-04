@@ -86,6 +86,7 @@ export const curatedBrowseCategories: BrowseCategorySeed[] = [
     name: 'Live Events',
     slug: 'live-events',
     color: '#8400e7',
+    to: '/events',
     coverUrl: img('photo-1501281668745-f7f57925c3b4'),
     heroUrl: img('photo-1501386761578-eac5c94b800a', 1800, 620),
     searchQuery: 'live concert',

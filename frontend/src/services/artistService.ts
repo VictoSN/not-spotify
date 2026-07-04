@@ -1,4 +1,4 @@
-import type { Artist, TourDate } from '@/types/artist'
+import type { Artist, LiveEvent, TourDate } from '@/types/artist'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import { api } from './api'
@@ -11,6 +11,11 @@ export const artistService = {
 
   async getTourDates(artistId: string): Promise<TourDate[]> {
     const res = await api.get<TourDate[]>(`/artists/${artistId}/tour`)
+    return res.data
+  },
+
+  async getLiveEvents(country = 'US', limit = 80): Promise<LiveEvent[]> {
+    const res = await api.get<LiveEvent[]>('/artists/events', { params: { country, limit } })
     return res.data
   },
 

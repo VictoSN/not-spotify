@@ -42,3 +42,14 @@ export interface TourDate {
   ticketUrl: string | null
   songs: TourSong[]
 }
+
+export interface LiveEvent extends TourDate {
+  artist: {
+    id: string
+    name: string
+    imageUrl: string | null
+    headerImageUrl: string | null
+    monthlyListeners: number
+    genres: string[]
+  }
+}

@@ -163,6 +163,55 @@ public class ArtistTourTests
         Assert.Equal("Hit", Assert.Single(only.Songs).Title);
     }
 
+    [Fact]
+    public async Task LiveEvents_DefaultsToUnitedStates_AndReturnsArtistArtwork()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artist = new Artist
+        {
+            Id = Guid.NewGuid(),
+            Name = "US Artist",
+            ImageUrl = "https://img.test/artist.jpg",
+            HeaderImageUrl = "https://img.test/header.jpg",
+            MonthlyListeners = 42_000,
+        };
+        db.Artists.Add(artist);
+        db.TourDates.AddRange(
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "US", City = "New York", Venue = "Webster Hall", EventDate = DateTime.UtcNow.AddDays(5) },
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "GB", City = "London", Venue = "Roundhouse", EventDate = DateTime.UtcNow.AddDays(6) },
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "US", City = "Chicago", Venue = "Old Hall", EventDate = DateTime.UtcNow.AddDays(-2) });
+        await db.SaveChangesAsync();
+
+        var result = await new ArtistsController(db, TestHelpers.NewMapper()).Events();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var only = Assert.Single(Assert.IsAssignableFrom<IEnumerable<LiveEventDto>>(ok.Value));
+        Assert.Equal("New York", only.City);
+        Assert.Equal("US Artist", only.Artist.Name);
+        Assert.Equal("https://img.test/artist.jpg", only.Artist.ImageUrl);
+        Assert.Equal(42_000, only.Artist.MonthlyListeners);
+    }
+
+    [Fact]
+    public async Task LiveEvents_CountryAll_ReturnsEveryMarket()
+    {
+        await using var db = TestHelpers.NewDb();
+        var artist = new Artist { Id = Guid.NewGuid(), Name = "World Artist" };
+        db.Artists.Add(artist);
+        db.TourDates.AddRange(
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "US", City = "New York", Venue = "Webster Hall", EventDate = DateTime.UtcNow.AddDays(5) },
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "GB", City = "London", Venue = "Roundhouse", EventDate = DateTime.UtcNow.AddDays(6) },
+            new TourDate { Artist = artist, ArtistId = artist.Id, Country = "JP", City = "Tokyo", Venue = "Budokan", EventDate = DateTime.UtcNow.AddDays(-2) });
+        await db.SaveChangesAsync();
+
+        var result = await new ArtistsController(db, TestHelpers.NewMapper()).Events(country: "all");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var events = Assert.IsAssignableFrom<IEnumerable<LiveEventDto>>(ok.Value).ToList();
+        Assert.Equal(2, events.Count);                        // past Tokyo show still excluded
+        Assert.Equal(new[] { "New York", "London" }, events.Select(e => e.City).ToArray());
+    }
+
     private static string TmEventJson(string attraction, string venue, string city, string country, DateTime whenUtc)
         => $$"""
         { "_embedded": { "events": [ {

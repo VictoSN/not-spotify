@@ -34,7 +34,7 @@ export function LoginPage() {
   useDocumentTitle(t('auth.login'))
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const { login, hydrateFromCookie, isLoading, error, isAuthenticated, clearError } = useAuthStore()
+  const { login, hydrateFromCookie, isLoading, error, isAuthenticated, user, clearError } = useAuthStore()
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
@@ -45,8 +45,9 @@ export function LoginPage() {
   const captchaRef = useRef<CaptchaWidgetHandle>(null)
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/', { replace: true })
-  }, [isAuthenticated, navigate])
+    if (!isAuthenticated) return
+    navigate(user?.roles.includes('Admin') ? '/admin/dashboard' : '/', { replace: true })
+  }, [isAuthenticated, user, navigate])
 
   useEffect(() => {
     let active = true

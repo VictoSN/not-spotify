@@ -4,6 +4,8 @@ import {
   CalendarDaysIcon,
   CheckIcon,
   ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   MapPinIcon,
   PauseIcon,
   PlayIcon,
@@ -46,11 +48,6 @@ function startOfDay(date: Date) {
   return next
 }
 
-function todayIso() {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
 /** Friday→Sunday of the current (offset 0) or next (offset 1) weekend, from today. */
 function weekendRange(weekOffset: number) {
   const today = startOfDay(new Date())
@@ -77,6 +74,224 @@ function eventImage(event: LiveEvent) {
 
 function shortDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function isoFor(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+/** Leading blanks + day numbers for a month, laid out on a Sunday-first grid. */
+function monthCells(year: number, month: number) {
+  const startWeekday = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const cells: (number | null)[] = Array.from({ length: startWeekday }, () => null)
+  for (let day = 1; day <= daysInMonth; day += 1) cells.push(day)
+  return cells
+}
+
+function addMonths(cursor: { year: number; month: number }, delta: number) {
+  const next = new Date(cursor.year, cursor.month + delta, 1)
+  return { year: next.getFullYear(), month: next.getMonth() }
+}
+
+/** One month grid in the date picker. */
+function CalendarMonth({
+  year,
+  month,
+  today,
+  selectedIso,
+  onSelect,
+}: {
+  year: number
+  month: number
+  today: Date
+  selectedIso: string
+  onSelect: (iso: string) => void
+}) {
+  const cells = monthCells(year, month)
+  const monthLabel = new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+
+  return (
+    <div className="w-[280px] shrink-0">
+      <div className="mb-3 text-center text-sm font-bold text-white">{monthLabel}</div>
+      <div className="mb-1 grid grid-cols-7">
+        {WEEKDAY_LABELS.map((label) => (
+          <div key={label} className="py-1 text-center text-[11px] font-semibold text-white/45">
+            {label}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-y-1">
+        {cells.map((day, index) => {
+          if (day === null) return <div key={`blank-${index}`} />
+          const iso = isoFor(year, month, day)
+          const date = new Date(year, month, day)
+          const isPast = date < today
+          const isToday = date.getTime() === today.getTime()
+          const isSelected = iso === selectedIso
+          return (
+            <div key={iso} className="flex justify-center">
+              <button
+                type="button"
+                disabled={isPast}
+                onClick={() => onSelect(iso)}
+                aria-pressed={isSelected}
+                aria-label={date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                className={cn(
+                  'flex h-9 w-9 items-center justify-center rounded-full text-sm font-medium transition-colors',
+                  isPast && 'cursor-default text-white/25',
+                  !isPast && !isSelected && 'text-white hover:bg-white/10',
+                  isToday && !isSelected && 'ring-1 ring-inset ring-white/60',
+                  isSelected && 'bg-[#1ed760] font-bold text-black hover:bg-[#1ed760]',
+                )}
+              >
+                {day}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Spotify-style two-month date picker modal. */
+function EventDatePicker({
+  open,
+  onClose,
+  customDate,
+  dateFilter,
+  onSelectDate,
+  onSelectWeekend,
+  onClear,
+}: {
+  open: boolean
+  onClose: () => void
+  customDate: string
+  dateFilter: DateFilter
+  onSelectDate: (iso: string) => void
+  onSelectWeekend: (which: 'weekend' | 'next-weekend') => void
+  onClear: () => void
+}) {
+  const today = useMemo(() => startOfDay(new Date()), [])
+  const [cursor, setCursor] = useState(() => ({ year: today.getFullYear(), month: today.getMonth() }))
+
+  // Re-anchor the visible months on the selected date (or today) each open.
+  useEffect(() => {
+    if (!open) return
+    const base = customDate ? new Date(`${customDate}T00:00:00`) : today
+    setCursor({ year: base.getFullYear(), month: base.getMonth() })
+  }, [open, customDate, today])
+
+  // Escape closes, matching the location popover's dismiss behaviour.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
+  if (!open) return null
+
+  const secondMonth = addMonths(cursor, 1)
+  const canGoPrev = cursor.year > today.getFullYear() || (cursor.year === today.getFullYear() && cursor.month > today.getMonth())
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="What dates are you looking for?"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div className="animate-pop-in w-full max-w-[640px] rounded-xl bg-[#1c1433] p-6 shadow-2xl">
+        <div className="relative mb-5 flex items-center justify-center">
+          <h2 className="text-base font-bold text-white">What dates are you looking for?</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-0 flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            aria-label="Close date picker"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mb-4 flex justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => onSelectWeekend('weekend')}
+            className={cn(
+              'rounded-full px-5 py-2 text-sm font-bold transition-all duration-200 hover:scale-[1.03]',
+              dateFilter === 'weekend' ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20',
+            )}
+          >
+            This weekend
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelectWeekend('next-weekend')}
+            className={cn(
+              'rounded-full px-5 py-2 text-sm font-bold transition-all duration-200 hover:scale-[1.03]',
+              dateFilter === 'next-weekend' ? 'bg-white text-black' : 'bg-white/10 text-white hover:bg-white/20',
+            )}
+          >
+            Next weekend
+          </button>
+        </div>
+
+        <div className="mb-5 border-t border-white/10" />
+
+        <div className="relative flex flex-col items-center gap-6 sm:flex-row sm:justify-center sm:gap-8">
+          <button
+            type="button"
+            onClick={() => canGoPrev && setCursor((c) => addMonths(c, -1))}
+            disabled={!canGoPrev}
+            className={cn(
+              'absolute left-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10',
+              !canGoPrev && 'cursor-default text-white/25 hover:bg-transparent',
+            )}
+            aria-label="Previous month"
+          >
+            <ChevronLeftIcon className="h-5 w-5" />
+          </button>
+          <CalendarMonth year={cursor.year} month={cursor.month} today={today} selectedIso={customDate} onSelect={onSelectDate} />
+          <CalendarMonth year={secondMonth.year} month={secondMonth.month} today={today} selectedIso={customDate} onSelect={onSelectDate} />
+          <button
+            type="button"
+            onClick={() => setCursor((c) => addMonths(c, 1))}
+            className="absolute right-0 top-0 flex h-8 w-8 items-center justify-center rounded-full text-white transition-colors hover:bg-white/10"
+            aria-label="Next month"
+          >
+            <ChevronRightIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-6">
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-sm font-bold text-white/80 transition-colors hover:text-white"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-[#1ed760] px-8 py-2.5 text-sm font-bold text-black transition-all duration-200 hover:scale-105 hover:bg-[#3be477] active:scale-95"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function EventCard({ event, groupSize, groupEnd }: { event: LiveEvent; groupSize?: number; groupEnd?: string }) {
@@ -252,8 +467,8 @@ export function LiveEventsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [customDate, setCustomDate] = useState('')
   const [genre, setGenre] = useState('all')
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const locationMenuRef = useRef<HTMLDivElement>(null)
-  const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const following = isAuthenticated ? artistService.getFollowing().catch(() => []) : Promise.resolve([])
@@ -345,16 +560,6 @@ export function LiveEventsPage() {
     setLocationOpen(false)
   }
 
-  const openDatePicker = () => {
-    const el = dateInputRef.current
-    if (!el) return
-    if (typeof el.showPicker === 'function') {
-      try { el.showPicker(); return } catch { /* fall through to focus */ }
-    }
-    el.focus()
-    el.click()
-  }
-
   const clearFilters = () => {
     setDateFilter('all')
     setCustomDate('')
@@ -430,7 +635,7 @@ export function LiveEventsPage() {
       <div className="sticky top-0 z-30 border-b border-white/5 bg-[#211a46]/95 px-6 py-4 backdrop-blur-xl sm:px-9">
         <div className="flex flex-wrap items-center gap-2">
           {locationChooser}
-          <button type="button" onClick={openDatePicker} className={customDate ? CHIP_ACTIVE : CHIP_OUTLINED} aria-label="Select event date">
+          <button type="button" onClick={() => setDatePickerOpen(true)} className={customDate ? CHIP_ACTIVE : CHIP_OUTLINED} aria-label="Select event date">
             <CalendarDaysIcon className="h-4 w-4" />
             {customDate ? new Date(`${customDate}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Select dates'}
             {customDate && (
@@ -441,16 +646,6 @@ export function LiveEventsPage() {
               />
             )}
           </button>
-          <input
-            ref={dateInputRef}
-            type="date"
-            min={todayIso()}
-            value={customDate}
-            onChange={(event) => { setCustomDate(event.target.value); setDateFilter(event.target.value ? 'custom' : 'all') }}
-            className="sr-only"
-            tabIndex={-1}
-            aria-hidden="true"
-          />
           <button type="button" onClick={() => setDateFilter(dateFilter === 'weekend' ? 'all' : 'weekend')} className={dateFilter === 'weekend' ? CHIP_ACTIVE : CHIP_FILLED}>This weekend</button>
           <button type="button" onClick={() => setDateFilter(dateFilter === 'next-weekend' ? 'all' : 'next-weekend')} className={dateFilter === 'next-weekend' ? CHIP_ACTIVE : CHIP_FILLED}>Next weekend</button>
           <label className={cn(CHIP_OUTLINED, 'cursor-pointer', genre !== 'all' && 'border-white bg-white/10')}>
@@ -520,6 +715,16 @@ export function LiveEventsPage() {
           </>
         )}
       </main>
+
+      <EventDatePicker
+        open={datePickerOpen}
+        onClose={() => setDatePickerOpen(false)}
+        customDate={customDate}
+        dateFilter={dateFilter}
+        onSelectDate={(iso) => { setCustomDate(iso); setDateFilter('custom') }}
+        onSelectWeekend={(which) => { setCustomDate(''); setDateFilter(dateFilter === which ? 'all' : which) }}
+        onClear={() => { setCustomDate(''); setDateFilter('all') }}
+      />
     </div>
   )
 }

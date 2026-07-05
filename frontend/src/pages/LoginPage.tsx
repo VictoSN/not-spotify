@@ -176,14 +176,16 @@ export function LoginPage() {
             {isLoading ? <Spinner size="sm" /> : t('auth.login.submit')}
           </button>
 
-          <button
-            type="button"
-            onClick={() => void doLogin('alex@example.com', 'Password123!')}
-            disabled={isLoading || captchaRequired}
-            className="h-12 w-full rounded-full border border-secondary/60 bg-transparent px-8 text-sm font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {t('auth.login.admin')}
-          </button>
+          {showDevShortcuts && (
+            <button
+              type="button"
+              onClick={() => void doLogin('alex@example.com', 'Password123!')}
+              disabled={isLoading || captchaRequired}
+              className="h-12 w-full rounded-full border border-secondary/60 bg-transparent px-8 text-sm font-bold text-primary transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {t('auth.login.admin')}
+            </button>
+          )}
         </form>
 
         {showDevShortcuts && (

@@ -18,7 +18,7 @@ export function CardPlayButton({
   variant = 'default',
 }: CardPlayButtonProps) {
   const isArtist = variant === 'artist'
-  const sizeClasses = isArtist ? 'h-11 w-11 bottom-1 right-1 z-10' : 'w-10 h-10 bottom-2 right-2'
+  const sizeClasses = isArtist ? 'h-11 w-11 bottom-1 right-1 z-10' : 'w-10 h-10 bottom-2 right-2 z-20'
   const iconColor = isArtist ? 'text-black' : 'text-white'
   return (
     <button

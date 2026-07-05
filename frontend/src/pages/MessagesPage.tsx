@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   PaperAirplaneIcon,
+  ArrowLeftIcon,
   ChatBubbleLeftRightIcon,
   LockClosedIcon,
   MinusCircleIcon,
@@ -104,6 +105,7 @@ export function MessagesPage() {
   const [emojiMenuOpen, setEmojiMenuOpen] = useState(false)
   const [pinRevision, setPinRevision] = useState(0)
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const threadTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const composerToolsRef = useRef<HTMLDivElement | null>(null)
   const documentInputRef = useRef<HTMLInputElement | null>(null)
   const mediaInputRef = useRef<HTMLInputElement | null>(null)
@@ -215,6 +217,33 @@ export function MessagesPage() {
     setSearchParams({ u: userId }, { replace: true })
   }
 
+  const showConversationList = () => {
+    setSearchParams({}, { replace: true })
+  }
+
+  const handleThreadTouchStart = (event: React.TouchEvent<HTMLElement>) => {
+    if (event.touches.length !== 1) return
+    const touch = event.touches[0]
+    threadTouchStartRef.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  const handleThreadTouchEnd = (event: React.TouchEvent<HTMLElement>) => {
+    const start = threadTouchStartRef.current
+    threadTouchStartRef.current = null
+    if (!start || !window.matchMedia('(max-width: 767px)').matches) return
+
+    const touch = event.changedTouches[0]
+    if (!touch) return
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+
+    // A deliberate horizontal swipe to the left returns to the conversation list.
+    // Vertical scrolling and short taps stay untouched.
+    if (deltaX < -72 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      showConversationList()
+    }
+  }
+
   const handleClearChat = async (conversation: Conversation) => {
     const accepted = await confirm({
       title: `Clear chat with ${conversation.name}?`,
@@ -279,7 +308,12 @@ export function MessagesPage() {
   return (
     <div className="flex h-full min-h-0 bg-page text-primary">
       {/* ── Conversation list ─────────────────────────────────────────── */}
-      <aside className="flex w-full max-w-xs shrink-0 flex-col border-r border-elevated/40 bg-sidebar sm:w-80">
+      <aside
+        className={cn(
+          'w-full shrink-0 flex-col border-r border-elevated/40 bg-sidebar md:flex md:w-80',
+          activeUserId ? 'hidden' : 'flex',
+        )}
+      >
         <div className="px-4 pb-3 pt-5">
           <h1 className="text-2xl font-bold text-primary">Messages</h1>
         </div>
@@ -391,7 +425,15 @@ export function MessagesPage() {
       </aside>
 
       {/* ── Thread ────────────────────────────────────────────────────── */}
-      <section className="flex min-w-0 flex-1 flex-col bg-page">
+      <section
+        onTouchStart={handleThreadTouchStart}
+        onTouchEnd={handleThreadTouchEnd}
+        onTouchCancel={() => { threadTouchStartRef.current = null }}
+        className={cn(
+          'min-w-0 flex-1 flex-col bg-page md:flex',
+          activeUserId ? 'flex' : 'hidden',
+        )}
+      >
         {!activePartner ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
             <ChatBubbleLeftRightIcon className="h-14 w-14 text-muted" />
@@ -404,6 +446,14 @@ export function MessagesPage() {
           <>
             {/* Header */}
             <div className="flex items-center gap-3 border-b border-elevated/40 bg-page px-4 py-3">
+              <button
+                type="button"
+                onClick={showConversationList}
+                className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-elevated hover:text-primary md:hidden"
+                aria-label="Back to conversations"
+              >
+                <ArrowLeftIcon className="h-5 w-5" />
+              </button>
               <Link
                 to={`/user/${activePartner.userId}`}
                 className="group flex min-w-0 items-center gap-3 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent/70"

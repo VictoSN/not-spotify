@@ -17,6 +17,16 @@ class ResizeObserverStub {
 }
 
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+  matches: query === '(max-width: 767px)',
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+})))
 
 const PARTNER = 'partner-1'
 
@@ -153,6 +163,47 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
     const readRow = screen.getByRole('button', { name: 'Open chat with Read Friend' })
     expect(readRow.querySelector('time')).toHaveClass('font-normal', 'text-secondary')
     expect(readRow.querySelector('time')).not.toHaveClass('font-bold')
+  })
+
+  it('uses a single pane on mobile and returns from the thread to the conversation list', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    const backButton = screen.getByRole('button', { name: 'Back to conversations' })
+    const threadPane = backButton.closest('section')
+    const conversationPane = screen.getByRole('button', { name: 'Open chat with Old Friend' }).closest('aside')
+
+    expect(threadPane).toHaveClass('flex')
+    expect(conversationPane).toHaveClass('hidden')
+
+    fireEvent.click(backButton)
+
+    await waitFor(() => {
+      expect(conversationPane).toHaveClass('flex')
+      expect(threadPane).toHaveClass('hidden')
+    })
+  })
+
+  it('returns to the conversation list after a left swipe on a mobile thread', async () => {
+    friendServiceMock.getFriends.mockResolvedValue([friend])
+    await renderThread()
+
+    const backButton = screen.getByRole('button', { name: 'Back to conversations' })
+    const threadPane = backButton.closest('section')!
+    const conversationPane = screen.getByRole('button', { name: 'Open chat with Old Friend' }).closest('aside')
+
+    // Vertical motion remains normal message scrolling.
+    fireEvent.touchStart(threadPane, { touches: [{ clientX: 300, clientY: 200 }] })
+    fireEvent.touchEnd(threadPane, { changedTouches: [{ clientX: 285, clientY: 330 }] })
+    expect(threadPane).toHaveClass('flex')
+
+    fireEvent.touchStart(threadPane, { touches: [{ clientX: 320, clientY: 300 }] })
+    fireEvent.touchEnd(threadPane, { changedTouches: [{ clientX: 180, clientY: 310 }] })
+
+    await waitFor(() => {
+      expect(conversationPane).toHaveClass('flex')
+      expect(threadPane).toHaveClass('hidden')
+    })
   })
 
   it('opens the attachment menu and inserts an emoji from the left composer controls', async () => {

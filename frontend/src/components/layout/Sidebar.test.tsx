@@ -310,6 +310,31 @@ describe('Sidebar saved media navigation', () => {
       const beta = screen.getByRole('link', { name: /Beta/ })
       expect(beta.compareDocumentPosition(alpha) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     })
+
+    it('reorders playlists under the Playlists filter while preserving hidden items', () => {
+      useLibraryStore.setState({
+        savedPlaylists: [
+          { id: 'a', name: 'Alpha', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-01T00:00:00Z', tracks: [] },
+          { id: 'b', name: 'Beta', coverUrl: null, isOwner: true, owner: { name: 'You' }, createdAt: '2020-01-02T00:00:00Z', tracks: [] },
+        ] as never,
+        savedAlbums: [
+          { id: 'x', title: 'Xanadu', type: 'album', coverUrl: null, artist: { name: 'Rush' } },
+        ] as never,
+        savedVideos: [], savedPodcasts: [],
+      })
+      renderSidebar()
+
+      // Narrow to just playlists, then drag Alpha below Beta.
+      fireEvent.click(screen.getByRole('button', { name: 'Playlists' }))
+      const dt = makeDataTransfer()
+      fireEvent.dragStart(rowFor(/Alpha/), { dataTransfer: dt })
+      fireEvent.dragOver(rowFor(/Beta/), { dataTransfer: dt, clientY: 50 })
+      fireEvent.drop(rowFor(/Beta/), { dataTransfer: dt, clientY: 50 })
+
+      // Playlists swapped, and the filtered-out album keeps its place in the saved order.
+      expect(JSON.parse(window.localStorage.getItem('ns-library-order') ?? '[]')).toEqual(['pl-b', 'pl-a', 'al-x'])
+      expect(window.localStorage.getItem('ns-library-sort')).toBe('custom')
+    })
   })
 
   it('opens the create menu only on blank library space and reuses both create actions', async () => {

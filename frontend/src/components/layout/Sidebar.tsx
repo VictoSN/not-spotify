@@ -480,7 +480,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   })
 
   // ── Build the library list ──────────────────────────────────────
-  const items = useMemo<LibItem[]>(() => {
+  const { items, orderedKeys } = useMemo<{ items: LibItem[]; orderedKeys: string[] }>(() => {
     const history = playHistory
     const playlists: LibItem[] = savedPlaylists.map((p) => ({
       key: `pl-${p.id}`,
@@ -553,6 +553,34 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       playable: false,
     }))
 
+    const all = [...playlists, ...albums, ...artists, ...podcasts, ...videos]
+
+    // Sort + pin float, shared by the visible list and the full reorder base so
+    // both agree on relative order (a drag under a filter lands correctly).
+    const applySortAndPins = (input: LibItem[]) => {
+      let list = input
+      if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
+      else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
+      else if (sort === 'custom' && customOrder.length > 0) {
+        // Manual drag order. Items absent from the saved order (e.g. newly added)
+        // keep their default position by sorting to the end, stably.
+        const rank = new Map(customOrder.map((k, i) => [k, i]))
+        list = [...list].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity))
+      }
+      // Float pinned items to the top, in pin order (most-recently pinned first),
+      // while preserving the active sort for everything else. Stable so unpinned
+      // rows keep their relative order.
+      if (pinnedKeys.length > 0) {
+        const pinRank = new Map(pinnedKeys.map((k, i) => [k, i]))
+        list = [...list].sort((a, b) => {
+          const ra = pinRank.has(a.key) ? pinRank.get(a.key)! : Infinity
+          const rb = pinRank.has(b.key) ? pinRank.get(b.key)! : Infinity
+          return ra - rb
+        })
+      }
+      return list
+    }
+
     let list =
       filter === 'playlists'
         ? playlists
@@ -560,7 +588,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           ? albums
           : filter === 'artists'
             ? artists
-            : [...playlists, ...albums, ...artists, ...podcasts, ...videos]
+            : all
 
     // Folder view: show only items inside the selected folder (bug 32)
     if (folderView) {
@@ -573,27 +601,8 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
-    if (sort === 'alpha') list = [...list].sort((a, b) => a.name.localeCompare(b.name))
-    else if (sort === 'creator') list = [...list].sort((a, b) => a.subtitle.localeCompare(b.subtitle))
-    else if (sort === 'custom' && customOrder.length > 0) {
-      // Manual drag order. Items absent from the saved order (e.g. newly added)
-      // keep their default position by sorting to the end, stably.
-      const rank = new Map(customOrder.map((k, i) => [k, i]))
-      list = [...list].sort((a, b) => (rank.get(a.key) ?? Infinity) - (rank.get(b.key) ?? Infinity))
-    }
 
-    // Float pinned items to the top, in pin order (most-recently pinned first),
-    // while preserving the active sort for everything else. Stable so unpinned
-    // rows keep their relative order.
-    if (pinnedKeys.length > 0) {
-      const pinRank = new Map(pinnedKeys.map((k, i) => [k, i]))
-      list = [...list].sort((a, b) => {
-        const ra = pinRank.has(a.key) ? pinRank.get(a.key)! : Infinity
-        const rb = pinRank.has(b.key) ? pinRank.get(b.key)! : Infinity
-        return ra - rb
-      })
-    }
-    return list
+    return { items: applySortAndPins(list), orderedKeys: applySortAndPins(all).map((i) => i.key) }
   }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, pinnedKeys, customOrder, t])
 
   const pinnedSet = useMemo(() => new Set(pinnedKeys), [pinnedKeys])
@@ -678,15 +687,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
   const hasFolderSection = foldersActive && folders.length > 0
 
-  // Drag-reorder: move `fromKey` before/after `toKey` over the currently shown
-  // flat list, persist the new order, and switch to the Custom sort so it sticks.
-  // Only offered in the default view (no filter/search) or folder view to keep
-  // the saved order complete. Pins still float to the top afterwards (composed
-  // in `items`).
-  // Reorder over the full item list (works for both the expanded list/grid and
-  // the minimized rail; folder-grouped rows keep their slots and are simply
-  // filtered into folders when expanded).
-  const reorderEnabled = foldersActive || !!folderView
+  // Drag-reorder: move `fromKey` before/after `toKey`, persist the new order, and
+  // switch to the Custom sort so it sticks. Offered in the default view AND under
+  // the Playlists/Artists/Albums filter chips (so playlists can be repositioned
+  // like everything else) or folder view. Disabled only while searching, where a
+  // text-filtered subset would make the saved order ambiguous. Because it always
+  // reorders over the *full* library key list (`orderedKeys`), moving an item
+  // inside a filtered view preserves the positions of everything not shown.
+  const reorderEnabled = !!folderView || !query.trim()
   const reorderLibrary = (fromKey: string, toKey: string, before: boolean) => {
     // In folder view, reorder within the current folder instead of the full list.
     if (folderView) {
@@ -699,7 +707,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (currentFolder) {
       removeItemFromFolder(fromKey)
     }
-    const next = reorderKeys(items.map((i) => i.key), fromKey, toKey, before)
+    const next = reorderKeys(orderedKeys, fromKey, toKey, before)
     setCustomOrder(next)
     if (sort !== 'custom') setSort('custom')
   }

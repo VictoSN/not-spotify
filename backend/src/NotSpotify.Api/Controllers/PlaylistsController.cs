@@ -412,6 +412,46 @@ public class PlaylistsController : ControllerBase
         return NoContent();
     }
 
+    [HttpPatch("{id:guid}/tracks/order")]
+    [Authorize]
+    public async Task<ActionResult<PlaylistDto>> ReorderTracks(
+        Guid id,
+        [FromBody] ReorderPlaylistTracksRequest req,
+        CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var playlist = await _db.Playlists
+            .Include(p => p.PlaylistTracks)
+            .FirstOrDefaultAsync(p => p.Id == id, ct);
+        if (playlist is null) return NotFound();
+        if (playlist.OwnerId != me) return StatusCode(StatusCodes.Status403Forbidden);
+        if (playlist.Rules is not null)
+            return BadRequest(new { message = "Smart playlists are ordered automatically." });
+
+        var requestedIds = req.TrackIds ?? [];
+        var currentIds = playlist.PlaylistTracks.Select(pt => pt.TrackId).ToHashSet();
+        if (requestedIds.Length != currentIds.Count ||
+            requestedIds.Distinct().Count() != requestedIds.Length ||
+            requestedIds.Any(trackId => !currentIds.Contains(trackId)))
+        {
+            return BadRequest(new { message = "TrackIds must contain every playlist track exactly once." });
+        }
+
+        var positions = requestedIds
+            .Select((trackId, index) => new { trackId, position = index + 1 })
+            .ToDictionary(item => item.trackId, item => item.position);
+        foreach (var playlistTrack in playlist.PlaylistTracks)
+            playlistTrack.Position = positions[playlistTrack.TrackId];
+
+        playlist.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync(ct);
+
+        var loaded = await LoadFullPlaylist(id, ct);
+        return Ok(await _mapper.ToDtoAsync(loaded!, ct, isOwner: true, isSaved: false));
+    }
+
     /// <summary>
     /// Suggests tracks the owner might want to add: other tracks sharing at least one
     /// genre with the playlist's existing tracks. Ranked by genre-overlap count, then
@@ -488,7 +528,7 @@ public class PlaylistsController : ControllerBase
         var ms = new MemoryStream();
         var added = 0;
 
-        var ordered = playlist.PlaylistTracks.OrderBy(pt => pt.AddedAt).Select(pt => pt.Track).ToList();
+        var ordered = playlist.PlaylistTracks.OrderBy(pt => pt.Position).Select(pt => pt.Track).ToList();
         using (var zip = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
         {
             for (var i = 0; i < ordered.Count; i++)

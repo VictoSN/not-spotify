@@ -45,6 +45,7 @@ import { PlaylistRowMenu } from '@/components/cards/PlaylistRowMenu'
 import { formatMs } from '@/utils/formatTime'
 import { formatNumber } from '@/utils/formatNumber'
 import { cn } from '@/utils/cn'
+import { notify } from '@/utils/toast'
 
 type TrackSort = 'custom' | 'title' | 'artist' | 'album' | 'duration' | 'added'
 
@@ -56,6 +57,8 @@ const TRACK_SORT_OPTIONS: { value: TrackSort; label: string }[] = [
   { value: 'added', label: 'Date added' },
   { value: 'duration', label: 'Duration' },
 ]
+
+const PLAYLIST_TRACK_REORDER_MIME = 'application/x-ns-playlist-track-reorder'
 
 /** Returns a sorted copy of the playlist's tracks. 'custom' keeps server order. */
 function sortPlaylistTracks(tracks: PlaylistTrack[], key: TrackSort): PlaylistTrack[] {
@@ -108,6 +111,8 @@ export function PlaylistDetailPage() {
   const debouncedQuery = useDebounce(searchQuery, 300)
   const [downloading, setDownloading] = useState(false)
   const [trackSort, setTrackSort] = useState<TrackSort>('custom')
+  const [dragOverTrack, setDragOverTrack] = useState<{ id: string; edge: 'before' | 'after' } | null>(null)
+  const trackReorderInFlight = useRef(false)
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
   const startContext = usePlayContextGate()
   const isMobile = useIsMobile()
@@ -455,6 +460,39 @@ export function PlaylistDetailPage() {
         totalDurationMs: Math.max(0, current.totalDurationMs - (removed?.track.durationMs ?? 0)),
       }
     })
+  }
+
+  const canReorderTracks = !playlist.smartRules && !!(playlist.isOwner || playlist.isCollaborator)
+
+  const handleTrackReorder = async (fromId: string, toId: string, before: boolean) => {
+    if (!canReorderTracks || trackSort !== 'custom' || fromId === toId || trackReorderInFlight.current) return
+    const fromIndex = playlist.tracks.findIndex((item) => item.track.id === fromId)
+    if (fromIndex < 0 || !playlist.tracks.some((item) => item.track.id === toId)) return
+
+    const previousTracks = playlist.tracks
+    const nextTracks = [...previousTracks]
+    const [moved] = nextTracks.splice(fromIndex, 1)
+    let insertAt = nextTracks.findIndex((item) => item.track.id === toId)
+    if (!before) insertAt += 1
+    nextTracks.splice(insertAt, 0, moved)
+
+    trackReorderInFlight.current = true
+    setPlaylist((current) => current ? { ...current, tracks: nextTracks } : current)
+    syncPlaylistTracks(playlist.id, nextTracks)
+    try {
+      const updated = await playlistService.reorderTracks(
+        playlist.id,
+        nextTracks.map((item) => item.track.id),
+      )
+      setPlaylist(updated)
+      syncPlaylistTracks(updated.id, updated.tracks)
+    } catch {
+      setPlaylist((current) => current ? { ...current, tracks: previousTracks } : current)
+      syncPlaylistTracks(playlist.id, previousTracks)
+      notify.error("Couldn't save the new track order.")
+    } finally {
+      trackReorderInFlight.current = false
+    }
   }
 
   return (
@@ -856,23 +894,67 @@ export function PlaylistDetailPage() {
           </div>
         </div>
 
-        {sortedPlaylistTracks.map((pt, i) => (
-          <TrackRow
-            key={pt.track.id}
-            track={pt.track}
-            index={i}
-            queue={tracks}
-            showAlbum
-            addedAt={pt.addedAt}
-            currentPlaylistId={
-              !playlist.smartRules && (playlist.isOwner || playlist.isCollaborator)
-                ? playlist.id
-                : undefined
-            }
-            onRemovedFromCurrentPlaylist={handleTrackRemoved}
-            context={{ type: 'playlist', id: playlist.id }}
-          />
-        ))}
+        {sortedPlaylistTracks.map((pt, i) => {
+          const reorderEnabled = canReorderTracks && trackSort === 'custom'
+          const dropEdge = dragOverTrack?.id === pt.track.id ? dragOverTrack.edge : null
+          return (
+            <div
+              key={pt.track.id}
+              className="relative"
+              onDragStart={reorderEnabled ? (e) => {
+                e.dataTransfer.setData(PLAYLIST_TRACK_REORDER_MIME, pt.track.id)
+                e.dataTransfer.effectAllowed = 'copyMove'
+              } : undefined}
+              onDragOver={reorderEnabled ? (e) => {
+                if (!e.dataTransfer.types.includes(PLAYLIST_TRACK_REORDER_MIME)) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                const rect = e.currentTarget.getBoundingClientRect()
+                setDragOverTrack({
+                  id: pt.track.id,
+                  edge: e.clientY < rect.top + rect.height / 2 ? 'before' : 'after',
+                })
+              } : undefined}
+              onDragLeave={reorderEnabled ? (e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOverTrack(null)
+              } : undefined}
+              onDrop={reorderEnabled ? (e) => {
+                if (!e.dataTransfer.types.includes(PLAYLIST_TRACK_REORDER_MIME)) return
+                e.preventDefault()
+                const fromId = e.dataTransfer.getData(PLAYLIST_TRACK_REORDER_MIME)
+                const rect = e.currentTarget.getBoundingClientRect()
+                const before = e.clientY < rect.top + rect.height / 2
+                setDragOverTrack(null)
+                void handleTrackReorder(fromId, pt.track.id, before)
+              } : undefined}
+              onDragEnd={reorderEnabled ? () => setDragOverTrack(null) : undefined}
+            >
+              {dropEdge && (
+                <div
+                  aria-hidden="true"
+                  className={cn(
+                    'pointer-events-none absolute inset-x-1 z-30 h-0.5 rounded bg-accent',
+                    dropEdge === 'before' ? 'top-0' : 'bottom-0',
+                  )}
+                />
+              )}
+              <TrackRow
+                track={pt.track}
+                index={i}
+                queue={tracks}
+                showAlbum
+                addedAt={pt.addedAt}
+                currentPlaylistId={
+                  !playlist.smartRules && (playlist.isOwner || playlist.isCollaborator)
+                    ? playlist.id
+                    : undefined
+                }
+                onRemovedFromCurrentPlaylist={handleTrackRemoved}
+                context={{ type: 'playlist', id: playlist.id }}
+              />
+            </div>
+          )
+        })}
       </div>
 
       {/* "Let's find something for your playlist" panel — owner & collaborators */}

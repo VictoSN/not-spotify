@@ -292,6 +292,79 @@ public class PlaylistsControllerTests
     // ── Recommendations (genre overlap) ──────────────────────────────────────────
 
     [Fact]
+    public async Task ReorderTracks_Owner_PersistsAndReturnsRequestedOrder()
+    {
+        await using var db = TestHelpers.NewDb();
+        var owner = Guid.NewGuid();
+        db.AddUser(owner, "owner");
+        var first = db.SeedTrack("First");
+        var second = db.SeedTrack("Second");
+        var third = db.SeedTrack("Third");
+        var playlist = db.AddPlaylist(owner, "public");
+        db.PlaylistTracks.AddRange(
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = first.Id, Position = 1, AddedByUserId = owner },
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = second.Id, Position = 2, AddedByUserId = owner },
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = third.Id, Position = 3, AddedByUserId = owner });
+        await db.SaveChangesAsync();
+
+        var requestedOrder = new[] { third.Id, first.Id, second.Id };
+        var result = await TestHelpers.NewPlaylistsController(db).AsUser(owner)
+            .ReorderTracks(playlist.Id, new ReorderPlaylistTracksRequest(requestedOrder));
+
+        var dto = Assert.IsType<PlaylistDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(requestedOrder, dto.Tracks.Select(item => item.Track.Id));
+        Assert.Equal(
+            requestedOrder,
+            db.PlaylistTracks.OrderBy(item => item.Position).Select(item => item.TrackId));
+    }
+
+    [Fact]
+    public async Task ReorderTracks_RejectsIncompleteOrDuplicateTrackLists()
+    {
+        await using var db = TestHelpers.NewDb();
+        var owner = Guid.NewGuid();
+        db.AddUser(owner, "owner");
+        var first = db.SeedTrack("First");
+        var second = db.SeedTrack("Second");
+        var playlist = db.AddPlaylist(owner, "public");
+        db.PlaylistTracks.AddRange(
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = first.Id, Position = 1, AddedByUserId = owner },
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = second.Id, Position = 2, AddedByUserId = owner });
+        await db.SaveChangesAsync();
+        var controller = TestHelpers.NewPlaylistsController(db).AsUser(owner);
+
+        var incomplete = await controller.ReorderTracks(
+            playlist.Id,
+            new ReorderPlaylistTracksRequest([second.Id]));
+        var duplicate = await controller.ReorderTracks(
+            playlist.Id,
+            new ReorderPlaylistTracksRequest([second.Id, second.Id]));
+
+        Assert.IsType<BadRequestObjectResult>(incomplete.Result);
+        Assert.IsType<BadRequestObjectResult>(duplicate.Result);
+        Assert.Equal(
+            new[] { first.Id, second.Id },
+            db.PlaylistTracks.OrderBy(item => item.Position).Select(item => item.TrackId));
+    }
+
+    [Fact]
+    public async Task ReorderTracks_ByNonOwner_IsForbidden()
+    {
+        await using var db = TestHelpers.NewDb();
+        var owner = Guid.NewGuid();
+        var track = db.SeedTrack();
+        var playlist = db.AddPlaylist(owner, "public");
+        playlist.PlaylistTracks.Add(
+            new PlaylistTrack { PlaylistId = playlist.Id, TrackId = track.Id, Position = 1, AddedByUserId = owner });
+        await db.SaveChangesAsync();
+
+        var result = await TestHelpers.NewPlaylistsController(db).AsUser(Guid.NewGuid())
+            .ReorderTracks(playlist.Id, new ReorderPlaylistTracksRequest([track.Id]));
+
+        Assert.Equal(StatusCodes.Status403Forbidden, Assert.IsType<StatusCodeResult>(result.Result).StatusCode);
+    }
+
+    [Fact]
     public async Task Recommendations_SuggestSharedGenreTracks_ExcludingExistingAndUnrelated()
     {
         await using var db = TestHelpers.NewDb();

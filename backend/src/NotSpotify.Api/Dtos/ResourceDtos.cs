@@ -196,6 +196,8 @@ public record UpdatePlaylistRequest(
 
 public record AddPlaylistTrackRequest(Guid TrackId);
 
+public record ReorderPlaylistTracksRequest(Guid[] TrackIds);
+
 /// <summary>One row of the weekly Top 50 chart.</summary>
 public record ChartEntryDto(int Rank, int PlaysThisWeek, TrackDto Track);
 

@@ -78,6 +78,11 @@ export const playlistService = {
     await api.delete(`/playlists/${playlistId}/tracks/${trackId}`)
   },
 
+  async reorderTracks(playlistId: string, trackIds: string[]): Promise<Playlist> {
+    const res = await api.patch<Playlist>(`/playlists/${playlistId}/tracks/order`, { trackIds })
+    return res.data
+  },
+
   async delete(playlistId: string): Promise<void> {
     await api.delete(`/playlists/${playlistId}`)
   },

@@ -1,0 +1,28 @@
+# Keep the build context small and avoid copying build/IDE cruft into the image.
+bin/
+obj/
+out/
+publish/
+.vs/
+.vscode/
+.idea/
+
+# Agent/tooling scaffolding not needed in the image
+.agents/
+.claude/
+skills-lock.json
+
+# Deploy artifacts
+*.zip
+Procfile
+
+# Secrets — never bake into the image; provide via ECS env/Secrets Manager
+secrets.json
+appsettings.Local.json
+appsettings.*.Local.json
+.env
+.env.*
+*.pfx
+
+# Local media uploads (served from S3 in the cloud, not the container)
+wwwroot/uploads/

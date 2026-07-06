@@ -42,7 +42,7 @@ export function SettingsShell() {
   }
 
   return (
-    <div className="dark-theme-scope flex h-full flex-col bg-page text-primary">
+    <div className="flex h-full flex-col bg-page text-primary">
       {/* Black top header matching Spotify account page */}
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
         <div className={`flex h-full items-center px-6 ${fullWidth ? '' : 'mx-auto max-w-[960px]'}`}>
@@ -66,12 +66,7 @@ export function SettingsShell() {
             >
               Support
             </Link>
-            <Link
-              to="/download/windows"
-              className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
-            >
-              Download
-            </Link>
+            <span className="cursor-default text-[13px] font-semibold text-secondary">Download</span>
           </nav>
 
           {/* Right side */}
@@ -148,9 +143,9 @@ export function SettingsShell() {
         )}
       </main>
 
-      {isMobile && fullWidth && <BottomPlayerBar />}
-      {isMobile && fullWidth && <MobileNav />}
-      {isMobile && fullWidth && <MobileNowPlayingSheet />}
+      {isMobile && <BottomPlayerBar />}
+      {isMobile && <MobileNav />}
+      {isMobile && <MobileNowPlayingSheet />}
     </div>
   )
 }

@@ -3506,7 +3506,7 @@ export function SupportPage() {
   }
 
   return (
-    <div className="dark-theme-scope min-h-screen bg-page text-primary antialiased">
+    <div className="min-h-screen bg-page text-primary antialiased">
       <SupportHeader user={user} isAuthenticated={isAuthenticated} logout={logout} />
       <main>
         {unknownTopic ? (

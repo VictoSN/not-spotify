@@ -813,8 +813,6 @@ export function TopBar() {
             <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
               <Link
                 to="/account"
-                target="_blank"
-                rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
@@ -822,9 +820,7 @@ export function TopBar() {
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
               <Link
-                to="/account/family"
-                target="_blank"
-                rel="noopener noreferrer"
+                to="/premium"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
@@ -847,8 +843,6 @@ export function TopBar() {
               </Link>
               <Link
                 to="/support"
-                target="_blank"
-                rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >
@@ -856,9 +850,7 @@ export function TopBar() {
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </Link>
               <Link
-                to="/download/windows"
-                target="_blank"
-                rel="noopener noreferrer"
+                to="/download"
                 onClick={() => setShowMenu(false)}
                 className={userMenuItemClass}
               >

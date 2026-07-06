@@ -85,29 +85,4 @@ describe('TopBar navigation', () => {
     expect(installLink.querySelector('svg')).toBeInTheDocument()
     expect(controls.indexOf(installLink)).toBeLessThan(controls.indexOf(notifications))
   })
-
-  it('routes standalone account destinations without leaving the signed-in app origin', () => {
-    useAuthStore.setState({ user: premiumUser, isAuthenticated: true })
-
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <TopBar />
-      </MemoryRouter>,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: 'User menu' }))
-
-    const destinations = [
-      [screen.getByRole('link', { name: 'Account' }), '/account'],
-      [screen.getByRole('link', { name: 'Set up your Family plan' }), '/account/family'],
-      [screen.getByRole('link', { name: 'Support' }), '/support'],
-      [screen.getByRole('link', { name: 'Download' }), '/download/windows'],
-    ] as const
-
-    for (const [link, href] of destinations) {
-      expect(link).toHaveAttribute('href', href)
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-    }
-  })
 })

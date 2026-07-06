@@ -93,23 +93,6 @@ html[data-theme="dark"] {
   background-color: var(--c-base);
 }
 
-/* Standalone account/help/download surfaces stay dark without changing the
-   listener's saved theme preference in the main player. */
-.dark-theme-scope {
-  --c-base: #000000;
-  --c-page: #121212;
-  --c-surface: #181818;
-  --c-elevated: #282828;
-  --c-sidebar: #121212;
-  --c-accent: #1ed760;
-  --c-accent-dark: #1db954;
-  --c-accent-dim: #16341f;
-  --c-primary: #ffffff;
-  --c-secondary: #b3b3b3;
-  --c-muted: #6a6a6a;
-  color-scheme: dark;
-}
-
 /* ── Light theme ───────────────────────────────────────────────── */
 html[data-theme="light"] {
   --c-base: #e9edeb;
@@ -459,30 +442,6 @@ html[data-theme="light"] .account-settings-page [class*="divide-[#333333]"] > :n
 html[data-theme="light"] .account-settings-page [class*="text-red-300"],
 html[data-theme="light"] .account-settings-page [class*="text-red-400"] {
   color: #c0202a !important;
-}
-
-/* The account route is a deliberately independent dark surface, even when the
-   web player itself is using the light theme. These rules win over the legacy
-   account light-mode compatibility mappings above. */
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="bg-[#282828]"],
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="bg-[#2a2a2a]"] {
-  background-color: #282828 !important;
-}
-
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="bg-[#3a3a3a]"] {
-  background-color: #3a3a3a !important;
-}
-
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="bg-[#1f1f1f]"] {
-  background-color: #1f1f1f !important;
-}
-
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class~="text-white"]:not([class*="bg-red-"]):not([class*="bg-accent"]) {
-  color: #ffffff !important;
-}
-
-html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="text-[#b3b3b3]"] {
-  color: #b3b3b3 !important;
 }
 
 @property --sidebar-scrollbar-opacity {

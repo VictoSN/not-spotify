@@ -71,7 +71,6 @@ import { EmbedTrackPage } from '@/pages/EmbedTrackPage'
 import { DevKaraokePage } from '@/pages/DevKaraokePage'
 import { AboutPage, LegalPage, PrivacyPolicyPage } from '@/pages/legal/InfoPages'
 import { DownloadPage } from '@/pages/DownloadPage'
-import { FamilyPlanPage } from '@/pages/FamilyPlanPage'
 import { InstallAppPage } from '@/pages/InstallAppPage'
 import { LiveEventsPage } from '@/pages/LiveEventsPage'
 
@@ -87,7 +86,6 @@ export const router = createBrowserRouter([
   { path: '/reset-password', element: <ResetPasswordPage /> },
   { path: '/support', element: <SupportPage /> },
   { path: '/download', element: <DownloadPage /> },
-  { path: '/download/windows', element: <DownloadPage /> },
   { path: '/admin/login', element: <AdminLoginPage /> },
   // Friendly alias — the admin console's only advertised entrance.
   { path: '/adminlogin', element: <AdminLoginPage /> },
@@ -161,7 +159,6 @@ export const router = createBrowserRouter([
             element: <SettingsShell />,
             children: [
               { path: 'account', element: <AccountSettingsPage /> },
-              { path: 'account/family', element: <FamilyPlanPage /> },
               { path: 'artist-dashboard', element: <ArtistDashboardPage /> },
             ],
           },

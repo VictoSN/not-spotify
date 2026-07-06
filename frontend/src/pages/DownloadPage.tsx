@@ -256,7 +256,7 @@ export function DownloadPage() {
   const openSteps = () => {}
 
   return (
-    <div className="min-h-screen bg-white text-black antialiased">
+    <div className="dark-theme-scope min-h-screen bg-page text-primary antialiased">
       <DownloadHeader />
 
       <main>
@@ -324,13 +324,13 @@ export function DownloadPage() {
           </div>
         </section>
 
-        <section className="bg-white px-5 py-16 sm:px-7 sm:py-20">
+        <section className="bg-page px-5 py-16 sm:px-7 sm:py-20">
           <div className="mx-auto max-w-[980px] text-center">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-[#16883e]">Every screen, same library</p>
             <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
               Listen on mobile and tablet, too
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-neutral-600">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-secondary">
               Add the installable web app to your home screen or Dock. It opens in its own window and updates automatically.
             </p>
 
@@ -340,9 +340,9 @@ export function DownloadPage() {
               className="mx-auto mt-10 grid max-w-3xl gap-4 text-left sm:grid-cols-2"
             >
               {MOBILE_INSTALL_STEPS.map(({ heading, steps }) => (
-                <div key={heading} className="rounded-2xl bg-[#f2f2f2] p-5">
+                <div key={heading} className="rounded-2xl border border-white/10 bg-elevated p-5">
                   <p className="font-black">{heading}</p>
-                  <ol className="mt-4 space-y-3 text-sm leading-relaxed text-[#555]">
+                  <ol className="mt-4 space-y-3 text-sm leading-relaxed text-secondary">
                     {steps.map((step, index) => (
                       <li key={step} className="flex gap-3">
                         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent font-black text-black">

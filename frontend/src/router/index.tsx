@@ -75,6 +75,24 @@ import { FamilyPlanPage } from '@/pages/FamilyPlanPage'
 import { InstallAppPage } from '@/pages/InstallAppPage'
 import { LiveEventsPage } from '@/pages/LiveEventsPage'
 
+// Dedicated subdomains (admin.not-spotify.lol, support.not-spotify.lol) serve the
+// same app but should land on their own section instead of the member home page.
+// Only the bare root path is rewritten, so deep links (e.g. admin.not-spotify.lol/admin/artists)
+// and any other explicit path still resolve normally. The section's own guard
+// (AdminRoute for admin) still enforces auth/permission. Runs before
+// createBrowserRouter reads the URL so React Router starts on the right route.
+const SUBDOMAIN_LANDINGS: Record<string, string> = {
+  admin: '/admin',
+  support: '/support',
+}
+if (typeof window !== 'undefined' && window.location.pathname === '/') {
+  const subdomain = window.location.hostname.split('.')[0]
+  const landing = SUBDOMAIN_LANDINGS[subdomain]
+  if (landing) {
+    window.history.replaceState(null, '', landing)
+  }
+}
+
 export const router = createBrowserRouter([
   // Dev-only harness for the karaoke lyrics view; excluded from production builds.
   ...(import.meta.env.DEV ? [{ path: '/dev/karaoke', element: <DevKaraokePage /> }] : []),

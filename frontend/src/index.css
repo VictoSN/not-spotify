@@ -205,6 +205,20 @@ body,
   padding: 0;
 }
 
+/* Mobile browsers report `height: 100%` as the *large* viewport (toolbar
+   collapsed), so the app shell ends up taller than the visible screen and the
+   persistent bottom nav + player bar get pushed below the fold — only
+   appearing after you scroll down (which hides the toolbar) and vanishing
+   again when you scroll back up. `100dvh` tracks the *dynamic* viewport, so the
+   shell always fills exactly the visible area and the bottom bars stay pinned. */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 html {
   font-size: calc(16px * var(--ns-app-zoom, 1));
 }

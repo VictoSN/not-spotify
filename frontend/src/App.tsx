@@ -64,7 +64,11 @@ export default function App() {
 
   return (
     <ConfirmProvider>
-      <div className="flex h-screen flex-col bg-base text-primary">
+      {/* h-full (not h-screen/100vh) so the app inherits #root's 100dvh height.
+          On mobile 100vh is the toolbar-hidden ("large") viewport, which makes the
+          shell taller than the visible screen and pushes the persistent bottom nav
+          + mini-player below the fold until you scroll. */}
+      <div className="flex h-full flex-col bg-base text-primary">
         <div className="min-h-0 flex-1">
           <RouterProvider router={router} />
         </div>

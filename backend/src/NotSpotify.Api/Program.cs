@@ -242,10 +242,23 @@ var corsOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<s
     .Distinct()
     .ToArray();
 
+// Optionally allow ANY https subdomain of a root domain (e.g. not-spotify.lol ->
+// account./support./download./www. + the apex) so new subdomains work without
+// editing the origin list. AllowCredentials() forbids "*", so we match via a
+// predicate. Set Cors:AllowedSubdomainRoot = "not-spotify.lol" to enable.
+var corsSubdomainRoot = builder.Configuration["Cors:AllowedSubdomainRoot"];
+
 builder.Services.AddCors(opt =>
 {
     opt.AddDefaultPolicy(p => p
-        .WithOrigins(corsOrigins)
+        .SetIsOriginAllowed(origin =>
+        {
+            if (corsOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase)) return true;
+            if (string.IsNullOrWhiteSpace(corsSubdomainRoot)) return false;
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps) return false;
+            return uri.Host.Equals(corsSubdomainRoot, StringComparison.OrdinalIgnoreCase)
+                || uri.Host.EndsWith("." + corsSubdomainRoot, StringComparison.OrdinalIgnoreCase);
+        })
         .AllowAnyHeader()
         .AllowAnyMethod()
         .WithExposedHeaders("Content-Disposition")

@@ -84,6 +84,8 @@ import { LiveEventsPage } from '@/pages/LiveEventsPage'
 const SUBDOMAIN_LANDINGS: Record<string, string> = {
   admin: '/admin',
   support: '/support',
+  account: '/account',
+  download: '/download',
 }
 if (typeof window !== 'undefined' && window.location.pathname === '/') {
   const subdomain = window.location.hostname.split('.')[0]

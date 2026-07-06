@@ -22,6 +22,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { meService, type RecentSearch } from '@/services/meService'
+import { subdomainUrl } from '@/config/subdomains'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
@@ -811,8 +812,8 @@ export function TopBar() {
           <>
             <div className="fixed inset-0 z-[990]" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
-              <Link
-                to="/account"
+              <a
+                href={subdomainUrl('account', '/account')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -820,9 +821,9 @@ export function TopBar() {
               >
                 {t('topbar.account')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
-              <Link
-                to="/account/family"
+              </a>
+              <a
+                href={subdomainUrl('account', '/account/family')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -830,7 +831,7 @@ export function TopBar() {
               >
                 {t('topbar.familyPlan')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
+              </a>
               <Link
                 to="/profile"
                 onClick={() => setShowMenu(false)}
@@ -845,8 +846,8 @@ export function TopBar() {
               >
                 {t('topbar.recents')}
               </Link>
-              <Link
-                to="/support"
+              <a
+                href={subdomainUrl('support', '/support')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -854,9 +855,9 @@ export function TopBar() {
               >
                 {t('topbar.support')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
-              <Link
-                to="/download/windows"
+              </a>
+              <a
+                href={subdomainUrl('download', '/download/windows')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -864,7 +865,7 @@ export function TopBar() {
               >
                 {t('topbar.download')}
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
-              </Link>
+              </a>
               <Link
                 to="/settings"
                 onClick={() => setShowMenu(false)}

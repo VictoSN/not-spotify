@@ -59,8 +59,9 @@ export function MobileNowPlayingSheet() {
         <TrackRowMenu track={currentTrack} alwaysVisible />
       </div>
 
-      {/* Scrollable content */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-6 pb-6">
+      {/* Scrollable content — a single centered column so the artwork, controls,
+          lyrics and up-next all share the same width and midline (Spotify-style). */}
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col overflow-y-auto px-6 pb-6">
         {/* Album art */}
         <div className="flex justify-center mb-8 mt-4">
           <Link to={`/album/${currentTrack.album.id}`} onClick={toggleNowPlaying}>
@@ -104,15 +105,14 @@ export function MobileNowPlayingSheet() {
           <ProgressBar />
         </div>
 
-        {/* Player controls */}
+        {/* Player controls — PlayerControls is a fixed-width grid, so it must be
+            centered directly (a wider max-width wrapper would leave it left-aligned). */}
         <div className="flex justify-center mb-8">
-          <div className="w-full max-w-xs">
-            <PlayerControls />
-          </div>
+          <PlayerControls />
         </div>
 
         {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
-        <div className="-mx-4 mb-4">
+        <div className="mb-4">
           <NowPlayingLyrics track={currentTrack} accentColor={heroColor} />
         </div>
 

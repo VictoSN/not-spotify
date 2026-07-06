@@ -171,8 +171,10 @@ export function AppShell() {
           >
             <Outlet context={{ setPageLoading } satisfies AppShellOutletContext} />
             {/* Global footer — sits at the bottom of every routed page's scroll
-                content (Spotify-style), so individual pages don't render their own. */}
-            {!pageLoading && <AppFooter />}
+                content (Spotify-style), so individual pages don't render their own.
+                Hidden on mobile: the Spotify mobile app has no page footer, and it
+                just pushes the bottom nav / mini-player far down the scroll. */}
+            {!pageLoading && !isMobile && <AppFooter />}
           </div>
           {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} flushRight={isHomeRoute} />}
           {karaokeVisible && (

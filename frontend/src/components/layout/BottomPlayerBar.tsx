@@ -26,6 +26,9 @@ import {
 import { enterPip } from '@/components/player/PictureInPicturePlayer'
 import { usePlayerStore } from '@/stores/playerStore'
 import { useJamStore } from '@/stores/jamStore'
+import { useLibraryStore } from '@/stores/libraryStore'
+import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
+import { useDominantColor } from '@/hooks/useDominantColor'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
@@ -144,22 +147,38 @@ export function BottomPlayerBar() {
   const activeImage = isVideoMode ? currentVideo?.thumbnailUrl : currentTrack?.album.coverUrl
   const activeImageAlt = isVideoMode ? currentVideo?.title : currentTrack?.album.title
 
+  // Mobile mini-player picks up the artwork's dominant hue (Spotify-style). Called
+  // unconditionally (hook rules) though only the mobile branch below consumes it.
+  const artworkColor = useDominantColor(activeImage, { resetOnChange: true })
+
+  // Like state for the mobile mini-player's inline heart button.
+  const likedTrackIds = useLibraryStore((s) => s.likedTrackIds)
+  const likeTrack = useLibraryStore((s) => s.likeTrack)
+  const unlikeTrack = useLibraryStore((s) => s.unlikeTrack)
+  const isCurrentLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false
+
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
     if (!hasMedia) return null
     return (
-      <div className="shrink-0 bg-base border-t border-elevated/20">
-        {/* Thin progress bar strip at the top */}
-        <div className="h-0.5 bg-elevated/40">
-          <ProgressBarStrip />
-        </div>
-        {/* Mini-player row */}
+      // Floating rounded card: sits inset from the screen edges with a gap above
+      // the bottom nav (Spotify-style) rather than a full-bleed edge-to-edge bar.
+      <div className="shrink-0 px-2 pb-2">
         <div
-          className="flex items-center gap-3 px-3 h-16 cursor-pointer"
-          onClick={toggleNowPlaying}
-          role="button"
-          aria-label={t('player.openNowPlaying')}
+          className="overflow-hidden rounded-2xl bg-surface shadow-lg ring-1 ring-white/10 transition-[background-color] duration-500 ease-out motion-reduce:transition-none"
+          style={artworkColor ? { backgroundColor: `color-mix(in srgb, ${artworkColor} 55%, var(--c-base))` } : undefined}
         >
+          {/* Thin progress bar strip at the top */}
+          <div className="h-0.5 bg-white/20">
+            <ProgressBarStrip />
+          </div>
+          {/* Mini-player row */}
+          <div
+            className="flex items-center gap-3 px-3 h-16 cursor-pointer"
+            onClick={toggleNowPlaying}
+            role="button"
+            aria-label={t('player.openNowPlaying')}
+          >
           {activeImage ? (
             <img
               src={activeImage}
@@ -175,6 +194,22 @@ export function BottomPlayerBar() {
             <p className="text-sm font-semibold text-primary truncate leading-tight">{activeTitle}</p>
             <p className="text-xs text-secondary truncate leading-tight">{activeCreator}</p>
           </div>
+          {/* Like — sits left of play/pause; only for tracks (not music videos).
+              stopPropagation so tapping the heart doesn't also open Now Playing. */}
+          {currentTrack && !isVideoMode && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                if (isCurrentLiked) unlikeTrack(currentTrack.id)
+                else likeTrack(currentTrack)
+              }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center transition-transform active:scale-90"
+              aria-label={isCurrentLiked ? t('player.unlike') : t('player.like')}
+              aria-pressed={isCurrentLiked}
+            >
+              <AnimatedLikeIcon liked={isCurrentLiked} className="h-6 w-6" heartClassName="h-6 w-6 text-secondary" />
+            </button>
+          )}
           {/* Play/pause only â€” stop propagation so the row tap doesn't also toggle play */}
           <button
             onClick={(e) => {
@@ -193,6 +228,7 @@ export function BottomPlayerBar() {
               : <PlayIcon className="w-5 h-5 translate-x-0.5" />
             }
           </button>
+          </div>
         </div>
       </div>
     )

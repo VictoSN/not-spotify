@@ -48,7 +48,7 @@ export function TrackTile({ track, queue, flush = false, fluid = false, boldTitl
     <div
       className={cn(
         'group relative min-w-0 transition-opacity',
-        fluid ? 'w-full' : 'w-44 flex-shrink-0 sm:w-48',
+        fluid ? 'w-full' : 'w-40 flex-shrink-0 md:w-48',
       )}
       draggable
       onDragStart={(e) => {

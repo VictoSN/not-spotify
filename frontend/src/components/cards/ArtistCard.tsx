@@ -58,7 +58,7 @@ export function ArtistCard({ artist, flush = false, fluid = false, boldTitle = f
     <div
       className={cn(
         'group relative min-w-0 transition-opacity',
-        fluid ? 'w-full' : 'w-40 flex-shrink-0 sm:w-44',
+        fluid ? 'w-full' : 'w-40 flex-shrink-0 md:w-48',
       )}
       draggable
       onDragStart={(e) => {

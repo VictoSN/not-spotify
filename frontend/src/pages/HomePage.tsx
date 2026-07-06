@@ -290,7 +290,7 @@ export function HomePage() {
         className={cn('relative pb-6', HOME_CONTENT_GUTTER)}
       >
         {isAuthenticated && (
-          <h1 className="text-3xl font-bold text-primary mb-6 mt-2">
+          <h1 className="text-2xl font-bold text-primary mb-4 mt-1 md:text-3xl md:mb-6 md:mt-2">
             {getGreeting()}
             {user ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>
@@ -349,7 +349,7 @@ export function HomePage() {
 
         {/* Quick access — the same library shown in the sidebar */}
         {showMusic && isAuthenticated && quickPicks.length > 0 && (
-          <div className="mb-8 grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4 md:mb-8 md:gap-x-4 md:gap-y-3">
             {quickPicks.map((playlist) => (
               <HomeQuickPlaylist key={playlist.id} playlist={playlist} />
             ))}
@@ -617,17 +617,19 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
           hoverRequestRef.current++
           setHoverColor(null)
         }}
-        className="relative flex items-center gap-4 overflow-hidden rounded-md bg-primary/10 transition-colors duration-150 hover:bg-primary/20"
+        className="relative flex items-center gap-2 overflow-hidden rounded-md bg-primary/10 transition-colors duration-150 hover:bg-primary/20 md:gap-4"
       >
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden bg-surface">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden bg-surface md:h-20 md:w-20">
           {playlist.coverUrl ? (
             <img src={playlist.coverUrl} alt="" className="h-full w-full object-cover" />
           ) : (
-            <MusicalNoteIcon className="h-7 w-7 text-secondary" />
+            <MusicalNoteIcon className="h-5 w-5 text-secondary md:h-7 md:w-7" />
           )}
         </div>
-        <span className="flex-1 truncate pr-2 text-base font-semibold text-primary">{playlist.name}</span>
-        <div className="relative mr-3 h-12 w-12 shrink-0">
+        <span className="flex-1 truncate pr-2 text-sm font-semibold text-primary md:text-base">{playlist.name}</span>
+        {/* Play button is desktop-only — Spotify's mobile quick tiles have no
+            inline play control; tapping the tile opens the playlist. */}
+        <div className="relative mr-3 hidden h-12 w-12 shrink-0 md:block">
           {isActiveContext && (
             <span className="pointer-events-none absolute inset-0 hidden items-center justify-center opacity-100 transition-opacity duration-150 md:flex md:group-hover:opacity-0">
               <NowPlayingBars playing={isPlayingContext} className="h-5" />
@@ -657,7 +659,7 @@ export function HomePodcastTile({ podcast: p }: { podcast: PodcastSummary }) {
   const setDraggedPodcast = useDragStore((s) => s.setDraggedPodcast)
   return (
     <div
-      className="group relative w-40 shrink-0"
+      className="group relative w-36 shrink-0 md:w-40"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'copy'
@@ -700,7 +702,7 @@ export function HomeVideoTile({ video: v, queue }: { video: MusicVideo; queue: M
   const setDraggedVideo = useDragStore((s) => s.setDraggedVideo)
   return (
     <div
-      className="group relative w-64 shrink-0"
+      className="group relative w-56 shrink-0 md:w-64"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.effectAllowed = 'copy'

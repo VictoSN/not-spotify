@@ -68,7 +68,7 @@ export function PlaylistCard({ playlist, flush = false, boldTitle = false }: Pla
     <Link
       to={`/playlist/${playlist.id}`}
       onContextMenu={(e) => openMenuAtPointer(e, menuTriggerRef)}
-      className={`group flex-shrink-0 w-40 sm:w-44 rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
+      className={`group flex-shrink-0 w-40 md:w-48 rounded-lg transition-colors ${flush ? 'p-3 hover:bg-surface' : 'p-3 hover:bg-surface'}`}
     >
       <div className="relative aspect-square rounded-md overflow-hidden bg-elevated mb-3 shadow-lg">
         <PlaylistCover coverUrl={playlist.coverUrl} tracks={playlist.tracks} name={playlist.name} />

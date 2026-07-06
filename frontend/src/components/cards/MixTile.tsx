@@ -64,7 +64,7 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
 
   return (
     <div
-      className="group relative w-40 flex-shrink-0 sm:w-44"
+      className="group relative w-40 flex-shrink-0 md:w-48"
       onContextMenu={(event) => openMenuAtPointer(event, menuRef)}
     >
       <Link

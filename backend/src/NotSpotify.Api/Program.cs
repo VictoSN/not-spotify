@@ -323,6 +323,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PresenceHub>("/hubs/presence");
 app.MapHub<NotSpotify.Api.Hubs.SessionHub>("/hubs/session");
+app.MapHub<NotSpotify.Api.Hubs.ConnectHub>("/hubs/connect");
 
 using (var scope = app.Services.CreateScope())
 {

@@ -13,6 +13,7 @@ import { NowPlayingInfo } from '@/components/player/NowPlayingInfo'
 import { PlayerControls } from '@/components/player/PlayerControls'
 import { ProgressBar } from '@/components/player/ProgressBar'
 import { VolumeControl } from '@/components/player/VolumeControl'
+import { ConnectDeviceButton } from '@/components/player/ConnectDeviceButton'
 import { Slider } from '@/components/ui/Slider'
 import {
   EQUALIZER_BANDS,
@@ -273,6 +274,7 @@ export function BottomPlayerBar() {
             <QueueListIcon className="h-5 w-5" />
           </button>
         )}
+        <ConnectDeviceButton />
         <VolumeControl />
         {currentTrack && !isVideoMode && (
           <button

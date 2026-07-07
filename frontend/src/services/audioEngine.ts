@@ -188,6 +188,9 @@ class AudioEngine {
   private fadingOut: HTMLAudioElement | null = null
   /** True between the early skipNext() and the next deck taking over. */
   private crossfading = false
+  /** Spotify-Connect gate: false when another device is the active player, so
+   *  this tab stays silent even while the player store thinks it's playing. */
+  private connectActive = true
   private preloadedId: string | null = null
   private unsubscribe: (() => void) | null = null
   private mediaSessionTrackId: string | null = null
@@ -512,7 +515,7 @@ class AudioEngine {
     this.active = newIndex
     this.preloadedId = null
 
-    const doCrossfade = this.crossfadeSec > 0 && !oldDeck.paused && isPlaying
+    const doCrossfade = this.crossfadeSec > 0 && !oldDeck.paused && isPlaying && this.connectActive
     if (doCrossfade) {
       newDeck.volume = 0
       newDeck.play().catch(() => usePlayerStore.getState().pause())
@@ -524,7 +527,7 @@ class AudioEngine {
       oldDeck.pause()
       oldDeck.currentTime = 0
       newDeck.volume = targetVol
-      if (isPlaying) newDeck.play().catch(() => usePlayerStore.getState().pause())
+      if (isPlaying && this.connectActive) newDeck.play().catch(() => usePlayerStore.getState().pause())
     }
     this.crossfading = false
   }
@@ -602,7 +605,7 @@ class AudioEngine {
       if (isPlaying !== prevIsPlaying) {
         if (isPlaying) {
           this.resumeAudioGraph()
-          if (!currentAd) this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+          if (!currentAd && this.connectActive) this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
         }
         else this.activeDeck.pause()
         prevIsPlaying = isPlaying
@@ -722,6 +725,26 @@ class AudioEngine {
       src: track.album.coverUrl,
       sizes: `${size}x${size}`,
     }))
+  }
+
+  /**
+   * Spotify-Connect gate. When this tab is not the account's active device the
+   * decks stay silent regardless of the player store; regaining active status
+   * resumes playback if the store is in a playing state.
+   */
+  setConnectActive(active: boolean) {
+    if (this.connectActive === active) return
+    this.connectActive = active
+    if (!active) {
+      this.cancelFade()
+      this.decks.forEach((deck) => deck.pause())
+      return
+    }
+    const { isPlaying, currentAd } = usePlayerStore.getState()
+    if (isPlaying && !currentAd) {
+      this.resumeAudioGraph()
+      this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+    }
   }
 
   destroy() {

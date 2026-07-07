@@ -28,6 +28,7 @@ import { useJamSocket } from '@/hooks/useJamSocket'
 import { JamBar } from '@/components/jam/JamBar'
 import { AppFooter } from '@/components/common/AppFooter'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
+import { useConnectSocket } from '@/hooks/useConnectSocket'
 import { analyticsService } from '@/services/analyticsService'
 import { cn } from '@/utils/cn'
 import type { AppShellOutletContext } from './appShellContext'
@@ -95,6 +96,8 @@ export function AppShell() {
   useKeyboardShortcuts()
   // Listen-along ("Jam") realtime session.
   useJamSocket()
+  // Spotify-Connect multi-device playback (one active device per account).
+  useConnectSocket()
 
   useEffect(() => {
     if (prevAuth.current && !isAuthenticated) {

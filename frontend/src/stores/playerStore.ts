@@ -369,6 +369,10 @@ interface PlayerState {
   toggleKaraoke: () => void
   setKaraokeOpen: (open: boolean) => void
   tick: (currentTime: number, duration: number) => void
+  /** Reflect another device's playback (Spotify-Connect mirror) into this tab's
+   *  bar. Purely cosmetic — no play-count / recommendation side effects — and the
+   *  audio engine stays silent here because it's gated by connectActive. */
+  mirrorRemote: (track: Track | null, positionSec: number, playing: boolean) => void
 }
 
 const restoredPlaybackState = readPersistedPlaybackState()
@@ -736,6 +740,31 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
     set({ currentTime, duration })
   },
+
+  mirrorRemote: (track, positionSec, playing) =>
+    set((s) => {
+      if (!track) {
+        // Remote cleared playback — clear the mirror too.
+        return s.currentTrack
+          ? { currentTrack: null, queue: [], queueIndex: -1, isPlaying: false, currentTime: 0, duration: 0 }
+          : {}
+      }
+      const trackChanged = s.currentTrack?.id !== track.id
+      return {
+        playbackMode: 'audio',
+        currentVideo: null,
+        isVideoPlaying: false,
+        currentTrack: track,
+        // We only receive the current track over the wire, not the full remote
+        // queue, so mirror it as a one-item queue (enough for the bar; a real
+        // queue is rebuilt if this tab takes over and the user picks something).
+        queue: trackChanged ? [track] : s.queue,
+        queueIndex: trackChanged ? 0 : s.queueIndex,
+        isPlaying: playing,
+        currentTime: positionSec,
+        duration: track.durationMs ? track.durationMs / 1000 : s.duration,
+      }
+    }),
 }))
 
 usePlayerStore.subscribe((state) => {

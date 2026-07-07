@@ -3605,13 +3605,6 @@ function SupportHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-4 text-xs font-black text-primary">
-        <button
-          type="button"
-          className="hidden items-center gap-2 text-primary/90 transition-colors hover:text-primary sm:flex"
-          aria-label="Language"
-        >
-          <Globe2 className="h-4 w-4" />
-        </button>
         {isAuthenticated ? (
           <>
             <button type="button" onClick={logout} className="hidden transition-colors hover:text-primary sm:inline">

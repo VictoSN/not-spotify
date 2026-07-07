@@ -1,13 +1,41 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ChevronDownIcon, UserCircleIcon, Cog6ToothIcon, ChartBarSquareIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { useAuthStore } from '@/stores/authStore'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Avatar } from '@/components/ui/Avatar'
+import { sectionUrl, primaryUrl } from '@/utils/subdomains'
 import { MobileNav } from './MobileNav'
 import { BottomPlayerBar } from './BottomPlayerBar'
 import { MobileNowPlayingSheet } from '@/components/player/MobileNowPlayingSheet'
+
+// A top-bar link that lands on a section's own domain (support.…, download.…, the
+// primary apex) in the SAME tab when a cross-domain URL applies, and otherwise stays
+// a client-side <Link> (localhost / already on that domain). No target="_blank".
+function TopBarLink({
+  href,
+  to,
+  className,
+  'aria-label': ariaLabel,
+  children,
+}: {
+  href: string | null
+  to: string
+  className?: string
+  'aria-label'?: string
+  children: ReactNode
+}) {
+  return href ? (
+    <a href={href} className={className} aria-label={ariaLabel}>
+      {children}
+    </a>
+  ) : (
+    <Link to={to} className={className} aria-label={ariaLabel}>
+      {children}
+    </Link>
+  )
+}
 
 export function SettingsShell() {
   const { user, logout } = useAuthStore()
@@ -46,32 +74,35 @@ export function SettingsShell() {
       {/* Black top header matching Spotify account page */}
       <header className="sticky top-0 z-20 h-16 shrink-0 border-b border-primary/10 bg-base">
         <div className={`flex h-full items-center px-6 ${fullWidth ? '' : 'mx-auto max-w-[960px]'}`}>
-          {/* Logo */}
-          <Link to="/" className="flex shrink-0 items-center gap-2" aria-label="Not Spotify home">
+          {/* Logo → primary app home (its own domain), same tab */}
+          <TopBarLink href={primaryUrl('/')} to="/" className="flex shrink-0 items-center gap-2" aria-label="Not Spotify home">
             <SpotifyMark className="h-8 w-8 text-primary" />
             <span className="hidden text-[18px] font-black tracking-tight text-primary sm:block">Not Spotify</span>
-          </Link>
+          </TopBarLink>
 
-          {/* Nav links */}
+          {/* Nav links — each lands on its own domain (support.… / download.… / primary), same tab */}
           <nav className="ml-10 hidden items-center gap-7 md:flex">
-            <Link
+            <TopBarLink
+              href={primaryUrl('/premium')}
               to="/premium"
               className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
             >
               Premium plans
-            </Link>
-            <Link
+            </TopBarLink>
+            <TopBarLink
+              href={sectionUrl('support', '/support')}
               to="/support"
               className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
             >
               Support
-            </Link>
-            <Link
+            </TopBarLink>
+            <TopBarLink
+              href={sectionUrl('download', '/download/windows')}
               to="/download/windows"
               className="text-[13px] font-semibold text-secondary transition-colors hover:text-primary"
             >
               Download
-            </Link>
+            </TopBarLink>
           </nav>
 
           {/* Right side */}

@@ -75,23 +75,37 @@ import { FamilyPlanPage } from '@/pages/FamilyPlanPage'
 import { InstallAppPage } from '@/pages/InstallAppPage'
 import { LiveEventsPage } from '@/pages/LiveEventsPage'
 
-// Dedicated subdomains (admin.not-spotify.lol, support.not-spotify.lol) serve the
-// same app but should land on their own section instead of the member home page.
-// Only the bare root path is rewritten, so deep links (e.g. admin.not-spotify.lol/admin/artists)
-// and any other explicit path still resolve normally. The section's own guard
-// (AdminRoute for admin) still enforces auth/permission. Runs before
-// createBrowserRouter reads the URL so React Router starts on the right route.
+// Dedicated subdomains (account/support/download/admin.not-spotify.lol) serve the
+// same SPA but are "pinned" to their own section. Two rules keep the URL bar honest,
+// mirroring how Spotify uses accounts.spotify.com vs open.spotify.com:
+//   1. Entry on the bare root of a subdomain lands on its section (not the member home).
+//   2. Navigating back out of that section (Home, search, a playlist, …) returns the
+//      browser to the primary domain via a full navigation, so e.g. account.not-spotify.lol
+//      resets to not-spotify.lol/ (see the router.subscribe below).
+// Each section's own guard (AdminRoute/ProtectedRoute) still enforces auth/permission.
 const SUBDOMAIN_LANDINGS: Record<string, string> = {
   admin: '/admin',
   support: '/support',
   account: '/account',
   download: '/download',
 }
-if (typeof window !== 'undefined' && window.location.pathname === '/') {
-  const subdomain = window.location.hostname.split('.')[0]
-  const landing = SUBDOMAIN_LANDINGS[subdomain]
-  if (landing) {
-    window.history.replaceState(null, '', landing)
+
+/** The `/section` path this hostname is pinned to, or null on the primary domain. */
+function subdomainSection(hostname: string): string | null {
+  return SUBDOMAIN_LANDINGS[hostname.split('.')[0]] ?? null
+}
+
+/** Whether a path belongs to a section (the section itself or one of its children). */
+function isInSection(pathname: string, section: string): boolean {
+  return pathname === section || pathname.startsWith(`${section}/`)
+}
+
+if (typeof window !== 'undefined') {
+  const section = subdomainSection(window.location.hostname)
+  // Rule 1: bare root of a subdomain → its section. Runs before createBrowserRouter
+  // reads the URL so React Router starts on the right route; deep links are untouched.
+  if (section && window.location.pathname === '/') {
+    window.history.replaceState(null, '', section)
   }
 }
 
@@ -223,3 +237,19 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+
+// Rule 2: once inside the app, leaving a subdomain's own section sends the browser
+// back to the primary domain (full navigation) so the URL resets — e.g. clicking Home
+// from account.not-spotify.lol lands on not-spotify.lol/. No-op on the primary domain.
+if (typeof window !== 'undefined') {
+  router.subscribe((state) => {
+    const host = window.location.hostname
+    const section = subdomainSection(host)
+    if (!section) return
+    const { pathname, search, hash } = state.location
+    if (isInSection(pathname, section)) return
+    const primaryHost = host.split('.').slice(1).join('.')
+    const port = window.location.port ? `:${window.location.port}` : ''
+    window.location.replace(`${window.location.protocol}//${primaryHost}${port}${pathname}${search}${hash}`)
+  })
+}

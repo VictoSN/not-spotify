@@ -626,7 +626,7 @@ export function HomeQuickPlaylist({ playlist }: { playlist: Playlist }) {
             <MusicalNoteIcon className="h-5 w-5 text-secondary md:h-7 md:w-7" />
           )}
         </div>
-        <span className="flex-1 truncate pr-2 text-sm font-semibold text-primary md:text-base">{playlist.name}</span>
+        <span className="flex-1 truncate pr-2 text-sm font-semibold text-primary md:text-[1rem]">{playlist.name}</span>
         {/* Play button is desktop-only — Spotify's mobile quick tiles have no
             inline play control; tapping the tile opens the playlist. */}
         <div className="relative mr-3 hidden h-12 w-12 shrink-0 md:block">

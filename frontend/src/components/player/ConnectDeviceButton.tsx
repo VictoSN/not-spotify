@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import {
   ComputerDesktopIcon,
   DevicePhoneMobileIcon,
-  SpeakerWaveIcon,
 } from '@heroicons/react/24/outline'
 import { PlayIcon, PauseIcon, ForwardIcon, BackwardIcon } from '@heroicons/react/24/solid'
+import { DevicesIcon } from '@/components/icons/DevicesIcon'
 import { useConnectStore } from '@/stores/connectStore'
 import { connectClient } from '@/services/connectClient'
 import { cn } from '@/utils/cn'
@@ -56,7 +56,7 @@ export function ConnectDeviceButton() {
         aria-pressed={open}
         title={!thisActive && remoteDevice ? `Playing on ${remoteDevice.name}` : 'Connect to a device'}
       >
-        <SpeakerWaveIcon className="h-5 w-5" />
+        <DevicesIcon className="h-5 w-5" />
       </button>
 
       {open && (

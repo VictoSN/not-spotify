@@ -42,6 +42,7 @@ export function ConnectDeviceButton() {
   const thisActive = activeDeviceId == null || activeDeviceId === thisDeviceId
   const remoteDevice = devices.find((d) => d.deviceId === activeDeviceId && d.deviceId !== thisDeviceId) ?? null
   const remoteTrack = remoteState?.track ?? null
+  const triggerLabel = !thisActive && remoteDevice ? `Playing on ${remoteDevice.name}` : 'Connect to a device'
 
   return (
     <div className="relative" ref={ref}>
@@ -49,14 +50,14 @@ export function ConnectDeviceButton() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'hidden transition-all hover:scale-110 active:scale-90 sm:block',
+          'spotify-tooltip-anchor relative hidden transition-all hover:scale-110 active:scale-90 sm:block',
           !thisActive ? 'text-accent hover:text-accent' : 'text-secondary hover:text-primary',
         )}
         aria-label="Connect to a device"
         aria-pressed={open}
-        title={!thisActive && remoteDevice ? `Playing on ${remoteDevice.name}` : 'Connect to a device'}
       >
         <DevicesIcon className="h-5 w-5" />
+        {!open && <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{triggerLabel}</span>}
       </button>
 
       {open && (

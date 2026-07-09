@@ -60,6 +60,10 @@ interface TrackRowMenuProps {
   triggerContent?: ReactNode
   triggerTitle?: string
   openAddSubmenuOnTrigger?: boolean
+  /** Where the trigger tooltip pops relative to the button. Use 'bottom' when the
+   *  trigger sits at the top edge of a panel so the tooltip isn't covered by the
+   *  app header (tooltips can't escape their ancestor stacking context). */
+  triggerTooltipPlacement?: 'top' | 'bottom'
 }
 
 /** Imperative handle so parents can open the menu at the pointer on right-click. */
@@ -78,6 +82,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   triggerContent,
   triggerTitle,
   openAddSubmenuOnTrigger,
+  triggerTooltipPlacement = 'top',
 }, ref) {
   const navigate = useNavigate()
   const [addSubmenuOpen, setAddSubmenuOpen] = useState(false)
@@ -308,6 +313,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
   // when the user interacts with anything inside the menu.
   const stop = (e: React.SyntheticEvent) => e.stopPropagation()
   const itemClass = CONTEXT_MENU_ITEM_CLASS
+  const triggerLabel = triggerTitle ?? 'More options'
+  const hasSpotifyTooltip = triggerClassName?.includes('spotify-tooltip-anchor')
 
   return (
     <Menu>
@@ -318,8 +325,8 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
           {/* Visible "…" affordance — a plain button that opens the menu just below it. */}
           <button
             type="button"
-            aria-label={triggerTitle ?? 'More options'}
-            title={triggerTitle ?? 'More options'}
+            aria-label={triggerLabel}
+            title={hasSpotifyTooltip ? undefined : triggerLabel}
             onClick={(e) => {
               stop(e)
               // Reset any leftover submenu state from a previous open.
@@ -342,6 +349,9 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
           >
             {triggerContent ?? (
               <EllipsisHorizontalIcon className={triggerIconClassName ?? 'h-5 w-5 stroke-[2.2] text-secondary hover:text-primary'} />
+            )}
+            {hasSpotifyTooltip && (
+              <span className={`spotify-tooltip spotify-tooltip-${triggerTooltipPlacement} spotify-tooltip-center`}>{triggerLabel}</span>
             )}
           </button>
           {/* Real Headless UI trigger: invisible, portaled to <body>, parked at the

@@ -107,12 +107,11 @@ export function MusicVideoNowPlayingPanel() {
   if (isNowPlayingCollapsed) {
     if (!currentVideo) return null
     return (
-      <aside className="group/now-playing-rail animate-right-sidebar-enter relative hidden w-4 shrink-0 overflow-hidden rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
+      <aside className="group/now-playing-rail animate-right-sidebar-enter relative hidden w-4 shrink-0 overflow-visible rounded-xl bg-surface/0 transition-[width,background-color] duration-300 ease-out hover:w-16 hover:bg-surface/80 lg:flex">
         <button
           onClick={() => setNowPlayingCollapsed(false)}
-          className="absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
+          className="spotify-tooltip-anchor absolute inset-y-0 left-0 flex w-full flex-col items-center justify-center gap-4 text-secondary opacity-0 transition-all duration-200 hover:text-primary group-hover/now-playing-rail:opacity-100"
           aria-label="Expand now playing"
-          title="Expand now playing"
         >
           {currentVideo?.thumbnailUrl && (
             <img
@@ -122,6 +121,9 @@ export function MusicVideoNowPlayingPanel() {
             />
           )}
           <ChevronLeftIcon className="h-5 w-5" />
+          <span className="spotify-tooltip spotify-tooltip-middle spotify-tooltip-side-right">
+            Expand now playing
+          </span>
         </button>
       </aside>
     )
@@ -140,11 +142,11 @@ export function MusicVideoNowPlayingPanel() {
           <h2 className="text-base font-bold text-primary">Music video</h2>
           <button
             onClick={() => setNowPlayingCollapsed(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+            className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
             aria-label="Collapse"
-            title="Collapse"
           >
             <CollapseIcon className="h-6 w-6" />
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">Collapse</span>
           </button>
         </div>
         <p className="px-4 text-sm text-secondary">Play a music video to see it here.</p>
@@ -166,11 +168,11 @@ export function MusicVideoNowPlayingPanel() {
         <h2 className="truncate text-base font-bold text-primary">Music video</h2>
         <button
           onClick={() => setNowPlayingCollapsed(true)}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
+          className="spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
           aria-label="Collapse"
-          title="Collapse"
         >
           <CollapseIcon className="h-6 w-6" />
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">Collapse</span>
         </button>
       </div>
 

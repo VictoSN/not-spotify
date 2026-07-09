@@ -290,7 +290,7 @@ export function HomePage() {
         className={cn('relative pb-6', HOME_CONTENT_GUTTER)}
       >
         {isAuthenticated && (
-          <h1 className="text-2xl font-bold text-primary mb-4 mt-1 md:text-3xl md:mb-6 md:mt-2">
+          <h1 className="text-2xl font-bold text-primary mb-4 md:text-3xl md:mb-6">
             {getGreeting()}
             {user ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>

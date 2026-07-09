@@ -15,7 +15,7 @@ export function ProgressBar() {
 
   return (
     <div className="flex items-center gap-2 w-full">
-      <span className="text-xs text-secondary w-8 text-right tabular-nums">{formatSeconds(display)}</span>
+      <span className="min-w-[40px] text-right text-xs tabular-nums text-secondary">{formatSeconds(display)}</span>
       <Slider
         value={display}
         min={0}
@@ -26,7 +26,7 @@ export function ProgressBar() {
         className="flex-1"
         aria-label="Playback progress"
       />
-      <span className="text-xs text-secondary w-8 tabular-nums">{formatSeconds(activeDuration)}</span>
+      <span className="min-w-[40px] text-left text-xs tabular-nums text-secondary">{formatSeconds(activeDuration)}</span>
     </div>
   )
 }

@@ -798,11 +798,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       <aside style={frameStyle} className={frameClass}>
         <button
           onClick={() => setWidth(DEFAULT_W)}
-          className="m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
+          className="spotify-tooltip-anchor relative m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
           aria-label={t('sidebar.expand')}
-          title={t('sidebar.expand')}
         >
           <CollapseIcon className="h-6 w-6" />
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.expand')}</span>
         </button>
 
         <DragHandle onMouseDown={onDragStart} />
@@ -836,7 +836,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 'text-base',
               )}
               aria-label={t('sidebar.collapse')}
-              title={t('sidebar.collapse')}
             >
               {t('sidebar.title')}
             </button>
@@ -898,11 +897,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       >
         <button
           onClick={() => setWidth(DEFAULT_W)}
-          className="m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
+          className="spotify-tooltip-anchor relative m-3 flex h-12 w-12 shrink-0 items-center justify-center rounded-md text-secondary transition-all hover:scale-105 hover:bg-elevated hover:text-primary"
           aria-label={t('sidebar.expand')}
-          title={t('sidebar.expand')}
         >
           <CollapseIcon className="h-6 w-6" />
+          <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.expand')}</span>
         </button>
 
         <div
@@ -913,10 +912,11 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         >
           <Link
             to="/library?tab=liked"
-            title={t('sidebar.likedSongs')}
-            className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 flex items-center justify-center shrink-0 hover:scale-105 transition-transform"
+            aria-label={t('sidebar.likedSongs')}
+            className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 transition-transform hover:scale-105"
           >
             <HeartIcon className="w-5 h-5 text-white" />
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.likedSongs')}</span>
           </Link>
           {items.map((item, i) => {
             // Pinned items lead the rail; a hairline separates them from the rest.
@@ -1018,7 +1018,6 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                     !libraryExpanded && !isLibraryAnimating && 'group-hover/sidebar:pl-9',
                   )}
                   aria-label={t('sidebar.collapse')}
-                  title={t('sidebar.collapse')}
                 >
                   {t('sidebar.title')}
                 </button>
@@ -1112,24 +1111,30 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
         ) : (
           <button
             onClick={() => setSearchOpen(true)}
-            className="text-secondary hover:text-primary hover:scale-110 active:scale-90 p-1.5 rounded-full hover:bg-elevated transition-all"
+            className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-90"
             aria-label={t('sidebar.search')}
-            title={t('sidebar.search')}
           >
             <MagnifyingGlassIcon className="w-4 h-4" />
+            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">
+              {t('sidebar.search')}
+            </span>
           </button>
         )}
         <div className="relative shrink-0">
           <button
             ref={sortButtonRef}
             onClick={() => (sortMenuOpen ? closeSortMenu() : openSortMenu())}
-            className="flex h-8 items-center gap-2 px-1 text-xs font-normal leading-none text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
-            title={t('sidebar.sort')}
+            className="spotify-tooltip-anchor relative flex h-8 items-center gap-2 px-1 text-xs font-normal leading-none text-secondary transition-all hover:scale-105 hover:text-primary active:scale-95"
             aria-haspopup="menu"
             aria-expanded={sortMenuOpen}
           >
             {t(SORT_OPTIONS.find((o) => o.key === sort)?.tKey ?? 'sort.recents')}
             <LibraryViewIcon mode={viewMode} />
+            {!sortMenuOpen && (
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
+                {t('sidebar.sort')}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -1722,11 +1727,10 @@ function CollapsedLibraryItem({
       : undefined
 
   return (
-    <div className="group/row relative" onContextMenu={handleContextMenu} {...dragProps}>
+    <div className="spotify-tooltip-anchor group/row relative" onContextMenu={handleContextMenu} {...dragProps}>
       {indicator}
       <Link
         to={item.to}
-        title={item.name}
         aria-label={item.name}
         draggable={false}
         className={cn(
@@ -1736,6 +1740,7 @@ function CollapsedLibraryItem({
       >
         <LibraryArtwork item={item} compact={compact} />
       </Link>
+      <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{item.name}</span>
       {video && (
         <VideoMenu ref={videoMenuRef} video={video}
           triggerClassName="absolute bottom-0 right-0 z-20 rounded-full bg-black/70 p-1 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"

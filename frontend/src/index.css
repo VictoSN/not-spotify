@@ -785,12 +785,13 @@ html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="text-
 
 .spotify-tooltip-anchor {
   --tooltip-x: 0;
+  --tooltip-y: 0;
   overflow: visible;
 }
 
 .spotify-tooltip {
   position: absolute;
-  z-index: 70;
+  z-index: 9999;
   pointer-events: none;
   white-space: nowrap;
   border-radius: 0.25rem;
@@ -803,7 +804,7 @@ html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="text-
   box-shadow: 0 0.75rem 1.25rem rgba(0, 0, 0, 0.45);
   opacity: 0;
   visibility: hidden;
-  transform: translateX(var(--tooltip-x));
+  transform: translate(var(--tooltip-x), var(--tooltip-y));
   transition:
     opacity 0.16s ease,
     visibility 0s linear 0.16s;
@@ -817,6 +818,16 @@ html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="text-
 .spotify-tooltip-bottom {
   top: calc(100% + 0.5rem);
   transform-origin: top center;
+}
+
+.spotify-tooltip-middle {
+  top: 50%;
+  --tooltip-y: -50%;
+}
+
+.spotify-tooltip-side-right {
+  left: calc(100% + 0.5rem);
+  transform-origin: left center;
 }
 
 .spotify-tooltip-center {
@@ -848,8 +859,7 @@ html[data-theme="light"] .dark-theme-scope .account-settings-page [class*="text-
   transform-origin: top right;
 }
 
-.spotify-tooltip-anchor:hover .spotify-tooltip,
-.spotify-tooltip-anchor:focus-visible .spotify-tooltip {
+.spotify-tooltip-anchor:hover .spotify-tooltip {
   opacity: 1;
   visibility: visible;
   transition-delay: 0.08s, 0s;

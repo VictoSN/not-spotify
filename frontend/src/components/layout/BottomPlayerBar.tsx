@@ -237,14 +237,14 @@ export function BottomPlayerBar() {
 
   // â”€â”€ Desktop full player bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
-    <div className="shrink-0 h-20 sm:h-24 bg-base grid grid-cols-3 items-center gap-2 px-4">
+    <div className="shrink-0 h-[72px] bg-base grid grid-cols-3 items-center gap-2 px-4">
       {/* Left: Now Playing Info */}
       <div className="min-w-0 justify-self-start">
         <NowPlayingInfo />
       </div>
 
       {/* Center: Controls + Progress */}
-      <div className="flex flex-col items-center gap-2 w-full max-w-[620px] justify-self-center">
+      <div className="flex flex-col items-center gap-2 w-full max-w-[722px] justify-self-center">
         <PlayerControls />
         <ProgressBar />
       </div>
@@ -254,24 +254,24 @@ export function BottomPlayerBar() {
         {currentTrack && !isVideoMode && (
           <button
             onClick={toggleKaraoke}
-            className={`transition-all hover:scale-110 active:scale-90 ${isKaraokeOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+            className={`spotify-tooltip-anchor relative transition-all hover:scale-110 active:scale-90 ${isKaraokeOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
             aria-label={t('player.lyrics')}
             aria-pressed={isKaraokeOpen}
-            title={t('player.lyrics')}
           >
             <MicVocal className="h-5 w-5" strokeWidth={1.8} />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('player.lyrics')}</span>
           </button>
         )}
         {currentTrack && !isVideoMode && (
           <button
             type="button"
             onClick={toggleQueue}
-            className={`hidden lg:block transition-all hover:scale-110 active:scale-90 ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
+            className={`spotify-tooltip-anchor relative hidden transition-all hover:scale-110 active:scale-90 lg:block ${queueOpen ? 'text-accent' : 'text-secondary hover:text-primary'}`}
             aria-label={t('player.queue')}
             aria-pressed={queueOpen}
-            title={t('player.queue')}
           >
             <QueueListIcon className="h-5 w-5" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('player.queue')}</span>
           </button>
         )}
         <ConnectDeviceButton />
@@ -279,27 +279,27 @@ export function BottomPlayerBar() {
         {currentTrack && !isVideoMode && (
           <button
             onClick={enterPip}
-            className="hidden text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 sm:block"
+            className="spotify-tooltip-anchor relative hidden text-secondary transition-all hover:scale-110 hover:text-primary active:scale-90 sm:block"
             aria-label={t('player.pip')}
-            title={t('player.pip')}
           >
             <PipIcon className="h-5 w-5" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('player.pip')}</span>
           </button>
         )}
         {hasMedia && !isVideoMode && (
           <div className="relative">
             <button
               onClick={() => setMoreOpen((open) => !open)}
-              className={`flex h-8 w-8 items-center justify-center rounded-full border transition-all hover:scale-105 active:scale-95 ${
+              className={`spotify-tooltip-anchor relative flex h-8 w-8 items-center justify-center rounded-full border transition-all hover:scale-105 active:scale-95 ${
                 moreOpen
                   ? 'border-primary bg-primary text-page'
                   : 'border-secondary/30 text-secondary hover:border-primary hover:text-primary'
               }`}
               aria-label="More player controls"
               aria-expanded={moreOpen}
-              title="More"
             >
               <EllipsisHorizontalIcon className="h-5 w-5" />
+              {!moreOpen && <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-right">More</span>}
             </button>
             {moreOpen && (
               <>

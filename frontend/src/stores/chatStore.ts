@@ -154,8 +154,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set((s) => ({
         threads: { ...s.threads, [userId]: (s.threads[userId] ?? []).filter((m) => m.id !== tempId) },
       }))
-      const message = (error as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message
+      // Over the socket the reason arrives as a HubException (error.message);
+      // keep the axios shape as a fallback in case a REST path is reintroduced.
+      const message =
+        (error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        (error as Error)?.message
       notify.error(message ?? 'Message could not be sent. Please try again.')
     }
   },

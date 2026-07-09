@@ -6,6 +6,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { fireOsNotification } from '@/services/notifications'
 import { chatService } from '@/services/chatService'
+import { setPresenceConnection } from '@/services/presenceClient'
 import type { ChatMessage } from '@/types/chat'
 import type { AppNotification } from '@/types/notification'
 
@@ -101,6 +102,10 @@ export function usePresenceSocket() {
 
     // ── Lifecycle ──────────────────────────────────────────────────────────
 
+    // Expose the connection to the chat store/service so sends + receipts can be
+    // invoked over this socket (WhatsApp-style), not over REST.
+    setPresenceConnection(connection)
+
     connection
       .start()
       .then(() => chatService.markDelivered())
@@ -109,6 +114,7 @@ export function usePresenceSocket() {
     connectionRef.current = connection
 
     return () => {
+      setPresenceConnection(null)
       connection.stop()
       connectionRef.current = null
     }

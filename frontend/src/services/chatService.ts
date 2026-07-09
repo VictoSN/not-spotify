@@ -1,10 +1,15 @@
 import type { ChatMessage, Conversation } from '@/types/chat'
 import { api } from './api'
+import { presenceClient } from './presenceClient'
 
 // NOTE on encryption: bodies travel and persist as PLAINTEXT for now.
 // The planned end-to-end encryption flow (encrypt before send, decrypt after
 // receive) is documented in src/utils/chatEncryption.ts — when enabled, this
 // service is where encrypt()/decrypt() get applied.
+//
+// TRANSPORT: like WhatsApp, live chat rides the WebSocket — sending a message and
+// the delivery/read receipts go over the PresenceHub socket (presenceClient),
+// NOT over REST. Only history (conversations + thread backlog) is loaded over HTTP.
 
 export const chatService = {
   async getConversations(): Promise<Conversation[]> {
@@ -20,16 +25,15 @@ export const chatService = {
     return res.data
   },
 
-  async send(userId: string, body: string): Promise<ChatMessage> {
-    const res = await api.post<ChatMessage>(`/chat/with/${userId}`, { body })
-    return res.data
+  send(userId: string, body: string): Promise<ChatMessage> {
+    return presenceClient.sendMessage(userId, body)
   },
 
-  async markRead(userId: string): Promise<void> {
-    await api.post(`/chat/with/${userId}/read`)
+  markRead(userId: string): Promise<void> {
+    return presenceClient.markRead(userId)
   },
 
-  async markDelivered(): Promise<void> {
-    await api.post('/chat/delivered')
+  markDelivered(): Promise<void> {
+    return presenceClient.markDelivered()
   },
 }

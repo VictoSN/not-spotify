@@ -1,23 +1,22 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using NotSpotify.Api.Dtos;
-using NotSpotify.Api.Hubs;
 using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Controllers;
 
 /// <summary>
-/// Direct messages between friends.
+/// Direct-message HISTORY over REST — conversation list and thread backlog only.
 ///
-/// Persistence is REST (this controller); real-time delivery rides the existing
-/// PresenceHub WebSocket: after saving, we push a "ChatMessage" event to the
-/// recipient's (and sender's, for multi-tab sync) "user-{id}" SignalR group.
+/// Sending messages and delivery/read receipts do NOT live here: they are
+/// WhatsApp-style and travel over the PresenceHub WebSocket (SendMessage /
+/// MarkDelivered / MarkRead). This controller is purely for loading old history,
+/// the same way WhatsApp fetches backlog over HTTP but sends live traffic over
+/// its socket.
 ///
 /// SECURITY NOTE — messages are stored in PLAINTEXT for now. The end-to-end
 /// encryption design is sketched (commented out) in Models/ChatMessage.cs and
@@ -28,20 +27,15 @@ namespace NotSpotify.Api.Controllers;
 [Authorize]
 public class ChatController : ControllerBase
 {
-    private const int MaxBodyLength = 4000;
     private const int DefaultPageSize = 50;
 
     private readonly AppDbContext _db;
     private readonly MediaMapper _mapper;
-    private readonly IHubContext<PresenceHub> _hub;
-    private readonly NotificationService _notifications;
 
-    public ChatController(AppDbContext db, MediaMapper mapper, IHubContext<PresenceHub> hub, NotificationService notifications)
+    public ChatController(AppDbContext db, MediaMapper mapper)
     {
         _db = db;
         _mapper = mapper;
-        _hub = hub;
-        _notifications = notifications;
     }
 
     private Guid CurrentUserId()
@@ -49,13 +43,6 @@ public class ChatController : ControllerBase
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         return Guid.TryParse(id, out var g) ? g : throw new UnauthorizedAccessException();
     }
-
-    private Task<bool> AreFriends(Guid a, Guid b, CancellationToken ct) =>
-        _db.Friendships.AnyAsync(f =>
-            f.Status == FriendshipStatus.Accepted &&
-            ((f.RequesterId == a && f.AddresseeId == b) ||
-             (f.RequesterId == b && f.AddresseeId == a)),
-            ct);
 
     private static ChatMessageDto ToDto(ChatMessage m) => new(
         m.Id.ToString(),
@@ -152,129 +139,5 @@ public class ChatController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(page.Select(ToDto));
-    }
-
-    // ── Send ─────────────────────────────────────────────────────────────────
-
-    /// <summary>POST /chat/with/{userId} — send a message to a friend.</summary>
-    [HttpPost("with/{userId:guid}")]
-    [EnableRateLimiting("chat-send")]
-    public async Task<ActionResult<ChatMessageDto>> Send(
-        Guid userId,
-        [FromBody] SendChatMessageDto dto,
-        CancellationToken ct = default)
-    {
-        var me = CurrentUserId();
-        if (userId == me)
-            return BadRequest(new { message = "You cannot message yourself." });
-
-        var body = dto.Body?.Trim() ?? string.Empty;
-        if (body.Length == 0)
-            return BadRequest(new { message = "Message cannot be empty." });
-        if (body.Length > MaxBodyLength)
-            return BadRequest(new { message = $"Message is too long (max {MaxBodyLength} characters)." });
-
-        if (!await AreFriends(me, userId, ct))
-            return Forbid();
-
-        // E2E note: with encryption enabled, `body` would arrive as ciphertext
-        // and the server would store it without ever seeing the plaintext.
-        var message = new ChatMessage
-        {
-            SenderId = me,
-            RecipientId = userId,
-            Body = body,
-        };
-        _db.ChatMessages.Add(message);
-        await _db.SaveChangesAsync(ct);
-
-        var payload = ToDto(message);
-
-        // Real-time push over the existing presence WebSocket:
-        //  - recipient gets the new message instantly (chat window + unread badge)
-        //  - sender's *other* tabs stay in sync too
-        await Task.WhenAll(
-            _hub.Clients.Group($"user-{userId}").SendAsync("ChatMessage", payload, ct),
-            _hub.Clients.Group($"user-{me}").SendAsync("ChatMessage", payload, ct)
-        );
-
-        // Persist a Notifications row so opt-in desktop alerts can fire from the
-        // /notifications poll. Preview is body-truncated to keep it bell-sized.
-        var sender = await _db.Users.FindAsync(new object[] { me }, ct);
-        var senderName = sender?.Name ?? "Someone";
-        var senderAvatar = sender is null ? null : _mapper.ToRef(sender).AvatarUrl;
-            var preview = body.Length > 80 ? body[..77] + "…" : body;
-            await _notifications.NotifyAsync(
-                userId,
-                "chat_message",
-                $"{senderName} sent you a message",
-                body: preview,
-                linkUrl: $"/messages?u={me}",
-                imageUrl: senderAvatar,
-                ct: ct);
-
-        return Ok(payload);
-    }
-
-    // ── Delivery + read receipts ─────────────────────────────────────────────
-
-    /// <summary>
-    /// POST /chat/delivered — acknowledge every message that has reached this
-    /// recipient's client and push ChatDelivered receipts to their senders.
-    /// </summary>
-    [HttpPost("delivered")]
-    public async Task<IActionResult> MarkDelivered(CancellationToken ct = default)
-    {
-        var me = CurrentUserId();
-        var now = DateTime.UtcNow;
-        var messages = await _db.ChatMessages
-            .Where(m => m.RecipientId == me && m.DeliveredAt == null)
-            .ToListAsync(ct);
-
-        if (messages.Count == 0) return NoContent();
-
-        foreach (var message in messages) message.DeliveredAt = now;
-        await _db.SaveChangesAsync(ct);
-
-        var senders = messages.Select(m => m.SenderId).Distinct();
-        await Task.WhenAll(senders.Select(senderId =>
-            _hub.Clients.Group($"user-{senderId}")
-                .SendAsync("ChatDelivered", me.ToString(), now, ct)));
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// POST /chat/with/{userId}/read — mark every message from that friend as read.
-    /// Pushes a ChatRead event to the sender so their double ticks turn blue.
-    /// </summary>
-    [HttpPost("with/{userId:guid}/read")]
-    public async Task<IActionResult> MarkRead(Guid userId, CancellationToken ct = default)
-    {
-        var me = CurrentUserId();
-
-        var now = DateTime.UtcNow;
-        var messages = await _db.ChatMessages
-            .Where(m => m.SenderId == userId && m.RecipientId == me && m.ReadAt == null)
-            .ToListAsync(ct);
-
-        if (messages.Count > 0)
-        {
-            foreach (var message in messages)
-            {
-                message.DeliveredAt ??= now;
-                message.ReadAt = now;
-            }
-            await _db.SaveChangesAsync(ct);
-
-            // Tell the original sender their messages were read (live read receipts),
-            // and sync my own other tabs so their unread badges clear too.
-            await Task.WhenAll(
-                _hub.Clients.Group($"user-{userId}").SendAsync("ChatRead", me.ToString(), now, ct),
-                _hub.Clients.Group($"user-{me}").SendAsync("ChatReadSelf", userId.ToString(), ct)
-            );
-        }
-
-        return NoContent();
     }
 }

@@ -7,51 +7,22 @@ using Xunit;
 
 namespace NotSpotify.Api.Tests;
 
+/// <summary>
+/// Chat tests. Sending + receipts are WhatsApp-style over the PresenceHub socket,
+/// so those are exercised against the hub directly; history retrieval stays on the
+/// REST ChatController.
+/// </summary>
 public class ChatControllerTests
 {
     [Fact]
-    public async Task Send_ToSelf_ReturnsBadRequest()
+    public async Task SendMessage_ToSelf_Throws()
     {
         await using var db = TestHelpers.NewDb();
-        var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var (hub, proxy) = TestHelpers.NewPresenceHub(db, me);
 
-        var action = await controller.Send(me, new SendChatMessageDto("hello"));
+        await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(me.ToString(), "hello"));
 
-        Assert.IsType<BadRequestObjectResult>(action.Result);
-        Assert.Empty(db.ChatMessages);
-    }
-
-    [Fact]
-    public async Task Send_EmptyBody_ReturnsBadRequest()
-    {
-        await using var db = TestHelpers.NewDb();
-        var (hub, _) = TestHelpers.NewHub();
-        var me = Guid.NewGuid();
-        var friend = Guid.NewGuid();
-        db.AddFriendship(me, friend);
-        await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
-
-        var action = await controller.Send(friend, new SendChatMessageDto("   "));
-
-        Assert.IsType<BadRequestObjectResult>(action.Result);
-        Assert.Empty(db.ChatMessages);
-    }
-
-    [Fact]
-    public async Task Send_ToNonFriend_ReturnsForbid()
-    {
-        await using var db = TestHelpers.NewDb();
-        var (hub, proxy) = TestHelpers.NewHub();
-        var me = Guid.NewGuid();
-        var stranger = Guid.NewGuid();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
-
-        var action = await controller.Send(stranger, new SendChatMessageDto("hi"));
-
-        Assert.IsType<ForbidResult>(action.Result);
         Assert.Empty(db.ChatMessages);
         proxy.Verify(
             p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
@@ -59,20 +30,48 @@ public class ChatControllerTests
     }
 
     [Fact]
-    public async Task Send_ToFriend_PersistsMessageAndPushesRealtime()
+    public async Task SendMessage_EmptyBody_Throws()
     {
         await using var db = TestHelpers.NewDb();
-        var (hub, proxy) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
         var friend = Guid.NewGuid();
         db.AddFriendship(me, friend);
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var (hub, _) = TestHelpers.NewPresenceHub(db, me);
 
-        var action = await controller.Send(friend, new SendChatMessageDto("  hey there  "));
+        await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(friend.ToString(), "   "));
 
-        var ok = Assert.IsType<OkObjectResult>(action.Result);
-        var dto = Assert.IsType<ChatMessageDto>(ok.Value);
+        Assert.Empty(db.ChatMessages);
+    }
+
+    [Fact]
+    public async Task SendMessage_ToNonFriend_ThrowsAndPushesNothing()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = Guid.NewGuid();
+        var stranger = Guid.NewGuid();
+        var (hub, proxy) = TestHelpers.NewPresenceHub(db, me);
+
+        await Assert.ThrowsAsync<HubException>(() => hub.SendMessage(stranger.ToString(), "hi"));
+
+        Assert.Empty(db.ChatMessages);
+        proxy.Verify(
+            p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SendMessage_ToFriend_PersistsMessageAndPushesRealtime()
+    {
+        await using var db = TestHelpers.NewDb();
+        var me = Guid.NewGuid();
+        var friend = Guid.NewGuid();
+        db.AddFriendship(me, friend);
+        await db.SaveChangesAsync();
+        var (hub, proxy) = TestHelpers.NewPresenceHub(db, me);
+
+        var dto = await hub.SendMessage(friend.ToString(), "  hey there  ");
+
         Assert.Equal("hey there", dto.Body); // trimmed
         Assert.Equal(me.ToString(), dto.SenderId);
         Assert.Equal(friend.ToString(), dto.RecipientId);
@@ -99,7 +98,6 @@ public class ChatControllerTests
     public async Task MarkDelivered_SetsReceiptAndPushesRealtimeToSender()
     {
         await using var db = TestHelpers.NewDb();
-        var (hub, proxy) = TestHelpers.NewHub();
         var sender = Guid.NewGuid();
         var me = Guid.NewGuid();
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage
@@ -109,11 +107,10 @@ public class ChatControllerTests
             Body = "delivered",
         });
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var (hub, proxy) = TestHelpers.NewPresenceHub(db, me);
 
-        var result = await controller.MarkDelivered();
+        await hub.MarkDelivered();
 
-        Assert.IsType<NoContentResult>(result);
         Assert.NotNull(Assert.Single(db.ChatMessages).DeliveredAt);
         proxy.Verify(
             p => p.SendCoreAsync("ChatDelivered", It.IsAny<object?[]>(), It.IsAny<CancellationToken>()),
@@ -124,7 +121,6 @@ public class ChatControllerTests
     public async Task MarkRead_AlsoMarksUndeliveredMessageDelivered()
     {
         await using var db = TestHelpers.NewDb();
-        var (hub, proxy) = TestHelpers.NewHub();
         var sender = Guid.NewGuid();
         var me = Guid.NewGuid();
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage
@@ -134,11 +130,10 @@ public class ChatControllerTests
             Body = "read",
         });
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var (hub, proxy) = TestHelpers.NewPresenceHub(db, me);
 
-        var result = await controller.MarkRead(sender);
+        await hub.MarkRead(sender.ToString());
 
-        Assert.IsType<NoContentResult>(result);
         var stored = Assert.Single(db.ChatMessages);
         Assert.NotNull(stored.DeliveredAt);
         Assert.NotNull(stored.ReadAt);
@@ -154,13 +149,12 @@ public class ChatControllerTests
         // conversation but no current friendship (i.e. after unfriending) can
         // still read the old thread — only sending is blocked.
         await using var db = TestHelpers.NewDb();
-        var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
         var formerFriend = Guid.NewGuid();
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = me, RecipientId = formerFriend, Body = "old message" });
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = formerFriend, RecipientId = me, Body = "old reply" });
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper()).AsUser(me);
 
         var action = await controller.GetThread(formerFriend);
 
@@ -175,14 +169,13 @@ public class ChatControllerTests
         // No privacy leak: the thread only ever surfaces messages actually
         // exchanged between the caller and the target, never anyone else's.
         await using var db = TestHelpers.NewDb();
-        var (hub, _) = TestHelpers.NewHub();
         var me = Guid.NewGuid();
         var other = Guid.NewGuid();
         var unrelated = Guid.NewGuid();
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = me, RecipientId = other, Body = "ours" });
         db.ChatMessages.Add(new NotSpotify.Api.Models.ChatMessage { SenderId = unrelated, RecipientId = me, Body = "someone else" });
         await db.SaveChangesAsync();
-        var controller = new ChatController(db, TestHelpers.NewMapper(), hub, TestHelpers.NewNotifications(db)).AsUser(me);
+        var controller = new ChatController(db, TestHelpers.NewMapper()).AsUser(me);
 
         var action = await controller.GetThread(other);
 

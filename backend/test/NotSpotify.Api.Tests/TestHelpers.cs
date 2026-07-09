@@ -120,6 +120,34 @@ internal static class TestHelpers
         return (hub.Object, proxy);
     }
 
+    /// <summary>
+    /// A PresenceHub under test: constructed over the InMemory db with mocked
+    /// Clients (Group(...).SendAsync is captured by <c>proxy</c>) and a Context
+    /// carrying <paramref name="userId"/>'s identity, so its chat methods
+    /// (SendMessage / MarkDelivered / MarkRead) can be invoked directly.
+    /// </summary>
+    public static (PresenceHub hub, Mock<IClientProxy> proxy) NewPresenceHub(AppDbContext db, Guid userId)
+    {
+        var proxy = new Mock<IClientProxy>();
+        proxy.Setup(p => p.SendCoreAsync(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+             .Returns(Task.CompletedTask);
+
+        var clients = new Mock<IHubCallerClients>();
+        clients.Setup(c => c.Group(It.IsAny<string>())).Returns(proxy.Object);
+
+        var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId.ToString()) }, "Test");
+        var context = new Mock<HubCallerContext>();
+        context.Setup(c => c.User).Returns(new ClaimsPrincipal(identity));
+        context.Setup(c => c.ConnectionId).Returns(Guid.NewGuid().ToString());
+
+        var hub = new PresenceHub(db, NewMapper(), NewNotifications(db))
+        {
+            Clients = clients.Object,
+            Context = context.Object,
+        };
+        return (hub, proxy);
+    }
+
     /// <summary>A real NotificationService over the InMemory db + a no-op hub.</summary>
     public static NotificationService NewNotifications(AppDbContext db)
     {

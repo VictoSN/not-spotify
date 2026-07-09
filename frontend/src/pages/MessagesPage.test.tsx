@@ -165,6 +165,37 @@ describe('MessagesPage chat lock after unfriending (bug 28)', () => {
     expect(readRow.querySelector('time')).not.toHaveClass('font-bold')
   })
 
+  it('filters conversations and start-a-chat friends from the chat search field', async () => {
+    const playlistConversation: Conversation = {
+      ...conversation,
+      userId: 'partner-2',
+      name: 'Playlist Buddy',
+      lastMessage: { ...message, id: 'm2', senderId: 'partner-2', body: 'shared playlist notes' },
+    }
+    const newFriend: Friend = { userId: 'partner-3', name: 'New Person', avatarUrl: null, mutualFriendsCount: 0 }
+    chatServiceMock.getConversations.mockResolvedValue([conversation, playlistConversation])
+    friendServiceMock.getFriends.mockResolvedValue([friend, newFriend])
+
+    await renderMessages('/messages')
+
+    const search = screen.getByLabelText('Search chats')
+    fireEvent.change(search, { target: { value: 'playlist' } })
+
+    expect(screen.getByRole('button', { name: 'Open chat with Playlist Buddy' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open chat with Old Friend' })).not.toBeInTheDocument()
+    expect(screen.queryByText('New Person')).not.toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: 'new' } })
+    expect(screen.getByText('New Person')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open chat with Playlist Buddy' })).not.toBeInTheDocument()
+
+    fireEvent.change(search, { target: { value: 'missing' } })
+    expect(screen.getByText('No chats found')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear chat search' }))
+    expect(screen.getByRole('button', { name: 'Open chat with Old Friend' })).toBeInTheDocument()
+  })
+
   it('uses a single pane on mobile and returns from the thread to the conversation list', async () => {
     friendServiceMock.getFriends.mockResolvedValue([friend])
     await renderThread()

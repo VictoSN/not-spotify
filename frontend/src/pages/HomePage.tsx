@@ -272,10 +272,10 @@ export function HomePage() {
               key={f.key}
               onClick={() => setHomeFilter(f.key)}
               className={cn(
-                'flex h-8 shrink-0 items-center rounded-full px-3 py-1 text-sm font-normal text-primary backdrop-blur-sm transition-all active:scale-95',
+                'flex h-8 shrink-0 items-center rounded-full px-3 py-1 text-[13px] font-normal backdrop-blur-sm transition-all active:scale-95',
                 homeFilter === f.key
-                  ? 'bg-primary/20'
-                  : 'bg-primary/10 hover:bg-primary/20',
+                  ? 'bg-primary text-page'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20',
               )}
               aria-pressed={homeFilter === f.key}
             >

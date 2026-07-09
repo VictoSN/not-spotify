@@ -5,11 +5,13 @@ import {
   PaperAirplaneIcon,
   ArrowLeftIcon,
   ChatBubbleLeftRightIcon,
+  MagnifyingGlassIcon,
   LockClosedIcon,
   MinusCircleIcon,
   PlusIcon,
   FaceSmileIcon,
   TrashIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { DocumentIcon, PhotoIcon } from '@heroicons/react/24/solid'
 import { Avatar } from '@/components/ui/Avatar'
@@ -43,6 +45,28 @@ function formatDay(iso: string) {
   if (d.toDateString() === today.toDateString()) return 'Today'
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function normalizeChatSearch(value: string) {
+  return value.trim().toLowerCase()
+}
+
+function getShareSearchLabel(body: string) {
+  const share = parseShare(body)
+  if (!share) return ''
+  if (share.kind === 'track') return 'shared a song track music'
+  if (share.kind === 'album') return 'shared an album'
+  if (share.kind === 'jam') return 'invited you to a jam'
+  return 'shared a playlist'
+}
+
+function conversationMatchesSearch(conversation: Conversation, query: string) {
+  if (!query) return true
+  return [
+    conversation.name,
+    conversation.lastMessage?.body ?? '',
+    conversation.lastMessage ? getShareSearchLabel(conversation.lastMessage.body) : '',
+  ].some((value) => value.toLowerCase().includes(query))
 }
 
 const QUICK_EMOJIS = ['😀', '😂', '😍', '🥰', '😎', '😭', '😡', '👍', '👏', '🙏', '❤️', '🔥', '🎉', '✨', '🎵', '🤝']
@@ -104,6 +128,7 @@ export function MessagesPage() {
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false)
   const [emojiMenuOpen, setEmojiMenuOpen] = useState(false)
   const [pinRevision, setPinRevision] = useState(0)
+  const [chatSearch, setChatSearch] = useState('')
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const threadTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const composerToolsRef = useRef<HTMLDivElement | null>(null)
@@ -189,6 +214,12 @@ export function MessagesPage() {
       .map(({ conversation }) => conversation)
   }, [conversations, pinRevision])
 
+  const normalizedChatSearch = normalizeChatSearch(chatSearch)
+  const visibleConversations = useMemo(
+    () => sortedConversations.filter((conversation) => conversationMatchesSearch(conversation, normalizedChatSearch)),
+    [sortedConversations, normalizedChatSearch],
+  )
+
   // Friends I have no conversation with yet — shown so a first chat can be started.
   const newChatFriends = useMemo(
     () => friends.filter(
@@ -196,6 +227,10 @@ export function MessagesPage() {
         && !isChatDeletedOnDevice(friend.userId),
     ),
     [friends, conversations],
+  )
+  const visibleNewChatFriends = useMemo(
+    () => newChatFriends.filter((friend) => !normalizedChatSearch || friend.name.toLowerCase().includes(normalizedChatSearch)),
+    [newChatFriends, normalizedChatSearch],
   )
 
   const activePartner =
@@ -316,6 +351,31 @@ export function MessagesPage() {
       >
         <div className="px-4 pb-3 pt-5">
           <h1 className="text-2xl font-bold text-primary">Messages</h1>
+          <div className="relative mt-4">
+            <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-secondary" />
+            <input
+              type="text"
+              autoComplete="off"
+              value={chatSearch}
+              onChange={(event) => setChatSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setChatSearch('')
+              }}
+              aria-label="Search chats"
+              placeholder="Search or start a new chat"
+              className="h-10 w-full rounded-full border border-transparent bg-elevated py-2 pl-11 pr-11 text-sm text-primary placeholder:text-secondary outline-none transition-colors focus:border-accent/60 focus:bg-elevated/90"
+            />
+            {chatSearch && (
+              <button
+                type="button"
+                onClick={() => setChatSearch('')}
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-secondary transition-colors hover:bg-primary/10 hover:text-primary"
+                aria-label="Clear chat search"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -327,7 +387,15 @@ export function MessagesPage() {
             </div>
           )}
 
-          {sortedConversations.map((c) => (
+          {normalizedChatSearch && visibleConversations.length === 0 && visibleNewChatFriends.length === 0 && (
+            <div className="px-3 py-10 text-center">
+              <MagnifyingGlassIcon className="mx-auto mb-3 h-10 w-10 text-muted" />
+              <p className="text-sm font-semibold text-primary">No chats found</p>
+              <p className="mt-1 text-xs text-secondary">Try a name or message from your chats.</p>
+            </div>
+          )}
+
+          {visibleConversations.map((c) => (
             <button
               key={c.userId}
               onClick={() => select(c.userId)}
@@ -390,10 +458,10 @@ export function MessagesPage() {
             </button>
           ))}
 
-          {newChatFriends.length > 0 && (
+          {visibleNewChatFriends.length > 0 && (
             <>
               <p className="px-3 pb-1 pt-4 text-xs font-bold uppercase tracking-wider text-secondary">Start a chat</p>
-              {newChatFriends.map((f) => (
+              {visibleNewChatFriends.map((f) => (
                 <button
                   key={f.userId}
                   onClick={() => select(f.userId)}

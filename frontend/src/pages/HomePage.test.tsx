@@ -191,7 +191,7 @@ describe('Home media interactions', () => {
       draggedVideo: null,
       draggedPodcast: null,
     })
-    useHueStore.setState({ hoverColor: null })
+    useHueStore.setState({ hoverColor: null, hueTouched: false })
   })
 
   it('maps the Music Video filter to video-only content', () => {

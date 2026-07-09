@@ -170,10 +170,17 @@ export function HomePage() {
     }
   }, [isAuthenticated, user?.country])
 
-  // Home's resting hue always belongs to the first quick-access playlist.
+  // Home's resting hue: a neutral grey wash until the user first hovers a
+  // quick-access card this page load (hueTouched is in-memory, so a refresh or
+  // new tab starts neutral again); afterwards it belongs to the first
+  // quick-access playlist, matching the existing hover-then-scroll behaviour.
   // resetOnChange ensures signing out immediately drops a previously resolved hue.
   const heroSeed = getHomeHueSeed(isAuthenticated, savedPlaylists)
   const baseColor = useDominantColor(heroSeed, { resetOnChange: true })
+  // Flips once per page load — a single extra rerender, unlike per-hover colours
+  // which stay isolated inside HomeHueLayer.
+  const hueTouched = useHueStore((s) => s.hueTouched)
+  const restingColor = hueTouched ? baseColor : 'var(--c-hue-neutral)'
   const setHoverColor = useHueStore((s) => s.setHoverColor)
   // Whether the main content area is scrolled past the hero (set by AppShell);
   // drives the Home filter bar's locked-hue background — the global header is unaffected.
@@ -225,7 +232,7 @@ export function HomePage() {
   // that mirrors the resting playlist hue at the SAME ratio. Hover colour stays
   // inside HomeHueLayer so it cannot rerender the rest of Home.
   const homeHeaderBackground = headerScrolled
-    ? hueHeaderBackground(isAuthenticated ? baseColor : null)
+    ? hueHeaderBackground(isAuthenticated ? restingColor : null)
     : 'transparent'
 
   // ISO alpha-2 → display name (e.g. "US" → "United States"); falls back to the code.
@@ -240,7 +247,7 @@ export function HomePage() {
   return (
     <div className="relative">
       {/* Dynamic colour hue — only quick-access playlist hover can override it. */}
-      <HomeHueLayer baseColor={baseColor} isAuthenticated={isAuthenticated} />
+      <HomeHueLayer baseColor={restingColor} isAuthenticated={isAuthenticated} />
 
       {/* Home filter bar — a Home-page-only sticky header (All / Music / Podcasts).
           It locks to the top of the content scroll area and adopts the page hue once

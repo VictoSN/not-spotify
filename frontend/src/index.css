@@ -95,6 +95,11 @@ html[data-theme="dark"] {
   --artwork-profile-strength: 72%;
   --artwork-section-strength: 32%;
 
+  /* Home's resting wash before any quick-access card has been hovered this
+     page load. Painted at 60% over --c-page the top of the fade lands around
+     #2f2f2f — the same barely-there grey Spotify's untouched Home shows. */
+  --c-hue-neutral: hsl(0 0% 25%);
+
   color-scheme: dark;
   background-color: var(--c-base);
 }
@@ -150,6 +155,10 @@ html[data-theme="light"] {
   --artwork-fade-strength: 24%;
   --artwork-profile-strength: 38%;
   --artwork-section-strength: 18%;
+
+  /* Home's resting wash before any quick-access card hover — kept just as
+     subtle as the dark theme's: a whisper of cool grey over the white page. */
+  --c-hue-neutral: hsl(210 12% 78%);
 
   color-scheme: light;
   background-color: var(--c-base);

@@ -12,8 +12,10 @@ export interface PlatformDetectionInput {
   maxTouchPoints?: number
 }
 
-export const WINDOWS_SETUP_FILENAME = 'not-spotify-windows-x64-setup.exe'
-export const WINDOWS_MSI_FILENAME = 'not-spotify-windows-x64.msi'
+export const INSTALLER_VERSION =
+  typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__
+export const WINDOWS_SETUP_FILENAME = `not-spotify_${INSTALLER_VERSION}_x64-setup.exe`
+export const WINDOWS_MSI_FILENAME = `not-spotify_${INSTALLER_VERSION}_x64_en-US.msi`
 
 function installerUrl(filename: string): string {
   const baseUrl = (

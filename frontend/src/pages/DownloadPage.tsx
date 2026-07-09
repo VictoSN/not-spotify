@@ -251,6 +251,7 @@ export function DownloadPage() {
   const [platform] = useState(detectDownloadPlatform)
   const platformLabel = PLATFORM_LABELS[platform]
   const recommendsWindowsInstaller = platform === 'windows'
+  const appVersion = typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__
   // Mobile/tablet steps are always visible now, so the button's fallback for
   // "prompt not available" has nowhere to send the user — treat it as a no-op.
   const openSteps = () => {}
@@ -290,7 +291,7 @@ export function DownloadPage() {
               </div>
               <p className="mt-4 text-xs font-bold text-white/55">
                 {recommendsWindowsInstaller
-                  ? 'Windows 10 or 11 · 64-bit · version 0.1.0'
+                  ? `Windows 10 or 11 · 64-bit · version ${appVersion}`
                   : 'No package needed — install the web app directly from your browser.'}
               </p>
               <a

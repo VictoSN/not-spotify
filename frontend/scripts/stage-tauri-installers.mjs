@@ -1,4 +1,4 @@
-import { readdirSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { dirname, extname, relative, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -13,6 +13,10 @@ const bundleRoot = resolve(
 )
 const s3Bucket = process.env.INSTALLER_S3_BUCKET
 const s3Prefix = (process.env.INSTALLER_S3_PREFIX || 'downloads').replace(/^\/|\/$/g, '')
+const tauriConf = JSON.parse(
+  readFileSync(resolve(frontendRoot, 'src-tauri', 'tauri.conf.json'), 'utf-8'),
+)
+const appVersion = tauriConf.version
 
 function newestFile(folder, extension) {
   const directory = resolve(bundleRoot, folder)
@@ -31,58 +35,66 @@ const targets =
     ? [
         {
           source: newestFile('nsis', '.exe'),
-          destination: 'not-spotify-windows-x64-setup.exe',
+          destinations: [
+            'not-spotify-windows-x64-setup.exe',
+            `not-spotify_${appVersion}_x64-setup.exe`,
+          ],
         },
         {
           source: newestFile('msi', '.msi'),
-          destination: 'not-spotify-windows-x64.msi',
+          destinations: [
+            'not-spotify-windows-x64.msi',
+            `not-spotify_${appVersion}_x64_en-US.msi`,
+          ],
         },
       ]
     : process.platform === 'darwin'
       ? [
           {
             source: newestFile('dmg', '.dmg'),
-            destination: `not-spotify-macos-${process.arch}.dmg`,
+            destinations: [`not-spotify-macos-${process.arch}.dmg`],
           },
         ]
       : [
           {
             source: newestFile('appimage', '.AppImage'),
-            destination: `not-spotify-linux-${process.arch}.AppImage`,
+            destinations: [`not-spotify-linux-${process.arch}.AppImage`],
           },
           {
             source: newestFile('deb', '.deb'),
-            destination: `not-spotify-linux-${process.arch}.deb`,
+            destinations: [`not-spotify-linux-${process.arch}.deb`],
           },
         ]
 
-for (const { source, destination } of targets) {
-  if (!s3Bucket) {
-    console.log(
-      `Built ${relative(frontendRoot, source)}; set INSTALLER_S3_BUCKET to upload ${destination}.`,
+for (const { source, destinations } of targets) {
+  for (const destination of destinations) {
+    if (!s3Bucket) {
+      console.log(
+        `Built ${relative(frontendRoot, source)}; set INSTALLER_S3_BUCKET to upload ${destination}.`,
+      )
+      continue
+    }
+
+    const s3Target = `s3://${s3Bucket}/${s3Prefix}/${destination}`
+    const result = spawnSync(
+      'aws',
+      [
+        's3',
+        'cp',
+        source,
+        s3Target,
+        '--cache-control',
+        'public,max-age=86400',
+        '--content-disposition',
+        `attachment; filename="${destination}"`,
+      ],
+      { stdio: 'inherit' },
     )
-    continue
+
+    if (result.status !== 0) {
+      throw new Error(`Failed to upload ${destination} to ${s3Target}`)
+    }
+
+    console.log(`Uploaded ${source} -> ${s3Target}`)
   }
-
-  const s3Target = `s3://${s3Bucket}/${s3Prefix}/${destination}`
-  const result = spawnSync(
-    'aws',
-    [
-      's3',
-      'cp',
-      source,
-      s3Target,
-      '--cache-control',
-      'public,max-age=86400',
-      '--content-disposition',
-      `attachment; filename="${destination}"`,
-    ],
-    { stdio: 'inherit' },
-  )
-
-  if (result.status !== 0) {
-    throw new Error(`Failed to upload ${destination} to ${s3Target}`)
-  }
-
-  console.log(`Uploaded ${source} -> ${s3Target}`)
 }

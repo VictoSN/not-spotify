@@ -11,7 +11,14 @@ $env:INSTALLER_S3_BUCKET = "<bucket>"
 npm run tauri:build
 ```
 
-The command builds the production frontend, creates NSIS (`.exe`) and MSI installers, and uploads stable copies to S3 under `downloads/`. In production, the existing CloudFront/API origin exposes:
+The command builds the production frontend, creates NSIS (`.exe`) and MSI installers, and uploads both versioned public filenames and stable compatibility copies to S3 under `downloads/`. In production, the existing CloudFront/API origin exposes versioned names such as:
+
+```text
+https://<api-or-cdn>/downloads/not-spotify_0.7.8_x64-setup.exe
+https://<api-or-cdn>/downloads/not-spotify_0.7.8_x64_en-US.msi
+```
+
+The legacy stable URLs continue to work for older deployed frontends and external links:
 
 ```text
 https://<api-or-cdn>/downloads/not-spotify-windows-x64-setup.exe

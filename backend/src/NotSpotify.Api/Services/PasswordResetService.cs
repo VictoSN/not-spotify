@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -14,59 +12,46 @@ public interface IPasswordResetEmailSender
     Task SendResetCodeAsync(string email, string code, string? resetUrl, CancellationToken ct = default);
 }
 
-public sealed class SmtpPasswordResetEmailSender(
-    IConfiguration config,
+public sealed class ResendPasswordResetEmailSender(
+    ResendEmailClient resend,
     IWebHostEnvironment environment,
-    ILogger<SmtpPasswordResetEmailSender> logger) : IPasswordResetEmailSender
+    ILogger<ResendPasswordResetEmailSender> logger) : IPasswordResetEmailSender
 {
     public async Task SendResetCodeAsync(string email, string code, string? resetUrl, CancellationToken ct = default)
     {
-        var host = config["Email:Smtp:Host"];
-        if (string.IsNullOrWhiteSpace(host))
+        if (!resend.IsConfigured)
         {
             if (environment.IsDevelopment())
             {
                 logger.LogWarning(
-                    "[Auth] Password reset OTP for {Email}: {Code} (link: {Url}). Configure Email:Smtp to send mail.",
+                    "[Auth] Password reset OTP for {Email}: {Code} (link: {Url}). Configure Email:Resend to send mail.",
                     email, code, resetUrl ?? "n/a");
                 return;
             }
-            throw new InvalidOperationException("Password reset email SMTP is not configured.");
+            throw new InvalidOperationException("Password reset email (Email:Resend) is not configured.");
         }
 
-        var fromAddress = config["Email:Smtp:FromAddress"] ?? config["Email:Smtp:Username"];
-        if (string.IsNullOrWhiteSpace(fromAddress))
-            throw new InvalidOperationException("Email:Smtp:FromAddress is required when SMTP is enabled.");
-
-        var body = new StringBuilder()
+        var text = new StringBuilder()
             .AppendLine("We received a request to reset your not-spotify password.")
             .AppendLine()
             .AppendLine($"Your password reset code is {code}.")
             .AppendLine()
             .AppendLine("This code expires in 10 minutes and can only be used once.");
         if (!string.IsNullOrWhiteSpace(resetUrl))
-            body.AppendLine().AppendLine($"Or reset it directly: {resetUrl}");
-        body.AppendLine().AppendLine("If you didn't request this, you can safely ignore this email.");
+            text.AppendLine().AppendLine($"Or reset it directly: {resetUrl}");
+        text.AppendLine().AppendLine("If you didn't request this, you can safely ignore this email.");
 
-        using var message = new MailMessage
+        var intro = "We received a request to reset your not-spotify password. Use the code below to continue.";
+        var footerParts = new StringBuilder("This code expires in 10 minutes and can only be used once.");
+        if (!string.IsNullOrWhiteSpace(resetUrl))
         {
-            From = new MailAddress(fromAddress, config["Email:Smtp:FromName"] ?? "not-spotify"),
-            Subject = "Reset your not-spotify password",
-            Body = body.ToString(),
-            IsBodyHtml = false,
-        };
-        message.To.Add(email);
+            var safeUrl = System.Net.WebUtility.HtmlEncode(resetUrl);
+            footerParts.Append($"<br><br>Or reset it directly: <a href=\"{safeUrl}\">{safeUrl}</a>");
+        }
+        footerParts.Append("<br><br>If you didn't request this, you can safely ignore this email.");
+        var html = EmailTemplates.OtpCode("Reset your password", intro, code, footerParts.ToString());
 
-        using var smtp = new SmtpClient(host, config.GetValue("Email:Smtp:Port", 587))
-        {
-            EnableSsl = config.GetValue("Email:Smtp:EnableSsl", true),
-        };
-        var username = config["Email:Smtp:Username"];
-        if (!string.IsNullOrWhiteSpace(username))
-            smtp.Credentials = new NetworkCredential(username, config["Email:Smtp:Password"]);
-
-        ct.ThrowIfCancellationRequested();
-        await smtp.SendMailAsync(message);
+        await resend.SendAsync(email, "Reset your not-spotify password", html, text.ToString(), ct);
     }
 }
 

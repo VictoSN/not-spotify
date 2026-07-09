@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Mail;
 using System.Security.Cryptography;
 using System.Text;
 using NotSpotify.Api.Models;
@@ -11,47 +9,31 @@ public interface IRegistrationEmailSender
     Task SendVerificationCodeAsync(string email, string name, string code, CancellationToken ct = default);
 }
 
-public sealed class SmtpRegistrationEmailSender(
-    IConfiguration config,
+public sealed class ResendRegistrationEmailSender(
+    ResendEmailClient resend,
     IWebHostEnvironment environment,
-    ILogger<SmtpRegistrationEmailSender> logger) : IRegistrationEmailSender
+    ILogger<ResendRegistrationEmailSender> logger) : IRegistrationEmailSender
 {
     public async Task SendVerificationCodeAsync(string email, string name, string code, CancellationToken ct = default)
     {
-        var host = config["Email:Smtp:Host"];
-        if (string.IsNullOrWhiteSpace(host))
+        if (!resend.IsConfigured)
         {
             if (environment.IsDevelopment())
             {
-                logger.LogWarning("[Auth] Registration OTP for {Email}: {Code}. Configure Email:Smtp to send mail.", email, code);
+                logger.LogWarning("[Auth] Registration OTP for {Email}: {Code}. Configure Email:Resend to send mail.", email, code);
                 return;
             }
-            throw new InvalidOperationException("Registration email SMTP is not configured.");
+            throw new InvalidOperationException("Registration email (Email:Resend) is not configured.");
         }
 
-        var fromAddress = config["Email:Smtp:FromAddress"] ?? config["Email:Smtp:Username"];
-        if (string.IsNullOrWhiteSpace(fromAddress))
-            throw new InvalidOperationException("Email:Smtp:FromAddress is required when SMTP is enabled.");
+        var text = $"Hi {name},\n\nYour not-spotify verification code is {code}.\n\nThis code expires in 10 minutes.";
+        var html = EmailTemplates.OtpCode(
+            heading: "Verify your account",
+            intro: $"Hi {System.Net.WebUtility.HtmlEncode(name)}, use the code below to finish setting up your not-spotify account.",
+            code: code,
+            footer: "This code expires in 10 minutes.");
 
-        using var message = new MailMessage
-        {
-            From = new MailAddress(fromAddress, config["Email:Smtp:FromName"] ?? "not-spotify"),
-            Subject = "Verify your not-spotify account",
-            Body = $"Hi {name},\n\nYour not-spotify verification code is {code}.\n\nThis code expires in 10 minutes.",
-            IsBodyHtml = false,
-        };
-        message.To.Add(email);
-
-        using var smtp = new SmtpClient(host, config.GetValue("Email:Smtp:Port", 587))
-        {
-            EnableSsl = config.GetValue("Email:Smtp:EnableSsl", true),
-        };
-        var username = config["Email:Smtp:Username"];
-        if (!string.IsNullOrWhiteSpace(username))
-            smtp.Credentials = new NetworkCredential(username, config["Email:Smtp:Password"]);
-
-        ct.ThrowIfCancellationRequested();
-        await smtp.SendMailAsync(message);
+        await resend.SendAsync(email, "Verify your not-spotify account", html, text, ct);
     }
 }
 

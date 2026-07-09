@@ -140,9 +140,10 @@ builder.Services
 
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddScoped<IRegistrationEmailSender, SmtpRegistrationEmailSender>();
+builder.Services.AddHttpClient<ResendEmailClient>();
+builder.Services.AddScoped<IRegistrationEmailSender, ResendRegistrationEmailSender>();
 builder.Services.AddScoped<RegistrationVerificationService>();
-builder.Services.AddScoped<IPasswordResetEmailSender, SmtpPasswordResetEmailSender>();
+builder.Services.AddScoped<IPasswordResetEmailSender, ResendPasswordResetEmailSender>();
 builder.Services.AddScoped<PasswordResetService>();
 
 builder.Services.AddRateLimiter(options =>

@@ -42,6 +42,24 @@ Assert-LastExit "docker push"
 Write-Host "== 4/6 clone live task def, swap image ==" -ForegroundColor Cyan
 $td = (aws ecs describe-task-definition --region $REGION --task-definition $FAMILY --query "taskDefinition" | ConvertFrom-Json)
 $td.containerDefinitions[0].image = $IMAGE
+
+# Upsert the Resend API key from the local RESEND_API_KEY env var so the secret
+# stays out of git. Once set on the task def, later deploys preserve it (this
+# clone carries all existing env vars forward), so you only need it the first time.
+if ($env:RESEND_API_KEY) {
+  $envList = [System.Collections.Generic.List[object]]::new()
+  $found = $false
+  foreach ($e in $td.containerDefinitions[0].environment) {
+    if ($e.name -eq "Email__Resend__ApiKey") { $e.value = $env:RESEND_API_KEY; $found = $true }
+    $envList.Add($e)
+  }
+  if (-not $found) { $envList.Add([pscustomobject]@{ name = "Email__Resend__ApiKey"; value = $env:RESEND_API_KEY }) }
+  $td.containerDefinitions[0].environment = $envList.ToArray()
+  Write-Host "Injected Email__Resend__ApiKey into task def." -ForegroundColor Green
+} else {
+  Write-Host "NOTE: RESEND_API_KEY not set in this shell; task def env preserved as-is." -ForegroundColor Yellow
+}
+
 foreach ($p in @("taskDefinitionArn","revision","status","requiresAttributes","compatibilities","registeredAt","registeredBy","deregisteredAt")) {
   $td.PSObject.Properties.Remove($p) | Out-Null
 }

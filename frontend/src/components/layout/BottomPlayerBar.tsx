@@ -312,7 +312,7 @@ export function BottomPlayerBar() {
                   {/* ── Playback speed ── */}
                   {!isVideoMode && (
                     <button
-                      onClick={() => { setPlaybackRate(nextRate); setMoreOpen(false) }}
+                      onClick={() => setPlaybackRate(nextRate)}
                       className="flex w-full items-center justify-between gap-4 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-surface"
                     >
                       <div className="min-w-0">

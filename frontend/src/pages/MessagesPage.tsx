@@ -430,7 +430,7 @@ export function MessagesPage() {
         onTouchEnd={handleThreadTouchEnd}
         onTouchCancel={() => { threadTouchStartRef.current = null }}
         className={cn(
-          'min-w-0 flex-1 flex-col bg-page md:flex',
+          'chat-wallpaper min-w-0 flex-1 flex-col md:flex',
           activeUserId ? 'flex' : 'hidden',
         )}
       >
@@ -484,7 +484,7 @@ export function MessagesPage() {
                     <div className="mb-3 text-center">
                       <button
                         onClick={() => activeUserId && loadOlder(activeUserId)}
-                        className="rounded-full bg-elevated px-4 py-1.5 text-xs font-semibold text-secondary transition-all hover:scale-105 hover:text-primary"
+                        className="chat-day-pill rounded-full px-4 py-1.5 text-xs font-semibold transition-all hover:scale-105"
                       >
                         Load older messages
                       </button>
@@ -499,7 +499,7 @@ export function MessagesPage() {
                       <div key={m.id}>
                         {showDay && (
                           <div className="my-4 flex items-center justify-center">
-                            <span className="rounded-full bg-elevated px-3 py-1 text-[11px] font-semibold text-secondary">
+                            <span className="chat-day-pill rounded-full px-3 py-1 text-[11px] font-semibold">
                               {formatDay(m.sentAt)}
                             </span>
                           </div>
@@ -570,7 +570,7 @@ export function MessagesPage() {
             {chatLocked ? (
               <div
                 role="alert"
-                className="flex items-center justify-center gap-2.5 border-t border-elevated/40 bg-elevated/30 px-4 py-4 text-center"
+                className="flex items-center justify-center gap-2.5 border-t border-elevated/40 bg-page px-4 py-4 text-center"
               >
                 <LockClosedIcon className="h-4 w-4 shrink-0 text-secondary" />
                 <p className="text-sm text-secondary">
@@ -578,7 +578,7 @@ export function MessagesPage() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={submit} className="border-t border-elevated/40 px-4 py-3">
+              <form onSubmit={submit} className="border-t border-elevated/40 bg-page px-4 py-3">
                 <div
                   ref={composerToolsRef}
                   className="relative flex min-h-11 w-full min-w-0 items-end rounded-[22px] border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"

@@ -74,14 +74,20 @@ html[data-theme="dark"] {
   --c-secondary: #b3b3b3;
   --c-muted: #6a6a6a;
 
-  /* WhatsApp-inspired chat palette. */
-  --chat-outgoing-bg: #144d37;
-  --chat-outgoing-text: #fafafa;
+  /* WhatsApp-inspired chat palette. Incoming bubbles + wallpaper deliberately
+     use NEUTRAL greys (not WhatsApp Web's blue-slate #202c33/#0b141a) so the
+     chat blends with the app's Spotify-dark layout around it. */
+  --chat-outgoing-bg: #005c4b;
+  --chat-outgoing-text: #e9edef;
   --chat-incoming-bg: #242626;
   --chat-incoming-text: #fafafa;
-  --chat-outgoing-meta: #b8c2bd;
+  --chat-outgoing-meta: rgba(233, 237, 239, 0.6);
   --chat-incoming-meta: #aeb3b3;
   --chat-bubble-border: rgba(255, 255, 255, 0.1);
+  /* Doodle wallpaper + date-separator pill behind the message thread. */
+  --chat-wallpaper-bg: #111414;
+  --chat-pill-bg: #1f2121;
+  --chat-pill-text: #e6e6e6;
 
   /* Artwork-derived page shading */
   --artwork-hero-strength: 82%;
@@ -134,6 +140,10 @@ html[data-theme="light"] {
   --chat-outgoing-meta: #667781;
   --chat-incoming-meta: #667781;
   --chat-bubble-border: rgba(17, 27, 33, 0.08);
+  /* Doodle wallpaper + date-separator pill behind the message thread. */
+  --chat-wallpaper-bg: #efeae2;
+  --chat-pill-bg: #ffffff;
+  --chat-pill-text: #54656f;
 
   /* Let artwork read as a soft wash instead of a dark block in light mode. */
   --artwork-hero-strength: 48%;
@@ -170,6 +180,55 @@ html[data-theme="light"] {
 html[data-theme="light"] .chat-bubble-incoming,
 html[data-theme="light"] .chat-bubble-outgoing {
   box-shadow: 0 1px 1px rgba(11, 20, 26, 0.08);
+}
+
+/* Subtle lift so bubbles read against the doodle wallpaper (dark theme). */
+.chat-bubble-outgoing,
+.chat-bubble-incoming {
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.18);
+}
+
+/* WhatsApp-style doodle wallpaper behind the message thread. A single white
+   doodle tile is painted at low opacity; light mode inverts it to dark strokes
+   on the beige base. `background-attachment` stays default so the wallpaper is
+   fixed to the thread frame while messages scroll over it. */
+.chat-wallpaper {
+  position: relative;
+  isolation: isolate;
+  background-color: var(--chat-wallpaper-bg);
+}
+
+.chat-wallpaper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* The external tile below is the active wallpaper: smaller, denser, thin-line
+     doodles with filler marks so the repeat stays seamless instead of sparse. */
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='480' viewBox='0 0 480 480'><g fill='none' stroke='%23ffffff' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><g transform='translate(36 42) rotate(-8) scale(1.6)'><path d='M4 -13 v16'/><path d='M4 -13 q8 2 6 10'/><ellipse cx='0.5' cy='3' rx='4.6' ry='3.4' fill='%23ffffff' stroke='none' transform='rotate(-16 0.5 3)'/></g><g transform='translate(124 36) rotate(8) scale(1.5)'><path d='M0 7 C-2.5 3.5 -10 1 -10 -4.5 C-10 -9.5 -4 -11 0 -6.5 C4 -11 10 -9.5 10 -4.5 C10 1 2.5 3.5 0 7 Z'/></g><g transform='translate(198 44) scale(1.35)'><circle r='9.5'/><circle cx='-3.4' cy='-2.6' r='1.4' fill='%23ffffff' stroke='none'/><circle cx='3.4' cy='-2.6' r='1.4' fill='%23ffffff' stroke='none'/><path d='M-4.5 2.5 q4.5 4.5 9 0'/></g><g transform='translate(284 38) rotate(-4) scale(1.35)'><rect x='-12' y='-9' width='24' height='14' rx='4'/><path d='M-4 5 L-8 10.5 L-8.6 5'/></g><g transform='translate(356 46) rotate(12) scale(1.3)'><path d='M0 -10 L2.7 -3.2 L10 -2.9 L4.2 1.6 L6.2 8.8 L0 4.6 L-6.2 8.8 L-4.2 1.6 L-10 -2.9 L-2.7 -3.2 Z'/></g><g transform='translate(442 36) rotate(-6) scale(1.4)'><path d='M-10 5 V1.5 a10 10 0 0 1 20 0 V5'/><rect x='-12.5' y='3.5' width='5.5' height='9' rx='2.5' fill='%23ffffff' stroke='none'/><rect x='7' y='3.5' width='5.5' height='9' rx='2.5' fill='%23ffffff' stroke='none'/></g><g transform='translate(44 116) scale(1.3)'><circle r='10'/><path d='M-3 -4.5 L5 0 L-3 4.5 Z' fill='%23ffffff' stroke='none'/></g><g transform='translate(118 124) rotate(6) scale(1.5)'><path d='M-6 -11 v15 M8 -13 v15'/><path d='M-6 -11 L8 -13'/><ellipse cx='-9.8' cy='4' rx='4' ry='3' fill='%23ffffff' stroke='none'/><ellipse cx='4.2' cy='2' rx='4' ry='3' fill='%23ffffff' stroke='none'/></g><g transform='translate(204 118) scale(1.35)'><circle r='10'/><circle r='4'/><circle r='1.1' fill='%23ffffff' stroke='none'/></g><g transform='translate(276 126) rotate(15) scale(1.2)'><path d='M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z'/></g><g transform='translate(364 116) rotate(10) scale(1.35)'><rect x='-3.8' y='-13' width='7.6' height='14' rx='3.8'/><path d='M-7.5 -4 v1.5 a7.5 7.5 0 0 0 15 0 V-4 M0 5.5 v4 M-4.5 9.5 h9'/></g><g transform='translate(436 124) scale(1.4)'><circle r='2.4' fill='%23ffffff' stroke='none'/><circle cy='-6' r='3.6'/><circle cx='5.7' cy='-1.9' r='3.6'/><circle cx='3.5' cy='4.9' r='3.6'/><circle cx='-3.5' cy='4.9' r='3.6'/><circle cx='-5.7' cy='-1.9' r='3.6'/></g><g transform='translate(38 204) rotate(-5) scale(1.35)'><rect x='-12' y='-8' width='24' height='16' rx='2.5'/><circle cx='-4.5' cy='-1.5' r='2.4'/><circle cx='4.5' cy='-1.5' r='2.4'/><path d='M-4.5 -1.5 h9 M-8.5 8 l1.8 -4.5 h13.4 l1.8 4.5'/></g><g transform='translate(126 196) rotate(15) scale(1.3)'><path d='M3 -9 a9 9 0 1 0 5.5 11.5 a7.5 7.5 0 0 1 -5.5 -11.5 z'/></g><g transform='translate(196 206) scale(1.5)'><path d='M-7 -4.5 v9 M0 -8 v16 M7 -3.5 v7'/></g><g transform='translate(286 198) rotate(7) scale(1.35)'><path d='M-7.5 4.5 c0 -8.5 2.5 -7 2.5 -11.5 a5 5 0 0 1 10 0 c0 4.5 2.5 3 2.5 11.5 z M-9.5 4.5 h19'/><circle cy='7.5' r='1.6' fill='%23ffffff' stroke='none'/></g><g transform='translate(358 204) rotate(-10) scale(1.5)'><path d='M4.5 -12 v15'/><ellipse cx='0.5' cy='3' rx='4.8' ry='3.5' fill='%23ffffff' stroke='none' transform='rotate(-16 0.5 3)'/></g><g transform='translate(444 196) scale(1.35)'><path d='M-9 5 a4.5 4.5 0 0 1 -0.5 -9 a6.5 6.5 0 0 1 12.5 -2 a5 5 0 0 1 6.5 4.8 a3.6 3.6 0 0 1 -1.5 6.2 z'/></g><g transform='translate(42 284) scale(1.3)'><circle r='5'/><path d='M0 -10.5 v3 M0 10.5 v-3 M-10.5 0 h3 M10.5 0 h-3 M-7.4 -7.4 l2.1 2.1 M7.4 7.4 l-2.1 -2.1 M-7.4 7.4 l2.1 -2.1 M7.4 -7.4 l-2.1 2.1'/></g><g transform='translate(122 276) rotate(-8) scale(1.4)'><ellipse rx='6' ry='7.5'/><path d='M-1.8 7.5 h3.6 M0 7.5 q-2.5 4.5 1 8'/></g><g transform='translate(206 286) rotate(-6) scale(1.3)'><path d='M-10 2.5 L10 -7 L2.5 9 L-1 2.5 Z M10 -7 L-1 2.5'/></g><g transform='translate(278 278) rotate(-10) scale(1.1)'><path d='M0 7 C-2.5 3.5 -10 1 -10 -4.5 C-10 -9.5 -4 -11 0 -6.5 C4 -11 10 -9.5 10 -4.5 C10 1 2.5 3.5 0 7 Z'/></g><g transform='translate(362 284) rotate(8) scale(1.3)'><path d='M1.5 -10 L-6 1.5 h4.5 L-2.5 10 L6.5 -2.5 h-4.5 Z'/></g><g transform='translate(438 276) rotate(5) scale(1.3)'><rect x='-12' y='-9' width='24' height='14' rx='4'/><path d='M4 5 L8 10.5 L8.6 5'/></g><g transform='translate(36 364) rotate(-4) scale(1.4)'><circle cx='-5.5' r='4'/><circle cx='5.5' r='4'/><path d='M-1.5 0 h3 M-9.5 -1.2 l-3 -1.6 M9.5 -1.2 l3 1.6'/></g><g transform='translate(128 356) scale(1.5)'><path d='M0 -8 L2 -2 L8 0 L2 2 L0 8 L-2 2 L-8 0 L-2 -2 Z'/></g><g transform='translate(198 366) rotate(6) scale(1.3)'><rect x='-8.5' y='-2' width='17' height='11' rx='1.5'/><rect x='-10' y='-6.5' width='20' height='4.5' rx='1.5'/><path d='M0 -6.5 V9 M0 -6.5 c-4.5 -6 -9.5 -1.5 0 0 c9.5 -1.5 4.5 -6 0 0'/></g><g transform='translate(284 358) rotate(10) scale(1.05)'><circle r='9.5'/><circle cx='-3.4' cy='-2.6' r='1.4' fill='%23ffffff' stroke='none'/><circle cx='3.4' cy='-2.6' r='1.4' fill='%23ffffff' stroke='none'/><path d='M-4.5 2.5 q4.5 4.5 9 0'/></g><g transform='translate(354 364) scale(1.3)'><circle r='9'/><path d='M0 -5 V0 L4 2.5'/></g><g transform='translate(446 356) rotate(-8) scale(1.15)'><path d='M-6 -11 v15 M8 -13 v15'/><path d='M-6 -11 L8 -13'/><ellipse cx='-9.8' cy='4' rx='4' ry='3' fill='%23ffffff' stroke='none'/><ellipse cx='4.2' cy='2' rx='4' ry='3' fill='%23ffffff' stroke='none'/></g><g transform='translate(44 436) rotate(6) scale(1.4)'><path d='M0 7 C-2.5 3.5 -10 1 -10 -4.5 C-10 -9.5 -4 -11 0 -6.5 C4 -11 10 -9.5 10 -4.5 C10 1 2.5 3.5 0 7 Z'/></g><g transform='translate(118 446) scale(1.05)'><circle r='10'/><circle r='4'/><circle r='1.1' fill='%23ffffff' stroke='none'/></g><g transform='translate(208 438) rotate(10) scale(1.4)'><path d='M4 -13 v16'/><path d='M4 -13 q8 2 6 10'/><ellipse cx='0.5' cy='3' rx='4.6' ry='3.4' fill='%23ffffff' stroke='none' transform='rotate(-16 0.5 3)'/></g><g transform='translate(280 446) rotate(-5) scale(1.3)'><path d='M-7 -5 h13 v6.5 a6.5 6.5 0 0 1 -13 0 z M6 -4 h2.5 a3 3 0 0 1 0 6 H5.5 M-3.5 -8.5 q1.2 -1.6 0 -3.2 M1 -8.5 q1.2 -1.6 0 -3.2'/></g><g transform='translate(360 436) rotate(8) scale(1.1)'><path d='M-10 5 V1.5 a10 10 0 0 1 20 0 V5'/><rect x='-12.5' y='3.5' width='5.5' height='9' rx='2.5' fill='%23ffffff' stroke='none'/><rect x='7' y='3.5' width='5.5' height='9' rx='2.5' fill='%23ffffff' stroke='none'/></g><g transform='translate(440 444) rotate(-10) scale(1.05)'><path d='M0 -10 L2.7 -3.2 L10 -2.9 L4.2 1.6 L6.2 8.8 L0 4.6 L-6.2 8.8 L-4.2 1.6 L-10 -2.9 L-2.7 -3.2 Z'/></g><circle cx='82' cy='82' r='1.7' fill='%23ffffff' stroke='none'/><g transform='translate(242 78) rotate(15)'><path d='M0 -3.2 v6.4 M-3.2 0 h6.4'/></g><path transform='translate(398 86)' d='M0 3.5 C-1.2 1.8 -5 0.5 -5 -2.2 C-5 -4.7 -2 -5.5 0 -3.2 C2 -5.5 5 -4.7 5 -2.2 C5 0.5 1.2 1.8 0 3.5 Z' fill='%23ffffff' stroke='none'/><circle cx='162' cy='162' r='1.7' fill='%23ffffff' stroke='none'/><g transform='translate(322 166) rotate(20)'><path d='M0 -3.2 v6.4 M-3.2 0 h6.4'/></g><circle cx='78' cy='246' r='1.7' fill='%23ffffff' stroke='none'/><path transform='translate(402 242)' d='M0 3.5 C-1.2 1.8 -5 0.5 -5 -2.2 C-5 -4.7 -2 -5.5 0 -3.2 C2 -5.5 5 -4.7 5 -2.2 C5 0.5 1.2 1.8 0 3.5 Z' fill='%23ffffff' stroke='none'/><g transform='translate(158 322)'><path d='M0 -3.2 v6.4 M-3.2 0 h6.4'/></g><circle cx='318' cy='318' r='1.7' fill='%23ffffff' stroke='none'/><path transform='translate(238 402)' d='M0 3.5 C-1.2 1.8 -5 0.5 -5 -2.2 C-5 -4.7 -2 -5.5 0 -3.2 C2 -5.5 5 -4.7 5 -2.2 C5 0.5 1.2 1.8 0 3.5 Z' fill='%23ffffff' stroke='none'/><circle cx='84' cy='406' r='1.7' fill='%23ffffff' stroke='none'/><g transform='translate(400 402) rotate(12)'><path d='M0 -3.2 v6.4 M-3.2 0 h6.4'/></g></g></svg>");
+  background-repeat: repeat;
+  background-image: url("/chat-doodle-wallpaper.svg");
+  background-size: 520px 520px;
+  opacity: 0.095;
+}
+
+html[data-theme="light"] .chat-wallpaper::before {
+  filter: invert(1);
+  opacity: 0.08;
+}
+
+/* Keep the thread's own children (header, messages, composer) above the doodle. */
+.chat-wallpaper > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* WhatsApp date-separator pill (and the "load older" chip) on the wallpaper. */
+.chat-day-pill {
+  background-color: var(--chat-pill-bg);
+  color: var(--chat-pill-text);
+  box-shadow: 0 1px 1px rgba(11, 20, 26, 0.16);
 }
 
 /*

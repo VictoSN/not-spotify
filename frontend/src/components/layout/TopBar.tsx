@@ -71,6 +71,7 @@ export function TopBar() {
   const currentVideo = usePlayerStore((s) => s.currentVideo)
   const isVideoPlaying = usePlayerStore((s) => s.isVideoPlaying)
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
+  const setNowPlayingExpanded = usePlayerStore((s) => s.setNowPlayingExpanded)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const {
     likedTrackIds,
@@ -194,6 +195,13 @@ export function TopBar() {
   }
 
   const closeKaraoke = () => setKaraokeOpen(false)
+
+  // Brand logo → home. Also collapse the expanded (fullscreen) now-playing panel
+  // so it doesn't stay covering the page you're returning to.
+  const handleBrandHome = () => {
+    closeKaraoke()
+    setNowPlayingExpanded(false)
+  }
 
   const goHome = () => {
     closeKaraoke()
@@ -685,7 +693,7 @@ export function TopBar() {
   return (
     <header data-tauri-drag-region className="sticky top-0 z-50 flex h-14 shrink-0 items-center gap-1.5 bg-base/90 px-3 backdrop-blur-xl md:h-14 md:gap-2 md:px-4 relative">
       {/* Far left: logo */}
-      <Link to="/" onClick={closeKaraoke} className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
+      <Link to="/" onClick={handleBrandHome} className="flex items-center shrink-0" aria-label={t('topbar.brandHome')}>
         <SpotifyMark className="w-7 h-7 md:w-8 md:h-8" />
       </Link>
 

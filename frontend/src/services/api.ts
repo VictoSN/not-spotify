@@ -1,5 +1,7 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
+import { getCachedUser } from '@/utils/offlineSession'
+import { isDesktop } from '@/utils/platform'
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -24,12 +26,28 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config
-    const isAuthEndpoint =
-      original.url?.includes('/auth/refresh') ||
-      original.url?.includes('/auth/login') ||
-      original.url?.includes('/auth/signup')
+    if (!error.response && isDesktop()) {
+      const state = useAuthStore.getState()
+      const cached = getCachedUser() ?? state.user
+      if (cached) {
+        ;(window as { __authToken?: string }).__authToken = undefined
+        useAuthStore.setState({
+          user: cached,
+          accessToken: null,
+          isAuthenticated: true,
+          isLoading: false,
+          isInitializing: false,
+          offlineMode: true,
+        })
+      }
+    }
 
-    if (error.response?.status !== 401 || original._retry || isAuthEndpoint) throw error
+    const isAuthEndpoint =
+      original?.url?.includes('/auth/refresh') ||
+      original?.url?.includes('/auth/login') ||
+      original?.url?.includes('/auth/signup')
+
+    if (error.response?.status !== 401 || !original || original._retry || isAuthEndpoint) throw error
 
     if (isRefreshing) {
       return new Promise((resolve) => {

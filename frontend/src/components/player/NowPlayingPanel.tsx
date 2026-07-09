@@ -25,6 +25,7 @@ import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { artistService } from '@/services/artistService'
 import { albumService } from '@/services/albumService'
 import { videoService } from '@/services/videoService'
+import { listOffline, offlineEntryToTrack } from '@/services/offlineAudio'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
@@ -103,10 +104,14 @@ type VideoData = { trackId: string; video: MusicVideo | null }
 type ArtistVideosData = { artistId: string; videos: MusicVideo[] }
 type TourData = { artistId: string; dates: TourDate[] }
 
-export function NowPlayingPanel() {
+type NowPlayingPanelProps = {
+  offlineOnly?: boolean
+}
+
+export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = {}) {
   const { t } = useTranslation()
-  const currentTrack = usePlayerStore((s) => s.currentTrack)
-  const queue = usePlayerStore((s) => s.queue)
+  const rawCurrentTrack = usePlayerStore((s) => s.currentTrack)
+  const rawQueue = usePlayerStore((s) => s.queue)
   const queueIndex = usePlayerStore((s) => s.queueIndex)
   const reorderQueue = usePlayerStore((s) => s.reorderQueue)
   const isNowPlayingCollapsed = usePlayerStore((s) => s.isNowPlayingCollapsed)
@@ -114,6 +119,32 @@ export function NowPlayingPanel() {
   const isNowPlayingExpanded = usePlayerStore((s) => s.isNowPlayingExpanded)
   const setNowPlayingExpanded = usePlayerStore((s) => s.setNowPlayingExpanded)
   const isPremium = useAuthStore((s) => s.user?.capabilities?.unlimitedPlayback !== false)
+  const offlineEntries = offlineOnly ? listOffline() : []
+  const offlineTracksById = new Map(offlineEntries.map((entry) => [entry.id, offlineEntryToTrack(entry)]))
+  const localizeOfflineTrack = (track: Track): Track | null => {
+    if (!offlineOnly) return track
+    const offlineTrack = offlineTracksById.get(track.id)
+    if (!offlineTrack) return null
+    return {
+      ...track,
+      audioUrl: offlineTrack.audioUrl,
+      durationMs: track.durationMs || offlineTrack.durationMs,
+      artist: {
+        ...track.artist,
+        name: track.artist.name || offlineTrack.artist.name,
+        imageUrl: track.artist.imageUrl ?? offlineTrack.artist.imageUrl,
+      },
+      album: {
+        ...track.album,
+        title: track.album.title || offlineTrack.album.title,
+        coverUrl: offlineTrack.album.coverUrl || track.album.coverUrl,
+      },
+    }
+  }
+  const currentTrack = rawCurrentTrack ? localizeOfflineTrack(rawCurrentTrack) : null
+  const queue = offlineOnly
+    ? rawQueue.map(localizeOfflineTrack).filter((track): track is Track => !!track)
+    : rawQueue
   const albumHeroColor = useDominantColor(currentTrack?.album.coverUrl, { resetOnChange: true })
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
@@ -190,7 +221,14 @@ export function NowPlayingPanel() {
 
   // Fetch artist details + related tracks whenever the playing track's artist changes.
   useEffect(() => {
-    if (!artistId) return
+    if (!artistId) {
+      setArtistData(null)
+      return
+    }
+    if (offlineOnly) {
+      setArtistData({ artistId, artist: null, related: [] })
+      return
+    }
     let cancelled = false
     Promise.all([artistService.getById(artistId), artistService.getTopTracks(artistId, 8)])
       .then(([artist, related]) => {
@@ -202,12 +240,17 @@ export function NowPlayingPanel() {
     return () => {
       cancelled = true
     }
-  }, [artistId])
+  }, [artistId, offlineOnly])
 
   useEffect(() => {
     if (!artistId) {
       setArtistVideosData(null)
       setTourData(null)
+      return
+    }
+    if (offlineOnly) {
+      setArtistVideosData({ artistId, videos: [] })
+      setTourData({ artistId, dates: [] })
       return
     }
     let cancelled = false
@@ -238,7 +281,7 @@ export function NowPlayingPanel() {
     return () => {
       cancelled = true
     }
-  }, [artistId])
+  }, [artistId, offlineOnly])
 
   // Fetch any music video associated with the playing track.
   const trackId = currentTrack?.id
@@ -252,6 +295,10 @@ export function NowPlayingPanel() {
       setVideoData(null)
       return
     }
+    if (offlineOnly) {
+      setVideoData({ trackId, video: null })
+      return
+    }
     let cancelled = false
     videoService
       .getByTrackId(trackId)
@@ -260,11 +307,18 @@ export function NowPlayingPanel() {
     return () => {
       cancelled = true
     }
-  }, [trackId])
+  }, [trackId, offlineOnly])
 
   // Fetch the album for credits (label / copyright).
   useEffect(() => {
-    if (!albumId) return
+    if (!albumId) {
+      setAlbumData(null)
+      return
+    }
+    if (offlineOnly) {
+      setAlbumData({ albumId, album: null })
+      return
+    }
     let cancelled = false
     albumService
       .getById(albumId)
@@ -273,13 +327,13 @@ export function NowPlayingPanel() {
     return () => {
       cancelled = true
     }
-  }, [albumId])
+  }, [albumId, offlineOnly])
 
   // Derive from the fetched data so a previous track's artist/album never lingers.
   const artistReady = !!artistData && artistData.artistId === artistId
   const artist = artistData && artistData.artistId === artistId ? artistData.artist : null
   const related = artistData && artistData.artistId === artistId ? artistData.related : []
-  const loadingArtist = !!artistId && !artistReady
+  const loadingArtist = !offlineOnly && !!artistId && !artistReady
   const album = albumData && albumData.albumId === albumId ? albumData.album : null
   const video = videoData && videoData.trackId === trackId ? videoData.video : null
   const artistVideos = artistVideosData && artistVideosData.artistId === artistId ? artistVideosData.videos : []
@@ -939,7 +993,7 @@ export function NowPlayingPanel() {
         </div>
 
         {/* Lyrics (karaoke-synced when the track has timed lyrics) */}
-        <NowPlayingLyrics track={currentTrack} accentColor={albumHeroColor} />
+        {!offlineOnly && <NowPlayingLyrics track={currentTrack} accentColor={albumHeroColor} />}
 
         {/* Related / recommended */}
         {relatedTracks.length > 0 && (

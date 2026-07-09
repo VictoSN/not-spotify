@@ -97,9 +97,9 @@ export const EpisodeMenu = forwardRef<EpisodeMenuHandle, EpisodeMenuProps>(funct
             </>
           )}
 
-          {offline.supported && (
+          {(offline.available || offline.desktopOnly) && (
             <MediaMenuItem
-              disabled={offline.busy}
+              disabled={offline.busy || offline.desktopOnly}
               icon={offline.busy
                 ? <ArrowPathIcon className="w-4 h-4 animate-spin text-accent" />
                 : offline.saved
@@ -110,7 +110,10 @@ export const EpisodeMenu = forwardRef<EpisodeMenuHandle, EpisodeMenuProps>(funct
                 : offline.saved
                   ? 'Remove download'
                   : 'Download'}
-              onClick={() => { void offline.toggle(); close() }}
+              trailing={offline.desktopOnly
+                ? <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">Desktop</span>
+                : undefined}
+              onClick={() => { if (offline.desktopOnly) return; void offline.toggle(); close() }}
             />
           )}
 

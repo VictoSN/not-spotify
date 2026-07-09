@@ -60,6 +60,21 @@ if ($env:RESEND_API_KEY) {
   Write-Host "NOTE: RESEND_API_KEY not set in this shell; task def env preserved as-is." -ForegroundColor Yellow
 }
 
+# Toggle Cors:AllowLocalhostDev so `tauri dev` / Vite dev on localhost:5173 can hit
+# the deployed API (see Program.cs). Set CORS_ALLOW_LOCALHOST_DEV=true|false in the
+# shell before deploying to flip it; leave it unset to preserve the current value.
+if ($env:CORS_ALLOW_LOCALHOST_DEV) {
+  $envList = [System.Collections.Generic.List[object]]::new()
+  $found = $false
+  foreach ($e in $td.containerDefinitions[0].environment) {
+    if ($e.name -eq "Cors__AllowLocalhostDev") { $e.value = $env:CORS_ALLOW_LOCALHOST_DEV; $found = $true }
+    $envList.Add($e)
+  }
+  if (-not $found) { $envList.Add([pscustomobject]@{ name = "Cors__AllowLocalhostDev"; value = $env:CORS_ALLOW_LOCALHOST_DEV }) }
+  $td.containerDefinitions[0].environment = $envList.ToArray()
+  Write-Host "Set Cors__AllowLocalhostDev=$($env:CORS_ALLOW_LOCALHOST_DEV) on task def." -ForegroundColor Green
+}
+
 foreach ($p in @("taskDefinitionArn","revision","status","requiresAttributes","compatibilities","registeredAt","registeredBy","deregisteredAt")) {
   $td.PSObject.Properties.Remove($p) | Out-Null
 }

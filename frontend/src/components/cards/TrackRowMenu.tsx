@@ -890,18 +890,20 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
               </MenuItem>
             )}
 
-            {isPremium && offline.supported && (
+            {isPremium && (offline.available || offline.desktopOnly) && (
               <MenuItem>
                 <button
                   type="button"
-                  disabled={offline.busy}
+                  disabled={offline.busy || offline.desktopOnly}
+                  title={offline.desktopOnly ? 'Available in the desktop app' : undefined}
                   onClick={(e) => {
                     stop(e)
+                    if (offline.desktopOnly) return
                     void offline.toggle()
                     // Keep the menu open so the user sees the state change /
                     // any error without re-opening.
                   }}
-                  className={itemClass}
+                  className={`${itemClass} ${offline.desktopOnly ? 'cursor-not-allowed opacity-50' : ''}`}
                 >
                   {offline.busy ? (
                     <ArrowPathIcon className="w-4 h-4 animate-spin text-accent" />
@@ -910,14 +912,21 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   ) : (
                     <ArrowDownCircleIcon className="w-4 h-4" />
                   )}
-                  <span>
-                    {offline.busy
-                      ? offline.saved
-                        ? 'Removing…'
-                        : 'Downloading…'
-                      : offline.saved
-                        ? 'Downloaded — remove'
-                        : 'Save for offline'}
+                  <span className="flex flex-1 items-center justify-between gap-2">
+                    <span>
+                      {offline.busy
+                        ? offline.saved
+                          ? 'Removing…'
+                          : 'Downloading…'
+                        : offline.saved
+                          ? 'Downloaded — remove'
+                          : 'Save for offline'}
+                    </span>
+                    {offline.desktopOnly && (
+                      <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">
+                        Desktop
+                      </span>
+                    )}
                   </span>
                 </button>
               </MenuItem>

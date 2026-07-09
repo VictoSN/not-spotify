@@ -21,6 +21,11 @@ import type { Playlist, PlaylistVisibility, PlaylistTrack } from '@/types/playli
 import type { Track } from '@/types/track'
 import type { UserRef } from '@/types/user'
 import { playlistService } from '@/services/playlistService'
+import {
+  collectionKey,
+  getOfflineCollection,
+  offlineCollectionToPlaylist,
+} from '@/services/offlineAudio'
 import { collaboratorService } from '@/services/collaboratorService'
 import { trackService } from '@/services/trackService'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
@@ -116,7 +121,7 @@ export function PlaylistDetailPage() {
   const [shareToChatOpen, setShareToChatOpen] = useState(false)
   const startContext = usePlayContextGate()
   const isMobile = useIsMobile()
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, user, offlineMode } = useAuthStore()
   const isPremium = user?.plan === 'premium'
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const savePlaylist = useLibraryStore((s) => s.savePlaylist)
@@ -145,6 +150,30 @@ export function PlaylistDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    setLoading(true)
+    if (offlineMode) {
+      const offline = getOfflineCollection(collectionKey('playlist', id))
+      if (offline) {
+        const p = offlineCollectionToPlaylist(offline)
+        setPlaylist(p)
+        setEditName(p.name)
+        setEditDescription(p.description ?? '')
+        setSmartGenre('')
+        setSmartRating('')
+        setSmartPlayCount('')
+        setSmartDays('')
+        setSmartLimit('100')
+        setClearSmartRules(false)
+        syncPlaylistTracks(p.id, p.tracks)
+        setLoadError(null)
+      } else {
+        setPlaylist(null)
+        setLoadError('notfound')
+      }
+      setCollaborators([])
+      setLoading(false)
+      return
+    }
     playlistService.getById(id)
       .then((p) => {
         setPlaylist(p)
@@ -159,6 +188,16 @@ export function PlaylistDetailPage() {
         syncPlaylistTracks(p.id, p.tracks)
       })
       .catch((err) => {
+        // Offline fallback: render a downloaded playlist from local data.
+        const offline = getOfflineCollection(collectionKey('playlist', id))
+        if (offline) {
+          const p = offlineCollectionToPlaylist(offline)
+          setPlaylist(p)
+          setEditName(p.name)
+          syncPlaylistTracks(p.id, p.tracks)
+          setLoadError(null)
+          return
+        }
         const status = err?.response?.status
         setLoadError(status === 403 ? 'forbidden' : 'notfound')
         setPlaylist(null)
@@ -166,7 +205,7 @@ export function PlaylistDetailPage() {
       .finally(() => setLoading(false))
     // Fetch collaborators in parallel (silently ignore if endpoint not yet live).
     collaboratorService.list(id).then(setCollaborators).catch(() => {})
-  }, [id, syncPlaylistTracks])
+  }, [id, offlineMode, syncPlaylistTracks])
 
   // Keep local playlist state in sync with the store so that add/remove operations
   // triggered from TrackRowMenu (which write to the store) are reflected immediately.

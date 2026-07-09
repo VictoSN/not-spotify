@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
@@ -48,6 +48,17 @@ import type { DailyMix } from '@/services/trackService'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
 import type { AppShellOutletContext } from '@/components/layout/appShellContext'
+import {
+  OFFLINE_CHANGE_EVENT,
+  listOffline,
+  listOfflineCollections,
+  offlineCollectionToAlbum,
+  offlineCollectionToPlaylist,
+  offlineCollectionTracks,
+  offlineEntryToTrack,
+  type OfflineCollection,
+  type OfflineEntry,
+} from '@/services/offlineAudio'
 
 const PREVIEW_LIMIT = 10
 const HOME_CONTENT_GUTTER = 'px-4 sm:px-6 lg:px-8 2xl:px-10'
@@ -94,7 +105,7 @@ export function HomePage() {
   const outletContext = useOutletContext<AppShellOutletContext | null>()
   const setPageLoading = outletContext?.setPageLoading
   useDocumentTitle(t('topbar.home'))
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, offlineMode } = useAuthStore()
   const savedPlaylists = useLibraryStore((s) => s.savedPlaylists)
   const libraryLoading = useLibraryStore((s) => s.isLoading)
   const [trending, setTrending] = useState<Track[]>([])
@@ -111,7 +122,9 @@ export function HomePage() {
   const [podcasts, setPodcasts] = useState<PodcastSummary[]>([])
   const [musicVideos, setMusicVideos] = useState<MusicVideo[]>([])
   const [loading, setLoading] = useState(true)
-  const pageLoading = loading || (isAuthenticated && libraryLoading)
+  const [offlineEntries, setOfflineEntries] = useState<OfflineEntry[]>(() => listOffline())
+  const [offlineCollections, setOfflineCollections] = useState<OfflineCollection[]>(() => listOfflineCollections())
+  const pageLoading = offlineMode ? false : loading || (isAuthenticated && libraryLoading)
 
   useLayoutEffect(() => {
     setPageLoading?.(pageLoading)
@@ -119,6 +132,10 @@ export function HomePage() {
   }, [pageLoading, setPageLoading])
 
   useEffect(() => {
+    if (offlineMode) {
+      setLoading(false)
+      return
+    }
     let cancelled = false
     setLoading(true)
 
@@ -168,7 +185,17 @@ export function HomePage() {
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, user?.country])
+  }, [isAuthenticated, offlineMode, user?.country])
+
+  useEffect(() => {
+    const syncOffline = () => {
+      setOfflineEntries(listOffline())
+      setOfflineCollections(listOfflineCollections())
+    }
+    syncOffline()
+    window.addEventListener(OFFLINE_CHANGE_EVENT, syncOffline)
+    return () => window.removeEventListener(OFFLINE_CHANGE_EVENT, syncOffline)
+  }, [])
 
   // Home's resting hue: a neutral grey wash until the user first hovers a
   // quick-access card this page load (hueTouched is in-memory, so a refresh or
@@ -224,6 +251,10 @@ export function HomePage() {
 
   if (pageLoading) {
     return <HomePageSkeleton />
+  }
+
+  if (offlineMode) {
+    return <OfflineHomePage entries={offlineEntries} collections={offlineCollections} />
   }
 
   const quickPicks = savedPlaylists.slice(0, 8)
@@ -511,6 +542,87 @@ export function HomePage() {
           </section>
         )}
       </div>
+    </div>
+  )
+}
+
+function OfflineHomePage({
+  entries,
+  collections,
+}: {
+  entries: OfflineEntry[]
+  collections: OfflineCollection[]
+}) {
+  const tracks = useMemo(() => entries.map(offlineEntryToTrack), [entries])
+  const albums = useMemo(
+    () =>
+      collections
+        .filter((collection) => collection.kind === 'album')
+        .map((collection) => ({
+          collection,
+          album: offlineCollectionToAlbum(collection),
+          tracks: offlineCollectionTracks(collection.key),
+        })),
+    [collections],
+  )
+  const playlists = useMemo(
+    () =>
+      collections
+        .filter((collection) => collection.kind === 'playlist')
+        .map((collection) => offlineCollectionToPlaylist(collection)),
+    [collections],
+  )
+  const isEmpty = tracks.length === 0 && albums.length === 0 && playlists.length === 0
+
+  return (
+    <div className={cn('relative py-6', HOME_CONTENT_GUTTER)}>
+      <div className="mb-6">
+        <p className="text-xs font-semibold uppercase tracking-wider text-secondary">Offline mode</p>
+        <h1 className="mt-1 text-3xl font-black text-primary">Your downloaded music</h1>
+      </div>
+
+      {isEmpty ? (
+        <div className="flex min-h-[45vh] items-center justify-center text-center">
+          <p className="max-w-md text-sm leading-6 text-secondary">
+            Nothing is saved for offline yet. Download a song, album, or playlist while online and it will appear here.
+          </p>
+        </div>
+      ) : (
+        <>
+          {tracks.length > 0 && (
+            <section className="mb-8">
+              <SectionHeader title="Tracks" href="/offline" variant="home" />
+              <HorizontalScroller bleedRight>
+                {tracks.map((track) => (
+                  <TrackTile key={track.id} track={track} queue={tracks} flush />
+                ))}
+              </HorizontalScroller>
+            </section>
+          )}
+
+          {albums.length > 0 && (
+            <section className="mb-8">
+              <SectionHeader title="Albums" variant="home" />
+              <HorizontalScroller bleedRight>
+                {albums.map(({ collection, album, tracks: albumTracks }) => (
+                  <AlbumCard key={collection.key} album={album} tracks={albumTracks} flush />
+                ))}
+              </HorizontalScroller>
+            </section>
+          )}
+
+          {playlists.length > 0 && (
+            <section className="mb-8">
+              <SectionHeader title="Playlists" variant="home" />
+              <HorizontalScroller bleedRight>
+                {playlists.map((playlist) => (
+                  <PlaylistCard key={playlist.id} playlist={playlist} flush />
+                ))}
+              </HorizontalScroller>
+            </section>
+          )}
+        </>
+      )}
     </div>
   )
 }

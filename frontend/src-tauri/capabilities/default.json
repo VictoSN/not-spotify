@@ -14,7 +14,8 @@
     "autostart:allow-disable",
     "autostart:allow-is-enabled",
     "notification:default",
-    { "identifier": "fs:allow-write-file", "allow": [{ "path": "$APPCACHE/**" }] },
-    { "identifier": "fs:allow-mkdir", "allow": [{ "path": "$APPCACHE/**" }] }
+    { "identifier": "fs:allow-write-file", "allow": [{ "path": "$APPCACHE/**" }, { "path": "$APPLOCALDATA/**" }] },
+    { "identifier": "fs:allow-mkdir", "allow": [{ "path": "$APPCACHE/**" }, { "path": "$APPLOCALDATA/**" }] },
+    { "identifier": "fs:allow-remove", "allow": [{ "path": "$APPLOCALDATA/**" }] }
   ]
 }

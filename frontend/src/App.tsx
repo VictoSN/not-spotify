@@ -8,6 +8,7 @@ import { ConfirmProvider } from '@/components/common/ConfirmDialog'
 import { useAppZoomShortcuts } from '@/hooks/useAppZoom'
 import { startNotificationLoop } from '@/services/notifications'
 import { syncPushSubscriptionWithSettings } from '@/services/webPush'
+import { Spinner } from '@/components/ui/Spinner'
 
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
@@ -60,7 +61,16 @@ export default function App() {
 
   // Hold the first paint until the cookie session is resolved, so a logged-in
   // refresh never flashes the logged-out chrome (and protected routes don't bounce).
-  if (isInitializing) return null
+  if (isInitializing) {
+    return (
+      <div className="flex h-full items-center justify-center bg-base text-primary">
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <p className="text-sm text-secondary">Loading Not Spotify</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <ConfirmProvider>

@@ -30,6 +30,7 @@ import { AppFooter } from '@/components/common/AppFooter'
 import { usePresenceSocket } from '@/hooks/usePresenceSocket'
 import { useConnectSocket } from '@/hooks/useConnectSocket'
 import { analyticsService } from '@/services/analyticsService'
+import { backfillCovers, isTrackSaved } from '@/services/offlineAudio'
 import { cn } from '@/utils/cn'
 import type { AppShellOutletContext } from './appShellContext'
 
@@ -38,9 +39,11 @@ export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
-  const hasCoordinatedPageLoad = isHomeRoute || /^\/(?:album|artist|track)\/[^/]+\/?$/.test(location.pathname)
-  const [pageLoading, setPageLoading] = useState(hasCoordinatedPageLoad)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const offlineMode = useAuthStore((s) => s.offlineMode)
+  const hasCoordinatedPageLoad =
+    !offlineMode && (isHomeRoute || /^\/(?:album|artist|track)\/[^/]+\/?$/.test(location.pathname))
+  const [pageLoading, setPageLoading] = useState(hasCoordinatedPageLoad)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
@@ -56,8 +59,51 @@ export function AppShell() {
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const karaokeVisible = isKaraokeOpen && !!currentTrack
   const hasCurrentMedia = selectNowPlayingPanel(playbackMode) === 'video' ? !!currentVideo : !!currentTrack
-  const nowPlayingExpandedVisible = isNowPlayingExpanded && !socialPanelOpen && !isMobile && isNowPlayingOpen && hasCurrentMedia
+  const showOfflineNowPlaying =
+    offlineMode &&
+    !isMobile &&
+    isNowPlayingOpen &&
+    playbackMode === 'audio' &&
+    !!currentTrack &&
+    isTrackSaved(currentTrack.id)
+  const rightRailVisible = isAuthenticated && (!offlineMode || showOfflineNowPlaying)
+  const nowPlayingExpandedVisible =
+    rightRailVisible &&
+    !offlineMode &&
+    isNowPlayingExpanded &&
+    !socialPanelOpen &&
+    !isMobile &&
+    isNowPlayingOpen &&
+    hasCurrentMedia
   const prevAuth = useRef(isAuthenticated)
+  const prevOffline = useRef(false)
+
+  // Offline mode (desktop app started/kept alive with no network): steer to the
+  // saved-music page so the user lands on something playable instead of watching
+  // network-backed pages spin. Only on entering offline mode / launching offline —
+  // not on every navigation, so the user can still move around manually.
+  useEffect(() => {
+    const onOfflineSafeRoute =
+      location.pathname === '/' ||
+      location.pathname === '/offline' ||
+      location.pathname.startsWith('/settings') ||
+      /^\/(?:album|playlist)\/[^/]+\/?$/.test(location.pathname)
+    if (offlineMode && !prevOffline.current && !onOfflineSafeRoute) {
+      navigate('/', { replace: true })
+    }
+    prevOffline.current = offlineMode
+  }, [offlineMode, navigate, location.pathname])
+
+  // Download any saved-item covers that aren't cached to disk yet (items saved
+  // before covers were downloaded, or covers that failed while offline). Runs
+  // once on startup and again each time the network returns, so downloads
+  // self-heal their artwork without the user having to re-save anything.
+  useEffect(() => {
+    void backfillCovers()
+    const onOnline = () => void backfillCovers()
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [])
 
   // Scroll detection for the main content area — drives the Spotify-style locked
   // header tint (the TopBar picks up the page hue once you scroll past the hero).
@@ -83,10 +129,10 @@ export function AppShell() {
   }, [hasCoordinatedPageLoad, location.pathname])
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!isAuthenticated || offlineMode) return
     void fetchLibrary()
     void loadRatings()
-  }, [fetchLibrary, isAuthenticated, loadRatings])
+  }, [fetchLibrary, isAuthenticated, loadRatings, offlineMode])
 
   // Real-time presence via WebSocket — instant online/offline updates.
   usePresenceSocket()
@@ -188,10 +234,12 @@ export function AppShell() {
         </main>
 
         {/* Right rail on desktop, responsive overlay on smaller screens. */}
-        {isAuthenticated && (
-          socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && hasCurrentMedia && (
-            selectNowPlayingPanel(playbackMode) === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
-          )
+        {rightRailVisible && (
+          offlineMode
+            ? showOfflineNowPlaying && <NowPlayingPanel offlineOnly />
+            : socialPanelOpen ? <SocialPanel /> : !isMobile && isNowPlayingOpen && hasCurrentMedia && (
+              selectNowPlayingPanel(playbackMode) === 'video' ? <MusicVideoNowPlayingPanel /> : <NowPlayingPanel />
+            )
         )}
       </div>
 

@@ -243,6 +243,24 @@ var corsOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<s
     .Distinct()
     .ToArray();
 
+// Allow local dev frontends (Vite web dev + `tauri dev`, which serves the webview
+// from localhost:5173) to reach the deployed cloud API. The production env-var
+// override for Cors:AllowedOrigins lists only the live web domains, so append the
+// dev origins here to guarantee they survive that override. Opt-in via
+// Cors:AllowLocalhostDev = "true" (set on the ECS task def) so prod isn't
+// permanently open to localhost — flip it off when you're done testing.
+if (builder.Configuration.GetValue<bool>("Cors:AllowLocalhostDev"))
+{
+    corsOrigins = corsOrigins
+        .Concat(new[]
+        {
+            "http://localhost:5173", "http://localhost:5174",
+            "http://127.0.0.1:5173", "http://127.0.0.1:5174",
+        })
+        .Distinct()
+        .ToArray();
+}
+
 // Optionally allow ANY https subdomain of a root domain (e.g. not-spotify.lol ->
 // account./support./download./www. + the apex) so new subdomains work without
 // editing the origin list. AllowCredentials() forbids "*", so we match via a

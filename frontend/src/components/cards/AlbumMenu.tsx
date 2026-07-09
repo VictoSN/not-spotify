@@ -27,6 +27,7 @@ import {
   type PointerMenuHandle,
 } from '@/utils/contextMenu'
 import { InstallAppMenuItem } from '@/components/common/InstallAppButton'
+import { OfflineDownloadMenuItem } from '@/components/common/OfflineDownloadMenuItem'
 import { ShareIcon } from '@/components/common/ShareIcon'
 import { PinMenuItem } from './PinMenuItem'
 
@@ -213,6 +214,17 @@ export const AlbumMenu = forwardRef<AlbumMenuHandle, AlbumMenuProps>(function Al
                   Share
                 </button>
               </MenuItem>
+
+              <OfflineDownloadMenuItem
+                meta={{
+                  kind: 'album',
+                  id: album.id,
+                  name: album.title,
+                  subtitle: album.artist.name,
+                  coverUrl: album.coverUrl,
+                }}
+                getTracks={() => trackService.getByAlbum(album.id)}
+              />
 
               {/* Pin floats this album to the top of the library sidebar. */}
               {isSaved && <PinMenuItem itemKey={`al-${album.id}`} onAfter={close} />}

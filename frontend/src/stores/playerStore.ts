@@ -228,7 +228,7 @@ export type RepeatMode = 'off' | 'one' | 'all'
 export type PlaybackMode = 'audio' | 'video'
 
 /** What kind of surface seeded the current queue (album page, playlist, etc.). */
-export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked' | 'mix'
+export type PlayContextType = 'album' | 'playlist' | 'artist' | 'liked' | 'mix' | 'downloads'
 export interface PlayContext {
   type: PlayContextType
   id: string

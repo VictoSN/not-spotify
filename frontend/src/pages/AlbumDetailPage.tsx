@@ -26,6 +26,12 @@ import { DetailHero } from '@/components/common/DetailHero'
 import { ShareToChatModal } from '@/components/chat/ShareToChatModal'
 import { AlbumMenu } from '@/components/cards/AlbumMenu'
 import { usePageLoading } from '@/hooks/usePageLoading'
+import {
+  collectionKey,
+  getOfflineCollection,
+  offlineCollectionToAlbum,
+  offlineCollectionTracks,
+} from '@/services/offlineAudio'
 
 export function AlbumDetailPage() {
   const { t } = useTranslation()
@@ -45,7 +51,7 @@ export function AlbumDetailPage() {
   // is "active" whenever the current track belongs to it (see usePlaybackContext).
   const { isActiveContext, isPlayingContext } = usePlaybackContext(id ? { type: 'album', id } : null)
   const { savedAlbumIds, saveAlbum, unsaveAlbum } = useLibraryStore()
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, user, offlineMode } = useAuthStore()
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const isPremium = user?.plan === 'premium'
   const [downloading, setDownloading] = useState(false)
@@ -55,6 +61,21 @@ export function AlbumDetailPage() {
     if (!id) return
     let active = true
     const load = async () => {
+      if (offlineMode) {
+        const offline = getOfflineCollection(collectionKey('album', id))
+        if (!active) return
+        if (offline) {
+          setAlbum(offlineCollectionToAlbum(offline))
+          setTracks(offlineCollectionTracks(offline.key))
+          setMoreAlbums([])
+        } else {
+          setAlbum(null)
+          setTracks([])
+          setMoreAlbums([])
+        }
+        setLoadedId(id)
+        return
+      }
       try {
         const [nextAlbum, nextTracks] = await Promise.all([
           albumService.getById(id),
@@ -67,9 +88,18 @@ export function AlbumDetailPage() {
         setMoreAlbums(artistAlbums.filter((item) => item.id !== id))
       } catch {
         if (!active) return
-        setAlbum(null)
-        setTracks([])
-        setMoreAlbums([])
+        // Offline fallback: if this album was downloaded, render it from the
+        // saved local data (with cached covers) instead of "not found".
+        const offline = getOfflineCollection(collectionKey('album', id))
+        if (offline) {
+          setAlbum(offlineCollectionToAlbum(offline))
+          setTracks(offlineCollectionTracks(offline.key))
+          setMoreAlbums([])
+        } else {
+          setAlbum(null)
+          setTracks([])
+          setMoreAlbums([])
+        }
       } finally {
         if (active) setLoadedId(id)
       }
@@ -78,7 +108,7 @@ export function AlbumDetailPage() {
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, offlineMode])
 
   const heroColor = useDominantColor(album?.coverUrl)
 

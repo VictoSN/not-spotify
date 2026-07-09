@@ -13,6 +13,7 @@ import { SupportPage } from '@/pages/SupportPage'
 import { HomePage } from '@/pages/HomePage'
 import { SearchPage } from '@/pages/SearchPage'
 import { LibraryPage } from '@/pages/LibraryPage'
+import { DownloadsPage } from '@/pages/DownloadsPage'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { FollowingPage } from '@/pages/FollowingPage'
 import { AccountSettingsPage } from '@/pages/AccountSettingsPage'
@@ -139,6 +140,7 @@ export const router = createBrowserRouter([
           { path: 'search', element: <SearchPage /> },
           { path: 'premium', element: <PremiumPage /> },
           { path: 'library', element: <LibraryPage /> },
+          { path: 'offline', element: <DownloadsPage /> },
           { path: 'playlist/:id', element: <PlaylistDetailPage /> },
           { path: 'album/:id', element: <AlbumDetailPage /> },
           { path: 'mix/:id', element: <MixDetailPage /> },

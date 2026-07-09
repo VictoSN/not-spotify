@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { TrashIcon } from '@heroicons/react/24/outline'
+import { Link } from 'react-router-dom'
+import { TrashIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import {
   OFFLINE_CHANGE_EVENT,
   clearOffline,
@@ -9,6 +10,7 @@ import {
   removeTrackOffline,
   type OfflineEntry,
 } from '@/services/offlineAudio'
+import { isDesktop } from '@/utils/platform'
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '0 MB'
@@ -28,6 +30,8 @@ export function OfflineDownloads({ searchText: _searchText }: { searchText?: str
   const [entries, setEntries] = useState<OfflineEntry[]>(() => listOffline())
   const [total, setTotal] = useState(() => offlineTotalBytes())
 
+  const desktop = isDesktop()
+
   const refresh = useCallback(() => {
     setEntries(listOffline())
     setTotal(offlineTotalBytes())
@@ -44,21 +48,41 @@ export function OfflineDownloads({ searchText: _searchText }: { searchText?: str
     <section className="border-t border-elevated/40 py-6">
       <div className="mb-2 flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-primary">Offline downloads</h2>
-        {entries.length > 0 && (
-          <button
-            type="button"
-            onClick={() => void clearOffline()}
-            className="text-xs font-semibold text-secondary transition-colors hover:text-primary"
-          >
-            Clear all
-          </button>
-        )}
+        <div className="flex items-center gap-4">
+          {entries.length > 0 && (
+            <Link
+              to="/offline"
+              className="flex items-center gap-1 text-xs font-semibold text-accent transition-opacity hover:opacity-80"
+            >
+              Open &amp; play <ArrowRightIcon className="h-3.5 w-3.5" />
+            </Link>
+          )}
+          {entries.length > 0 && (
+            <button
+              type="button"
+              onClick={() => void clearOffline()}
+              className="text-xs font-semibold text-secondary transition-colors hover:text-primary"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       </div>
 
       {entries.length === 0 ? (
         <p className="py-2 text-sm text-secondary">
-          No downloads yet. Use “Save for offline” from a song’s ⋯ menu (Premium)
-          to keep it playable without a connection.
+          {desktop ? (
+            <>
+              No downloads yet. Use “Save for offline” from a song’s ⋯ menu
+              (Premium) to keep it playable without a connection.
+            </>
+          ) : (
+            <>
+              Offline downloads are available in the{' '}
+              <span className="font-semibold text-primary">desktop app</span>.
+              Install it to save songs and play them without a connection.
+            </>
+          )}
         </p>
       ) : (
         <>

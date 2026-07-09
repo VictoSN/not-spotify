@@ -37,6 +37,8 @@ import { shareLink } from '@/utils/share'
 import { notify } from '@/utils/toast'
 import { InviteCollaboratorModal } from '@/components/friends/InviteCollaboratorModal'
 import { ShareIcon } from '@/components/common/ShareIcon'
+import { OfflineDownloadMenuItem } from '@/components/common/OfflineDownloadMenuItem'
+import { playlistService } from '@/services/playlistService'
 import {
   CONTEXT_MENU_ITEM_CLASS,
   CONTEXT_MENU_PANEL_CLASS,
@@ -422,6 +424,21 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                 <div className="my-1 h-px bg-secondary/20" />
 
                 {isInLibrary && <PinMenuItem itemKey={itemKey} onAfter={close} />}
+                <OfflineDownloadMenuItem
+                  meta={{
+                    kind: 'playlist',
+                    id: playlist.id,
+                    name: playlist.name,
+                    subtitle: 'Playlist',
+                    coverUrl: playlist.coverUrl ?? '',
+                  }}
+                  getTracks={async () => {
+                    const full = playlist.tracks?.length
+                      ? playlist
+                      : await playlistService.getById(playlist.id)
+                    return (full.tracks ?? []).map((pt) => pt.track)
+                  }}
+                />
                 <MenuItem>
                   <button type="button" onClick={(e) => { stop(e); void handleShare(); close() }} className={itemClass}>
                     <ShareIcon className="h-4 w-4" />

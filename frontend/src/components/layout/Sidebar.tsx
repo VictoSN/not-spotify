@@ -14,6 +14,7 @@ import {
   FolderIcon,
   FolderPlusIcon,
   MusicalNoteIcon,
+  ArrowDownCircleIcon,
   EllipsisHorizontalIcon,
   PencilIcon,
   TrashIcon,
@@ -78,6 +79,17 @@ import {
   LIBRARY_REORDER_MIME,
 } from '@/utils/libraryOrder'
 import { PinIcon } from '@/components/cards/PinMenuItem'
+import {
+  listOfflineCollections,
+  listOffline,
+  listOfflineCollectionTracks,
+  offlineEntryToTrack,
+  offlineCollectionToAlbum,
+  offlineCollectionToPlaylist,
+  resolveCoverSrc,
+  OFFLINE_CHANGE_EVENT,
+  type OfflineCollection,
+} from '@/services/offlineAudio'
 import { cn } from '@/utils/cn'
 
 const RAIL = 72
@@ -226,8 +238,26 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const setKaraokeOpen = usePlayerStore((s) => s.setKaraokeOpen)
   const startContext = usePlayContextGate()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const offlineMode = useAuthStore((s) => s.offlineMode)
   const openAuthPrompt = useAuthPromptStore((s) => s.open)
   const { t } = useTranslation()
+
+  // Saved albums/playlists for the offline view. When the app has no network the
+  // normal library can't load, so we surface these (rendered from local data,
+  // no spinner) so the user can still reach their downloads from the sidebar.
+  const [offlineCollections, setOfflineCollections] = useState<OfflineCollection[]>(listOfflineCollections)
+  const [downloadedSongCount, setDownloadedSongCount] = useState(() => listOffline().length)
+  useEffect(() => {
+    const sync = () => {
+      setOfflineCollections(listOfflineCollections())
+      setDownloadedSongCount(listOffline().length)
+    }
+    window.addEventListener(OFFLINE_CHANGE_EVENT, sync)
+    return () => window.removeEventListener(OFFLINE_CHANGE_EVENT, sync)
+  }, [])
+  // "Downloads" is a special library entry (like Liked Songs) shown whenever any
+  // songs/collections are saved — reachable online and offline.
+  const hasDownloads = offlineCollections.length > 0 || downloadedSongCount > 0
 
   const [width, setWidth] = useState(getInitialWidth)
   const [filter, setFilter] = useState<Filter>('all')
@@ -482,6 +512,20 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   // ── Build the library list ──────────────────────────────────────
   const { items, orderedKeys } = useMemo<{ items: LibItem[]; orderedKeys: string[] }>(() => {
     const history = playHistory
+    const offlineItems: LibItem[] = offlineCollections.map((c) => ({
+      key: `off-${c.key}`,
+      id: c.id,
+      kind: c.kind,
+      name: c.name,
+      subtitle: `${c.kind === 'album' ? 'Album' : 'Playlist'} - ${c.trackIds.length} ${c.trackIds.length === 1 ? 'song' : 'songs'}`,
+      image: resolveCoverSrc(c.coverUrl),
+      round: false,
+      to: `/${c.kind}/${c.id}`,
+      acceptsTracks: false,
+      playable: true,
+      addedAt: new Date(c.savedAt).toISOString(),
+      playedAt: history[`${c.kind}:${c.id}`],
+    }))
     const playlists: LibItem[] = savedPlaylists.map((p) => ({
       key: `pl-${p.id}`,
       id: p.id,
@@ -553,7 +597,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
       playable: false,
     }))
 
-    const all = [...playlists, ...albums, ...artists, ...podcasts, ...videos]
+    const all = offlineMode ? offlineItems : [...playlists, ...albums, ...artists, ...podcasts, ...videos]
 
     // Sort + pin float, shared by the visible list and the full reorder base so
     // both agree on relative order (a drag under a filter lands correctly).
@@ -590,6 +634,17 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             ? artists
             : all
 
+    if (offlineMode) {
+      list =
+        filter === 'playlists'
+          ? offlineItems.filter((item) => item.kind === 'playlist')
+          : filter === 'albums'
+            ? offlineItems.filter((item) => item.kind === 'album')
+            : filter === 'artists'
+              ? []
+              : offlineItems
+    }
+
     // Folder view: show only items inside the selected folder (bug 32)
     if (folderView) {
       const fv = getFolders().find((f) => f.id === folderView)
@@ -603,13 +658,14 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     if (q) list = list.filter((i) => i.name.toLowerCase().includes(q))
 
     return { items: applySortAndPins(list), orderedKeys: applySortAndPins(all).map((i) => i.key) }
-  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, filter, query, sort, playHistory, pinnedKeys, customOrder, t])
+  }, [savedPlaylists, savedAlbums, followedArtists, savedVideos, savedPodcasts, offlineMode, offlineCollections, filter, query, sort, playHistory, pinnedKeys, customOrder, t])
 
   const pinnedSet = useMemo(() => new Set(pinnedKeys), [pinnedKeys])
   const pinnedCount = useMemo(() => items.filter((i) => pinnedSet.has(i.key)).length, [items, pinnedSet])
 
   const likedSongsQuery = t('sidebar.likedSongs').toLowerCase()
   const showLiked =
+    !offlineMode &&
     !folderView &&
     (filter === 'all' || filter === 'playlists') &&
     (!query.trim() ||
@@ -631,6 +687,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
 
   const playLibraryItem = async (item: LibItem) => {
     try {
+      if (offlineMode && (item.kind === 'playlist' || item.kind === 'album')) {
+        const tracks = listOfflineCollectionTracks(`${item.kind}:${item.id}`).map(offlineEntryToTrack)
+        if (tracks.length > 0) {
+          if (startContext({ type: item.kind, id: item.id }, tracks)) recordPlay(item.kind, item.id)
+        } else {
+          notify.info('No downloaded tracks available for this item')
+        }
+        return
+      }
+
       if (item.kind === 'playlist') {
         const cached = savedPlaylists.find((p) => p.id === item.id)
         let tracks = (cached?.tracks ?? []).map((row) => row.track)
@@ -664,10 +730,24 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   // undefined for albums/artists, which keep the ⋯ menu only.
   const playlistById = useMemo(() => new Map(savedPlaylists.map((p) => [p.id, p])), [savedPlaylists])
   const playlistFor = (item: LibItem): Playlist | undefined =>
-    item.kind === 'playlist' ? playlistById.get(item.id) : undefined
+    item.kind === 'playlist'
+      ? playlistById.get(item.id) ??
+        (offlineMode
+          ? offlineCollections.find((c) => c.kind === 'playlist' && c.id === item.id)
+            ? offlineCollectionToPlaylist(offlineCollections.find((c) => c.kind === 'playlist' && c.id === item.id)!)
+            : undefined
+          : undefined)
+      : undefined
   const albumById = useMemo(() => new Map(savedAlbums.map((a) => [a.id, a])), [savedAlbums])
   const albumFor = (item: LibItem): Album | undefined =>
-    item.kind === 'album' ? albumById.get(item.id) : undefined
+    item.kind === 'album'
+      ? albumById.get(item.id) ??
+        (offlineMode
+          ? offlineCollections.find((c) => c.kind === 'album' && c.id === item.id)
+            ? offlineCollectionToAlbum(offlineCollections.find((c) => c.kind === 'album' && c.id === item.id)!)
+            : undefined
+          : undefined)
+      : undefined
   const artistById = useMemo(() => new Map(followedArtists.map((a) => [a.id, a])), [followedArtists])
   const artistFor = (item: LibItem): Artist | undefined =>
     item.kind === 'artist' ? artistById.get(item.id) : undefined
@@ -683,7 +763,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
   const folderItemKeys = useMemo(() => new Set(folders.flatMap((f) => f.itemKeys)), [folders])
   // Folders only surface in the default view (no active filter/search), so the
   // flat filtered list stays predictable when searching.
-  const foldersActive = filter === 'all' && !query.trim() && !folderView
+  const foldersActive = !offlineMode && filter === 'all' && !query.trim() && !folderView
   const ungroupedItems = foldersActive ? items.filter((i) => !folderItemKeys.has(i.key)) : items
   const hasFolderSection = foldersActive && folders.length > 0
 
@@ -910,14 +990,26 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
             libraryDrop.isOver && libraryDragActive && 'opacity-[0.45]',
           )}
         >
-          <Link
-            to="/library?tab=liked"
-            aria-label={t('sidebar.likedSongs')}
-            className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 transition-transform hover:scale-105"
-          >
-            <HeartIcon className="w-5 h-5 text-white" />
-            <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.likedSongs')}</span>
-          </Link>
+          {!offlineMode && (
+            <Link
+              to="/library?tab=liked"
+              aria-label={t('sidebar.likedSongs')}
+              className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-purple-600 to-indigo-300 transition-transform hover:scale-105"
+            >
+              <HeartIcon className="w-5 h-5 text-white" />
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('sidebar.likedSongs')}</span>
+            </Link>
+          )}
+          {hasDownloads && (
+            <Link
+              to="/offline"
+              aria-label="Downloads"
+              className="spotify-tooltip-anchor relative flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-emerald-600 to-teal-300 transition-transform hover:scale-105"
+            >
+              <ArrowDownCircleIcon className="w-5 h-5 text-white" />
+              <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">Downloads</span>
+            </Link>
+          )}
           {items.map((item, i) => {
             // Pinned items lead the rail; a hairline separates them from the rest.
             const showPinDivider = pinnedCount > 0 && i === pinnedCount - 1 && i < items.length - 1
@@ -1213,7 +1305,7 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
           </div>
         )}
 
-        {isLoading ? (
+        {isLoading && !offlineMode ? (
           <LibrarySidebarSkeleton
             grid={grid}
             compact={compactLibrary}
@@ -1265,6 +1357,35 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
+            {/* Downloads: a special entry (like Liked Songs) for saved songs. */}
+            {hasDownloads && (
+              <NavLink
+                to="/offline"
+                onClick={() => libraryExpanded && setLibraryExpanded(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'group/row block rounded-md transition-colors',
+                    gridCompact ? 'p-1.5' : 'p-2',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
+                }
+              >
+                <div className={cn(
+                  'relative flex aspect-square w-full items-center justify-center rounded-md bg-gradient-to-br from-emerald-600 to-teal-300',
+                  !gridCompact && 'mb-2',
+                )}>
+                  <ArrowDownCircleIcon className={cn('text-white', gridCompact ? 'h-6 w-6' : 'h-8 w-8')} />
+                </div>
+                {!gridCompact && (
+                  <>
+                    <p className="truncate text-sm font-normal leading-tight text-primary">Downloads</p>
+                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
+                      {downloadedSongCount} {downloadedSongCount === 1 ? 'song' : 'songs'}
+                    </p>
+                  </>
+                )}
+              </NavLink>
+            )}
             {ungroupedItems.map((item) => (
               <TrackDropZone
                 key={item.key}
@@ -1289,7 +1410,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
-              <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
+              <p className="col-span-full text-sm text-secondary px-2 py-6 text-center">
+                {offlineMode ? 'No music saved for offline yet.' : t('sidebar.nothingHere')}
+              </p>
             )}
           </div>
         ) : (
@@ -1339,6 +1462,39 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
                 </NavLink>
               </TrackDropZone>
             )}
+            {/* Downloads entry (list view) — like Liked Songs. */}
+            {hasDownloads && (
+              <NavLink
+                to="/offline"
+                className={({ isActive }) =>
+                  cn(
+                    'group/row flex items-center rounded-md transition-colors',
+                    listCompact ? 'gap-3 px-2 py-1.5' : 'gap-3 px-4 py-1.5',
+                    isActive ? 'bg-elevated' : 'hover:bg-elevated/50',
+                  )
+                }
+              >
+                {!listCompact && (
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-emerald-600 to-teal-300">
+                    <ArrowDownCircleIcon className="h-5 w-5 text-white" />
+                  </div>
+                )}
+                <div className={cn('min-w-0 flex-1', libraryExpanded && 'flex items-center')}>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-normal leading-tight text-primary">Downloads</p>
+                    <p className="mt-0.5 truncate text-[13px] font-normal leading-tight text-secondary">
+                      {downloadedSongCount} {downloadedSongCount === 1 ? 'song' : 'songs'}
+                    </p>
+                  </div>
+                  {libraryExpanded && (
+                    <>
+                      <span className="w-1/4 shrink-0 text-center text-[13px] text-secondary">—</span>
+                      <span className="w-1/5 shrink-0 pr-4 text-right text-[13px] text-secondary">—</span>
+                    </>
+                  )}
+                </div>
+              </NavLink>
+            )}
             {ungroupedItems.map((item) => (
               <TrackDropZone
                 key={item.key}
@@ -1363,7 +1519,9 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               </TrackDropZone>
             ))}
             {ungroupedItems.length === 0 && !showLiked && !hasFolderSection && (
-              <p className="text-sm text-secondary px-2 py-6 text-center">{t('sidebar.nothingHere')}</p>
+              <p className="text-sm text-secondary px-2 py-6 text-center">
+                {offlineMode ? 'No music saved for offline yet.' : t('sidebar.nothingHere')}
+              </p>
             )}
           </>
         )}

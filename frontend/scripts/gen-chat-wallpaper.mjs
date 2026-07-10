@@ -3,12 +3,10 @@
 //   node scripts/gen-chat-wallpaper.js            # writes the tile in place
 //   node scripts/gen-chat-wallpaper.js out.svg    # writes elsewhere
 //
-// It composes a WhatsApp-style collage: 8 extra-large "anchor" doodles, each
-// wrapped in a cluster of medium/small/tiny fillers, plus a global scatter, all
-// edge-wrapped so the 600×600 tile repeats seamlessly. The tile is painted at
-// background-size 450px (see .chat-wallpaper::before in index.css), so visible
-// size ≈ ext * scale * 1.5 px. Tweak SEED / counts / target-px ranges below and
-// re-run. The <defs> symbol library is shared with the old tile.
+// It composes an original, high-density chat collage from a broad symbol
+// library. Collision-aware packing keeps the icons close without producing
+// tangled piles, and toroidal spacing plus edge wrapping make the tile seamless.
+// The 720-unit tile is painted at 640px (see .chat-wallpaper::before).
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // ── Symbol library (verbatim from the existing tile) ────────────────────────
 const DEFS = `  <defs>
     <style>
-      .line{fill:none;stroke:#e8eeee;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+      .line{fill:none;stroke:#e8eeee;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
     </style>
 
     <g id="star" class="line"><path d="M0-10 3-4 10-3 4.8 1.8 6.3 9 0 5-6.3 9-4.8 1.8-10-3-3-4Z"/></g>
@@ -110,6 +108,19 @@ const DEFS = `  <defs>
     <g id="fish" class="line"><path d="M-15 0c6-8 21-8 30 0-9 8-24 8-30 0Z"/><path d="M15 0 23-7v14ZM-8-2h.1"/></g>
     <g id="shell" class="line"><path d="M-14 9C-12-6-4-15 0-15S12-6 14 9Z"/><path d="M-14 9H14M0-15V9M-8-8-3 9M8-8 3 9"/></g>
     <g id="home" class="line"><path d="M-16 0 0-14 16 0"/><path d="M-12-1v17H12V-1M-4 16V6h8v10"/></g>
+
+    <g id="wink" class="line"><circle r="13"/><path d="M-7-4h5M5-4h.1M-7 4c4 5 10 5 14 0"/><path d="M8 8c4-1 6-3 7-6"/></g>
+    <g id="laugh" class="line"><circle r="14"/><path d="M-7-5h.1M7-5h.1M-8 3c2 9 14 9 16 0Z"/><path d="M-5 9c3-2 7-2 10 0"/></g>
+    <g id="cool" class="line"><circle r="14"/><path d="M-12-5h10l-1 7h-7ZM2-5h10l-2 7H3ZM-2-3h4M-6 7c4 3 8 3 12 0"/></g>
+    <g id="party" class="line"><path d="M-13 15-5-12 14 7Z"/><path d="M-8 1 1 10M-5-8 10 6M6-13c4-5 8-4 9 1M14-5h6M7-3c-2 4 0 7 4 8"/><path d="M-18-8h.1M0-17h.1M18 1h.1"/></g>
+    <g id="crown" class="line"><path d="M-17-8-10 8 0-4 10 8 17-8 13 14h-26Z"/><path d="M-13 9h26"/></g>
+    <g id="robot" class="line"><rect x="-14" y="-11" width="28" height="24" rx="5"/><path d="M0-11v-7M-5-18h10M-7-3h.1M7-3h.1M-7 6h14M-18-5v10M18-5v10"/></g>
+    <g id="monster" class="line"><path d="M-15 14V-2c0-11 30-11 30 0v16l-7-5-8 5-8-5Z"/><path d="M-7-1h.1M7-1h.1M-6 5c4 3 8 3 12 0"/><path d="M-8-10-13-16M8-10 13-16"/></g>
+    <g id="cactus" class="line"><path d="M-6 18V-7a6 6 0 0 1 12 0v25M-10 18h20M-6 2h-6c-4 0-4-10-1-10 3 0 1 6 3 6h4M6 7h6c4 0 4-10 1-10-3 0-1 6-3 6H6"/></g>
+    <g id="cassette" class="line"><rect x="-18" y="-12" width="36" height="24" rx="3"/><circle cx="-9" cy="-2" r="5"/><circle cx="9" cy="-2" r="5"/><path d="M-4-2h8M-10 8-6 3H6l4 5Z"/></g>
+    <g id="clapper" class="line"><rect x="-17" y="-5" width="34" height="20" rx="2"/><path d="M-17-5v-8h34v8M-12-13l6 8M0-13l6 8M12-13l5 7"/><path d="M-9 3h18M-9 9h12"/></g>
+    <g id="paint" class="line"><path d="M-15 8C-20-5-8-17 6-14 20-11 21 3 11 7c-5 2-3 8-10 9-7 1-13-2-16-8Z"/><circle cx="-7" cy="-5" r="2"/><circle cx="1" cy="-9" r="2"/><circle cx="9" cy="-4" r="2"/><path d="M-4 8 15-11M11-13l5 5"/></g>
+    <g id="peace" class="line"><path d="M-2 14V-8c0-5 6-5 6 0V2M4 2V-12c0-5 6-5 6 0V3M10 3V-7c0-5 6-5 6 0V6c0 9-6 14-15 14-9 0-15-5-15-13V0c0-5 6-5 6 0v7M-8 7c5-2 9-2 13 1"/></g>
   </defs>`
 
 // Approx half-extent (units from origin to the farthest point) per symbol —
@@ -129,12 +140,20 @@ const EXT = {
   burger: 18, pizza: 17, cup: 12, icecream: 10, apple: 12, donut: 13,
   gift: 16, pencil: 17, book: 17, bag: 14, umbrella: 19, hat: 18, shirt: 20, glasses: 14,
   smile: 12, face: 13, cat: 12, paw: 9, bird: 16, butterfly: 14, fish: 15, shell: 14, home: 16,
+  wink: 15, laugh: 14, cool: 14, party: 20, crown: 17, robot: 18, monster: 16,
+  cactus: 18, cassette: 18, clapper: 17, paint: 20, peace: 18,
 }
 
-const TINY = ['star', 'spark', 'plus', 'diamond', 'ring', 'dots', 'tiny-heart', 'bolt', 'check', 'xmark', 'triangle', 'heart']
-const ANCHORS = ['headphones', 'guitar', 'camera', 'planet', 'flower', 'sun', 'cloud', 'keyboard', 'rocket', 'tv', 'burger', 'umbrella', 'drum', 'record', 'train', 'car', 'tree', 'speech', 'book', 'pizza', 'gift', 'laptop', 'mountain', 'ship', 'bike']
-const DETAILED = Object.keys(EXT).filter((id) => !['star', 'spark', 'plus', 'diamond', 'ring', 'dots', 'tiny-heart', 'bolt', 'check', 'xmark', 'triangle'].includes(id))
-const SMALL_POOL = DETAILED.concat(['heart', 'ring', 'star', 'diamond', 'tiny-heart', 'spark'])
+const TINY = ['star', 'spark', 'plus', 'diamond', 'ring', 'dots', 'tiny-heart', 'bolt', 'check', 'xmark', 'triangle']
+const EXPRESSIVE = ['wink', 'laugh', 'cool', 'party', 'crown', 'robot', 'monster', 'peace', 'smile', 'face', 'heart', 'cat', 'flower', 'sun']
+const ANCHORS = [
+  ...EXPRESSIVE,
+  'headphones', 'guitar', 'camera', 'planet', 'keyboard', 'rocket', 'tv', 'umbrella',
+  'drum', 'record', 'train', 'car', 'tree', 'speech', 'book', 'gift', 'laptop',
+  'mountain', 'ship', 'bike', 'cassette', 'clapper', 'paint', 'cactus',
+]
+const DETAILED = Object.keys(EXT).filter((id) => !TINY.includes(id))
+const SMALL_POOL = [...DETAILED, ...EXPRESSIVE, 'ring', 'star', 'diamond', 'tiny-heart', 'spark']
 
 // ── Seeded RNG (deterministic output) ───────────────────────────────────────
 function mulberry32(a) {
@@ -149,82 +168,86 @@ const rng = mulberry32(20260710)
 const rand = (a, b) => a + (b - a) * rng()
 const pick = (arr) => arr[Math.floor(rng() * arr.length)]
 
-// The tile is a 600u viewBox painted at background-size 450px → 0.75 screen-px/u.
-// Visible size (px) of a symbol = ext * scale * 2 * 0.75 = ext * scale * 1.5.
-const TILE = 600
-const PXU = 1.5 // screen px per (ext * scale) unit
+// The 720u viewBox is painted at 640px, so every size below is expressed in the
+// final on-screen pixels. Packing uses a slightly smaller collision radius than
+// the symbols' full bounds because the drawings are airy outlines, not discs.
+const TILE = 720
+const CSS_TILE = 640
+const SCREEN_SCALE = CSS_TILE / TILE
+const PXU = SCREEN_SCALE * 2
 const uses = []
+const packed = []
 
-function place(id, x, y, targetPx, rotRange, mirrorProb) {
-  const ext = EXT[id] || 14
-  const scale = targetPx / (ext * PXU)
-  const rot = rand(-rotRange, rotRange)
-  const mirror = rng() < mirrorProb
-  uses.push({ id, x, y, scale, rot, mirror, ext })
+function toroidalDistance(a, b) {
+  const dxRaw = Math.abs(a.x - b.x)
+  const dyRaw = Math.abs(a.y - b.y)
+  const dx = Math.min(dxRaw, TILE - dxRaw)
+  const dy = Math.min(dyRaw, TILE - dyRaw)
+  return Math.hypot(dx, dy)
 }
 
-// ── 1. Extra-large anchors, Poisson-spaced, each wrapped in a dense cluster ──
-const anchors = []
-let attempts = 0
-while (anchors.length < 8 && attempts < 4000) {
-  attempts++
-  const x = rand(20, TILE - 20)
-  const y = rand(20, TILE - 20)
-  if (anchors.every((a) => Math.hypot(a.x - x, a.y - y) > 188)) anchors.push({ x, y })
+function placePacked(pool, minPx, maxPx, count, gap, rotation, mirrorProb) {
+  let placed = 0
+  let failures = 0
+
+  while (placed < count && failures < count * 900) {
+    const id = pick(pool)
+    const targetPx = rand(minPx, maxPx)
+    const radius = (targetPx / (2 * SCREEN_SCALE)) * 0.7
+    const candidate = { x: rand(0, TILE), y: rand(0, TILE), radius }
+    const clear = packed.every((other) => (
+      toroidalDistance(candidate, other) >= (candidate.radius + other.radius) * gap
+    ))
+
+    if (!clear) {
+      failures++
+      continue
+    }
+
+    const ext = EXT[id] || 14
+    uses.push({
+      id,
+      x: candidate.x,
+      y: candidate.y,
+      scale: targetPx / (ext * PXU),
+      rot: rand(-rotation, rotation),
+      mirror: rng() < mirrorProb,
+      opacity: rand(0.72, 1),
+      ext,
+    })
+    packed.push(candidate)
+    placed++
+  }
+
+  if (placed < count) {
+    console.error(`packed ${placed}/${count} symbols in the ${minPx}-${maxPx}px band`)
+  }
 }
-for (const a of anchors) {
-  const id = pick(ANCHORS)
-  const px = rand(96, 140)
-  place(id, a.x, a.y, px, 12, 0.25)
-  const half = px / PXU // anchor visible half-size in units
 
-  // A couple of large/medium companions hugging the anchor.
-  const nLarge = 2 + Math.floor(rng() * 2)
-  for (let i = 0; i < nLarge; i++) {
-    const ang = rand(0, Math.PI * 2)
-    const d = half * rand(0.85, 1.5)
-    place(pick(DETAILED), a.x + Math.cos(ang) * d, a.y + Math.sin(ang) * d, rand(42, 70), 26, 0.4)
-  }
-  // A scatter of small marks filling the ring.
-  const nSmall = 3 + Math.floor(rng() * 3)
-  for (let i = 0; i < nSmall; i++) {
-    const ang = rand(0, Math.PI * 2)
-    const d = half * rand(0.7, 1.75)
-    place(pick(SMALL_POOL), a.x + Math.cos(ang) * d, a.y + Math.sin(ang) * d, rand(20, 36), 50, 0.5)
-  }
-  // Tiny fillers wedged into the negative space around it.
-  const nTiny = 4 + Math.floor(rng() * 4)
-  for (let i = 0; i < nTiny; i++) {
-    const ang = rand(0, Math.PI * 2)
-    const d = half * rand(0.55, 1.95)
-    place(pick(TINY), a.x + Math.cos(ang) * d, a.y + Math.sin(ang) * d, rand(8, 20), 85, 0.5)
-  }
-}
+// Large expressive drawings establish rhythm; medium icons tell the story;
+// small and tiny marks close the gaps. Largest-first packing prevents collisions.
+placePacked(ANCHORS, 70, 104, 9, 0.96, 18, 0.28)
+placePacked([...EXPRESSIVE, ...DETAILED], 38, 66, 43, 0.83, 34, 0.38)
+placePacked(SMALL_POOL, 19, 36, 78, 0.72, 58, 0.48)
+placePacked(TINY, 9, 18, 62, 0.58, 90, 0.5)
 
-// ── 2. Global scatter fill so no region reads as empty (positions run past the
-//        edges on purpose; the wrap step below continues them on the far side) ─
-for (let i = 0; i < 16; i++) place(pick(DETAILED), rand(-24, TILE + 24), rand(-24, TILE + 24), rand(38, 62), 26, 0.35)
-for (let i = 0; i < 20; i++) place(pick(SMALL_POOL), rand(-24, TILE + 24), rand(-24, TILE + 24), rand(20, 37), 55, 0.5)
-for (let i = 0; i < 24; i++) place(pick(TINY), rand(-24, TILE + 24), rand(-24, TILE + 24), rand(8, 20), 90, 0.5)
-
-// ── 3. Seamless edge wrap: any object crossing an edge is repeated on the far
-//        side (and the diagonal corner) so the tile repeats with no visible seam ─
+// Duplicate edge-crossing drawings on the opposite edge. Packing itself uses
+// toroidal distance, so wrapped neighbours maintain the same breathing room.
 function wrap(list) {
   const out = []
   for (const u of list) {
-    const m = u.ext * u.scale
+    const margin = u.ext * u.scale
     const xs = [u.x]
-    if (u.x - m < 0) xs.push(u.x + TILE)
-    if (u.x + m > TILE) xs.push(u.x - TILE)
+    if (u.x - margin < 0) xs.push(u.x + TILE)
+    if (u.x + margin > TILE) xs.push(u.x - TILE)
     const ys = [u.y]
-    if (u.y - m < 0) ys.push(u.y + TILE)
-    if (u.y + m > TILE) ys.push(u.y - TILE)
-    for (const X of xs) for (const Y of ys) out.push({ ...u, x: X, y: Y })
+    if (u.y - margin < 0) ys.push(u.y + TILE)
+    if (u.y + margin > TILE) ys.push(u.y - TILE)
+    for (const x of xs) for (const y of ys) out.push({ ...u, x, y })
   }
-  // Keep only copies that actually intersect the tile box (drop fully-outside originals).
   return out.filter((u) => {
-    const m = u.ext * u.scale
-    return u.x + m > 0 && u.x - m < TILE && u.y + m > 0 && u.y - m < TILE
+    const margin = u.ext * u.scale
+    return u.x + margin > 0 && u.x - margin < TILE && u.y + margin > 0 && u.y - margin < TILE
   })
 }
 
@@ -235,13 +258,13 @@ const f = (n) => (Math.round(n * 10) / 10).toString()
 const lines = final.map((u) => {
   const s = f(u.scale)
   const sx = u.mirror ? '-' + s : s
-  return `    <use href="#${u.id}" transform="translate(${f(u.x)} ${f(u.y)}) rotate(${f(u.rot)}) scale(${sx} ${s})"/>`
+  return `    <use href="#${u.id}" opacity="${f(u.opacity)}" transform="translate(${f(u.x)} ${f(u.y)}) rotate(${f(u.rot)}) scale(${sx} ${s})"/>`
 })
 
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="720" viewBox="0 0 720 720">
 ${DEFS}
 
-  <rect width="600" height="600" fill="none"/>
+  <rect width="720" height="720" fill="none"/>
 
   <g class="line">
 ${lines.join('\n')}

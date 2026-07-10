@@ -265,7 +265,7 @@ export function MessagesPage() {
     if (!setPageScrollTarget || !isMobile) return
     setPageScrollTarget(activeUserId ? threadScrollRef.current : conversationScrollRef.current)
     return () => setPageScrollTarget(null)
-  }, [activeUserId, isMobile, outletContext?.setPageScrollTarget])
+  }, [activePartner?.userId, activeUserId, isMobile, outletContext?.setPageScrollTarget])
 
   // Bug 28: once a friendship ends, the conversation history stays visible but the
   // chat is locked — no sending. We only trust this verdict after the friends list
@@ -423,7 +423,7 @@ export function MessagesPage() {
         <div
           ref={conversationScrollRef}
           data-page-scroll-source="conversations"
-          className="mobile-page-scroll-source flex-1 overflow-y-auto px-2 pb-4"
+          className="mobile-page-scroll-source spotify-scrollbar flex-1 overflow-y-auto px-2 pb-4"
         >
           {conversations.length === 0 && newChatFriends.length === 0 && (
             <div className="px-3 py-10 text-center">
@@ -592,7 +592,7 @@ export function MessagesPage() {
             <div
               ref={threadScrollRef}
               data-page-scroll-source="thread"
-              className="mobile-page-scroll-source flex-1 overflow-y-auto px-4 py-3"
+              className="mobile-page-scroll-source spotify-scrollbar flex-1 overflow-y-auto px-4 pb-3 pt-3"
             >
               {isLoading && thread.length === 0 ? (
                 <div className="flex h-full items-center justify-center">
@@ -689,7 +689,7 @@ export function MessagesPage() {
                       </div>
                     )
                   })}
-                  <div ref={bottomRef} />
+                  <div ref={bottomRef} className="h-20" />
                 </>
               )}
             </div>
@@ -698,7 +698,7 @@ export function MessagesPage() {
             {chatLocked ? (
               <div
                 role="alert"
-                className="flex items-center justify-center gap-2.5 border-t border-elevated/40 bg-page px-4 py-4 text-center"
+                className="mx-4 mb-3 flex items-center justify-center gap-2.5 rounded-2xl bg-elevated/95 px-4 py-4 text-center shadow-lg"
               >
                 <LockClosedIcon className="h-4 w-4 shrink-0 text-secondary" />
                 <p className="text-sm text-secondary">
@@ -706,10 +706,10 @@ export function MessagesPage() {
                 </p>
               </div>
             ) : (
-              <form onSubmit={submit} className="border-t border-elevated/40 bg-page px-4 py-3">
+              <form onSubmit={submit} className="relative z-20 -mt-[76px] bg-transparent px-4 pb-3 pt-4">
                 <div
                   ref={composerToolsRef}
-                  className="relative flex min-h-11 w-full min-w-0 items-end rounded-[22px] border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"
+                  className="relative flex min-h-11 w-full min-w-0 items-end rounded-[22px] bg-elevated px-1.5 shadow-[0_1px_3px_rgba(0,0,0,0.28)]"
                 >
                   <input
                     ref={documentInputRef}

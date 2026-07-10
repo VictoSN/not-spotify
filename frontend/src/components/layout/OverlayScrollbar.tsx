@@ -22,14 +22,28 @@ interface OverlayScrollbarProps {
  * paint this thumb absolutely over the content instead. Wheel/keyboard scrolling
  * still works natively; dragging the thumb proxies back to `scrollTop`.
  *
+ * Mouse grabs the thumb instantly. Touch uses Spotify-mobile's press-and-HOLD:
+ * the finger must rest on the thumb for {@link TOUCH_HOLD_MS} before the drag
+ * engages (the thumb widens + brightens to confirm); a quick tap or swipe lets
+ * go without hijacking the gesture.
+ *
  * Mount inside a `position: relative` ancestor that shares the scroll viewport's
  * box (e.g. the `<main>` card). Renders nothing when the content doesn't overflow.
  */
+/** How long a finger must rest on the thumb before the drag engages (touch only). */
+const TOUCH_HOLD_MS = 200
+/** Finger drift beyond this while holding cancels the grab (it was a swipe). */
+const TOUCH_HOLD_SLOP_PX = 12
+
 export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = false }: OverlayScrollbarProps) {
   const [thumb, setThumb] = useState<{ height: number; top: number } | null>(null)
   // Visible (and brighter) while hovering the scroll area, scrolling, or dragging.
   const [active, setActive] = useState(false)
+  // A touch drag is engaged (post-hold) — the thumb widens so the grab reads.
+  const [touchDragging, setTouchDragging] = useState(false)
   const dragRef = useRef<{ pointerId: number; startY: number; startScroll: number } | null>(null)
+  // Touch press waiting out the hold delay before it becomes a drag.
+  const pendingTouchRef = useRef<{ pointerId: number; startY: number; lastY: number; timer: number } | null>(null)
   const hideTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
@@ -55,7 +69,7 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
       setActive(true)
       window.clearTimeout(hideTimer.current)
       hideTimer.current = window.setTimeout(() => {
-        if (!dragRef.current) setActive(false)
+        if (!dragRef.current && !pendingTouchRef.current) setActive(false)
       }, 1000)
     }
     const onScroll = () => {
@@ -97,6 +111,18 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
   // Drag the thumb → scroll the content (mapped from thumb travel to scroll range).
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
+      // Touch press still waiting out the hold: track the finger, and if it
+      // drifts too far this was a swipe — release without ever grabbing.
+      const pending = pendingTouchRef.current
+      if (pending && e.pointerId === pending.pointerId) {
+        pending.lastY = e.clientY
+        if (Math.abs(e.clientY - pending.startY) > TOUCH_HOLD_SLOP_PX) {
+          window.clearTimeout(pending.timer)
+          pendingTouchRef.current = null
+          setActive(false)
+        }
+        return
+      }
       const el = scrollTarget ?? scrollRef.current
       const rail = scrollRef.current
       const drag = dragRef.current
@@ -110,8 +136,15 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
       el.scrollTop = Math.min(maxScroll, Math.max(0, drag.startScroll + ratio * maxScroll))
     }
     const onUp = (e: PointerEvent) => {
+      const pending = pendingTouchRef.current
+      if (pending && e.pointerId === pending.pointerId) {
+        window.clearTimeout(pending.timer)
+        pendingTouchRef.current = null
+        setActive(false)
+      }
       if (!dragRef.current || e.pointerId !== dragRef.current.pointerId) return
       dragRef.current = null
+      setTouchDragging(false)
       setActive(false)
       document.body.style.userSelect = ''
     }
@@ -122,6 +155,8 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
+      if (pendingTouchRef.current) window.clearTimeout(pendingTouchRef.current.timer)
+      pendingTouchRef.current = null
       document.body.style.userSelect = ''
     }
   }, [scrollRef, scrollTarget])
@@ -152,18 +187,44 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
           const el = scrollTarget ?? scrollRef.current
           if (!el) return
           e.preventDefault()
-          e.currentTarget.setPointerCapture(e.pointerId)
-          dragRef.current = { pointerId: e.pointerId, startY: e.clientY, startScroll: el.scrollTop }
+          try {
+            e.currentTarget.setPointerCapture?.(e.pointerId)
+          } catch {
+            /* stale/synthetic pointer id — window-level listeners still track it */
+          }
           setActive(true)
-          document.body.style.userSelect = 'none'
+          if (e.pointerType === 'touch') {
+            // Spotify-mobile style: the press must be HELD briefly before the
+            // thumb is grabbed — then it widens and dragging fast-scrolls. A
+            // quick tap or swipe releases without hijacking anything.
+            const pointerId = e.pointerId
+            const timer = window.setTimeout(() => {
+              const pending = pendingTouchRef.current
+              if (!pending || pending.pointerId !== pointerId) return
+              pendingTouchRef.current = null
+              dragRef.current = { pointerId, startY: pending.lastY, startScroll: el.scrollTop }
+              setTouchDragging(true)
+              document.body.style.userSelect = 'none'
+              if ('vibrate' in navigator) navigator.vibrate(10) // grab confirmation where supported
+            }, TOUCH_HOLD_MS)
+            pendingTouchRef.current = { pointerId, startY: e.clientY, lastY: e.clientY, timer }
+          } else {
+            dragRef.current = { pointerId: e.pointerId, startY: e.clientY, startScroll: el.scrollTop }
+            document.body.style.userSelect = 'none'
+          }
         }}
         style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
         // ~12px thick, near-square (2px radius), semi-transparent gray — visible at
-        // rest, brighter while scrolling/hovering, brightest when grabbed.
-        className={`pointer-events-auto absolute touch-none rounded-[2px] border-0 outline-none shadow-none transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
-          flushRight ? 'right-0 w-[10px]' : 'right-[2px] w-[12px]'
+        // rest, brighter while scrolling/hovering, brightest when grabbed. A held
+        // touch grab widens it so the engaged state is unmistakable under a finger.
+        className={`pointer-events-auto absolute touch-none rounded-[2px] border-0 outline-none shadow-none transition-[background-color,width] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
+          touchDragging
+            ? flushRight ? 'right-0 w-[16px]' : 'right-[2px] w-[18px]'
+            : flushRight ? 'right-0 w-[10px]' : 'right-[2px] w-[12px]'
         } ${
-          active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
+          touchDragging
+            ? 'bg-[rgba(190,190,190,0.95)]'
+            : active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
         }`}
       />
     </div>

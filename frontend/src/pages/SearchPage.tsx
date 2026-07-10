@@ -422,7 +422,9 @@ function AllResultsView({
     : query
 
   return (
-    <div className="space-y-8">
+    // One shared column for all three sections — the top result card and the
+    // "Featuring" grid keep the exact same edges as the result rows below.
+    <div className="mx-auto w-full max-w-[980px] space-y-8">
       {topResult && <TopResultCard result={topResult} query={query} />}
 
       {featureCards.length > 0 && (
@@ -430,8 +432,8 @@ function AllResultsView({
           <h2 className="text-2xl font-normal text-primary">
             {t('search.section.featuring', { query: title })}
           </h2>
-          <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
-            {featureCards.slice(0, 7).map((row) => (
+          <div className="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {featureCards.slice(0, 6).map((row) => (
               <FeatureCard key={`${row.kind}-${row.id}`} row={row} />
             ))}
           </div>
@@ -439,7 +441,7 @@ function AllResultsView({
       )}
 
       {rows.length > 0 && (
-        <section className="mx-auto max-w-[980px]">
+        <section>
           <div className="flex flex-col gap-1">
             {rows.slice(0, 24).map((row) => (
               <SearchResultRow key={`${row.kind}-${row.id}`} row={row} />

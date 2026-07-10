@@ -93,8 +93,12 @@ public sealed class OpenSearchService
         if (options.UseAwsSigV4)
         {
             var pool = new SingleNodeConnectionPool(new Uri(options.Endpoint));
-            // Uses the default AWS credential chain: env vars → IAM role → profile
-            var awsConnection = new AwsSigV4HttpConnection(options.Region);
+            // Uses the default AWS credential chain: env vars → IAM role → profile.
+            // NOTE: the single-string ctor overload is (service, …) NOT (region, …) —
+            // passing the region there signs requests for a service named after the
+            // region and the domain rejects everything with 403. Resolve the region
+            // explicitly; the service code stays the default "es".
+            var awsConnection = new AwsSigV4HttpConnection(Amazon.RegionEndpoint.GetBySystemName(options.Region));
             settings = new ConnectionSettings(pool, awsConnection);
         }
         else
@@ -211,7 +215,13 @@ public sealed class OpenSearchService
             var result = await _client.BulkAsync(b => b
                 .Index(index)
                 .IndexMany(batch, (op, doc) => op.Id(getId(doc))), ct);
-            if (result.Errors)
+            // result.Errors only reflects per-item failures; a transport-level failure
+            // (auth, connectivity) leaves it false with an invalid response — check both,
+            // otherwise a reindex can report success while nothing was written.
+            if (!result.IsValid)
+                _logger.LogWarning("[OpenSearch] Bulk index {Index} batch {Batch} failed: {Reason}",
+                    index, i / pageSize, result.DebugInformation);
+            else if (result.Errors)
                 _logger.LogWarning("[OpenSearch] Bulk index {Index} batch {Batch}: {Errors} error(s)",
                     index, i / pageSize, result.ItemsWithErrors.Count());
         }

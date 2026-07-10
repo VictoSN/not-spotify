@@ -23,13 +23,15 @@ public class AdminAlbumsController : ControllerBase
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
     private readonly NotificationService _notifications;
+    private readonly SearchIndexSyncService _searchSync;
 
-    public AdminAlbumsController(AppDbContext db, MediaMapper mapper, IStorageService storage, NotificationService notifications)
+    public AdminAlbumsController(AppDbContext db, MediaMapper mapper, IStorageService storage, NotificationService notifications, SearchIndexSyncService searchSync)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
         _notifications = notifications;
+        _searchSync = searchSync;
     }
 
     [HttpGet]
@@ -115,6 +117,8 @@ public class AdminAlbumsController : ControllerBase
         });
 
         await _db.SaveChangesAsync(ct);
+        // cascadeTracks picks up the tracks that just flipped to approved.
+        await _searchSync.SyncAlbumAsync(id, cascadeTracks: true, ct);
 
         if (album.SubmittedByUserId is Guid approvedSubmitter)
             await _notifications.NotifyAsync(approvedSubmitter, "approval",
@@ -213,6 +217,7 @@ public class AdminAlbumsController : ControllerBase
         };
         _db.Albums.Add(album);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncAlbumAsync(album.Id, cascadeTracks: false, ct);
 
         var created = await _db.Albums.Include(a => a.Artist).FirstAsync(a => a.Id == album.Id, ct);
         return CreatedAtAction(nameof(Get), new { id = album.Id }, _mapper.ToDto(created));
@@ -290,6 +295,7 @@ public class AdminAlbumsController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncAlbumAsync(id, cascadeTracks: titleChanged || artistChanged, ct);
 
         // Reload to get updated artist nav prop
         var updated = await _db.Albums.Include(x => x.Artist).FirstAsync(x => x.Id == id, ct);
@@ -324,6 +330,7 @@ public class AdminAlbumsController : ControllerBase
 
         _db.Albums.Remove(a);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.RemoveAlbumAsync(id, trackIds, ct);
         return NoContent();
     }
 

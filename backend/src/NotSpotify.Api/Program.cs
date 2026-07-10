@@ -216,6 +216,7 @@ else
 var openSearchOptions = builder.Configuration.GetSection("OpenSearch").Get<OpenSearchOptions>() ?? new OpenSearchOptions();
 builder.Services.AddSingleton(openSearchOptions);
 builder.Services.AddSingleton<OpenSearchService>();
+builder.Services.AddScoped<SearchIndexSyncService>();
 
 builder.Services.AddScoped<MediaMapper>();
 builder.Services.AddScoped<AudioDownloadService>();

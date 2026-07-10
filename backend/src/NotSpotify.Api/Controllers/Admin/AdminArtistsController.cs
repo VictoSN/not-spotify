@@ -22,13 +22,15 @@ public class AdminArtistsController : ControllerBase
     private readonly MediaMapper _mapper;
     private readonly IStorageService _storage;
     private readonly TourSyncService _tourSync;
+    private readonly SearchIndexSyncService _searchSync;
 
-    public AdminArtistsController(AppDbContext db, MediaMapper mapper, IStorageService storage, TourSyncService tourSync)
+    public AdminArtistsController(AppDbContext db, MediaMapper mapper, IStorageService storage, TourSyncService tourSync, SearchIndexSyncService searchSync)
     {
         _db = db;
         _mapper = mapper;
         _storage = storage;
         _tourSync = tourSync;
+        _searchSync = searchSync;
     }
 
     /// <summary>Force-refresh cached Ticketmaster tour dates for every artist now (ignores the TTL).</summary>
@@ -65,6 +67,7 @@ public class AdminArtistsController : ControllerBase
         };
         _db.Artists.Add(artist);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncArtistAsync(artist.Id, cascade: false, ct);
         return CreatedAtAction(nameof(Get), new { id = artist.Id }, _mapper.ToDto(artist));
     }
 
@@ -103,6 +106,8 @@ public class AdminArtistsController : ControllerBase
         }
 
         await _db.SaveChangesAsync(ct);
+        // A rename also ripples into the ArtistName field on their track/album docs.
+        await _searchSync.SyncArtistAsync(id, cascade: nameChanged, ct);
         return Ok(_mapper.ToDto(a));
     }
 
@@ -119,6 +124,7 @@ public class AdminArtistsController : ControllerBase
 
         _db.Artists.Remove(a);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.RemoveArtistAsync(id, ct);
         return NoContent();
     }
 

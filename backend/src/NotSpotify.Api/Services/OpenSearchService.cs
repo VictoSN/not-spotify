@@ -22,6 +22,8 @@ public sealed class TrackSearchDoc
     public string AlbumTitle { get; set; } = string.Empty;
     public string? SearchText { get; set; }
     public string? Lyrics { get; set; }
+    /// <summary>Popularity signal blended into ranking (see SearchTracksAsync).</summary>
+    public long PlayCount { get; set; }
 }
 
 public sealed class ArtistSearchDoc
@@ -50,6 +52,8 @@ public sealed class MusicVideoSearchDoc
     public string Id { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string ArtistName { get; set; } = string.Empty;
+    /// <summary>Popularity signal blended into ranking (see SearchMusicVideosAsync).</summary>
+    public long ViewCount { get; set; }
 }
 
 /// <summary>Ranked ID lists returned by <see cref="OpenSearchService.SearchAsync"/>.</summary>
@@ -157,7 +161,8 @@ public sealed class OpenSearchService
                 ArtistName = t.Artist.Name,
                 AlbumTitle = t.Album.Title,
                 SearchText = t.SearchText,
-                Lyrics = t.Lyrics
+                Lyrics = t.Lyrics,
+                PlayCount = t.PlayCount
             })
             .ToListAsync(ct);
 
@@ -183,7 +188,7 @@ public sealed class OpenSearchService
 
         var musicVideos = await db.MusicVideos
             .Include(v => v.Artist)
-            .Select(v => new MusicVideoSearchDoc { Id = v.Id.ToString(), Title = v.Title, ArtistName = v.Artist.Name })
+            .Select(v => new MusicVideoSearchDoc { Id = v.Id.ToString(), Title = v.Title, ArtistName = v.Artist.Name, ViewCount = v.ViewCount })
             .ToListAsync(ct);
 
         await BulkUpsertAsync(TracksIndex, tracks, d => d.Id, ct);
@@ -247,11 +252,43 @@ public sealed class OpenSearchService
         await _client.IndexAsync(doc, i => i.Index(ArtistsIndex).Id(doc.Id), ct);
     }
 
+    public async Task DeleteArtistAsync(Guid id, CancellationToken ct = default)
+    {
+        if (!IsConfigured) return;
+        await _client.DeleteAsync<ArtistSearchDoc>(id.ToString(), d => d.Index(ArtistsIndex), ct);
+    }
+
     public async Task IndexAlbumAsync(AlbumSearchDoc doc, CancellationToken ct = default)
     {
         if (!IsConfigured) return;
         await _client.IndexAsync(doc, i => i.Index(AlbumsIndex).Id(doc.Id), ct);
     }
+
+    public async Task DeleteAlbumAsync(Guid id, CancellationToken ct = default)
+    {
+        if (!IsConfigured) return;
+        await _client.DeleteAsync<AlbumSearchDoc>(id.ToString(), d => d.Index(AlbumsIndex), ct);
+    }
+
+    public async Task IndexMusicVideoAsync(MusicVideoSearchDoc doc, CancellationToken ct = default)
+    {
+        if (!IsConfigured) return;
+        await _client.IndexAsync(doc, i => i.Index(MusicVideosIndex).Id(doc.Id), ct);
+    }
+
+    public async Task DeleteMusicVideoAsync(Guid id, CancellationToken ct = default)
+    {
+        if (!IsConfigured) return;
+        await _client.DeleteAsync<MusicVideoSearchDoc>(id.ToString(), d => d.Index(MusicVideosIndex), ct);
+    }
+
+    /// <summary>Bulk upserts used by the live-sync cascade (e.g. artist rename touching all their tracks).</summary>
+    public Task IndexTracksAsync(List<TrackSearchDoc> docs, CancellationToken ct = default)
+        => IsConfigured ? BulkUpsertAsync(TracksIndex, docs, d => d.Id, ct) : Task.CompletedTask;
+
+    /// <inheritdoc cref="IndexTracksAsync"/>
+    public Task IndexAlbumsAsync(List<AlbumSearchDoc> docs, CancellationToken ct = default)
+        => IsConfigured ? BulkUpsertAsync(AlbumsIndex, docs, d => d.Id, ct) : Task.CompletedTask;
 
     // ── Search ────────────────────────────────────────────────────────────────
 
@@ -273,22 +310,51 @@ public sealed class OpenSearchService
         return result;
     }
 
+    /// <summary>
+    /// Two-clause text match shared by every entity search:
+    ///  - best_fields + fuzziness   → whole-word matches with typo tolerance ("vampre" → vampire)
+    ///  - bool_prefix               → the last term matches as a prefix ("vamp" → vampire while typing)
+    /// Either clause alone qualifies a hit; whichever scores higher wins (bool should).
+    /// </summary>
+    private static QueryContainer TextQuery<T>(
+        QueryContainerDescriptor<T> q,
+        string query,
+        Func<FieldsDescriptor<T>, IPromise<Fields>> fields) where T : class
+    {
+        return q.Bool(b => b
+            .Should(
+                sh => sh.MultiMatch(mm => mm
+                    .Fields(fields)
+                    .Query(query)
+                    .Type(TextQueryType.BestFields)
+                    .Fuzziness(Fuzziness.Auto)),
+                sh => sh.MultiMatch(mm => mm
+                    .Fields(fields)
+                    .Query(query)
+                    .Type(TextQueryType.BoolPrefix)))
+            .MinimumShouldMatch(1));
+    }
+
     private async Task SearchTracksAsync(string query, SearchIds result, CancellationToken ct)
     {
+        // Popularity blend: text relevance × log10(2 + playCount). Unplayed tracks keep a
+        // small constant factor (≈0.3) instead of zeroing out; a well-played track earns a
+        // single-digit multiplier — enough to win ambiguous/short queries without letting
+        // popularity drown out a precise title match.
         var response = await _client.SearchAsync<TrackSearchDoc>(s => s
             .Index(TracksIndex)
             .Size(20)
-            .Query(q => q.MultiMatch(mm => mm
-                .Fields(f => f
+            .Query(q => q.FunctionScore(fs => fs
+                .Query(fq => TextQuery(fq, query, f => f
                     .Field(d => d.Title, boost: 3)
                     .Field(d => d.ArtistName, boost: 2)
                     .Field(d => d.AlbumTitle, boost: 1.5)
-                    .Field(d => d.SearchText)
-                )
-                .Query(query)
-                .Type(TextQueryType.BestFields)
-                .Fuzziness(Fuzziness.Auto)
-            )), ct);
+                    .Field(d => d.SearchText)))
+                .BoostMode(FunctionBoostMode.Multiply)
+                .Functions(funcs => funcs.FieldValueFactor(fvf => fvf
+                    .Field(d => d.PlayCount)
+                    .Modifier(FieldValueFactorModifier.Log2P)
+                    .Missing(0))))), ct);
 
         if (!response.IsValid)
         {
@@ -320,12 +386,7 @@ public sealed class OpenSearchService
         var response = await _client.SearchAsync<ArtistSearchDoc>(s => s
             .Index(ArtistsIndex)
             .Size(20)
-            .Query(q => q.MultiMatch(mm => mm
-                .Fields(f => f.Field(d => d.Name, boost: 2).Field(d => d.SearchText))
-                .Query(query)
-                .Type(TextQueryType.BestFields)
-                .Fuzziness(Fuzziness.Auto)
-            )), ct);
+            .Query(q => TextQuery(q, query, f => f.Field(d => d.Name, boost: 2).Field(d => d.SearchText))), ct);
 
         if (response.IsValid)
             result.ArtistIds = response.Hits.Select(h => Guid.Parse(h.Source.Id)).ToList();
@@ -338,12 +399,7 @@ public sealed class OpenSearchService
         var response = await _client.SearchAsync<AlbumSearchDoc>(s => s
             .Index(AlbumsIndex)
             .Size(20)
-            .Query(q => q.MultiMatch(mm => mm
-                .Fields(f => f.Field(d => d.Title, boost: 2).Field(d => d.ArtistName, boost: 1.5).Field(d => d.SearchText))
-                .Query(query)
-                .Type(TextQueryType.BestFields)
-                .Fuzziness(Fuzziness.Auto)
-            )), ct);
+            .Query(q => TextQuery(q, query, f => f.Field(d => d.Title, boost: 2).Field(d => d.ArtistName, boost: 1.5).Field(d => d.SearchText))), ct);
 
         if (response.IsValid)
             result.AlbumIds = response.Hits.Select(h => Guid.Parse(h.Source.Id)).ToList();
@@ -356,12 +412,7 @@ public sealed class OpenSearchService
         var response = await _client.SearchAsync<PlaylistSearchDoc>(s => s
             .Index(PlaylistsIndex)
             .Size(20)
-            .Query(q => q.MultiMatch(mm => mm
-                .Fields(f => f.Field(d => d.Name))
-                .Query(query)
-                .Type(TextQueryType.BestFields)
-                .Fuzziness(Fuzziness.Auto)
-            )), ct);
+            .Query(q => TextQuery(q, query, f => f.Field(d => d.Name))), ct);
 
         if (response.IsValid)
             result.PlaylistIds = response.Hits.Select(h => Guid.Parse(h.Source.Id)).ToList();
@@ -371,15 +422,17 @@ public sealed class OpenSearchService
 
     private async Task SearchMusicVideosAsync(string query, SearchIds result, CancellationToken ct)
     {
+        // Same popularity blend as tracks, driven by view count.
         var response = await _client.SearchAsync<MusicVideoSearchDoc>(s => s
             .Index(MusicVideosIndex)
             .Size(10)
-            .Query(q => q.MultiMatch(mm => mm
-                .Fields(f => f.Field(d => d.Title, boost: 2).Field(d => d.ArtistName))
-                .Query(query)
-                .Type(TextQueryType.BestFields)
-                .Fuzziness(Fuzziness.Auto)
-            )), ct);
+            .Query(q => q.FunctionScore(fs => fs
+                .Query(fq => TextQuery(fq, query, f => f.Field(d => d.Title, boost: 2).Field(d => d.ArtistName)))
+                .BoostMode(FunctionBoostMode.Multiply)
+                .Functions(funcs => funcs.FieldValueFactor(fvf => fvf
+                    .Field(d => d.ViewCount)
+                    .Modifier(FieldValueFactorModifier.Log2P)
+                    .Missing(0))))), ct);
 
         if (response.IsValid)
             result.MusicVideoIds = response.Hits.Select(h => Guid.Parse(h.Source.Id)).ToList();

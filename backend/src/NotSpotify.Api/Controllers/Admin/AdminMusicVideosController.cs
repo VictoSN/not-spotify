@@ -19,19 +19,22 @@ public class AdminMusicVideosController : ControllerBase
     private readonly NotificationService _notifications;
     private readonly IStorageService _storage;
     private readonly ILogger<AdminMusicVideosController> _logger;
+    private readonly SearchIndexSyncService _searchSync;
 
     public AdminMusicVideosController(
         AppDbContext db,
         MediaMapper mapper,
         NotificationService notifications,
         IStorageService storage,
-        ILogger<AdminMusicVideosController> logger)
+        ILogger<AdminMusicVideosController> logger,
+        SearchIndexSyncService searchSync)
     {
         _db = db;
         _mapper = mapper;
         _notifications = notifications;
         _storage = storage;
         _logger = logger;
+        _searchSync = searchSync;
     }
 
     private IQueryable<MusicVideo> BaseQuery() => _db.MusicVideos.Include(v => v.Artist);
@@ -90,6 +93,7 @@ public class AdminMusicVideosController : ControllerBase
         else if (req.TrackId.HasValue) v.TrackId = req.TrackId.Value;
 
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncMusicVideoAsync(id, ct);
         return Ok(await _mapper.ToDtoAsync(v, ct));
     }
 
@@ -103,6 +107,7 @@ public class AdminMusicVideosController : ControllerBase
         await DeleteKeyQuietlyAsync(v.ThumbnailKey, ct);
         _db.MusicVideos.Remove(v);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.RemoveMusicVideoAsync(id, ct);
         return NoContent();
     }
 
@@ -123,6 +128,7 @@ public class AdminMusicVideosController : ControllerBase
             ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncMusicVideoAsync(id, ct);
 
         if (v.SubmittedByUserId is Guid approvedBy)
             await _notifications.NotifyAsync(approvedBy, "approval",

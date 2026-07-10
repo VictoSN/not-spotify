@@ -148,6 +148,13 @@ internal static class TestHelpers
         return (hub, proxy);
     }
 
+    /// <summary>A SearchIndexSyncService over an UNCONFIGURED OpenSearch client — every call no-ops.</summary>
+    public static SearchIndexSyncService NewSearchSync(AppDbContext db)
+    {
+        var search = new OpenSearchService(new OpenSearchOptions(), NullLogger<OpenSearchService>.Instance);
+        return new SearchIndexSyncService(db, search, NullLogger<SearchIndexSyncService>.Instance);
+    }
+
     /// <summary>A real NotificationService over the InMemory db + a no-op hub.</summary>
     public static NotificationService NewNotifications(AppDbContext db)
     {

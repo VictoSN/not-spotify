@@ -23,17 +23,20 @@ public class AdminTracksController : ControllerBase
     private readonly MediaMapper _mapper;
     private readonly NotificationService _notifications;
     private readonly AudioWaveformService _waveforms;
+    private readonly SearchIndexSyncService _searchSync;
 
     public AdminTracksController(
         AppDbContext db,
         MediaMapper mapper,
         NotificationService notifications,
-        AudioWaveformService waveforms)
+        AudioWaveformService waveforms,
+        SearchIndexSyncService searchSync)
     {
         _db = db;
         _mapper = mapper;
         _notifications = notifications;
         _waveforms = waveforms;
+        _searchSync = searchSync;
     }
 
     [HttpGet]
@@ -95,6 +98,7 @@ public class AdminTracksController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await SyncAlbumStatsAsync(req.AlbumId, ct);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncTrackAsync(track.Id, ct);
 
         var created = await BaseQuery().FirstAsync(t => t.Id == track.Id, ct);
         return CreatedAtAction(nameof(Get), new { id = track.Id }, await _mapper.ToDtoAsync(created, ct));
@@ -148,6 +152,7 @@ public class AdminTracksController : ControllerBase
         if (req.AlbumId is not null && req.AlbumId.Value != oldAlbumId)
             await SyncAlbumStatsAsync(req.AlbumId.Value, ct);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncTrackAsync(id, ct);
 
         var updated = await BaseQuery().FirstAsync(x => x.Id == id, ct);
         return Ok(await _mapper.ToDtoAsync(updated, ct));
@@ -167,6 +172,7 @@ public class AdminTracksController : ControllerBase
         await _db.SaveChangesAsync(ct);
         await SyncAlbumStatsAsync(albumId, ct);
         await _db.SaveChangesAsync(ct);
+        await _searchSync.RemoveTrackAsync(id, ct);
 
         return NoContent();
     }
@@ -227,6 +233,7 @@ public class AdminTracksController : ControllerBase
             ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncTrackAsync(id, ct);
 
         if (t.SubmittedByUserId is Guid approvedBy)
             await _notifications.NotifyAsync(approvedBy, "approval",
@@ -264,6 +271,7 @@ public class AdminTracksController : ControllerBase
             ReviewedByName = User.FindFirstValue("name"), ReviewedAt = DateTime.UtcNow,
         });
         await _db.SaveChangesAsync(ct);
+        await _searchSync.SyncTrackAsync(id, ct); // status is no longer approved → drops it from the index
 
         if (t.SubmittedByUserId is Guid rejectedBy)
             await _notifications.NotifyAsync(rejectedBy, "rejection",

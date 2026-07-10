@@ -243,7 +243,8 @@ public class CreatorMediaControllerTests
         Assert.IsType<NotFoundResult>((await publicController.GetByTrack(track.Id)).Result);
 
         var adminController = new AdminMusicVideosController(
-                db, mapper, TestHelpers.NewNotifications(db), storage.Object, NullLogger<AdminMusicVideosController>.Instance)
+                db, mapper, TestHelpers.NewNotifications(db), storage.Object, NullLogger<AdminMusicVideosController>.Instance,
+                TestHelpers.NewSearchSync(db))
             .AsUser(Guid.NewGuid(), "Admin");
         Assert.IsType<NoContentResult>(await adminController.Approve(dto.Id, null));
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Track } from '@/types/track'
 import {
   OFFLINE_CHANGE_EVENT,
+  canUseOfflineAudio,
   collectionKey,
   isCollectionSaved,
   isOfflineSupported,
@@ -27,7 +28,7 @@ export function useOfflineCollection(
 ) {
   const key = collectionKey(meta.kind, meta.id)
   const desktopOnly = !isDesktop()
-  const available = isOfflineSupported() && !desktopOnly
+  const available = isOfflineSupported() && !desktopOnly && canUseOfflineAudio()
   const [saved, setSaved] = useState(() => isCollectionSaved(key))
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)

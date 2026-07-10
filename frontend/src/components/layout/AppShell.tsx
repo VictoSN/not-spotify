@@ -231,7 +231,10 @@ export function AppShell() {
                 just pushes the bottom nav / mini-player far down the scroll. */}
             {!pageLoading && !isMobile && !isMessagesRoute && <AppFooter />}
           </div>
-          {!karaokeVisible && (
+          {/* Chat keeps its touch-scrollable thread/list panes but intentionally has
+              no visible rail on phones. The app-wide overlay thumb is useful for
+              long document pages, but reads as a duplicate scrollbar in mobile chat. */}
+          {!karaokeVisible && !(isMobile && isMessagesRoute) && (
             <OverlayScrollbar
               scrollRef={mainScrollRef}
               scrollTarget={isMobile && isMessagesRoute ? pageScrollTarget : null}

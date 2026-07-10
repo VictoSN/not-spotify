@@ -708,8 +708,7 @@ html.overlay-scrollbar-grabbing * {
   -webkit-touch-callout: none !important;
 }
 
-/* Messages uses the shell's single full-height overlay scrollbar on mobile.
-   Keep the nested pane natively scrollable while hiding only its duplicate bar. */
+/* Keep mobile chat panes touch-scrollable while hiding their native scrollbar. */
 @media (max-width: 768px) {
   .mobile-page-scroll-source {
     -ms-overflow-style: none;

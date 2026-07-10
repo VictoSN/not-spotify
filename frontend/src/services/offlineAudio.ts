@@ -2,7 +2,8 @@ import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
 import type { Playlist } from '@/types/playlist'
 import { isDesktop } from '@/utils/platform'
-import { convertFileSrc } from '@tauri-apps/api/core'
+import { useAuthStore } from '@/stores/authStore'
+import { convertFileSrc, invoke } from '@tauri-apps/api/core'
 import { appLocalDataDir, join } from '@tauri-apps/api/path'
 import { BaseDirectory, mkdir, remove, writeFile } from '@tauri-apps/plugin-fs'
 
@@ -60,6 +61,10 @@ export interface OfflineEntry {
   owners: string[]
   /** Desktop only: absolute path of the saved file, for convertFileSrc. */
   path?: string
+  /** Desktop only: file is AES-GCM encrypted and served by the private native protocol. */
+  encrypted?: boolean
+  /** Account that holds the offline licence for this local entry. */
+  accountId?: string
 }
 
 export interface OfflineCollection {
@@ -72,6 +77,8 @@ export interface OfflineCollection {
   coverUrl: string
   trackIds: string[]
   savedAt: number
+  /** Account that holds the offline licence for this saved collection. */
+  accountId?: string
 }
 
 export const collectionKey = (kind: OfflineCollectionKind, id: string) => `${kind}:${id}`
@@ -117,7 +124,7 @@ export function isOfflineSupported(): boolean {
   )
 }
 
-function readIndex(): OfflineEntry[] {
+function readAllIndex(): OfflineEntry[] {
   try {
     const raw = localStorage.getItem(INDEX_KEY)
     const arr = raw ? (JSON.parse(raw) as OfflineEntry[]) : []
@@ -131,13 +138,35 @@ function readIndex(): OfflineEntry[] {
   }
 }
 
-function readCollections(): OfflineCollection[] {
+function readAllCollections(): OfflineCollection[] {
   try {
     const raw = localStorage.getItem(COLLECTIONS_KEY)
     return raw ? (JSON.parse(raw) as OfflineCollection[]) : []
   } catch {
     return []
   }
+}
+
+function currentOfflineAccountId(): string | null {
+  return useAuthStore.getState().user?.id ?? null
+}
+
+/** A revoked/downgraded account must not unlock its locally-held media. */
+export function canUseOfflineAudio(): boolean {
+  const user = useAuthStore.getState().user
+  if (!isDesktop() || user?.plan !== 'premium') return false
+  const periodEnd = user.subscriptionCurrentPeriodEnd
+  return !periodEnd || Number.isNaN(Date.parse(periodEnd)) || Date.parse(periodEnd) > Date.now()
+}
+
+function readIndex(): OfflineEntry[] {
+  const accountId = currentOfflineAccountId()
+  return accountId ? readAllIndex().filter((entry) => entry.accountId === accountId) : []
+}
+
+function readCollections(): OfflineCollection[] {
+  const accountId = currentOfflineAccountId()
+  return accountId ? readAllCollections().filter((collection) => collection.accountId === accountId) : []
 }
 
 // ── Cover-art cache ─────────────────────────────────────────────────────────
@@ -319,6 +348,18 @@ let savedPaths = new Map<string, string>(
   readIndex().flatMap((e) => (e.path ? [[e.id, e.path] as [string, string]] : [])),
 )
 
+// The index itself contains entries for every desktop account. Keep the fast,
+// synchronous playback lookup scoped to the active account as login, logout,
+// and plan changes happen.
+useAuthStore.subscribe(() => {
+  const entries = readIndex()
+  savedIds = new Set(entries.map((entry) => entry.id))
+  savedPaths = new Map(entries.flatMap((entry) => (
+    entry.path ? [[entry.id, entry.path] as [string, string]] : []
+  )))
+  dispatchChange()
+})
+
 function dispatchChange() {
   try {
     window.dispatchEvent(new CustomEvent(OFFLINE_CHANGE_EVENT))
@@ -328,21 +369,29 @@ function dispatchChange() {
 }
 
 function writeIndex(entries: OfflineEntry[]) {
+  const accountId = currentOfflineAccountId()
+  if (!accountId) return
+  const scoped = entries.map((entry) => ({ ...entry, accountId }))
   try {
-    localStorage.setItem(INDEX_KEY, JSON.stringify(entries))
+    const otherAccounts = readAllIndex().filter((entry) => entry.accountId !== accountId)
+    localStorage.setItem(INDEX_KEY, JSON.stringify([...otherAccounts, ...scoped]))
   } catch {
     /* quota exceeded or storage disabled — ignore */
   }
-  savedIds = new Set(entries.map((e) => e.id))
+  savedIds = new Set(scoped.map((e) => e.id))
   savedPaths = new Map(
-    entries.flatMap((e) => (e.path ? [[e.id, e.path] as [string, string]] : [])),
+    scoped.flatMap((e) => (e.path ? [[e.id, e.path] as [string, string]] : [])),
   )
   dispatchChange()
 }
 
 function writeCollections(collections: OfflineCollection[]) {
+  const accountId = currentOfflineAccountId()
+  if (!accountId) return
+  const scoped = collections.map((collection) => ({ ...collection, accountId }))
   try {
-    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections))
+    const otherAccounts = readAllCollections().filter((collection) => collection.accountId !== accountId)
+    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify([...otherAccounts, ...scoped]))
   } catch {
     /* ignore */
   }
@@ -447,12 +496,18 @@ export function offlineTotalBytes(): number {
  * and side-effect-free so the audio engine can call it inline.
  */
 export function resolvePlaybackSrc(track: Track): string {
+  // A Free account can stream normally, but may never decrypt locally saved audio.
+  if (!canUseOfflineAudio()) return track.audioUrl
   if (!savedIds.has(track.id)) return track.audioUrl
 
-  // Desktop: stream the on-disk file through Tauri's asset protocol.
+  // New desktop saves are encrypted and can only be decrypted by the native
+  // protocol while running under this OS user. Legacy entries remain readable
+  // so an upgrade does not silently discard existing downloads.
   const path = savedPaths.get(track.id)
   if (isDesktop() && path) {
     try {
+      const entry = readIndex().find((e) => e.id === track.id)
+      if (entry?.encrypted) return `offline-audio://localhost/${path.replace(/^offline\//, '')}`
       return convertFileSrc(path)
     } catch {
       return track.audioUrl
@@ -473,18 +528,8 @@ export function resolvePlaybackSrc(track: Track): string {
 }
 
 /** Content-Type → file extension for the saved-on-disk name. */
-function extForType(contentType: string): string {
-  const ct = contentType.toLowerCase()
-  if (ct.includes('mpeg') || ct.includes('mp3')) return 'mp3'
-  if (ct.includes('mp4') || ct.includes('m4a') || ct.includes('aac')) return 'm4a'
-  if (ct.includes('ogg') || ct.includes('opus')) return 'ogg'
-  if (ct.includes('wav')) return 'wav'
-  if (ct.includes('flac')) return 'flac'
-  return 'mp3'
-}
-
 /** Merge a new/updated track entry into the index, unioning its owners. */
-function upsertEntry(track: Track, bytes: number, path: string | undefined, owner: string) {
+function upsertEntry(track: Track, bytes: number, path: string | undefined, owner: string, encrypted = false) {
   const entries = readIndex()
   const existing = entries.find((e) => e.id === track.id)
   const owners = new Set(existing?.owners ?? [])
@@ -500,6 +545,7 @@ function upsertEntry(track: Track, bytes: number, path: string | undefined, owne
     savedAt: existing?.savedAt ?? Date.now(),
     owners: [...owners],
     path: path ?? existing?.path,
+    encrypted: encrypted || existing?.encrypted,
   }
   writeIndex([...entries.filter((e) => e.id !== track.id), next])
 }
@@ -518,7 +564,7 @@ async function deleteFileForEntry(entry: OfflineEntry) {
   if (isDesktop()) {
     if (entry.path) {
       try {
-        await remove(entry.path)
+        await remove(entry.path, entry.encrypted ? { baseDir: BaseDirectory.AppLocalData } : undefined)
       } catch {
         /* already gone */
       }
@@ -556,13 +602,15 @@ async function downloadTrackTauri(track: Track, owner: string): Promise<void> {
   const bytes = new Uint8Array(await res.arrayBuffer())
   if (bytes.byteLength === 0) throw new Error('Downloaded file was empty.')
 
-  const file = `${track.id}.${extForType(res.headers.get('Content-Type') || '')}`
-  const rel = `${OFFLINE_DIR}/${file}`
-  await mkdir(OFFLINE_DIR, { baseDir: BaseDirectory.AppLocalData, recursive: true })
-  await writeFile(rel, bytes, { baseDir: BaseDirectory.AppLocalData })
-
-  const abs = await join(await appLocalDataDir(), OFFLINE_DIR, file)
-  upsertEntry(track, bytes.byteLength, abs, owner)
+  const accountId = currentOfflineAccountId()
+  if (!accountId) throw new Error('Sign in with Premium to save music for offline listening.')
+  const rel = `${OFFLINE_DIR}/${accountId}-${track.id}.nsa`
+  await invoke('save_offline_audio', {
+    path: rel,
+    mime: res.headers.get('Content-Type') || 'audio/mpeg',
+    bytes,
+  })
+  upsertEntry(track, bytes.byteLength, rel, owner, true)
 }
 
 async function downloadTrackCache(track: Track, owner: string): Promise<void> {
@@ -605,6 +653,7 @@ async function saveTrackWithOwner(track: Track, owner: string): Promise<void> {
 // ── Public API ──────────────────────────────────────────────────────────────
 
 export async function saveTrackOffline(track: Track): Promise<void> {
+  if (!canUseOfflineAudio()) throw new Error('A Premium subscription is required for offline listening.')
   if (!isOfflineSupported()) throw new Error('Offline storage is not supported here.')
   return saveTrackWithOwner(track, INDIVIDUAL_OWNER)
 }
@@ -632,6 +681,7 @@ export async function saveCollectionOffline(
   tracks: Track[],
   onProgress?: (done: number, total: number) => void,
 ): Promise<{ saved: number; failed: number }> {
+  if (!canUseOfflineAudio()) throw new Error('A Premium subscription is required for offline listening.')
   if (!isOfflineSupported()) throw new Error('Offline storage is not supported here.')
   const key = collectionKey(meta.kind, meta.id)
   await cacheCover(meta.coverUrl)

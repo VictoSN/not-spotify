@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Track } from '@/types/track'
 import {
   OFFLINE_CHANGE_EVENT,
+  canUseOfflineAudio,
   isOfflineSupported,
   isTrackSavedIndividually,
   removeTrackOffline,
@@ -21,7 +22,7 @@ import { isDesktop } from '@/utils/platform'
  */
 export function useOfflineTrack(track: Track) {
   const desktopOnly = !isDesktop()
-  const available = isOfflineSupported() && !desktopOnly
+  const available = isOfflineSupported() && !desktopOnly && canUseOfflineAudio()
   // Kept for backwards-compatible call sites; equals `available`.
   const supported = available
   const [saved, setSaved] = useState(() => isTrackSavedIndividually(track.id))

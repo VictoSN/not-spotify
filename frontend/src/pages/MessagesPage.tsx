@@ -258,8 +258,8 @@ export function MessagesPage() {
       : null)
 
   // Mobile keeps the compact header and composer fixed around a nested message
-  // pane. Register the visible pane so AppShell's one full-height page scrollbar
-  // accurately mirrors and controls the conversation list or thread.
+  // pane. Register the visible pane for the shell's scroll coordination; the
+  // pane itself retains touch scrolling with its native bar hidden.
   useEffect(() => {
     const setPageScrollTarget = outletContext?.setPageScrollTarget
     if (!setPageScrollTarget || !isMobile) return

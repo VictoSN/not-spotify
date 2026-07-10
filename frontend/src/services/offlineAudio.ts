@@ -518,7 +518,11 @@ export function resolvePlaybackSrc(track: Track): string {
   if (isDesktop() && path) {
     try {
       const entry = readIndex().find((e) => e.id === track.id)
-      if (entry?.encrypted) return `offline-audio://localhost/${path.replace(/^offline\//, '')}`
+      // Custom protocols are served over `<scheme>://localhost` on macOS/Linux but
+      // `http://<scheme>.localhost` on Windows/WebView2 — let convertFileSrc build
+      // the platform-correct URL (the same helper the cover art already relies on)
+      // instead of hardcoding the non-Windows form.
+      if (entry?.encrypted) return convertFileSrc(path.replace(/^offline\//, ''), 'offline-audio')
       return convertFileSrc(path)
     } catch {
       return track.audioUrl

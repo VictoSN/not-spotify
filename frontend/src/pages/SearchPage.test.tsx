@@ -188,12 +188,17 @@ describe('SearchPage result helpers', () => {
       { kind: 'track', id: track.id, item: track },
       { kind: 'artist', id: artist.id, item: artist },
       { kind: 'musicVideo', id: video.id, item: video },
+      { kind: 'lyrics', id: lyricTrack.id, item: lyricTrack },
     ])
 
     expect(screen.getByText('Song')).toBeInTheDocument()
     expect(screen.getAllByText('Artist').length).toBeGreaterThan(0)
     expect(screen.getByText('Music video')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Save to library' })).toHaveLength(2)
+    // The lyric match renders with its own badge and title (the "Found in
+    // lyrics" section in the All tab is built from these rows).
+    expect(screen.getByText('Lyrics match')).toBeInTheDocument()
+    expect(screen.getByText('Hidden Line')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Save to library' })).toHaveLength(3)
     expect(screen.getByRole('button', { name: 'Follow' })).toBeInTheDocument()
   })
 })

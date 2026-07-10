@@ -255,6 +255,10 @@ export function SearchPage() {
 
   const rows = useMemo(() => (results ? buildSearchRows(results, activeTab) : []), [results, activeTab])
   const songRows = useMemo(() => (results ? buildSongRows(results) : []), [results])
+  const lyricRows = useMemo<SearchRow[]>(
+    () => (results ? (results.tracksByLyrics ?? []).map((item) => ({ kind: 'lyrics' as const, id: item.id, item })) : []),
+    [results],
+  )
   const featureCards = useMemo(() => (results ? buildFeatureCards(results) : []), [results])
   const matchedGenres = useMemo(() => filterSearchGenres(genres, trimmed), [genres, trimmed])
   const topResult = useMemo(() => (results ? pickTopSearchResult(results, trimmed) : null), [results, trimmed])
@@ -371,6 +375,7 @@ export function SearchPage() {
                   query={trimmed}
                   featureCards={featureCards}
                   rows={rows}
+                  lyricRows={lyricRows}
                 />
               )}
 
@@ -383,7 +388,7 @@ export function SearchPage() {
               {activeTab === 'profiles' && <PeopleGrid rows={rows.filter((row) => row.kind === 'profile')} />}
               {activeTab === 'genres' && <GenreResultsGrid genres={matchedGenres} />}
 
-              {isTabEmpty(activeTab, rows, songRows, matchedGenres) && (
+              {isTabEmpty(activeTab, rows, songRows, matchedGenres, lyricRows) && (
                 <div className="py-16 text-center">
                   <MagnifyingGlassIcon className="mx-auto mb-4 h-16 w-16 text-muted" />
                   <p className="text-lg font-normal text-primary">{t('search.noResults', { query })}</p>
@@ -398,8 +403,8 @@ export function SearchPage() {
   )
 }
 
-function isTabEmpty(tab: Tab, rows: SearchRow[], songRows: SongTableRow[], genres: Genre[]) {
-  if (tab === 'all') return rows.length === 0
+function isTabEmpty(tab: Tab, rows: SearchRow[], songRows: SongTableRow[], genres: Genre[], lyricRows: SearchRow[]) {
+  if (tab === 'all') return rows.length === 0 && lyricRows.length === 0
   if (tab === 'songs') return songRows.length === 0
   if (tab === 'genres') return genres.length === 0
   return rows.length === 0
@@ -410,11 +415,13 @@ function AllResultsView({
   query,
   featureCards,
   rows,
+  lyricRows,
 }: {
   topResult: TopSearchResult | null
   query: string
   featureCards: FeatureCardRow[]
   rows: SearchRow[]
+  lyricRows: SearchRow[]
 }) {
   const { t } = useTranslation()
   const title = topResult
@@ -444,6 +451,17 @@ function AllResultsView({
         <section>
           <div className="flex flex-col gap-1">
             {rows.slice(0, 24).map((row) => (
+              <SearchResultRow key={`${row.kind}-${row.id}`} row={row} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {lyricRows.length > 0 && (
+        <section className="space-y-4">
+          <h2 className="text-2xl font-normal text-primary">{t('search.section.foundInLyrics')}</h2>
+          <div className="flex flex-col gap-1">
+            {lyricRows.slice(0, 12).map((row) => (
               <SearchResultRow key={`${row.kind}-${row.id}`} row={row} />
             ))}
           </div>

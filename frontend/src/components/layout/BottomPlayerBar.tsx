@@ -6,6 +6,7 @@ import {
   AdjustmentsHorizontalIcon,
   MoonIcon,
 } from '@heroicons/react/24/outline'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import { PlayIcon, PauseIcon, MoonIcon as MoonSolid } from '@heroicons/react/24/solid'
 import { MicVocal } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -36,6 +37,20 @@ import { cn } from '@/utils/cn'
 
 const RATES = [1, 1.25, 1.5, 2, 0.75]
 const TIMER_OPTIONS = [15, 30, 45, 60]
+const MOBILE_SWIPE_SLOP_PX = 8
+const MOBILE_SWIPE_MIN_FLING_PX = 28
+const MOBILE_SWIPE_FLING_VELOCITY = 0.55
+const MOBILE_SWIPE_EXIT_MS = 220
+
+type MobileSwipeGesture = {
+  pointerId: number
+  startX: number
+  startY: number
+  lastX: number
+  lastTime: number
+  velocityX: number
+  axis: 'pending' | 'horizontal' | 'vertical'
+}
 
 // Inline SVG: rectangle with small inset rectangle â€” standard PiP icon
 function PipIcon({ className }: { className?: string }) {
@@ -86,6 +101,16 @@ export function BottomPlayerBar() {
   const [eqSettings, setEqSettings] = useState(getEqualizerSettings)
   const eqRowRef = useRef<HTMLButtonElement>(null)
   const sleepRowRef = useRef<HTMLButtonElement>(null)
+  const mobilePlayerRef = useRef<HTMLDivElement>(null)
+  const mobileSwipeRef = useRef<MobileSwipeGesture | null>(null)
+  const mobileDismissTimerRef = useRef<number | null>(null)
+  const mobileClickResetTimerRef = useRef<number | null>(null)
+  const suppressMobileClickRef = useRef(false)
+  const [mobileSwipeX, setMobileSwipeX] = useState(0)
+  const [isMobileSwiping, setIsMobileSwiping] = useState(false)
+  const [isMobileSwipeExiting, setIsMobileSwipeExiting] = useState(false)
+  const [dismissedMediaKey, setDismissedMediaKey] = useState<string | null>(null)
+  const [mobileStateMediaKey, setMobileStateMediaKey] = useState<string | null>(null)
 
   // Sync EQ settings from other tabs / localStorage changes
   useEffect(() => {
@@ -147,6 +172,9 @@ export function BottomPlayerBar() {
   const activeCreator = isVideoMode ? currentVideo?.artist.name : currentTrack?.artist.name
   const activeImage = isVideoMode ? currentVideo?.thumbnailUrl : currentTrack?.album.coverUrl
   const activeImageAlt = isVideoMode ? currentVideo?.title : currentTrack?.album.title
+  const activeMediaKey = isVideoMode
+    ? (currentVideo ? `video:${currentVideo.id}` : null)
+    : (currentTrack ? `track:${currentTrack.id}` : null)
 
   // Mobile mini-player picks up the artwork's dominant hue (Spotify-style). Called
   // unconditionally (hook rules) though only the mobile branch below consumes it.
@@ -158,16 +186,176 @@ export function BottomPlayerBar() {
   const unlikeTrack = useLibraryStore((s) => s.unlikeTrack)
   const isCurrentLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false
 
+  // A dismissed mini-player stays gone while this exact item is active, but the
+  // next track/video gets a fresh card. Playback itself is deliberately left
+  // untouched: this is a visual dismissal, not a hidden stop button.
+  if (mobileStateMediaKey !== activeMediaKey) {
+    setMobileStateMediaKey(activeMediaKey)
+    setDismissedMediaKey(null)
+    setMobileSwipeX(0)
+    setIsMobileSwiping(false)
+    setIsMobileSwipeExiting(false)
+  }
+
+  useEffect(() => {
+    mobileSwipeRef.current = null
+    suppressMobileClickRef.current = false
+    return () => {
+      if (mobileDismissTimerRef.current != null) {
+        window.clearTimeout(mobileDismissTimerRef.current)
+        mobileDismissTimerRef.current = null
+      }
+      if (mobileClickResetTimerRef.current != null) {
+        window.clearTimeout(mobileClickResetTimerRef.current)
+        mobileClickResetTimerRef.current = null
+      }
+    }
+  }, [activeMediaKey])
+
+  const resetMobileSwipe = () => {
+    mobileSwipeRef.current = null
+    setIsMobileSwiping(false)
+    setIsMobileSwipeExiting(false)
+    setMobileSwipeX(0)
+  }
+
+  const releaseMobilePointer = (element: HTMLDivElement, pointerId: number) => {
+    if (element.hasPointerCapture?.(pointerId)) element.releasePointerCapture(pointerId)
+  }
+
+  const armMobileClickReset = () => {
+    if (mobileClickResetTimerRef.current != null) {
+      window.clearTimeout(mobileClickResetTimerRef.current)
+    }
+    // A browser emits the compatibility click immediately after pointerup. Keep
+    // suppression through that click, then clear it before the next real tap.
+    mobileClickResetTimerRef.current = window.setTimeout(() => {
+      suppressMobileClickRef.current = false
+      mobileClickResetTimerRef.current = null
+    }, 0)
+  }
+
+  const handleMobilePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.isPrimary === false || event.button !== 0 || isMobileSwipeExiting) return
+    if (mobileDismissTimerRef.current != null) window.clearTimeout(mobileDismissTimerRef.current)
+    mobileSwipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      lastX: event.clientX,
+      lastTime: event.timeStamp,
+      velocityX: 0,
+      axis: 'pending',
+    }
+    suppressMobileClickRef.current = false
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const handleMobilePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = mobileSwipeRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - gesture.startX
+    const deltaY = event.clientY - gesture.startY
+    if (gesture.axis === 'pending') {
+      if (Math.hypot(deltaX, deltaY) < MOBILE_SWIPE_SLOP_PX) return
+      gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical'
+    }
+
+    if (gesture.axis !== 'horizontal') return
+
+    event.preventDefault()
+    suppressMobileClickRef.current = true
+    setIsMobileSwiping(true)
+    setMobileSwipeX(Math.max(0, deltaX))
+
+    const elapsed = event.timeStamp - gesture.lastTime
+    if (elapsed > 0) gesture.velocityX = (event.clientX - gesture.lastX) / elapsed
+    gesture.lastX = event.clientX
+    gesture.lastTime = event.timeStamp
+  }
+
+  const handleMobilePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = mobileSwipeRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+    releaseMobilePointer(event.currentTarget, event.pointerId)
+    mobileSwipeRef.current = null
+
+    if (gesture.axis !== 'horizontal') {
+      resetMobileSwipe()
+      return
+    }
+
+    const distance = Math.max(0, event.clientX - gesture.startX)
+    const cardWidth = mobilePlayerRef.current?.getBoundingClientRect().width || window.innerWidth
+    const distanceThreshold = Math.min(120, Math.max(72, cardWidth * 0.28))
+    const isFastRightFling = distance >= MOBILE_SWIPE_MIN_FLING_PX
+      && gesture.velocityX >= MOBILE_SWIPE_FLING_VELOCITY
+    const shouldDismiss = distance >= distanceThreshold || isFastRightFling
+
+    setIsMobileSwiping(false)
+    armMobileClickReset()
+
+    if (!shouldDismiss || !activeMediaKey) {
+      setMobileSwipeX(0)
+      return
+    }
+
+    // Let the card finish travelling beyond the viewport before removing its
+    // layout slot, which keeps the gesture feeling connected to the finger.
+    setIsMobileSwipeExiting(true)
+    setMobileSwipeX(Math.max(cardWidth, window.innerWidth) + 32)
+    mobileDismissTimerRef.current = window.setTimeout(() => {
+      setDismissedMediaKey(activeMediaKey)
+      setIsMobileSwipeExiting(false)
+      setMobileSwipeX(0)
+      mobileDismissTimerRef.current = null
+    }, MOBILE_SWIPE_EXIT_MS)
+  }
+
+  const handleMobilePointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const gesture = mobileSwipeRef.current
+    if (!gesture || gesture.pointerId !== event.pointerId) return
+    releaseMobilePointer(event.currentTarget, event.pointerId)
+    resetMobileSwipe()
+    suppressMobileClickRef.current = false
+  }
+
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
-    if (!hasMedia) return null
+    if (!hasMedia || dismissedMediaKey === activeMediaKey) return null
+    const mobileSwipeOpacity = Math.max(0, 1 - mobileSwipeX / Math.max(240, window.innerWidth * 0.9))
     return (
       // Floating rounded card: sits inset from the screen edges with a gap above
       // the bottom nav (Spotify-style) rather than a full-bleed edge-to-edge bar.
       <div className="shrink-0 px-2 pb-2">
         <div
-          className="overflow-hidden rounded-2xl bg-surface shadow-lg ring-1 ring-white/10 transition-[background-color] duration-500 ease-out motion-reduce:transition-none"
-          style={artworkColor ? { backgroundColor: `color-mix(in srgb, ${artworkColor} 55%, var(--c-base))` } : undefined}
+          ref={mobilePlayerRef}
+          data-testid="mobile-mini-player"
+          className={cn(
+            'overflow-hidden rounded-2xl bg-surface shadow-lg ring-1 ring-white/10 select-none',
+            !isMobileSwiping && 'transition-[background-color,transform,opacity] duration-200 ease-out motion-reduce:transition-none',
+          )}
+          style={{
+            ...(artworkColor ? { backgroundColor: `color-mix(in srgb, ${artworkColor} 55%, var(--c-base))` } : {}),
+            transform: `translate3d(${mobileSwipeX}px, 0, 0)`,
+            opacity: mobileSwipeOpacity,
+            touchAction: 'pan-y',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            willChange: isMobileSwiping || isMobileSwipeExiting ? 'transform, opacity' : undefined,
+          }}
+          onPointerDown={handleMobilePointerDown}
+          onPointerMove={handleMobilePointerMove}
+          onPointerUp={handleMobilePointerUp}
+          onPointerCancel={handleMobilePointerCancel}
+          onClickCapture={(event) => {
+            if (!suppressMobileClickRef.current) return
+            event.preventDefault()
+            event.stopPropagation()
+            suppressMobileClickRef.current = false
+          }}
+          onDragStart={(event) => event.preventDefault()}
         >
           {/* Thin progress bar strip at the top */}
           <div className="h-0.5 bg-white/20">

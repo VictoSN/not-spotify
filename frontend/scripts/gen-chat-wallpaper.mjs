@@ -6,7 +6,7 @@
 // It composes an original, high-density chat collage from a broad symbol
 // library. Collision-aware packing keeps the icons close without producing
 // tangled piles, and toroidal spacing plus edge wrapping make the tile seamless.
-// The 720-unit tile is painted at 640px (see .chat-wallpaper::before).
+// The 720-unit tile is painted at 520px (see .chat-wallpaper::before).
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -168,11 +168,11 @@ const rng = mulberry32(20260710)
 const rand = (a, b) => a + (b - a) * rng()
 const pick = (arr) => arr[Math.floor(rng() * arr.length)]
 
-// The 720u viewBox is painted at 640px, so every size below is expressed in the
+// The 720u viewBox is painted at 520px, so every size below is expressed in the
 // final on-screen pixels. Packing uses a slightly smaller collision radius than
 // the symbols' full bounds because the drawings are airy outlines, not discs.
 const TILE = 720
-const CSS_TILE = 640
+const CSS_TILE = 520
 const SCREEN_SCALE = CSS_TILE / TILE
 const PXU = SCREEN_SCALE * 2
 const uses = []
@@ -193,10 +193,10 @@ function placePacked(pool, minPx, maxPx, count, gap, rotation, mirrorProb) {
   while (placed < count && failures < count * 900) {
     const id = pick(pool)
     const targetPx = rand(minPx, maxPx)
-    const radius = (targetPx / (2 * SCREEN_SCALE)) * 0.7
-    const candidate = { x: rand(0, TILE), y: rand(0, TILE), radius }
+    const radius = (targetPx / (2 * SCREEN_SCALE)) * 0.92
+    const candidate = { x: rand(0, TILE), y: rand(0, TILE), radius, gap }
     const clear = packed.every((other) => (
-      toroidalDistance(candidate, other) >= (candidate.radius + other.radius) * gap
+      toroidalDistance(candidate, other) >= candidate.radius * candidate.gap + other.radius * other.gap
     ))
 
     if (!clear) {
@@ -212,7 +212,7 @@ function placePacked(pool, minPx, maxPx, count, gap, rotation, mirrorProb) {
       scale: targetPx / (ext * PXU),
       rot: rand(-rotation, rotation),
       mirror: rng() < mirrorProb,
-      opacity: rand(0.72, 1),
+      opacity: rand(0.84, 1),
       ext,
     })
     packed.push(candidate)
@@ -226,10 +226,11 @@ function placePacked(pool, minPx, maxPx, count, gap, rotation, mirrorProb) {
 
 // Large expressive drawings establish rhythm; medium icons tell the story;
 // small and tiny marks close the gaps. Largest-first packing prevents collisions.
-placePacked(ANCHORS, 70, 104, 9, 0.96, 18, 0.28)
-placePacked([...EXPRESSIVE, ...DETAILED], 38, 66, 43, 0.83, 34, 0.38)
-placePacked(SMALL_POOL, 19, 36, 78, 0.72, 58, 0.48)
-placePacked(TINY, 9, 18, 62, 0.58, 90, 0.5)
+placePacked(ANCHORS, 47, 67, 7, 0.96, 18, 0.28)
+placePacked([...EXPRESSIVE, ...DETAILED], 24, 40, 90, 0.86, 34, 0.38)
+placePacked(SMALL_POOL, 14, 24, 140, 0.76, 58, 0.48)
+placePacked(SMALL_POOL, 9, 17, 70, 0.66, 76, 0.5)
+placePacked(TINY, 6, 11, 50, 0.55, 90, 0.5)
 
 // Duplicate edge-crossing drawings on the opposite edge. Packing itself uses
 // toroidal distance, so wrapped neighbours maintain the same breathing room.

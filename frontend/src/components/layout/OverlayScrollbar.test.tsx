@@ -10,6 +10,16 @@ class ResizeObserverStub {
 }
 
 vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+  matches: query === '(pointer: coarse)',
+  media: query,
+  onchange: null,
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
+  addEventListener: vi.fn(),
+  removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
+})))
 
 function setMetric(element: HTMLElement, name: 'clientHeight' | 'scrollHeight', value: number) {
   Object.defineProperty(element, name, { configurable: true, value })
@@ -59,8 +69,23 @@ describe('OverlayScrollbar nested mobile source', () => {
     await waitFor(() => expect(thumb.style.transform).toBe('translateY(225px)'))
 
     fireEvent.pointerDown(thumb, { pointerId: 7, clientY: 225 })
+    expect(document.documentElement).toHaveClass('overlay-scrollbar-grabbing')
+    expect(document.body.style.userSelect).toBe('none')
     fireEvent.pointerMove(window, { pointerId: 7, clientY: 450 })
     expect(source.scrollTop).toBe(900)
     fireEvent.pointerUp(window, { pointerId: 7, clientY: 450 })
+    expect(document.documentElement).not.toHaveClass('overlay-scrollbar-grabbing')
+    expect(document.body.style.userSelect).toBe('')
+
+    // Coarse-pointer devices use a smaller minimum than desktop, preserving
+    // useful travel and position accuracy for very long conversations.
+    setMetric(source, 'scrollHeight', 30_000)
+    fireEvent.scroll(source)
+    await waitFor(() => expect(thumb.style.height).toBe('26px'))
+
+    fireEvent.pointerDown(thumb, { pointerId: 8, pointerType: 'touch', clientY: 40 })
+    expect(document.documentElement).toHaveClass('overlay-scrollbar-grabbing')
+    fireEvent.pointerUp(window, { pointerId: 8, pointerType: 'touch', clientY: 40 })
+    expect(document.documentElement).not.toHaveClass('overlay-scrollbar-grabbing')
   })
 })

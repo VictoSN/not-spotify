@@ -31,9 +31,53 @@ interface OverlayScrollbarProps {
  * box (e.g. the `<main>` card). Renders nothing when the content doesn't overflow.
  */
 /** How long a finger must rest on the thumb before the drag engages (touch only). */
-const TOUCH_HOLD_MS = 200
+const TOUCH_HOLD_MS = 140
 /** Finger drift beyond this while holding cancels the grab (it was a swipe). */
-const TOUCH_HOLD_SLOP_PX = 12
+const TOUCH_HOLD_SLOP_PX = 18
+const DESKTOP_MIN_THUMB_HEIGHT = 40
+const MOBILE_MIN_THUMB_HEIGHT = 26
+
+function getMinimumThumbHeight() {
+  if (typeof window.matchMedia !== 'function') return DESKTOP_MIN_THUMB_HEIGHT
+  const mobilePointer = window.matchMedia('(pointer: coarse)').matches
+    || window.matchMedia('(max-width: 768px)').matches
+  return mobilePointer ? MOBILE_MIN_THUMB_HEIGHT : DESKTOP_MIN_THUMB_HEIGHT
+}
+
+function clearPageSelection() {
+  window.getSelection()?.removeAllRanges()
+}
+
+function preventPageSelection(event: Event) {
+  event.preventDefault()
+  clearPageSelection()
+}
+
+/**
+ * Toggle page-wide selection while pressing/dragging the thumb. On iOS the
+ * hold gesture IS a long-press, which natively starts text selection + the
+ * loupe over whatever content sits near the finger — so selection must be
+ * killed the moment the finger lands (not once the hold engages), and any
+ * selection iOS already started gets cleared.
+ */
+function setPageSelectionDisabled(disabled: boolean) {
+  const style = document.body.style as CSSStyleDeclaration & {
+    webkitUserSelect?: string
+    webkitTouchCallout?: string
+  }
+  style.userSelect = disabled ? 'none' : ''
+  style.webkitUserSelect = disabled ? 'none' : ''
+  style.webkitTouchCallout = disabled ? 'none' : ''
+  document.documentElement.classList.toggle('overlay-scrollbar-grabbing', disabled)
+  if (disabled) {
+    clearPageSelection()
+    document.addEventListener('selectstart', preventPageSelection, true)
+    document.addEventListener('selectionchange', clearPageSelection)
+  } else {
+    document.removeEventListener('selectstart', preventPageSelection, true)
+    document.removeEventListener('selectionchange', clearPageSelection)
+  }
+}
 
 export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = false }: OverlayScrollbarProps) {
   const [thumb, setThumb] = useState<{ height: number; top: number } | null>(null)
@@ -58,7 +102,10 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
         return
       }
       const railHeight = rail.clientHeight
-      const height = Math.min(railHeight, Math.max(40, (clientHeight / scrollHeight) * railHeight))
+      const height = Math.min(
+        railHeight,
+        Math.max(getMinimumThumbHeight(), (clientHeight / scrollHeight) * railHeight),
+      )
       const maxTop = railHeight - height
       const maxScroll = scrollHeight - clientHeight
       const top = maxScroll > 0 ? (scrollTop / maxScroll) * maxTop : 0
@@ -120,6 +167,7 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
           window.clearTimeout(pending.timer)
           pendingTouchRef.current = null
           setActive(false)
+          setPageSelectionDisabled(false)
         }
         return
       }
@@ -129,7 +177,10 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
       if (!el || !rail || !drag || e.pointerId !== drag.pointerId) return
       const { scrollHeight, clientHeight } = el
       const railHeight = rail.clientHeight
-      const height = Math.min(railHeight, Math.max(40, (clientHeight / scrollHeight) * railHeight))
+      const height = Math.min(
+        railHeight,
+        Math.max(getMinimumThumbHeight(), (clientHeight / scrollHeight) * railHeight),
+      )
       const maxTop = railHeight - height
       const maxScroll = scrollHeight - clientHeight
       const ratio = maxTop > 0 ? (e.clientY - drag.startY) / maxTop : 0
@@ -137,16 +188,19 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
     }
     const onUp = (e: PointerEvent) => {
       const pending = pendingTouchRef.current
-      if (pending && e.pointerId === pending.pointerId) {
+      const pendingMatches = Boolean(pending && e.pointerId === pending.pointerId)
+      const dragMatches = Boolean(dragRef.current && e.pointerId === dragRef.current.pointerId)
+      if (!pendingMatches && !dragMatches) return
+      if (pendingMatches && pending) {
         window.clearTimeout(pending.timer)
         pendingTouchRef.current = null
         setActive(false)
       }
-      if (!dragRef.current || e.pointerId !== dragRef.current.pointerId) return
+      setPageSelectionDisabled(false)
+      if (!dragMatches) return
       dragRef.current = null
       setTouchDragging(false)
       setActive(false)
-      document.body.style.userSelect = ''
     }
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
@@ -157,7 +211,7 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
       window.removeEventListener('pointercancel', onUp)
       if (pendingTouchRef.current) window.clearTimeout(pendingTouchRef.current.timer)
       pendingTouchRef.current = null
-      document.body.style.userSelect = ''
+      setPageSelectionDisabled(false)
     }
   }, [scrollRef, scrollTarget])
 
@@ -187,46 +241,54 @@ export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = 
           const el = scrollTarget ?? scrollRef.current
           if (!el) return
           e.preventDefault()
-          try {
-            e.currentTarget.setPointerCapture?.(e.pointerId)
-          } catch {
-            /* stale/synthetic pointer id — window-level listeners still track it */
-          }
+          setPageSelectionDisabled(true)
           setActive(true)
           if (e.pointerType === 'touch') {
             // Spotify-mobile style: the press must be HELD briefly before the
             // thumb is grabbed — then it widens and dragging fast-scrolls. A
             // quick tap or swipe releases without hijacking anything.
             const pointerId = e.pointerId
+            const thumbElement = e.currentTarget
             const timer = window.setTimeout(() => {
               const pending = pendingTouchRef.current
               if (!pending || pending.pointerId !== pointerId) return
+              try {
+                thumbElement.setPointerCapture?.(pointerId)
+              } catch {
+                /* window-level listeners still track a stale/synthetic pointer id */
+              }
               pendingTouchRef.current = null
               dragRef.current = { pointerId, startY: pending.lastY, startScroll: el.scrollTop }
               setTouchDragging(true)
-              document.body.style.userSelect = 'none'
               if ('vibrate' in navigator) navigator.vibrate(10) // grab confirmation where supported
             }, TOUCH_HOLD_MS)
             pendingTouchRef.current = { pointerId, startY: e.clientY, lastY: e.clientY, timer }
           } else {
+            try {
+              e.currentTarget.setPointerCapture?.(e.pointerId)
+            } catch {
+              /* window-level listeners still track a stale/synthetic pointer id */
+            }
             dragRef.current = { pointerId: e.pointerId, startY: e.clientY, startScroll: el.scrollTop }
-            document.body.style.userSelect = 'none'
           }
         }}
         style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
         // ~12px thick, near-square (2px radius), semi-transparent gray — visible at
         // rest, brighter while scrolling/hovering, brightest when grabbed. A held
         // touch grab widens it so the engaged state is unmistakable under a finger.
-        className={`pointer-events-auto absolute touch-none rounded-[2px] border-0 outline-none shadow-none transition-[background-color,width] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
-          touchDragging
-            ? flushRight ? 'right-0 w-[16px]' : 'right-[2px] w-[18px]'
-            : flushRight ? 'right-0 w-[10px]' : 'right-[2px] w-[12px]'
-        } ${
-          touchDragging
-            ? 'bg-[rgba(190,190,190,0.95)]'
-            : active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
-        }`}
-      />
+        className="group pointer-events-auto absolute right-0 w-6 touch-none select-none border-0 outline-none [-webkit-touch-callout:none]"
+      >
+        <span
+          data-overlay-scrollbar-thumb-visual
+          className={`absolute right-[2px] h-full rounded-[2px] transition-[background-color,width] duration-150 group-hover:bg-[rgba(190,190,190,0.95)] ${
+            touchDragging ? 'w-[16px]' : flushRight ? 'w-[10px]' : 'w-[12px]'
+          } ${
+            touchDragging
+              ? 'bg-[rgba(190,190,190,0.95)]'
+              : active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'
+          }`}
+        />
+      </div>
     </div>
     </>
   )

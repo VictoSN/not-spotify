@@ -1,6 +1,6 @@
 import Hls from 'hls.js'
 import { usePlayerStore } from '@/stores/playerStore'
-import { resolvePlaybackSrc } from '@/services/offlineAudio'
+import { resolvePlaybackSrc, updateOfflineDuration } from '@/services/offlineAudio'
 import {
   EQUALIZER_BANDS,
   EQUALIZER_EVENT,
@@ -237,6 +237,11 @@ class AudioEngine {
     const deck = this.decks[i]
     deck.addEventListener('timeupdate', () => this.onTimeUpdate(i))
     deck.addEventListener('ended', () => this.onEnded(i))
+    deck.addEventListener('loadedmetadata', () => {
+      if (i !== this.active) return
+      const track = usePlayerStore.getState().currentTrack
+      if (track) updateOfflineDuration(track.id, deck.duration)
+    })
     deck.addEventListener('error', () => {
       if (i === this.active) usePlayerStore.getState().pause()
     })

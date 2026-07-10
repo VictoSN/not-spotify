@@ -490,6 +490,17 @@ export function offlineTotalBytes(): number {
   return readIndex().reduce((sum, e) => sum + (e.bytes || 0), 0)
 }
 
+/** Persist decoder-discovered duration for older saves whose catalogue metadata was empty. */
+export function updateOfflineDuration(id: string, seconds: number): void {
+  const durationMs = Math.round(seconds * 1000)
+  if (!Number.isFinite(durationMs) || durationMs <= 0) return
+  const entries = readIndex()
+  const entry = entries.find((item) => item.id === id)
+  if (!entry || (entry.durationMs && Math.abs(entry.durationMs - durationMs) < 500)) return
+  entry.durationMs = durationMs
+  writeIndex(entries)
+}
+
 /**
  * The URL the <audio> element should load for a track: the local offline copy
  * when it's saved (by any owner), otherwise the normal network URL. Synchronous
@@ -540,7 +551,7 @@ function upsertEntry(track: Track, bytes: number, path: string | undefined, owne
     artist: track.artist.name,
     coverUrl: track.album.coverUrl,
     audioUrl: track.audioUrl,
-    durationMs: track.durationMs,
+    durationMs: track.durationMs || existing?.durationMs || 0,
     bytes: bytes || existing?.bytes || 0,
     savedAt: existing?.savedAt ?? Date.now(),
     owners: [...owners],

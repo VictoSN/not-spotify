@@ -43,6 +43,10 @@ import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { ShareIcon } from '@/components/common/ShareIcon'
 import { PlaylistCover } from './PlaylistCover'
 
+// Keep the legacy download implementation available for staff tooling, but never
+// offer raw audio files to listeners. Offline saves are the sole listener path.
+const DIRECT_FILE_DOWNLOADS_ENABLED = false
+
 interface TrackRowMenuProps {
   track: Track
   /** When rendered inside a playlist page, omit this playlist from the "Add to playlist" flyout. */
@@ -846,7 +850,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
 
             <div className="my-1 h-px bg-secondary/20" />
 
-            {isPremium ? (
+            {DIRECT_FILE_DOWNLOADS_ENABLED && (isPremium ? (
               hideDownload ? null : (
               <MenuItem>
                 <button
@@ -888,7 +892,7 @@ export const TrackRowMenu = forwardRef<TrackRowMenuHandle, TrackRowMenuProps>(fu
                   <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">Premium</span>
                 </button>
               </MenuItem>
-            )}
+            ))}
 
             {isPremium && (offline.available || offline.desktopOnly) && (
               <MenuItem>

@@ -31,6 +31,7 @@ import {
   getOfflineCollection,
   offlineCollectionToAlbum,
   offlineCollectionTracks,
+  saveCollectionOffline,
 } from '@/services/offlineAudio'
 
 export function AlbumDetailPage() {
@@ -121,7 +122,10 @@ export function AlbumDetailPage() {
     if (!album) return
     setDownloading(true)
     try {
-      await albumService.downloadZip(album.id, album.title)
+      await saveCollectionOffline(
+        { kind: 'album', id: album.id, name: album.title, subtitle: album.artist.name, coverUrl: album.coverUrl },
+        tracks,
+      )
     } finally {
       setDownloading(false)
     }
@@ -227,13 +231,13 @@ export function AlbumDetailPage() {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            title={t('detail.downloadAlbum')}
-            aria-label={downloading ? t('common.downloading') : t('common.download')}
+            title="Save for offline"
+            aria-label={downloading ? t('common.downloading') : 'Save for offline'}
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
           >
             <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
-              {downloading ? t('common.downloading') : t('common.download')}
+              {downloading ? t('common.downloading') : 'Save for offline'}
             </span>
           </button>
         ) : (

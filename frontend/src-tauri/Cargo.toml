@@ -1,6 +1,6 @@
 [package]
 name = "not-spotify-desktop"
-version = "0.7.10"
+version = "0.7.11"
 description = "not-spotify desktop wrapper (Tauri shell around the PWA)"
 authors = ["not-spotify team"]
 edition = "2021"

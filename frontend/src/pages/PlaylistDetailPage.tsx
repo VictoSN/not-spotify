@@ -25,6 +25,7 @@ import {
   collectionKey,
   getOfflineCollection,
   offlineCollectionToPlaylist,
+  saveCollectionOffline,
 } from '@/services/offlineAudio'
 import { collaboratorService } from '@/services/collaboratorService'
 import { trackService } from '@/services/trackService'
@@ -295,7 +296,16 @@ export function PlaylistDetailPage() {
     if (!playlist) return
     setDownloading(true)
     try {
-      await playlistService.downloadZip(playlist.id, playlist.name)
+      await saveCollectionOffline(
+        {
+          kind: 'playlist',
+          id: playlist.id,
+          name: playlist.name,
+          subtitle: playlist.owner.name,
+          coverUrl: playlist.coverUrl ?? '',
+        },
+        tracks,
+      )
     } finally {
       setDownloading(false)
     }
@@ -714,13 +724,13 @@ export function PlaylistDetailPage() {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            title="Download playlist as ZIP"
-            aria-label={downloading ? 'Downloading' : 'Download'}
+            title="Save for offline"
+            aria-label={downloading ? 'Downloading' : 'Save for offline'}
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
           >
             <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
-              {downloading ? 'Downloading...' : 'Download'}
+              {downloading ? 'Downloading...' : 'Save for offline'}
             </span>
           </button>
         ) : (

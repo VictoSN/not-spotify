@@ -203,6 +203,14 @@ pub fn run() {
                             .status(http::StatusCode::PARTIAL_CONTENT)
                             .header(http::header::CONTENT_TYPE, mime)
                             .header(http::header::ACCEPT_RANGES, "bytes")
+                            // The Web Audio graph sets `crossOrigin=anonymous` on
+                            // its decks. Explicit CORS lets WebView2 decode this
+                            // private protocol as audio without exposing the file.
+                            .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .header(
+                                http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
+                                "Accept-Ranges, Content-Length, Content-Range",
+                            )
                             .header(
                                 http::header::CONTENT_RANGE,
                                 format!("bytes {start}-{end}/{}", audio.len()),
@@ -214,6 +222,11 @@ pub fn run() {
                         http::Response::builder()
                             .header(http::header::CONTENT_TYPE, mime)
                             .header(http::header::ACCEPT_RANGES, "bytes")
+                            .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                            .header(
+                                http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
+                                "Accept-Ranges, Content-Length, Content-Range",
+                            )
                             .header(http::header::CONTENT_LENGTH, audio.len())
                             .body(audio)
                             .unwrap()

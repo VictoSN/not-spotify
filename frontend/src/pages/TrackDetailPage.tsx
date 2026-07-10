@@ -29,6 +29,7 @@ import { formatNumber } from '@/utils/formatNumber'
 import { notify } from '@/utils/toast'
 import { usePlayerStore } from '@/stores/playerStore'
 import { usePageLoading } from '@/hooks/usePageLoading'
+import { saveTrackOffline } from '@/services/offlineAudio'
 
 export function TrackDetailPage() {
   const { t } = useTranslation()
@@ -150,8 +151,8 @@ export function TrackDetailPage() {
     if (!track || !isPremium) return
     setDownloading(true)
     try {
-      await trackService.download(track.id, track.title)
-      notify.success(t('detail.downloadStarted'))
+      await saveTrackOffline(track)
+      notify.success(`Saved “${track.title}” for offline`)
     } catch (error) {
       notify.error(error instanceof Error ? error.message : t('detail.downloadError'))
     } finally {
@@ -262,12 +263,12 @@ export function TrackDetailPage() {
           <button
             onClick={handleDownload}
             disabled={downloading}
-            title={t('common.download')}
+            title="Save for offline"
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
-            aria-label={t('common.download')}
+            aria-label="Save for offline"
           >
             <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
-            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('common.download')}</span>
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Save for offline</span>
           </button>
         )}
 

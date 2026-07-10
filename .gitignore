@@ -64,3 +64,8 @@ frontend/.vite/
 
 # Local music library staged for one-off import (not source)
 Music/
+
+# Transient ECS task-definition written by deploy-backend.ps1 during a deploy.
+# Contains the full task-def env (Stripe secret key, Google OAuth id/secret) —
+# must NEVER be committed.
+newtd.json

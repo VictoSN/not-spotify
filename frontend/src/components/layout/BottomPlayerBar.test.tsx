@@ -81,7 +81,9 @@ beforeEach(() => {
     isVideoPlaying: false,
     currentTime: 0,
     duration: 180,
-    toggleNowPlaying: vi.fn(),
+    isNowPlayingOpen: true,
+    isMobileNowPlayingOpen: false,
+    setMobileNowPlayingOpen: vi.fn(),
     pause: vi.fn(),
     resume: vi.fn(),
   })
@@ -101,7 +103,7 @@ describe('BottomPlayerBar mobile swipe dismissal', () => {
     fireEvent.pointerDown(card, { pointerId: 7, button: 0, isPrimary: true, clientX: 12, clientY: 30 })
     fireEvent.pointerMove(card, { pointerId: 7, clientX: 145, clientY: 32 })
 
-    expect(card.style.transform).toBe('translate3d(133px, 0, 0)')
+    expect(card.style.transform).toBe('translate3d(133px, 0px, 0)')
 
     fireEvent.pointerUp(card, { pointerId: 7, clientX: 145, clientY: 32 })
     expect(screen.getByTestId('mobile-mini-player')).toBeInTheDocument()
@@ -125,7 +127,7 @@ describe('BottomPlayerBar mobile swipe dismissal', () => {
     renderPlayer()
     const card = screen.getByTestId('mobile-mini-player')
     const row = screen.getByRole('button', { name: 'player.openNowPlaying' })
-    const toggleNowPlaying = usePlayerStore.getState().toggleNowPlaying as ReturnType<typeof vi.fn>
+    const setMobileNowPlayingOpen = usePlayerStore.getState().setMobileNowPlayingOpen as ReturnType<typeof vi.fn>
     setCardWidth(card)
 
     fireEvent.pointerDown(card, { pointerId: 8, button: 0, isPrimary: true, clientX: 12, clientY: 30 })
@@ -133,12 +135,12 @@ describe('BottomPlayerBar mobile swipe dismissal', () => {
     fireEvent.pointerUp(card, { pointerId: 8, clientX: 36, clientY: 31 })
     fireEvent.click(row)
 
-    expect(card.style.transform).toBe('translate3d(0px, 0, 0)')
+    expect(card.style.transform).toBe('translate3d(0px, 0px, 0)')
     expect(screen.getByTestId('mobile-mini-player')).toBeInTheDocument()
-    expect(toggleNowPlaying).not.toHaveBeenCalled()
+    expect(setMobileNowPlayingOpen).not.toHaveBeenCalled()
 
     fireEvent.click(row)
-    expect(toggleNowPlaying).toHaveBeenCalledTimes(1)
+    expect(setMobileNowPlayingOpen).toHaveBeenCalledWith(true)
   })
 
   it('does not hijack a vertical page swipe', () => {
@@ -152,6 +154,21 @@ describe('BottomPlayerBar mobile swipe dismissal', () => {
     act(() => vi.advanceTimersByTime(300))
 
     expect(screen.getByTestId('mobile-mini-player')).toBeInTheDocument()
-    expect(card.style.transform).toBe('translate3d(0px, 0, 0)')
+    expect(card.style.transform).toBe('translate3d(0px, 0px, 0)')
+  })
+
+  it('opens the mobile sheet on swipe up without changing the desktop sidebar preference', () => {
+    renderPlayer()
+    const card = screen.getByTestId('mobile-mini-player')
+    const setMobileNowPlayingOpen = usePlayerStore.getState().setMobileNowPlayingOpen as ReturnType<typeof vi.fn>
+    setCardWidth(card)
+
+    fireEvent.pointerDown(card, { pointerId: 10, button: 0, isPrimary: true, clientX: 120, clientY: 58 })
+    fireEvent.pointerMove(card, { pointerId: 10, clientX: 118, clientY: 8 })
+    expect(card.style.transform).toBe('translate3d(0px, -50px, 0)')
+    fireEvent.pointerUp(card, { pointerId: 10, clientX: 118, clientY: 8 })
+
+    expect(setMobileNowPlayingOpen).toHaveBeenCalledWith(true)
+    expect(usePlayerStore.getState().isNowPlayingOpen).toBe(true)
   })
 })

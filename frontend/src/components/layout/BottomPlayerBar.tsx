@@ -40,6 +40,8 @@ const TIMER_OPTIONS = [15, 30, 45, 60]
 const MOBILE_SWIPE_SLOP_PX = 8
 const MOBILE_SWIPE_MIN_FLING_PX = 28
 const MOBILE_SWIPE_FLING_VELOCITY = 0.55
+const MOBILE_SWIPE_UP_MIN_FLING_PX = 18
+const MOBILE_SWIPE_UP_FLING_VELOCITY = -0.45
 const MOBILE_SWIPE_EXIT_MS = 220
 
 type MobileSwipeGesture = {
@@ -47,8 +49,10 @@ type MobileSwipeGesture = {
   startX: number
   startY: number
   lastX: number
+  lastY: number
   lastTime: number
   velocityX: number
+  velocityY: number
   axis: 'pending' | 'horizontal' | 'vertical'
 }
 
@@ -66,7 +70,6 @@ export function BottomPlayerBar() {
   const { t } = useTranslation()
   const {
     playbackMode,
-    toggleNowPlaying,
     currentTrack,
     currentVideo,
     isPlaying,
@@ -78,6 +81,7 @@ export function BottomPlayerBar() {
     isKaraokeOpen,
     toggleKaraoke,
   } = usePlayerStore()
+  const setMobileNowPlayingOpen = usePlayerStore((s) => s.setMobileNowPlayingOpen)
   const jamRole = useJamStore((s) => s.role)
   const startHosting = useJamStore((s) => s.startHosting)
   const stopJam = useJamStore((s) => s.stopJam)
@@ -107,6 +111,7 @@ export function BottomPlayerBar() {
   const mobileClickResetTimerRef = useRef<number | null>(null)
   const suppressMobileClickRef = useRef(false)
   const [mobileSwipeX, setMobileSwipeX] = useState(0)
+  const [mobileSwipeY, setMobileSwipeY] = useState(0)
   const [isMobileSwiping, setIsMobileSwiping] = useState(false)
   const [isMobileSwipeExiting, setIsMobileSwipeExiting] = useState(false)
   const [dismissedMediaKey, setDismissedMediaKey] = useState<string | null>(null)
@@ -193,6 +198,7 @@ export function BottomPlayerBar() {
     setMobileStateMediaKey(activeMediaKey)
     setDismissedMediaKey(null)
     setMobileSwipeX(0)
+    setMobileSwipeY(0)
     setIsMobileSwiping(false)
     setIsMobileSwipeExiting(false)
   }
@@ -217,6 +223,7 @@ export function BottomPlayerBar() {
     setIsMobileSwiping(false)
     setIsMobileSwipeExiting(false)
     setMobileSwipeX(0)
+    setMobileSwipeY(0)
   }
 
   const releaseMobilePointer = (element: HTMLDivElement, pointerId: number) => {
@@ -243,8 +250,10 @@ export function BottomPlayerBar() {
       startX: event.clientX,
       startY: event.clientY,
       lastX: event.clientX,
+      lastY: event.clientY,
       lastTime: event.timeStamp,
       velocityX: 0,
+      velocityY: 0,
       axis: 'pending',
     }
     suppressMobileClickRef.current = false
@@ -262,16 +271,27 @@ export function BottomPlayerBar() {
       gesture.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical'
     }
 
-    if (gesture.axis !== 'horizontal') return
-
-    event.preventDefault()
-    suppressMobileClickRef.current = true
-    setIsMobileSwiping(true)
-    setMobileSwipeX(Math.max(0, deltaX))
+    if (gesture.axis === 'horizontal') {
+      event.preventDefault()
+      suppressMobileClickRef.current = true
+      setIsMobileSwiping(true)
+      setMobileSwipeX(Math.max(0, deltaX))
+      setMobileSwipeY(0)
+    } else if (gesture.axis === 'vertical') {
+      event.preventDefault()
+      suppressMobileClickRef.current = true
+      setIsMobileSwiping(true)
+      setMobileSwipeX(0)
+      setMobileSwipeY(Math.min(0, deltaY))
+    }
 
     const elapsed = event.timeStamp - gesture.lastTime
-    if (elapsed > 0) gesture.velocityX = (event.clientX - gesture.lastX) / elapsed
+    if (elapsed > 0) {
+      gesture.velocityX = (event.clientX - gesture.lastX) / elapsed
+      gesture.velocityY = (event.clientY - gesture.lastY) / elapsed
+    }
     gesture.lastX = event.clientX
+    gesture.lastY = event.clientY
     gesture.lastTime = event.timeStamp
   }
 
@@ -280,6 +300,21 @@ export function BottomPlayerBar() {
     if (!gesture || gesture.pointerId !== event.pointerId) return
     releaseMobilePointer(event.currentTarget, event.pointerId)
     mobileSwipeRef.current = null
+
+    if (gesture.axis === 'vertical') {
+      const distanceUp = Math.max(0, gesture.startY - event.clientY)
+      const cardHeight = mobilePlayerRef.current?.getBoundingClientRect().height || 66
+      const distanceThreshold = Math.min(72, Math.max(44, cardHeight * 0.45))
+      const isFastUpFling = distanceUp >= MOBILE_SWIPE_UP_MIN_FLING_PX
+        && gesture.velocityY <= MOBILE_SWIPE_UP_FLING_VELOCITY
+      const shouldOpen = !!currentTrack && (distanceUp >= distanceThreshold || isFastUpFling)
+
+      setIsMobileSwiping(false)
+      setMobileSwipeY(0)
+      armMobileClickReset()
+      if (shouldOpen) setMobileNowPlayingOpen(true)
+      return
+    }
 
     if (gesture.axis !== 'horizontal') {
       resetMobileSwipe()
@@ -294,6 +329,7 @@ export function BottomPlayerBar() {
     const shouldDismiss = distance >= distanceThreshold || isFastRightFling
 
     setIsMobileSwiping(false)
+    setMobileSwipeY(0)
     armMobileClickReset()
 
     if (!shouldDismiss || !activeMediaKey) {
@@ -345,6 +381,9 @@ export function BottomPlayerBar() {
       )
     }
     const mobileSwipeOpacity = Math.max(0, 1 - mobileSwipeX / Math.max(240, window.innerWidth * 0.9))
+    const openMobileNowPlaying = () => {
+      if (currentTrack) setMobileNowPlayingOpen(true)
+    }
     return (
       // Floating rounded card: sits inset from the screen edges with a gap above
       // the bottom nav (Spotify-style) rather than a full-bleed edge-to-edge bar.
@@ -358,9 +397,9 @@ export function BottomPlayerBar() {
           )}
           style={{
             ...(artworkColor ? { backgroundColor: `color-mix(in srgb, ${artworkColor} 55%, var(--c-base))` } : {}),
-            transform: `translate3d(${mobileSwipeX}px, 0, 0)`,
+            transform: `translate3d(${mobileSwipeX}px, ${mobileSwipeY}px, 0)`,
             opacity: mobileSwipeOpacity,
-            touchAction: 'pan-y',
+            touchAction: 'none',
             userSelect: 'none',
             WebkitUserSelect: 'none',
             willChange: isMobileSwiping || isMobileSwipeExiting ? 'transform, opacity' : undefined,
@@ -384,7 +423,7 @@ export function BottomPlayerBar() {
           {/* Mini-player row */}
           <div
             className="flex items-center gap-3 px-3 h-16 cursor-pointer"
-            onClick={toggleNowPlaying}
+            onClick={openMobileNowPlaying}
             role="button"
             aria-label={t('player.openNowPlaying')}
           >

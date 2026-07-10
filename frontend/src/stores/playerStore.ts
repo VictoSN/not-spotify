@@ -330,6 +330,9 @@ interface PlayerState {
   /** Epoch ms when playback should pause, or null when no sleep timer is set. */
   sleepTimerEndsAt: number | null
   isNowPlayingOpen: boolean
+  /** Mobile full-screen Now Playing sheet. Kept separate from the desktop
+   *  sidebar preference so closing one surface never hides the other. */
+  isMobileNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
   isNowPlayingExpanded: boolean
   isKaraokeOpen: boolean
@@ -364,6 +367,7 @@ interface PlayerState {
   setPlaybackRate: (rate: number) => void
   setSleepTimer: (minutes: number | null) => void
   toggleNowPlaying: () => void
+  setMobileNowPlayingOpen: (open: boolean) => void
   setNowPlayingCollapsed: (collapsed: boolean) => void
   setNowPlayingExpanded: (expanded: boolean) => void
   toggleKaraoke: () => void
@@ -402,6 +406,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   playbackRate: 1,
   sleepTimerEndsAt: null,
   isNowPlayingOpen: true,
+  isMobileNowPlayingOpen: false,
   isNowPlayingCollapsed: false,
   isNowPlayingExpanded: false,
   isKaraokeOpen: false,
@@ -715,6 +720,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     isNowPlayingCollapsed: false,
     isNowPlayingExpanded: false,
   })),
+  setMobileNowPlayingOpen: (open) => set({ isMobileNowPlayingOpen: open }),
   setNowPlayingCollapsed: (collapsed) => set({
     isNowPlayingCollapsed: collapsed,
     isNowPlayingExpanded: collapsed ? false : get().isNowPlayingExpanded,

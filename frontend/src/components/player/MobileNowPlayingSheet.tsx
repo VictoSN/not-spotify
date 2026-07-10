@@ -12,7 +12,7 @@ import { NowPlayingLyrics } from './NowPlayingLyrics'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 
 export function MobileNowPlayingSheet() {
-  const { currentTrack, isNowPlayingOpen, toggleNowPlaying, queue, queueIndex } = usePlayerStore()
+  const { currentTrack, isMobileNowPlayingOpen, setMobileNowPlayingOpen, queue, queueIndex } = usePlayerStore()
   const { likedTrackIds, likeTrack, unlikeTrack } = useLibraryStore()
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
@@ -25,9 +25,10 @@ export function MobileNowPlayingSheet() {
     else likeTrack(currentTrack)
   }
 
-  if (!isNowPlayingOpen || !currentTrack) return null
+  if (!isMobileNowPlayingOpen || !currentTrack) return null
 
   const upNext = queueIndex >= 0 ? queue.slice(queueIndex + 1, queueIndex + 6) : []
+  const closeNowPlaying = () => setMobileNowPlayingOpen(false)
 
   return (
     <div className="fixed inset-0 z-[80] flex flex-col bg-page overflow-hidden">
@@ -45,7 +46,7 @@ export function MobileNowPlayingSheet() {
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-4 pb-2" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
         <button
-          onClick={toggleNowPlaying}
+          onClick={closeNowPlaying}
           className="flex items-center justify-center w-10 h-10 rounded-full text-secondary hover:text-primary active:scale-95 transition-all"
           aria-label="Close now playing"
         >
@@ -64,7 +65,7 @@ export function MobileNowPlayingSheet() {
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col overflow-y-auto px-6 pb-6">
         {/* Album art */}
         <div className="flex justify-center mb-8 mt-4">
-          <Link to={`/album/${currentTrack.album.id}`} onClick={toggleNowPlaying}>
+          <Link to={`/album/${currentTrack.album.id}`} onClick={closeNowPlaying}>
             <img
               src={currentTrack.album.coverUrl}
               alt={currentTrack.album.title}
@@ -78,14 +79,14 @@ export function MobileNowPlayingSheet() {
           <div className="min-w-0 flex-1">
             <Link
               to={`/album/${currentTrack.album.id}`}
-              onClick={toggleNowPlaying}
+              onClick={closeNowPlaying}
               className="block text-2xl font-black text-primary truncate hover:underline"
             >
               {currentTrack.title}
             </Link>
             <Link
               to={`/artist/${currentTrack.artist.id}`}
-              onClick={toggleNowPlaying}
+              onClick={closeNowPlaying}
               className="block text-base text-secondary truncate hover:text-primary hover:underline mt-0.5"
             >
               {currentTrack.artist.name}

@@ -88,6 +88,36 @@ public partial class BillingController : ControllerBase
         var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == me, ct);
         if (user is null) return NotFound();
 
+        // One active subscription per account. Reconcile the true state from Stripe
+        // (so a stale local record can't wrongly allow or block) and refuse to stack
+        // a second subscription — changing or cancelling a plan is done through the
+        // billing portal or the in-app cancel, never by purchasing again.
+        if (!string.IsNullOrWhiteSpace(user.StripeCustomerId))
+        {
+            try
+            {
+                var current = await _stripe.GetLatestSubscriptionAsync(user.StripeCustomerId, ct);
+                if (current is not null)
+                {
+                    _stripe.ApplySubscriptionToUser(user, current.Value);
+                    await _db.SaveChangesAsync(ct);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Don't block checkout on a transient Stripe read error.
+            }
+
+            if (StripeBillingService.IsPremiumSubscriptionStatus(user.StripeSubscriptionStatus))
+            {
+                return Conflict(new
+                {
+                    message = "You're already subscribed to Premium. Manage your plan to switch or cancel it.",
+                    code = "already_subscribed",
+                });
+            }
+        }
+
         try
         {
             if (string.IsNullOrWhiteSpace(user.StripeCustomerId))

@@ -35,6 +35,13 @@ export function planTypeLabel(
   return base
 }
 
+/** The catalogue plan key the user is currently subscribed to, or null if free. */
+function currentPlanKey(subscription: BillingSubscription | null): string | null {
+  if (!subscription || subscription.plan !== 'premium') return null
+  if (subscription.tier === 'individual') return subscription.interval === 'yearly' ? 'yearly' : 'monthly'
+  return subscription.tier
+}
+
 const COMPARISON: { label: string; free: boolean | 'partial'; freeNote?: string }[] = [
   { label: 'Ad-free music listening', free: false },
   { label: 'Download to listen offline', free: false },
@@ -323,8 +330,15 @@ export function PremiumPage() {
       const url = await billingService.createCheckoutSession(plan)
       window.location.assign(url)
     } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      setError(msg ?? 'Could not start checkout.')
+      const data = (err as { response?: { data?: { message?: string; code?: string } } })?.response?.data
+      // Already on Premium — you can't stack a second subscription; send them to
+      // the billing portal to switch or cancel instead.
+      if (data?.code === 'already_subscribed') {
+        setBusyPlan(null)
+        await manageBilling()
+        return
+      }
+      setError(data?.message ?? 'Could not start checkout.')
     } finally {
       setBusyPlan(null)
     }
@@ -352,6 +366,66 @@ export function PremiumPage() {
 
   const hasMissingBillingConfig = plans.some((plan) => !plan.isConfigured)
   const isPremium = subscription?.plan === 'premium' || user?.plan === 'premium'
+  const activePlanKey = currentPlanKey(subscription)
+  // Shared-plan members ride on someone else's subscription, so they manage
+  // membership on the Account page rather than switching plans here.
+  const isSharedMember = planOverview?.isMember ?? false
+
+  // A plan card's action depends on where the user stands: buy it (free user),
+  // mark it as their active plan, or switch to it via the billing portal. A user
+  // can never stack a second subscription, so premium users never see "Get".
+  const renderPlanCta = (plan: BillingPlan, name: string, tone: { button: string }) => {
+    const accent = plan.buttonColor || plan.accentColor
+    const buttonStyle = {
+      backgroundColor: accent || undefined,
+      color: plan.buttonTextColor || readableTextColor(accent),
+    }
+
+    if (isPremium && !isSharedMember && plan.plan === activePlanKey) {
+      return (
+        <div
+          className="flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-black"
+          style={{ backgroundColor: 'rgba(30,215,96,0.15)', color: accent }}
+        >
+          <CheckIcon className="h-4 w-4" />
+          Your current plan
+        </div>
+      )
+    }
+
+    if (isPremium) {
+      if (isSharedMember) {
+        return (
+          <div className="premium-plan-sub w-full py-2.5 text-center text-sm font-semibold">
+            Included via your shared plan
+          </div>
+        )
+      }
+      return (
+        <Button
+          onClick={manageBilling}
+          disabled={busyPlan === 'portal'}
+          className={cn('w-full gap-2 text-sm font-black', tone.button)}
+          style={buttonStyle}
+        >
+          <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+          {busyPlan === 'portal' ? 'Opening…' : 'Switch plan'}
+        </Button>
+      )
+    }
+
+    return (
+      <Button
+        onClick={() => checkout(plan.plan)}
+        disabled={busyPlan === plan.plan}
+        className={cn('w-full gap-2 text-sm font-black', tone.button)}
+        style={buttonStyle}
+      >
+        <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+        {busyPlan === plan.plan ? 'Opening…' : `Get Premium ${name}`}
+      </Button>
+    )
+  }
   const currentPlanDetails = isPremium
     ? [
         subscription?.status && subscription.status.toLowerCase() !== 'active' ? subscription.status : null,
@@ -532,20 +606,7 @@ export function PremiumPage() {
                   priceSub={plan.isConfigured ? undefined : (plan.missingConfiguration ?? 'Billing not configured')}
                   finePrint={planFinePrint(plan)}
                   perks={planPerks(plan)}
-                  footer={
-                    <Button
-                      onClick={() => checkout(plan.plan)}
-                      disabled={busyPlan === plan.plan}
-                      className={cn('w-full gap-2 text-sm font-black', tone.button)}
-                      style={{
-                        backgroundColor: plan.buttonColor || plan.accentColor || undefined,
-                        color: plan.buttonTextColor || readableTextColor(plan.buttonColor || plan.accentColor),
-                      }}
-                    >
-                      <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-                      {busyPlan === plan.plan ? 'Opening…' : `Get Premium ${name}`}
-                    </Button>
-                  }
+                  footer={renderPlanCta(plan, name, tone)}
                 />
               )
             })}

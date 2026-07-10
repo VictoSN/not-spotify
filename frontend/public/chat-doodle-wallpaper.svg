@@ -1,158 +1,300 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="520" height="520" viewBox="0 0 520 520">
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
   <defs>
     <style>
-      .line{fill:none;stroke:#e8eeee;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round}
-      .fill{fill:#e8eeee;stroke:none}
+      .line{fill:none;stroke:#e8eeee;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
     </style>
-    <g id="star" class="line"><path d="m0-10 3 6 7 .8-5.2 4.4 1.5 6.8L0 4.6-6.3 8l1.5-6.8-5.2-4.4 7-.8z"/></g>
-    <g id="spark" class="line"><path d="M0-8 2-2l6 2-6 2-2 6-2-6-6-2 6-2z"/></g>
-    <g id="heart" class="line"><path d="M0 8C-3 4-10 1-10-5c0-4.5 5.3-6 10-1 4.7-5 10-3.5 10 1C10 1 3 4 0 8z"/></g>
-    <g id="chat" class="line"><rect x="-15" y="-9" width="30" height="18" rx="5"/><path d="m-4 9-7 7 .8-7"/></g>
+
+    <g id="star" class="line"><path d="M0-10 3-4 10-3 4.8 1.8 6.3 9 0 5-6.3 9-4.8 1.8-10-3-3-4Z"/></g>
+    <g id="spark" class="line"><path d="M0-8 2.2-2.2 8 0 2.2 2.2 0 8-2.2 2.2-8 0-2.2-2.2Z"/></g>
+    <g id="plus" class="line"><path d="M0-6v12M-6 0H6"/></g>
+    <g id="diamond" class="line"><path d="M0-8 8 0 0 8-8 0Z"/></g>
+    <g id="triangle" class="line"><path d="M0-9 9 7-9 7Z"/></g>
+    <g id="ring" class="line"><circle r="6"/><circle r="2"/></g>
+    <g id="dots" class="line"><path d="M-8 0h.1M0 0h.1M8 0h.1"/></g>
+    <g id="tiny-heart" class="line"><path d="M0 4C-2.2 1.8-5 .4-5-2.4-5-4.9-2.2-5.5 0-3.2 2.2-5.5 5-4.9 5-2.4 5 .4 2.2 1.8 0 4Z"/></g>
+    <g id="bolt" class="line"><path d="M2-11-7 2h6l-3 11L8-4H2Z"/></g>
+    <g id="check" class="line"><path d="M-9 1-3 7 10-8"/></g>
+    <g id="xmark" class="line"><path d="M-7-7 7 7M7-7-7 7"/></g>
+
+    <g id="heart" class="line"><path d="M0 9C-4 5-11 1-11-5.5c0-5 5.6-6.4 11-1.2 5.4-5.2 11-3.8 11 1.2C11 1 4 5 0 9Z"/></g>
+    <g id="chat" class="line"><rect x="-15" y="-9" width="30" height="18" rx="5"/><path d="M-4 9-11 16-10.2 9"/></g>
+    <g id="speech" class="line"><path d="M-17-9h34v20h-12l-8 7 1.5-7H-17Z"/><path d="M-9-2h17M-9 4H4"/></g>
+    <g id="envelope" class="line"><rect x="-17" y="-10" width="34" height="22" rx="3"/><path d="M-17-7 0 5 17-7"/></g>
     <g id="phone" class="line"><rect x="-7" y="-14" width="14" height="28" rx="3"/><path d="M-2 10h4"/></g>
-    <g id="camera" class="line"><rect x="-14" y="-9" width="28" height="19" rx="4"/><path d="M-7-9-4-13h8l3 4"/><circle r="5"/></g>
+    <g id="camera" class="line"><rect x="-15" y="-9" width="30" height="20" rx="4"/><path d="M-7-9-4-13h8l3 4"/><circle r="5"/><path d="M10-4h.1"/></g>
+    <g id="video" class="line"><rect x="-16" y="-10" width="24" height="20" rx="4"/><path d="M8-3 17-9v18L8 3Z"/></g>
+    <g id="laptop" class="line"><rect x="-15" y="-11" width="30" height="20" rx="2"/><path d="M-20 13h40l-5-4H-15Z"/></g>
+    <g id="gamepad" class="line"><rect x="-19" y="-9" width="38" height="18" rx="7"/><path d="M-11 0h8M-7-4v8M6-3h.1M12 3h.1"/></g>
+    <g id="tv" class="line"><rect x="-18" y="-12" width="36" height="24" rx="3"/><path d="M-7 17H7M-10 12 0 17 10 12M-8-17 0-12 8-17"/></g>
+    <g id="watch" class="line"><rect x="-8" y="-11" width="16" height="22" rx="6"/><path d="M-5-11-3-18h6l2 7M-5 11-3 18h6l2-7M0-4v5l4 2"/></g>
+    <g id="bulb" class="line"><path d="M-8-2a8 8 0 1 1 16 0c0 4-3 6-4.5 9h-7C-5 4-8 2-8-2Z"/><path d="M-3 10h6M-2 14h4"/></g>
+    <g id="key" class="line"><circle cx="-8" cy="0" r="6"/><path d="M-2 0h17M8 0v5M13 0v-4"/></g>
+    <g id="lock" class="line"><rect x="-11" y="-2" width="22" height="16" rx="3"/><path d="M-6-2v-5a6 6 0 0 1 12 0v5M0 4v4"/></g>
+    <g id="calendar" class="line"><rect x="-14" y="-11" width="28" height="24" rx="3"/><path d="M-14-4h28M-7-15v7M7-15v7M-7 3h.1M0 3h.1M7 3h.1M-7 9h.1M0 9h.1"/></g>
+    <g id="clock" class="line"><circle r="12"/><path d="M0-6v7l5 3"/></g>
+    <g id="magnifier" class="line"><circle cx="-4" cy="-4" r="9"/><path d="M3 3 13 13"/></g>
+
     <g id="music" class="line"><path d="M5-14V4"/><path d="M5-14c7 1 10 4 10 9"/><ellipse cx="0" cy="5" rx="5" ry="3.6" transform="rotate(-15)"/></g>
     <g id="double-music" class="line"><path d="M-7-12V5M9-15V2"/><path d="M-7-12 9-15"/><ellipse cx="-11" cy="6" rx="4.8" ry="3.4" transform="rotate(-15 -11 6)"/><ellipse cx="5" cy="3" rx="4.8" ry="3.4" transform="rotate(-15 5 3)"/></g>
     <g id="headphones" class="line"><path d="M-13 6V1a13 13 0 0 1 26 0v5"/><rect x="-16" y="4" width="6" height="12" rx="3"/><rect x="10" y="4" width="6" height="12" rx="3"/></g>
     <g id="mic" class="line"><rect x="-5" y="-15" width="10" height="18" rx="5"/><path d="M-10-5v2a10 10 0 0 0 20 0v-2M0 8v6M-6 14H6"/></g>
-    <g id="cloud" class="line"><path d="M-15 7H11a6 6 0 0 0 1-12 9 9 0 0 0-17.5-2.5A7 7 0 0 0-15 7z"/></g>
-    <g id="moon" class="line"><path d="M4-13a13 13 0 1 0 8 17 10 10 0 0 1-8-17z"/></g>
+    <g id="guitar" class="line"><path d="M-16 12 8-12M5-15l10 10"/><ellipse cx="-10" cy="7" rx="8" ry="5.5" transform="rotate(-35 -10 7)"/><circle cx="-8" cy="5" r="2.4"/></g>
+    <g id="keyboard" class="line"><rect x="-19" y="-8" width="38" height="16" rx="3"/><path d="M-13-8v16M-7-8v9M-1-8v16M5-8v9M11-8v16"/></g>
+    <g id="drum" class="line"><ellipse cy="-8" rx="13" ry="5"/><path d="M-13-8v18c4 5 22 5 26 0V-8M-18-16-8-9M18-16 8-9"/></g>
+    <g id="record" class="line"><circle r="13"/><circle r="5"/><path d="M0 0h.1"/></g>
+
+    <g id="cloud" class="line"><path d="M-16 7H11a6 6 0 0 0 1-12 9 9 0 0 0-17.5-2.5A7 7 0 0 0-16 7Z"/></g>
+    <g id="rain" class="line"><path d="M-15 3H10a6 6 0 0 0 0-12 9 9 0 0 0-17-2 7 7 0 0 0-8 14Z"/><path d="M-9 8-12 14M0 8-3 14M9 8 6 14"/></g>
+    <g id="moon" class="line"><path d="M4-13a13 13 0 1 0 8 17A10 10 0 0 1 4-13Z"/></g>
     <g id="sun" class="line"><circle r="6"/><path d="M0-16v5M0 16v-5M-16 0h5M16 0h-5M-11-11l4 4M11 11l-4-4M-11 11l4-4M11-11l-4 4"/></g>
-    <g id="rocket" class="line"><path d="M0-18c8 5 12 14 9 24L3 4l-7 7-3-3 7-7-2-6c10-3 19 1 24 9z" transform="rotate(45)"/><circle cx="4" cy="-6" r="2.6" transform="rotate(45)"/><path d="M-9 9c-3 1-5 3-6 7 4-1 6-3 7-6" transform="rotate(45)"/></g>
-    <g id="planet" class="line"><circle r="12"/><path d="M-19 4c10 5 26 3 38-6M-18 6c7-1 13-4 18-8 7-5 13-7 18-6"/></g>
-    <g id="paper-plane" class="line"><path d="M-15 4 16-10 5 16 0 5z"/><path d="M16-10 0 5"/></g>
-    <g id="bike" class="line"><circle cx="-15" cy="8" r="8"/><circle cx="16" cy="8" r="8"/><path d="M-15 8-5-8h10L16 8M-5-8 1 8h-16M1 8 6-1M-9-8h8M5-8h8"/></g>
-    <g id="car" class="line"><path d="M-19 4h3l5-8H9l6 8h4v11h-38z"/><circle cx="-11" cy="15" r="3"/><circle cx="11" cy="15" r="3"/><path d="M-8-4v8M8-4v8"/></g>
-    <g id="gamepad" class="line"><rect x="-18" y="-9" width="36" height="18" rx="7"/><path d="M-10 0h8M-6-4v8M7-3h.1M12 3h.1"/></g>
-    <g id="tv" class="line"><rect x="-18" y="-12" width="36" height="24" rx="3"/><path d="M-7 17H7M-10 12 0 17l10-5M-8-17 0-12l8-5"/></g>
-    <g id="burger" class="line"><path d="M-18 1c2-9 34-9 36 0zM-17 5h34M-15 10h30M-14 14h28"/><path d="M-9 1c0-2 3-2 3 0M1 1c0-2 3-2 3 0M10 1c0-2 3-2 3 0"/></g>
-    <g id="pizza" class="line"><path d="M-11-14 17-6-3 18z"/><path d="M-6-8c7 5 12 7 17 7"/><circle cx="0" cy="-2" r="2"/><circle cx="4" cy="7" r="2"/><circle cx="-4" cy="9" r="1.8"/></g>
-    <g id="cup" class="line"><path d="M-12-6H7v10a9.5 9.5 0 0 1-19 0z"/><path d="M7-4h4a4 4 0 0 1 0 8H7M-5-11c2-2 2-4 0-6M2-11c2-2 2-4 0-6"/></g>
-    <g id="gift" class="line"><rect x="-14" y="-3" width="28" height="18" rx="3"/><rect x="-16" y="-11" width="32" height="8" rx="2"/><path d="M0-11v26M0-11c-7-8-14-2 0 0 14-2 7-8 0 0"/></g>
-    <g id="pencil" class="line"><path d="M-17 10 9-16l8 8-26 26-10 2z"/><path d="m8-15 8 8M-9 18l-8-8"/></g>
-    <g id="book" class="line"><path d="M-17-12h13c4 0 6 2 6 6v22c0-4-2-6-6-6h-13zM2-6c0-4 2-6 6-6h12v22H8c-4 0-6 2-6 6z"/><path d="M-12-5h7M-12 2h7M7-5h8M7 2h8"/></g>
-    <g id="envelope" class="line"><rect x="-17" y="-10" width="34" height="22" rx="3"/><path d="m-17-7 17 12 17-12"/></g>
-    <g id="map-pin" class="line"><path d="M0 16S11 4 11-5A11 11 0 0 0-11-5c0 9 11 21 11 21z"/><circle cy="-5" r="4"/></g>
-    <g id="smile" class="line"><circle r="12"/><path d="M-5-4h.1M5-4h.1M-6 4c4 4 8 4 12 0"/></g>
+    <g id="leaf" class="line"><path d="M-14 10C-5-12 10-15 16-11 18 1 5 11-14 10Z"/><path d="M-14 10C-4 4 6-2 16-11"/></g>
     <g id="flower" class="line"><circle r="3"/><ellipse cy="-9" rx="4" ry="5.5"/><ellipse cx="8" cy="-2.5" rx="4" ry="5.5" transform="rotate(72 8 -2.5)"/><ellipse cx="5" cy="7.5" rx="4" ry="5.5" transform="rotate(144 5 7.5)"/><ellipse cx="-5" cy="7.5" rx="4" ry="5.5" transform="rotate(216 -5 7.5)"/><ellipse cx="-8" cy="-2.5" rx="4" ry="5.5" transform="rotate(288 -8 -2.5)"/></g>
-    <g id="leaf" class="line"><path d="M-14 10C-5-12 10-15 16-11 18 1 5 11-14 10z"/><path d="M-14 10C-4 4 6-2 16-11"/></g>
-    <g id="fish" class="line"><path d="M-15 0c6-8 21-8 30 0-9 8-24 8-30 0z"/><path d="m15 0 8-7v14zM-8-2h.1"/></g>
+    <g id="tree" class="line"><path d="M0-17c-9 8-14 16-14 23 0 8 28 8 28 0 0-7-5-15-14-23Z"/><path d="M0 6v13M-6 13H6"/></g>
+    <g id="palm" class="line"><path d="M0 18C2 6 2-3 0-14"/><path d="M0-13c-8-7-16-3-19 4 7-2 13-1 19-4ZM0-13c8-7 16-3 19 4-7-2-13-1-19-4ZM0-13c-3-9 5-14 12-12-4 4-7 8-12 12ZM0-13c3-9-5-14-12-12 4 4 7 8 12 12Z"/></g>
+    <g id="mountain" class="line"><path d="M-20 14-7-8l7 10 8-14 15 26Z"/><path d="M-7-8-2 0M8-12l4 8"/></g>
+    <g id="rainbow" class="line"><path d="M-19 10a19 19 0 0 1 38 0M-12 10a12 12 0 0 1 24 0M-5 10a5 5 0 0 1 10 0"/></g>
+    <g id="wave" class="line"><path d="M-20 5c8-9 14-9 20 0s12 9 20 0M-18 13c8-5 13-5 18 0s10 5 18 0"/></g>
+    <g id="swirl" class="line"><path d="M-15 7c4 8 20 9 27 0 7-10-4-22-15-15-9 6-4 18 6 14"/></g>
+
+    <g id="planet" class="line"><circle r="12"/><path d="M-19 4c10 5 26 3 38-6M-18 6c7-1 13-4 18-8 7-5 13-7 18-6"/></g>
+    <g id="rocket" class="line"><path d="M0-18c8 5 12 14 9 24L3 4l-7 7-3-3 7-7-2-6c10-3 19 1 24 9Z" transform="rotate(45)"/><circle cx="4" cy="-6" r="2.6" transform="rotate(45)"/><path d="M-9 9c-3 1-5 3-6 7 4-1 6-3 7-6" transform="rotate(45)"/></g>
+    <g id="paper-plane" class="line"><path d="M-15 4 16-10 5 16 0 5Z"/><path d="M16-10 0 5"/></g>
+    <g id="airplane" class="line"><path d="M-21 1 20-10 9 2l8 12-15-8-11 11-1-15Z"/></g>
+    <g id="balloon" class="line"><ellipse cy="-6" rx="8" ry="11"/><path d="M0 5c-3 5 2 8-2 13M-4 5h8"/></g>
+    <g id="compass" class="line"><circle r="13"/><path d="M5-9-2 3-8 9-2-3Z"/></g>
+    <g id="suitcase" class="line"><rect x="-16" y="-9" width="32" height="22" rx="4"/><path d="M-6-9v-5H6v5M0-9v22"/></g>
+    <g id="map-pin" class="line"><path d="M0 16S11 4 11-5A11 11 0 0 0-11-5c0 9 11 21 11 21Z"/><circle cy="-5" r="4"/></g>
+    <g id="car" class="line"><path d="M-19 4h3l5-8H9l6 8h4v11h-38Z"/><circle cx="-11" cy="15" r="3"/><circle cx="11" cy="15" r="3"/><path d="M-8-4v8M8-4v8"/></g>
+    <g id="bike" class="line"><circle cx="-15" cy="8" r="8"/><circle cx="16" cy="8" r="8"/><path d="M-15 8-5-8h10L16 8M-5-8 1 8h-16M1 8 6-1M-9-8h8M5-8h8"/></g>
+    <g id="train" class="line"><rect x="-15" y="-14" width="30" height="24" rx="4"/><path d="M-9-7h18M-9 0h18M-10 15l5-5M10 15l-5-5M-7 10h.1M7 10h.1"/></g>
+    <g id="ship" class="line"><path d="M-19 4h38l-7 11H-12Z"/><path d="M-5 4V-13H8L14 4M-5-7h16"/></g>
+
+    <g id="burger" class="line"><path d="M-18 1c2-9 34-9 36 0ZM-17 5h34M-15 10h30M-14 14h28"/><path d="M-9 1c0-2 3-2 3 0M1 1c0-2 3-2 3 0M10 1c0-2 3-2 3 0"/></g>
+    <g id="pizza" class="line"><path d="M-11-14 17-6-3 18Z"/><path d="M-6-8c7 5 12 7 17 7"/><circle cx="0" cy="-2" r="2"/><circle cx="4" cy="7" r="2"/><circle cx="-4" cy="9" r="1.8"/></g>
+    <g id="cup" class="line"><path d="M-12-6H7v10a9.5 9.5 0 0 1-19 0Z"/><path d="M7-4h4a4 4 0 0 1 0 8H7M-5-11c2-2 2-4 0-6M2-11c2-2 2-4 0-6"/></g>
+    <g id="icecream" class="line"><path d="M-9-4a9 9 0 1 1 18 0Z"/><path d="M-9-4 0 17 9-4ZM-5 4h10M-2 10h4"/></g>
+    <g id="apple" class="line"><path d="M0-8c-8-5-15 2-12 12 2 9 8 12 12 8 4 4 10 1 12-8 3-10-4-17-12-12Z"/><path d="M0-8c1-6 5-8 10-8M0-8c-2-4-5-5-8-5"/></g>
+    <g id="donut" class="line"><circle r="13"/><circle r="5"/><path d="M-8-6c4 2 7 0 10-3M4 8c3-2 5-1 8 1M-12 2c4 0 5 3 8 4"/></g>
+
+    <g id="gift" class="line"><rect x="-14" y="-3" width="28" height="18" rx="3"/><rect x="-16" y="-11" width="32" height="8" rx="2"/><path d="M0-11v26M0-11c-7-8-14-2 0 0 14-2 7-8 0 0"/></g>
+    <g id="pencil" class="line"><path d="M-17 10 9-16l8 8-26 26-10 2Z"/><path d="M8-15 16-7M-9 18l-8-8"/></g>
+    <g id="book" class="line"><path d="M-17-12h13c4 0 6 2 6 6v22c0-4-2-6-6-6h-13ZM2-6c0-4 2-6 6-6h12v22H8c-4 0-6 2-6 6Z"/><path d="M-12-5h7M-12 2h7M7-5h8M7 2h8"/></g>
+    <g id="bag" class="line"><path d="M-14-2h28l-2 22h-24Z"/><path d="M-7-2v-5a7 7 0 0 1 14 0v5"/></g>
+    <g id="umbrella" class="line"><path d="M-19 2c4-14 34-14 38 0-7-4-12-4-19 0-7-4-12-4-19 0Z"/><path d="M0 2v14c0 6 8 5 8 0"/></g>
+    <g id="hat" class="line"><path d="M-18 4c6 6 30 6 36 0"/><path d="M-10 4c0-9 20-9 20 0v2H-10Z"/></g>
+    <g id="shirt" class="line"><path d="M-9-15c5 5 13 5 18 0l11 7-6 9-5-3v20H-9V-2l-5 3-6-9Z"/></g>
+    <g id="glasses" class="line"><circle cx="-8" r="6"/><circle cx="8" r="6"/><path d="M-2 0h4M-14-1l-5-3M14-1l5-3"/></g>
+
+    <g id="smile" class="line"><circle r="12"/><path d="M-5-4h.1M5-4h.1M-6 4c4 4 8 4 12 0"/></g>
     <g id="face" class="line"><rect x="-13" y="-13" width="26" height="26" rx="6"/><path d="M-5-4h.1M5-4h.1M-6 5c4 3 8 3 12 0"/></g>
-    <g id="bag" class="line"><path d="M-14-2h28l-2 22h-24z"/><path d="M-7-2v-5a7 7 0 0 1 14 0v5"/></g>
-    <g id="dots" class="line"><circle cx="-8" r="1.1"/><circle r="1.1"/><circle cx="8" r="1.1"/></g>
-    <g id="plus" class="line"><path d="M0-5v10M-5 0h10"/></g>
-    <g id="tiny-heart" class="line"><path d="M0 4C-2 2-5 .5-5-2.5-5-5-2-5.6 0-3.1 2-5.6 5-5 5-2.5 5 .5 2 2 0 4z"/></g>
+    <g id="cat" class="line"><path d="M-12 9V-4l5-7 5 5h4l5-5 5 7V9Z"/><path d="M-5 0h.1M5 0h.1M-3 6c2 2 4 2 6 0M0 2v3M-11 3l-8-2M-11 7l-8 2M11 3l8-2M11 7l8 2"/></g>
+    <g id="paw" class="line"><ellipse cy="6" rx="6" ry="5"/><circle cx="-8" cy="-2" r="3"/><circle cx="-2" cy="-6" r="3"/><circle cx="4" cy="-6" r="3"/><circle cx="9" cy="-1" r="3"/></g>
+    <g id="bird" class="line"><path d="M-16 4c7-9 16-8 21 0 3-6 8-8 14-7-4 5-8 9-15 13-9 5-15 2-20-6Z"/><path d="M4 4c-5-2-9-2-14 1M12-1h.1"/></g>
+    <g id="butterfly" class="line"><path d="M0 0c-6-12-17-10-14 1 2 8 9 8 14-1ZM0 0c6-12 17-10 14 1-2 8-9 8-14-1ZM0 0v13M-4 15c3-3 5-3 8 0"/></g>
+    <g id="fish" class="line"><path d="M-15 0c6-8 21-8 30 0-9 8-24 8-30 0Z"/><path d="M15 0 23-7v14ZM-8-2h.1"/></g>
+    <g id="shell" class="line"><path d="M-14 9C-12-6-4-15 0-15S12-6 14 9Z"/><path d="M-14 9H14M0-15V9M-8-8-3 9M8-8 3 9"/></g>
+    <g id="home" class="line"><path d="M-16 0 0-14 16 0"/><path d="M-12-1v17H12V-1M-4 16V6h8v10"/></g>
   </defs>
 
-  <rect width="520" height="520" fill="none"/>
+  <rect width="600" height="600" fill="none"/>
+
   <g class="line">
-    <use href="#planet" transform="translate(31 22) rotate(-18) scale(.74)"/>
-    <use href="#cloud" transform="translate(96 20) rotate(5) scale(.56)"/>
-    <use href="#rocket" transform="translate(154 26) rotate(-18) scale(.62)"/>
-    <use href="#paper-plane" transform="translate(217 20) rotate(11) scale(.48)"/>
-    <use href="#chat" transform="translate(278 23) rotate(-5) scale(.53)"/>
-    <use href="#star" transform="translate(336 20) rotate(12) scale(.5)"/>
-    <use href="#bike" transform="translate(408 25) rotate(-5) scale(.52)"/>
-    <use href="#phone" transform="translate(485 24) rotate(10) scale(.55)"/>
-
-    <use href="#smile" transform="translate(41 75) rotate(8) scale(.56)"/>
-    <use href="#double-music" transform="translate(99 72) rotate(-10) scale(.5)"/>
-    <use href="#map-pin" transform="translate(158 79) rotate(3) scale(.52)"/>
-    <use href="#burger" transform="translate(221 75) rotate(7) scale(.53)"/>
-    <use href="#mic" transform="translate(288 73) rotate(-7) scale(.5)"/>
-    <use href="#camera" transform="translate(353 75) rotate(9) scale(.54)"/>
-    <use href="#moon" transform="translate(421 72) rotate(-8) scale(.54)"/>
-    <use href="#gift" transform="translate(486 77) rotate(5) scale(.51)"/>
-
-    <use href="#cup" transform="translate(27 128) rotate(-3) scale(.52)"/>
-    <use href="#heart" transform="translate(82 126) rotate(9) scale(.48)"/>
-    <use href="#tv" transform="translate(143 127) rotate(3) scale(.52)"/>
-    <use href="#sun" transform="translate(207 126) rotate(13) scale(.48)"/>
-    <use href="#pizza" transform="translate(268 130) rotate(-13) scale(.55)"/>
-    <use href="#book" transform="translate(334 126) rotate(4) scale(.5)"/>
-    <use href="#fish" transform="translate(401 129) rotate(-6) scale(.52)"/>
-    <use href="#music" transform="translate(470 126) rotate(12) scale(.52)"/>
-
-    <use href="#car" transform="translate(43 188) rotate(3) scale(.5)"/>
-    <use href="#leaf" transform="translate(110 186) rotate(14) scale(.48)"/>
-    <use href="#gamepad" transform="translate(172 184) rotate(-7) scale(.52)"/>
-    <use href="#pencil" transform="translate(235 187) rotate(9) scale(.5)"/>
-    <use href="#envelope" transform="translate(300 187) rotate(-5) scale(.52)"/>
-    <use href="#face" transform="translate(361 184) rotate(8) scale(.48)"/>
-    <use href="#headphones" transform="translate(423 188) rotate(-4) scale(.5)"/>
-    <use href="#flower" transform="translate(489 185) rotate(15) scale(.48)"/>
-
-    <use href="#paper-plane" transform="translate(26 244) rotate(-15) scale(.52)"/>
-    <use href="#cloud" transform="translate(86 238) rotate(-3) scale(.58)"/>
-    <use href="#bag" transform="translate(151 245) rotate(4) scale(.51)"/>
-    <use href="#camera" transform="translate(214 241) rotate(-6) scale(.5)"/>
-    <use href="#planet" transform="translate(278 239) rotate(14) scale(.52)"/>
-    <use href="#bike" transform="translate(352 244) rotate(8) scale(.48)"/>
-    <use href="#chat" transform="translate(425 241) rotate(-8) scale(.54)"/>
-    <use href="#smile" transform="translate(488 243) rotate(3) scale(.5)"/>
-
-    <use href="#rocket" transform="translate(48 301) rotate(12) scale(.56)"/>
-    <use href="#phone" transform="translate(106 298) rotate(-6) scale(.52)"/>
-    <use href="#burger" transform="translate(165 300) rotate(-4) scale(.48)"/>
-    <use href="#heart" transform="translate(221 299) rotate(8) scale(.46)"/>
-    <use href="#double-music" transform="translate(281 300) rotate(11) scale(.5)"/>
-    <use href="#gift" transform="translate(340 299) rotate(-7) scale(.5)"/>
-    <use href="#book" transform="translate(406 300) rotate(5) scale(.48)"/>
-    <use href="#sun" transform="translate(477 300) rotate(-12) scale(.46)"/>
-
-    <use href="#moon" transform="translate(29 357) rotate(9) scale(.52)"/>
-    <use href="#tv" transform="translate(88 357) rotate(-5) scale(.52)"/>
-    <use href="#fish" transform="translate(154 356) rotate(5) scale(.48)"/>
-    <use href="#cup" transform="translate(213 356) rotate(4) scale(.5)"/>
-    <use href="#leaf" transform="translate(272 354) rotate(-10) scale(.5)"/>
-    <use href="#gamepad" transform="translate(337 357) rotate(7) scale(.48)"/>
-    <use href="#mic" transform="translate(403 356) rotate(-6) scale(.48)"/>
-    <use href="#pizza" transform="translate(468 357) rotate(12) scale(.5)"/>
-
-    <use href="#flower" transform="translate(49 416) rotate(-8) scale(.5)"/>
-    <use href="#map-pin" transform="translate(112 414) rotate(5) scale(.48)"/>
-    <use href="#pencil" transform="translate(175 417) rotate(-12) scale(.49)"/>
-    <use href="#headphones" transform="translate(238 417) rotate(8) scale(.48)"/>
-    <use href="#face" transform="translate(301 415) rotate(-5) scale(.46)"/>
-    <use href="#envelope" transform="translate(362 417) rotate(6) scale(.5)"/>
-    <use href="#music" transform="translate(425 415) rotate(-9) scale(.5)"/>
-    <use href="#cloud" transform="translate(488 417) rotate(3) scale(.52)"/>
-
-    <use href="#camera" transform="translate(26 484) rotate(6) scale(.48)"/>
-    <use href="#bag" transform="translate(88 482) rotate(-4) scale(.5)"/>
-    <use href="#star" transform="translate(149 480) rotate(15) scale(.48)"/>
-    <use href="#car" transform="translate(214 482) rotate(-5) scale(.48)"/>
-    <use href="#planet" transform="translate(280 481) rotate(11) scale(.48)"/>
-    <use href="#rocket" transform="translate(348 481) rotate(-13) scale(.48)"/>
-    <use href="#phone" transform="translate(414 482) rotate(8) scale(.5)"/>
-    <use href="#heart" transform="translate(481 482) rotate(-8) scale(.45)"/>
-
-    <use href="#plus" transform="translate(64 42) rotate(17) scale(.42)"/>
-    <use href="#tiny-heart" transform="translate(198 46) rotate(-10) scale(.38)"/>
-    <use href="#dots" transform="translate(373 45) rotate(8) scale(.52)"/>
-    <use href="#spark" transform="translate(460 48) rotate(12) scale(.42)"/>
-    <use href="#dots" transform="translate(20 103) rotate(-5) scale(.5)"/>
-    <use href="#plus" transform="translate(126 103) rotate(-12) scale(.4)"/>
-    <use href="#tiny-heart" transform="translate(242 104) rotate(6) scale(.38)"/>
-    <use href="#spark" transform="translate(384 102) rotate(-9) scale(.42)"/>
-    <use href="#plus" transform="translate(508 104) rotate(18) scale(.38)"/>
-    <use href="#spark" transform="translate(64 158) rotate(10) scale(.42)"/>
-    <use href="#dots" transform="translate(190 160) scale(.5)"/>
-    <use href="#plus" transform="translate(428 158) rotate(-8) scale(.4)"/>
-    <use href="#tiny-heart" transform="translate(505 158) rotate(8) scale(.38)"/>
-    <use href="#tiny-heart" transform="translate(74 214) rotate(-8) scale(.38)"/>
-    <use href="#spark" transform="translate(260 214) rotate(15) scale(.4)"/>
-    <use href="#dots" transform="translate(455 216) rotate(9) scale(.5)"/>
-    <use href="#plus" transform="translate(132 269) rotate(8) scale(.4)"/>
-    <use href="#tiny-heart" transform="translate(306 270) rotate(-5) scale(.38)"/>
-    <use href="#spark" transform="translate(508 269) rotate(-12) scale(.4)"/>
-    <use href="#dots" transform="translate(78 326) rotate(-8) scale(.5)"/>
-    <use href="#plus" transform="translate(249 326) rotate(15) scale(.4)"/>
-    <use href="#tiny-heart" transform="translate(382 326) rotate(10) scale(.38)"/>
-    <use href="#spark" transform="translate(139 386) rotate(8) scale(.4)"/>
-    <use href="#dots" transform="translate(329 385) scale(.5)"/>
-    <use href="#plus" transform="translate(452 386) rotate(-8) scale(.4)"/>
-    <use href="#tiny-heart" transform="translate(72 449) rotate(11) scale(.38)"/>
-    <use href="#plus" transform="translate(266 448) rotate(-10) scale(.4)"/>
-    <use href="#spark" transform="translate(395 448) rotate(13) scale(.4)"/>
+    <use href="#umbrella" transform="translate(190 55.6) rotate(-10.3) scale(-4.2 4.2)"/>
+    <use href="#umbrella" transform="translate(190 655.6) rotate(-10.3) scale(-4.2 4.2)"/>
+    <use href="#phone" transform="translate(164.8 124.5) rotate(12.2) scale(3.3 3.3)"/>
+    <use href="#flower" transform="translate(81.7 58.6) rotate(-1.9) scale(-4 4)"/>
+    <use href="#music" transform="translate(233.4 94.6) rotate(26.5) scale(-1 1)"/>
+    <use href="#apple" transform="translate(67 84.1) rotate(-4.6) scale(1.6 1.6)"/>
+    <use href="#mountain" transform="translate(129.2 75.4) rotate(-43.8) scale(0.7 0.7)"/>
+    <use href="#book" transform="translate(178.3 556.6) rotate(-14.7) scale(-1 1)"/>
+    <use href="#paw" transform="translate(239.4 85.3) rotate(19.4) scale(-1.7 1.7)"/>
+    <use href="#plus" transform="translate(96.5 38) rotate(-23.7) scale(-1.6 1.6)"/>
+    <use href="#diamond" transform="translate(158.2 96.6) rotate(7.2) scale(1.6 1.6)"/>
+    <use href="#xmark" transform="translate(133.4 54.1) rotate(-83.7) scale(1 1)"/>
+    <use href="#dots" transform="translate(244.6 587.8) rotate(2.3) scale(0.8 0.8)"/>
+    <use href="#car" transform="translate(458 311.6) rotate(-0.6) scale(4.1 4.1)"/>
+    <use href="#swirl" transform="translate(471.7 212.7) rotate(11.4) scale(2.2 2.2)"/>
+    <use href="#butterfly" transform="translate(385.3 278.5) rotate(8.7) scale(3 3)"/>
+    <use href="#speech" transform="translate(385 291.7) rotate(-16.7) scale(2 2)"/>
+    <use href="#laptop" transform="translate(468.4 443.8) rotate(-18.4) scale(1.1 1.1)"/>
+    <use href="#butterfly" transform="translate(543.5 321) rotate(-39.3) scale(-1.2 1.2)"/>
+    <use href="#hat" transform="translate(395 293.5) rotate(17.4) scale(-1.1 1.1)"/>
+    <use href="#rocket" transform="translate(542 361.1) rotate(-34.3) scale(0.9 0.9)"/>
+    <use href="#car" transform="translate(432.6 399.1) rotate(8.3) scale(-1 1)"/>
+    <use href="#tiny-heart" transform="translate(506.5 325.3) rotate(75.5) scale(1.4 1.4)"/>
+    <use href="#spark" transform="translate(409.3 325.8) rotate(60.9) scale(1.6 1.6)"/>
+    <use href="#tiny-heart" transform="translate(533.5 222.8) rotate(-20.4) scale(-1.2 1.2)"/>
+    <use href="#heart" transform="translate(412.6 309.7) rotate(-44.6) scale(1 1)"/>
+    <use href="#spark" transform="translate(502.6 248.6) rotate(-59.6) scale(1.7 1.7)"/>
+    <use href="#mountain" transform="translate(196.5 465.3) rotate(-10.8) scale(3.7 3.7)"/>
+    <use href="#sun" transform="translate(186.7 546.4) rotate(-16.4) scale(2.5 2.5)"/>
+    <use href="#paper-plane" transform="translate(227.6 361.5) rotate(-14.2) scale(2.8 2.8)"/>
+    <use href="#key" transform="translate(260.6 544.7) rotate(15) scale(-1.6 1.6)"/>
+    <use href="#wave" transform="translate(160.6 367.4) rotate(28.4) scale(-1.2 1.2)"/>
+    <use href="#suitcase" transform="translate(180.7 515) rotate(-28.5) scale(-1.1 1.1)"/>
+    <use href="#cat" transform="translate(125.5 497.2) rotate(48.2) scale(1.8 1.8)"/>
+    <use href="#airplane" transform="translate(138.9 543.8) rotate(49) scale(-1.1 1.1)"/>
+    <use href="#ring" transform="translate(100.3 518.3) rotate(-33.9) scale(2 2)"/>
+    <use href="#tiny-heart" transform="translate(133.4 470.6) rotate(-42.7) scale(-1.1 1.1)"/>
+    <use href="#plus" transform="translate(132.6 400.5) rotate(25.3) scale(-1 1)"/>
+    <use href="#triangle" transform="translate(88.8 537) rotate(77.7) scale(-1.4 1.4)"/>
+    <use href="#tiny-heart" transform="translate(157.1 524.2) rotate(18.1) scale(-1.6 1.6)"/>
+    <use href="#tiny-heart" transform="translate(291.7 418.5) rotate(-43.5) scale(-2.1 2.1)"/>
+    <use href="#record" transform="translate(191.3 268.4) rotate(6.1) scale(6.4 6.4)"/>
+    <use href="#palm" transform="translate(206.1 194) rotate(11) scale(-1.5 1.5)"/>
+    <use href="#flower" transform="translate(279 250.2) rotate(3.2) scale(-3 3)"/>
+    <use href="#tree" transform="translate(288.6 324.4) rotate(9.8) scale(2.3 2.3)"/>
+    <use href="#bike" transform="translate(230 376.3) rotate(49.3) scale(1.2 1.2)"/>
+    <use href="#train" transform="translate(236.6 218.3) rotate(-31.3) scale(1.2 1.2)"/>
+    <use href="#heart" transform="translate(90.1 368.9) rotate(25.3) scale(-1.5 1.5)"/>
+    <use href="#star" transform="translate(212.3 205.1) rotate(70.7) scale(1.1 1.1)"/>
+    <use href="#check" transform="translate(126.4 208.5) rotate(-19.1) scale(-0.7 0.7)"/>
+    <use href="#bolt" transform="translate(232.8 392) rotate(-19.6) scale(-0.7 0.7)"/>
+    <use href="#spark" transform="translate(134.5 305.9) rotate(-25.2) scale(0.8 0.8)"/>
+    <use href="#tiny-heart" transform="translate(237.9 127.4) rotate(-57.9) scale(-2.4 2.4)"/>
+    <use href="#tiny-heart" transform="translate(64.9 258.4) rotate(-68.9) scale(1.2 1.2)"/>
+    <use href="#tiny-heart" transform="translate(98 251.6) rotate(16.1) scale(1.8 1.8)"/>
+    <use href="#rocket" transform="translate(488.5 82.9) rotate(10) scale(4.4 4.4)"/>
+    <use href="#pencil" transform="translate(564.4 -8.6) rotate(-3.8) scale(2.6 2.6)"/>
+    <use href="#pencil" transform="translate(564.4 591.4) rotate(-3.8) scale(2.6 2.6)"/>
+    <use href="#pencil" transform="translate(-35.6 -8.6) rotate(-3.8) scale(2.6 2.6)"/>
+    <use href="#pencil" transform="translate(-35.6 591.4) rotate(-3.8) scale(2.6 2.6)"/>
+    <use href="#double-music" transform="translate(437.9 168) rotate(24.9) scale(2.4 2.4)"/>
+    <use href="#bulb" transform="translate(577.9 58.9) rotate(25.4) scale(4.4 4.4)"/>
+    <use href="#bulb" transform="translate(-22.1 58.9) rotate(25.4) scale(4.4 4.4)"/>
+    <use href="#laptop" transform="translate(405.9 67.4) rotate(-45.2) scale(-1 1)"/>
+    <use href="#umbrella" transform="translate(410.7 23.7) rotate(7.8) scale(1.2 1.2)"/>
+    <use href="#airplane" transform="translate(472.3 18.4) rotate(36.8) scale(0.7 0.7)"/>
+    <use href="#tiny-heart" transform="translate(428.1 60.5) rotate(17.8) scale(-2.3 2.3)"/>
+    <use href="#tiny-heart" transform="translate(419.5 67.4) rotate(70.3) scale(-2.5 2.5)"/>
+    <use href="#dots" transform="translate(540.7 176.1) rotate(-57.1) scale(-1.3 1.3)"/>
+    <use href="#dots" transform="translate(425.1 99.7) rotate(75.2) scale(1.5 1.5)"/>
+    <use href="#bolt" transform="translate(564.2 125.6) rotate(-20.4) scale(-0.7 0.7)"/>
+    <use href="#ship" transform="translate(407.9 532.9) rotate(2.1) scale(3.8 3.8)"/>
+    <use href="#ship" transform="translate(407.9 -67.1) rotate(2.1) scale(3.8 3.8)"/>
+    <use href="#double-music" transform="translate(488.2 512) rotate(-14.3) scale(2.1 2.1)"/>
+    <use href="#double-music" transform="translate(466.9 491.3) rotate(-2.3) scale(2.1 2.1)"/>
+    <use href="#cat" transform="translate(381.7 456.9) rotate(-4.8) scale(2.5 2.5)"/>
+    <use href="#calendar" transform="translate(444.9 571.4) rotate(40.5) scale(-1.4 1.4)"/>
+    <use href="#laptop" transform="translate(336.4 542.8) rotate(32) scale(-1.2 1.2)"/>
+    <use href="#gift" transform="translate(456.4 19.5) rotate(-38.8) scale(-1.1 1.1)"/>
+    <use href="#heart" transform="translate(438.4 429.6) rotate(-30.5) scale(-0.6 0.6)"/>
+    <use href="#plus" transform="translate(484 537.2) rotate(-13.3) scale(1.2 1.2)"/>
+    <use href="#spark" transform="translate(425.7 570.3) rotate(40.1) scale(0.8 0.8)"/>
+    <use href="#xmark" transform="translate(396 28.1) rotate(-41.1) scale(1.1 1.1)"/>
+    <use href="#triangle" transform="translate(442.7 409) rotate(74.9) scale(1.1 1.1)"/>
+    <use href="#cloud" transform="translate(22.3 163.6) rotate(11.1) scale(5.1 5.1)"/>
+    <use href="#cloud" transform="translate(622.3 163.6) rotate(11.1) scale(5.1 5.1)"/>
+    <use href="#guitar" transform="translate(-22.2 62.3) rotate(3.9) scale(-2 2)"/>
+    <use href="#guitar" transform="translate(577.8 62.3) rotate(3.9) scale(-2 2)"/>
+    <use href="#planet" transform="translate(99.6 212.5) rotate(17.5) scale(2.1 2.1)"/>
+    <use href="#cloud" transform="translate(23.8 46.8) rotate(-35.1) scale(1.3 1.3)"/>
+    <use href="#bird" transform="translate(9.7 102.5) rotate(42.1) scale(-0.9 0.9)"/>
+    <use href="#bird" transform="translate(609.7 102.5) rotate(42.1) scale(-0.9 0.9)"/>
+    <use href="#butterfly" transform="translate(66.8 66.4) rotate(41.8) scale(-1.4 1.4)"/>
+    <use href="#fish" transform="translate(548.7 184.6) rotate(-16.7) scale(-1.6 1.6)"/>
+    <use href="#flower" transform="translate(53.9 212.7) rotate(-41.1) scale(-1.4 1.4)"/>
+    <use href="#heart" transform="translate(588.7 98.8) rotate(-58.2) scale(0.9 0.9)"/>
+    <use href="#spark" transform="translate(496.9 259.4) rotate(22.2) scale(1.3 1.3)"/>
+    <use href="#check" transform="translate(581.2 203.6) rotate(80.6) scale(0.7 0.7)"/>
+    <use href="#plus" transform="translate(94.3 169.8) rotate(82) scale(-0.9 0.9)"/>
+    <use href="#star" transform="translate(127.4 169.8) rotate(-84.4) scale(0.9 0.9)"/>
+    <use href="#spark" transform="translate(114.4 243.1) rotate(-69.7) scale(1 1)"/>
+    <use href="#dots" transform="translate(534.4 166.6) rotate(40.7) scale(1.5 1.5)"/>
+    <use href="#speech" transform="translate(34.1 569.5) rotate(-1.3) scale(4.5 4.5)"/>
+    <use href="#speech" transform="translate(34.1 -30.5) rotate(-1.3) scale(4.5 4.5)"/>
+    <use href="#speech" transform="translate(634.1 569.5) rotate(-1.3) scale(4.5 4.5)"/>
+    <use href="#speech" transform="translate(634.1 -30.5) rotate(-1.3) scale(4.5 4.5)"/>
+    <use href="#glasses" transform="translate(92.7 619.3) rotate(8.5) scale(2.8 2.8)"/>
+    <use href="#glasses" transform="translate(92.7 19.3) rotate(8.5) scale(2.8 2.8)"/>
+    <use href="#shirt" transform="translate(526 518.3) rotate(18.4) scale(-1.8 1.8)"/>
+    <use href="#record" transform="translate(60 452.4) rotate(-17.9) scale(2.8 2.8)"/>
+    <use href="#sun" transform="translate(99.9 50.6) rotate(-33) scale(-1 1)"/>
+    <use href="#phone" transform="translate(123.5 521.7) rotate(25.6) scale(-1.4 1.4)"/>
+    <use href="#map-pin" transform="translate(86.4 468.4) rotate(33.3) scale(1.9 1.9)"/>
+    <use href="#magnifier" transform="translate(116 602.9) rotate(-40.9) scale(1.5 1.5)"/>
+    <use href="#magnifier" transform="translate(116 2.9) rotate(-40.9) scale(1.5 1.5)"/>
+    <use href="#diamond" transform="translate(157.9 566.3) rotate(34.7) scale(1.6 1.6)"/>
+    <use href="#plus" transform="translate(82.8 462.3) rotate(-29.1) scale(-1.5 1.5)"/>
+    <use href="#check" transform="translate(36.4 503.9) rotate(76.9) scale(-1.3 1.3)"/>
+    <use href="#tiny-heart" transform="translate(57.3 30.2) rotate(-45.8) scale(2.6 2.6)"/>
+    <use href="#plus" transform="translate(42.7 449.5) rotate(53.9) scale(1.7 1.7)"/>
+    <use href="#bolt" transform="translate(93.7 55.2) rotate(26.7) scale(1.2 1.2)"/>
+    <use href="#magnifier" transform="translate(451.4 611.8) rotate(11.2) scale(-2 2)"/>
+    <use href="#magnifier" transform="translate(451.4 11.8) rotate(11.2) scale(-2 2)"/>
+    <use href="#record" transform="translate(223.4 536.5) rotate(9.8) scale(2.4 2.4)"/>
+    <use href="#keyboard" transform="translate(553.6 374.9) rotate(-18.6) scale(1.6 1.6)"/>
+    <use href="#rainbow" transform="translate(21.2 162.2) rotate(-20.9) scale(1.9 1.9)"/>
+    <use href="#rainbow" transform="translate(621.2 162.2) rotate(-20.9) scale(1.9 1.9)"/>
+    <use href="#heart" transform="translate(-5 379.4) rotate(-4.1) scale(-3 3)"/>
+    <use href="#heart" transform="translate(595 379.4) rotate(-4.1) scale(-3 3)"/>
+    <use href="#donut" transform="translate(84.6 496) rotate(8.3) scale(-2.7 2.7)"/>
+    <use href="#mountain" transform="translate(592.9 337.7) rotate(-12.1) scale(1.4 1.4)"/>
+    <use href="#mountain" transform="translate(-7.1 337.7) rotate(-12.1) scale(1.4 1.4)"/>
+    <use href="#tree" transform="translate(69.5 3.3) rotate(-14.3) scale(-2 2)"/>
+    <use href="#tree" transform="translate(69.5 603.3) rotate(-14.3) scale(-2 2)"/>
+    <use href="#umbrella" transform="translate(294.2 119.2) rotate(9.4) scale(-1.5 1.5)"/>
+    <use href="#cup" transform="translate(285.8 290.3) rotate(4.3) scale(2.9 2.9)"/>
+    <use href="#video" transform="translate(150.6 436.4) rotate(16.5) scale(1.7 1.7)"/>
+    <use href="#hat" transform="translate(348.4 234.8) rotate(-11) scale(1.6 1.6)"/>
+    <use href="#donut" transform="translate(246.4 126.7) rotate(14.9) scale(-2.7 2.7)"/>
+    <use href="#face" transform="translate(365 567.1) rotate(-17.3) scale(-3 3)"/>
+    <use href="#face" transform="translate(365 -32.9) rotate(-17.3) scale(-3 3)"/>
+    <use href="#phone" transform="translate(392.6 454.1) rotate(11.5) scale(2 2)"/>
+    <use href="#rain" transform="translate(238.3 380.4) rotate(-8.3) scale(1.8 1.8)"/>
+    <use href="#pizza" transform="translate(98 0.5) rotate(-20.7) scale(-1.3 1.3)"/>
+    <use href="#pizza" transform="translate(98 600.5) rotate(-20.7) scale(-1.3 1.3)"/>
+    <use href="#glasses" transform="translate(482.8 126.9) rotate(11.2) scale(-1.1 1.1)"/>
+    <use href="#butterfly" transform="translate(448.7 21.7) rotate(-10.4) scale(1 1)"/>
+    <use href="#rain" transform="translate(238.6 36.8) rotate(36.3) scale(-1.5 1.5)"/>
+    <use href="#chat" transform="translate(466.7 -10.3) rotate(-38.3) scale(0.9 0.9)"/>
+    <use href="#chat" transform="translate(466.7 589.7) rotate(-38.3) scale(0.9 0.9)"/>
+    <use href="#sun" transform="translate(415.7 510.7) rotate(50.6) scale(-1.3 1.3)"/>
+    <use href="#planet" transform="translate(215 52.4) rotate(1.5) scale(-1 1)"/>
+    <use href="#apple" transform="translate(334.9 3.7) rotate(25.6) scale(-1.7 1.7)"/>
+    <use href="#apple" transform="translate(334.9 603.7) rotate(25.6) scale(-1.7 1.7)"/>
+    <use href="#video" transform="translate(599.8 232.3) rotate(-49.4) scale(0.9 0.9)"/>
+    <use href="#video" transform="translate(-0.2 232.3) rotate(-49.4) scale(0.9 0.9)"/>
+    <use href="#bike" transform="translate(25.4 462.9) rotate(-3.6) scale(-0.8 0.8)"/>
+    <use href="#book" transform="translate(514.7 479.1) rotate(7) scale(0.9 0.9)"/>
+    <use href="#umbrella" transform="translate(583.1 484.1) rotate(-28.6) scale(-1 1)"/>
+    <use href="#umbrella" transform="translate(-16.9 484.1) rotate(-28.6) scale(-1 1)"/>
+    <use href="#planet" transform="translate(493.5 -12.8) rotate(19.4) scale(-1.2 1.2)"/>
+    <use href="#planet" transform="translate(493.5 587.2) rotate(19.4) scale(-1.2 1.2)"/>
+    <use href="#pizza" transform="translate(292.4 439.3) rotate(-22.7) scale(1.1 1.1)"/>
+    <use href="#camera" transform="translate(217.4 508) rotate(31.3) scale(-0.9 0.9)"/>
+    <use href="#lock" transform="translate(80.4 57) rotate(22.8) scale(-2.1 2.1)"/>
+    <use href="#drum" transform="translate(41 544.3) rotate(-37.5) scale(1.3 1.3)"/>
+    <use href="#hat" transform="translate(405.8 446.5) rotate(32.4) scale(0.9 0.9)"/>
+    <use href="#leaf" transform="translate(92.2 65.1) rotate(-32.5) scale(1.3 1.3)"/>
+    <use href="#tree" transform="translate(560 317) rotate(-16.9) scale(1.1 1.1)"/>
+    <use href="#tiny-heart" transform="translate(558.9 92.5) rotate(52.6) scale(-1.8 1.8)"/>
+    <use href="#bolt" transform="translate(607 0.5) rotate(79.5) scale(-0.8 0.8)"/>
+    <use href="#bolt" transform="translate(607 600.5) rotate(79.5) scale(-0.8 0.8)"/>
+    <use href="#bolt" transform="translate(7 0.5) rotate(79.5) scale(-0.8 0.8)"/>
+    <use href="#bolt" transform="translate(7 600.5) rotate(79.5) scale(-0.8 0.8)"/>
+    <use href="#xmark" transform="translate(200.3 130.7) rotate(19.8) scale(0.9 0.9)"/>
+    <use href="#xmark" transform="translate(457.2 461.6) rotate(-59) scale(-1.2 1.2)"/>
+    <use href="#check" transform="translate(11.7 340.7) rotate(-37.8) scale(-0.6 0.6)"/>
+    <use href="#ring" transform="translate(404.7 422.1) rotate(55.3) scale(1.2 1.2)"/>
+    <use href="#tiny-heart" transform="translate(523.8 164.3) rotate(47.3) scale(2.6 2.6)"/>
+    <use href="#spark" transform="translate(263.7 499.5) rotate(-16.7) scale(-1.6 1.6)"/>
+    <use href="#bolt" transform="translate(299.2 379.7) rotate(-86.7) scale(0.7 0.7)"/>
+    <use href="#triangle" transform="translate(173.9 582.2) rotate(-53.9) scale(1.1 1.1)"/>
+    <use href="#spark" transform="translate(83.8 565.3) rotate(-15) scale(-1.4 1.4)"/>
+    <use href="#diamond" transform="translate(146.8 124.7) rotate(21.3) scale(-0.9 0.9)"/>
+    <use href="#spark" transform="translate(-11.7 267.4) rotate(-61.9) scale(1.5 1.5)"/>
+    <use href="#spark" transform="translate(588.3 267.4) rotate(-61.9) scale(1.5 1.5)"/>
+    <use href="#spark" transform="translate(174.4 408.2) rotate(35.4) scale(-0.9 0.9)"/>
+    <use href="#diamond" transform="translate(37.8 589.7) rotate(58.6) scale(-0.8 0.8)"/>
+    <use href="#xmark" transform="translate(302.8 53.4) rotate(19.9) scale(-1.7 1.7)"/>
+    <use href="#dots" transform="translate(586.7 213.9) rotate(-47.8) scale(1.1 1.1)"/>
+    <use href="#bolt" transform="translate(557.4 344.7) rotate(84.3) scale(-0.5 0.5)"/>
+    <use href="#xmark" transform="translate(422.1 130.3) rotate(11.2) scale(1.1 1.1)"/>
+    <use href="#triangle" transform="translate(67.9 12.6) rotate(-44) scale(1.3 1.3)"/>
+    <use href="#dots" transform="translate(321.8 444.7) rotate(40.7) scale(1.3 1.3)"/>
+    <use href="#ring" transform="translate(578.4 487.2) rotate(54.7) scale(2.2 2.2)"/>
+    <use href="#heart" transform="translate(507.5 360.6) rotate(58.4) scale(-0.6 0.6)"/>
+    <use href="#triangle" transform="translate(391.2 440.6) rotate(55.3) scale(1.1 1.1)"/>
   </g>
 </svg>

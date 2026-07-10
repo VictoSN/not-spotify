@@ -39,11 +39,17 @@ export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
   const isHomeRoute = location.pathname === '/'
+  // Messages is a full-height, app-like two-pane view (its own inner scroll areas).
+  // The global page footer doesn't belong there: it adds height below the h-full
+  // pane, which spawns an outer scrollbar that clashes with the thread's own
+  // scroll. Drop it on this route so the chat fills the frame exactly.
+  const isMessagesRoute = location.pathname === '/messages'
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const offlineMode = useAuthStore((s) => s.offlineMode)
   const hasCoordinatedPageLoad =
     !offlineMode && (isHomeRoute || /^\/(?:album|artist|track)\/[^/]+\/?$/.test(location.pathname))
   const [pageLoading, setPageLoading] = useState(hasCoordinatedPageLoad)
+  const [pageScrollTarget, setPageScrollTarget] = useState<HTMLDivElement | null>(null)
   const fetchLibrary = useLibraryStore((s) => s.fetchLibrary)
   const loadRatings = useRatingStore((s) => s.loadFromBackend)
   const isNowPlayingOpen = usePlayerStore((s) => s.isNowPlayingOpen)
@@ -218,14 +224,20 @@ export function AppShell() {
             onScroll={handleMainScroll}
             className={`scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-clip ${karaokeVisible ? 'hidden' : ''}`}
           >
-            <Outlet context={{ setPageLoading } satisfies AppShellOutletContext} />
+            <Outlet context={{ setPageLoading, setPageScrollTarget } satisfies AppShellOutletContext} />
             {/* Global footer — sits at the bottom of every routed page's scroll
                 content (Spotify-style), so individual pages don't render their own.
                 Hidden on mobile: the Spotify mobile app has no page footer, and it
                 just pushes the bottom nav / mini-player far down the scroll. */}
-            {!pageLoading && !isMobile && <AppFooter />}
+            {!pageLoading && !isMobile && !isMessagesRoute && <AppFooter />}
           </div>
-          {!karaokeVisible && <OverlayScrollbar scrollRef={mainScrollRef} flushRight={isHomeRoute} />}
+          {!karaokeVisible && (
+            <OverlayScrollbar
+              scrollRef={mainScrollRef}
+              scrollTarget={isMobile && isMessagesRoute ? pageScrollTarget : null}
+              flushRight={isHomeRoute}
+            />
+          )}
           {karaokeVisible && (
             <div className="flex-1 min-h-0">
               <KaraokeView />

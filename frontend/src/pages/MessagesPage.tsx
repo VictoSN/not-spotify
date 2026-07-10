@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom'
 import {
   PaperAirplaneIcon,
   ArrowLeftIcon,
@@ -21,6 +21,8 @@ import { useFriendStore } from '@/stores/friendStore'
 import { useAuthStore } from '@/stores/authStore'
 import type { ChatMessage, Conversation } from '@/types/chat'
 import { parseShare } from '@/utils/chatShare'
+import { attachmentPreviewLabel, buildAttachmentToken, parseAttachment } from '@/utils/chatAttachment'
+import { AttachmentBubble } from '@/components/chat/AttachmentBubble'
 import { SharedTrackBubble } from '@/components/chat/SharedTrackBubble'
 import { SharedAlbumBubble } from '@/components/chat/SharedAlbumBubble'
 import { SharedPlaylistBubble } from '@/components/chat/SharedPlaylistBubble'
@@ -30,8 +32,11 @@ import { PinIcon } from '@/components/cards/PinMenuItem'
 import { cn } from '@/utils/cn'
 import { getPinnedKeys, isPinned, PINNED_EVENT, togglePinned } from '@/utils/pinnedLibrary'
 import { isChatDeletedOnDevice } from '@/utils/chatPreferences'
+import { notify } from '@/utils/toast'
 import type { PointerMenuHandle } from '@/utils/contextMenu'
 import { useConfirm } from '@/hooks/useConfirm'
+import { useIsMobile } from '@/hooks/useMediaQuery'
+import type { AppShellOutletContext } from '@/components/layout/appShellContext'
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
@@ -52,6 +57,12 @@ function normalizeChatSearch(value: string) {
 }
 
 function getShareSearchLabel(body: string) {
+  const attachment = parseAttachment(body)
+  if (attachment) {
+    if (attachment.kind === 'image') return `photo image ${attachment.name}`
+    if (attachment.kind === 'video') return `video ${attachment.name}`
+    return `document file ${attachment.name}`
+  }
   const share = parseShare(body)
   if (!share) return ''
   if (share.kind === 'track') return 'shared a song track music'
@@ -103,6 +114,8 @@ export function MessageStatusTicks({ message }: { message: ChatMessage }) {
 
 export function MessagesPage() {
   const confirm = useConfirm()
+  const isMobile = useIsMobile()
+  const outletContext = useOutletContext<AppShellOutletContext | null>()
   const me = useAuthStore((s) => s.user)
   const [searchParams, setSearchParams] = useSearchParams()
   const conversations = useChatStore((s) => s.conversations)
@@ -130,6 +143,8 @@ export function MessagesPage() {
   const [pinRevision, setPinRevision] = useState(0)
   const [chatSearch, setChatSearch] = useState('')
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const conversationScrollRef = useRef<HTMLDivElement | null>(null)
+  const threadScrollRef = useRef<HTMLDivElement | null>(null)
   const threadTouchStartRef = useRef<{ x: number; y: number } | null>(null)
   const composerToolsRef = useRef<HTMLDivElement | null>(null)
   const documentInputRef = useRef<HTMLInputElement | null>(null)
@@ -242,6 +257,16 @@ export function MessagesPage() {
         })()
       : null)
 
+  // Mobile keeps the compact header and composer fixed around a nested message
+  // pane. Register the visible pane so AppShell's one full-height page scrollbar
+  // accurately mirrors and controls the conversation list or thread.
+  useEffect(() => {
+    const setPageScrollTarget = outletContext?.setPageScrollTarget
+    if (!setPageScrollTarget || !isMobile) return
+    setPageScrollTarget(activeUserId ? threadScrollRef.current : conversationScrollRef.current)
+    return () => setPageScrollTarget(null)
+  }, [activeUserId, isMobile, outletContext?.setPageScrollTarget])
+
   // Bug 28: once a friendship ends, the conversation history stays visible but the
   // chat is locked — no sending. We only trust this verdict after the friends list
   // has actually loaded, so a real friend never flashes "unfriended" on first paint.
@@ -305,6 +330,23 @@ export function MessagesPage() {
     if (!activeUserId || !draft.trim() || chatLocked) return
     sendMessage(activeUserId, draft)
     setDraft('')
+  }
+
+  // Picked files ride the text-only message channel as encoded tokens: photos as
+  // a compact inline preview, other files as a name/size card (see chatAttachment).
+  const handleFilesSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = '' // let the same file be picked again next time
+    if (!activeUserId || chatLocked || files.length === 0) return
+    setAttachmentMenuOpen(false)
+    for (const file of files) {
+      try {
+        const token = await buildAttachmentToken(file)
+        sendMessage(activeUserId, token)
+      } catch {
+        notify.error(`Couldn't attach ${file.name}.`)
+      }
+    }
   }
 
   const submit = (e: React.FormEvent) => {
@@ -378,7 +420,11 @@ export function MessagesPage() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-4">
+        <div
+          ref={conversationScrollRef}
+          data-page-scroll-source="conversations"
+          className="mobile-page-scroll-source flex-1 overflow-y-auto px-2 pb-4"
+        >
           {conversations.length === 0 && newChatFriends.length === 0 && (
             <div className="px-3 py-10 text-center">
               <ChatBubbleLeftRightIcon className="mx-auto mb-3 h-10 w-10 text-muted" />
@@ -435,6 +481,8 @@ export function MessagesPage() {
                     {c.lastMessage
                       ? `${c.lastMessage.senderId === me.id ? 'You: ' : ''}${
                           (() => {
+                            const att = parseAttachment(c.lastMessage.body)
+                            if (att) return attachmentPreviewLabel(att)
                             const s = parseShare(c.lastMessage.body)
                             if (!s) return c.lastMessage.body
                             if (s.kind === 'track') return '🎵 Shared a song'
@@ -541,7 +589,11 @@ export function MessagesPage() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
+            <div
+              ref={threadScrollRef}
+              data-page-scroll-source="thread"
+              className="mobile-page-scroll-source flex-1 overflow-y-auto px-4 py-3"
+            >
               {isLoading && thread.length === 0 ? (
                 <div className="flex h-full items-center justify-center">
                   <Spinner size="md" />
@@ -562,7 +614,8 @@ export function MessagesPage() {
                   {thread.map((m, i) => {
                     const mine = m.senderId === me.id
                     const showDay = i === 0 || formatDay(thread[i - 1].sentAt) !== formatDay(m.sentAt)
-                    const share = parseShare(m.body)
+                    const attachment = parseAttachment(m.body)
+                    const share = attachment ? null : parseShare(m.body)
                     return (
                       <div key={m.id}>
                         {showDay && (
@@ -573,7 +626,14 @@ export function MessagesPage() {
                           </div>
                         )}
                         <div className={cn('mb-1.5 flex', mine ? 'justify-end' : 'justify-start')}>
-                          {share ? (
+                          {attachment ? (
+                            <AttachmentBubble
+                              attachment={attachment}
+                              mine={mine}
+                              time={formatTime(m.sentAt)}
+                              ticks={mine ? <MessageStatusTicks message={m} /> : null}
+                            />
+                          ) : share ? (
                             share.kind === 'track' ? (
                               <SharedTrackBubble
                                 trackId={share.id}
@@ -651,8 +711,22 @@ export function MessagesPage() {
                   ref={composerToolsRef}
                   className="relative flex min-h-11 w-full min-w-0 items-end rounded-[22px] border border-transparent bg-elevated px-1.5 transition-colors focus-within:border-accent/60"
                 >
-                  <input ref={documentInputRef} type="file" accept=".pdf,.doc,.docx,.txt,.zip" className="hidden" />
-                  <input ref={mediaInputRef} type="file" accept="image/*,video/*" className="hidden" />
+                  <input
+                    ref={documentInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,.zip"
+                    multiple
+                    className="hidden"
+                    onChange={handleFilesSelected}
+                  />
+                  <input
+                    ref={mediaInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFilesSelected}
+                  />
 
                   <button
                     type="button"
@@ -661,7 +735,7 @@ export function MessagesPage() {
                       setEmojiMenuOpen(false)
                     }}
                     className={cn(
-                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:text-primary active:scale-95',
                       attachmentMenuOpen && 'rotate-45 bg-primary/10 text-primary',
                     )}
                     aria-label="Add attachment"
@@ -678,7 +752,7 @@ export function MessagesPage() {
                       setAttachmentMenuOpen(false)
                     }}
                     className={cn(
-                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-110 hover:bg-primary/10 hover:text-primary active:scale-90',
+                      'mb-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 hover:scale-105 hover:bg-primary/10 hover:text-primary active:scale-95',
                       emojiMenuOpen && 'bg-primary/10 text-primary',
                     )}
                     aria-label="Choose emoji"
@@ -733,7 +807,7 @@ export function MessagesPage() {
                             key={emoji}
                             type="button"
                             onClick={() => insertEmoji(emoji)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-lg transition-all hover:scale-125 hover:bg-white/10 active:scale-95"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-lg transition-all hover:scale-110 hover:bg-white/10 active:scale-95"
                             aria-label={`Insert ${emoji}`}
                           >
                             {emoji}

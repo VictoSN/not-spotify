@@ -397,6 +397,36 @@ class AudioEngine {
     }
   }
 
+  /**
+   * Start a deck resiliently. Skipping a track loads a fresh source into the idle
+   * deck and plays it in the same tick; Safari rejects that play() with AbortError
+   * ("interrupted by a new load request") because the load is still in flight.
+   * Treating that rejection as a failure (the old code paused the store) made every
+   * skip on Safari stop the music. So: only a genuine autoplay block
+   * (NotAllowedError) pauses — a load-race waits for the deck to be ready and
+   * retries once, provided this deck is still the one meant to be playing.
+   */
+  private playDeck(deck: HTMLAudioElement) {
+    const src = deck.src
+    const onBlocked = () => usePlayerStore.getState().pause()
+    deck.play().catch((err: unknown) => {
+      if ((err as DOMException | null)?.name === 'NotAllowedError') {
+        onBlocked()
+        return
+      }
+      const retry = () => {
+        deck.removeEventListener('canplay', retry)
+        // A newer skip may have superseded this deck/source in the meantime.
+        if (deck !== this.activeDeck || deck.src !== src) return
+        if (!usePlayerStore.getState().isPlaying || !this.connectActive) return
+        deck.play().catch((again: unknown) => {
+          if ((again as DOMException | null)?.name === 'NotAllowedError') onBlocked()
+        })
+      }
+      deck.addEventListener('canplay', retry)
+    })
+  }
+
   private onTimeUpdate(i: 0 | 1) {
     if (i !== this.active) return // ignore the outgoing deck's tail during a crossfade
     const deck = this.activeDeck
@@ -518,7 +548,7 @@ class AudioEngine {
     const doCrossfade = this.crossfadeSec > 0 && !oldDeck.paused && isPlaying && this.connectActive
     if (doCrossfade) {
       newDeck.volume = 0
-      newDeck.play().catch(() => usePlayerStore.getState().pause())
+      this.playDeck(newDeck)
       this.runCrossfade(oldDeck, newDeck, this.crossfadeSec, () => {
         const { isMuted, volume } = usePlayerStore.getState()
         return isMuted ? 0 : volumeToGain(volume)
@@ -527,7 +557,7 @@ class AudioEngine {
       oldDeck.pause()
       oldDeck.currentTime = 0
       newDeck.volume = targetVol
-      if (isPlaying && this.connectActive) newDeck.play().catch(() => usePlayerStore.getState().pause())
+      if (isPlaying && this.connectActive) this.playDeck(newDeck)
     }
     this.crossfading = false
   }
@@ -605,7 +635,7 @@ class AudioEngine {
       if (isPlaying !== prevIsPlaying) {
         if (isPlaying) {
           this.resumeAudioGraph()
-          if (!currentAd && this.connectActive) this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+          if (!currentAd && this.connectActive) this.playDeck(this.activeDeck)
         }
         else this.activeDeck.pause()
         prevIsPlaying = isPlaying
@@ -743,7 +773,7 @@ class AudioEngine {
     const { isPlaying, currentAd } = usePlayerStore.getState()
     if (isPlaying && !currentAd) {
       this.resumeAudioGraph()
-      this.activeDeck.play().catch(() => usePlayerStore.getState().pause())
+      this.playDeck(this.activeDeck)
     }
   }
 

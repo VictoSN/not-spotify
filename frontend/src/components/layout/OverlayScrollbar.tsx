@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 interface OverlayScrollbarProps {
   /** The scrollable element whose scroll position this thumb mirrors. */
   scrollRef: React.RefObject<HTMLDivElement | null>
+  /**
+   * Optional nested scroll source. The thumb still uses the main scrollRef's
+   * full-height rail, but mirrors and controls this element's scroll range.
+   */
+  scrollTarget?: HTMLDivElement | null
   /** Attach the thumb to the panel edge instead of using the default 2px inset. */
   flushRight?: boolean
 }
@@ -20,16 +25,17 @@ interface OverlayScrollbarProps {
  * Mount inside a `position: relative` ancestor that shares the scroll viewport's
  * box (e.g. the `<main>` card). Renders nothing when the content doesn't overflow.
  */
-export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrollbarProps) {
+export function OverlayScrollbar({ scrollRef, scrollTarget = null, flushRight = false }: OverlayScrollbarProps) {
   const [thumb, setThumb] = useState<{ height: number; top: number } | null>(null)
   // Visible (and brighter) while hovering the scroll area, scrolling, or dragging.
   const [active, setActive] = useState(false)
-  const dragRef = useRef<{ startY: number; startScroll: number } | null>(null)
+  const dragRef = useRef<{ pointerId: number; startY: number; startScroll: number } | null>(null)
   const hideTimer = useRef<number | undefined>(undefined)
 
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
+    const el = scrollTarget ?? scrollRef.current
+    const rail = scrollRef.current
+    if (!el || !rail) return
 
     const recompute = () => {
       const { scrollTop, scrollHeight, clientHeight } = el
@@ -37,8 +43,9 @@ export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrol
         setThumb(null)
         return
       }
-      const height = Math.max(40, (clientHeight / scrollHeight) * clientHeight)
-      const maxTop = clientHeight - height
+      const railHeight = rail.clientHeight
+      const height = Math.min(railHeight, Math.max(40, (clientHeight / scrollHeight) * railHeight))
+      const maxTop = railHeight - height
       const maxScroll = scrollHeight - clientHeight
       const top = maxScroll > 0 ? (scrollTop / maxScroll) * maxTop : 0
       setThumb({ height, top })
@@ -66,43 +73,58 @@ export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrol
     el.addEventListener('mouseleave', onLeave)
     const ro = new ResizeObserver(recompute)
     ro.observe(el)
-    if (el.firstElementChild) ro.observe(el.firstElementChild)
+    if (rail !== el) ro.observe(rail)
+    const observeChildren = () => {
+      Array.from(el.children).forEach((child) => ro.observe(child))
+    }
+    observeChildren()
+    const mo = new MutationObserver(() => {
+      observeChildren()
+      recompute()
+    })
+    mo.observe(el, { childList: true, subtree: true, characterData: true })
 
     return () => {
       el.removeEventListener('scroll', onScroll)
       el.removeEventListener('mouseenter', onEnter)
       el.removeEventListener('mouseleave', onLeave)
       ro.disconnect()
+      mo.disconnect()
       window.clearTimeout(hideTimer.current)
     }
-  }, [scrollRef])
+  }, [scrollRef, scrollTarget])
 
   // Drag the thumb → scroll the content (mapped from thumb travel to scroll range).
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const el = scrollRef.current
+    const onMove = (e: PointerEvent) => {
+      const el = scrollTarget ?? scrollRef.current
+      const rail = scrollRef.current
       const drag = dragRef.current
-      if (!el || !drag) return
+      if (!el || !rail || !drag || e.pointerId !== drag.pointerId) return
       const { scrollHeight, clientHeight } = el
-      const height = Math.max(40, (clientHeight / scrollHeight) * clientHeight)
-      const maxTop = clientHeight - height
+      const railHeight = rail.clientHeight
+      const height = Math.min(railHeight, Math.max(40, (clientHeight / scrollHeight) * railHeight))
+      const maxTop = railHeight - height
       const maxScroll = scrollHeight - clientHeight
       const ratio = maxTop > 0 ? (e.clientY - drag.startY) / maxTop : 0
       el.scrollTop = Math.min(maxScroll, Math.max(0, drag.startScroll + ratio * maxScroll))
     }
-    const onUp = () => {
-      if (!dragRef.current) return
+    const onUp = (e: PointerEvent) => {
+      if (!dragRef.current || e.pointerId !== dragRef.current.pointerId) return
       dragRef.current = null
       setActive(false)
       document.body.style.userSelect = ''
     }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
     return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      document.body.style.userSelect = ''
     }
-  }, [scrollRef])
+  }, [scrollRef, scrollTarget])
 
   if (!thumb) return null
 
@@ -126,18 +148,19 @@ export function OverlayScrollbar({ scrollRef, flushRight = false }: OverlayScrol
     >
       <div
         data-overlay-scrollbar-thumb
-        onMouseDown={(e) => {
-          const el = scrollRef.current
+        onPointerDown={(e) => {
+          const el = scrollTarget ?? scrollRef.current
           if (!el) return
           e.preventDefault()
-          dragRef.current = { startY: e.clientY, startScroll: el.scrollTop }
+          e.currentTarget.setPointerCapture(e.pointerId)
+          dragRef.current = { pointerId: e.pointerId, startY: e.clientY, startScroll: el.scrollTop }
           setActive(true)
           document.body.style.userSelect = 'none'
         }}
         style={{ height: thumb.height, transform: `translateY(${thumb.top}px)` }}
         // ~12px thick, near-square (2px radius), semi-transparent gray — visible at
         // rest, brighter while scrolling/hovering, brightest when grabbed.
-        className={`pointer-events-auto absolute rounded-[2px] border-0 outline-none shadow-none transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
+        className={`pointer-events-auto absolute touch-none rounded-[2px] border-0 outline-none shadow-none transition-[background-color] duration-200 hover:bg-[rgba(190,190,190,0.95)] ${
           flushRight ? 'right-0 w-[10px]' : 'right-[2px] w-[12px]'
         } ${
           active ? 'bg-[rgba(150,150,150,0.8)]' : 'bg-[rgba(150,150,150,0.45)]'

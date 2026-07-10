@@ -190,6 +190,25 @@ fn notify_native(title: String, body: String, icon: Option<String>) -> Result<()
 pub fn run() {
     tauri::Builder::default()
         .register_uri_scheme_protocol("offline-audio", |context, request| {
+            // WebView2 requests custom media through the CORS pipeline because
+            // the player uses a MediaElementAudioSourceNode. Handle its preflight
+            // explicitly before trying to interpret a media path.
+            if request.method() == http::Method::OPTIONS {
+                return http::Response::builder()
+                    .status(http::StatusCode::NO_CONTENT)
+                    .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                    .header(
+                        http::header::ACCESS_CONTROL_ALLOW_METHODS,
+                        "GET, HEAD, OPTIONS",
+                    )
+                    .header(
+                        http::header::ACCESS_CONTROL_ALLOW_HEADERS,
+                        "Range, Content-Type",
+                    )
+                    .header(http::header::ACCESS_CONTROL_MAX_AGE, "86400")
+                    .body(Vec::new())
+                    .unwrap();
+            }
             let path = format!("offline{}", request.uri().path());
             let result = safe_offline_path(context.app_handle(), &path)
                 .and_then(|path| fs::read(path).map_err(|error| error.to_string()))
@@ -208,6 +227,14 @@ pub fn run() {
                             // private protocol as audio without exposing the file.
                             .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .header(
+                                http::header::ACCESS_CONTROL_ALLOW_METHODS,
+                                "GET, HEAD, OPTIONS",
+                            )
+                            .header(
+                                http::header::ACCESS_CONTROL_ALLOW_HEADERS,
+                                "Range, Content-Type",
+                            )
+                            .header(
                                 http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
                                 "Accept-Ranges, Content-Length, Content-Range",
                             )
@@ -224,6 +251,14 @@ pub fn run() {
                             .header(http::header::ACCEPT_RANGES, "bytes")
                             .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                             .header(
+                                http::header::ACCESS_CONTROL_ALLOW_METHODS,
+                                "GET, HEAD, OPTIONS",
+                            )
+                            .header(
+                                http::header::ACCESS_CONTROL_ALLOW_HEADERS,
+                                "Range, Content-Type",
+                            )
+                            .header(
                                 http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
                                 "Accept-Ranges, Content-Length, Content-Range",
                             )
@@ -232,8 +267,12 @@ pub fn run() {
                             .unwrap()
                     }
                 }
-                Err(_) => http::Response::builder()
+                Err(error) => http::Response::builder()
                     .status(http::StatusCode::NOT_FOUND)
+                    .header(http::header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                    // Kept intentionally terse: useful in DevTools without
+                    // exposing plaintext or key material.
+                    .header("X-Offline-Audio-Error", error)
                     .body(Vec::new())
                     .unwrap(),
             }

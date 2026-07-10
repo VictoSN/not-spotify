@@ -22,6 +22,7 @@ frontend/public/app-preview.svg
 frontend/public/favicon.svg
 frontend/public/icons.svg
 frontend/public/icons/
+frontend/public/chat-doodle-wallpaper.svg
 frontend/src/assets/fonts/
 frontend/src-tauri/icons/*.png
 frontend/src-tauri/icons/*.ico
@@ -53,6 +54,12 @@ backend/test/**/obj/
 # Local tooling caches (machine-specific, restored on demand)
 .npm-cache/
 .dotnet-home/
+frontend/.vite/
+.claude/settings.local.json
+.claude/worktrees/
+# Stray Claude agent skill docs must not live in project source
+**/src/**/.claude/
+*.dump
 
 # Local music library staged for one-off import (not source)
 Music/

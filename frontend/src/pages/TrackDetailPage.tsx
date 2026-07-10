@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowDownTrayIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
+import { ArrowDownCircleIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
 import { CheckCircleIcon, PlayIcon, PauseIcon } from '@heroicons/react/24/solid'
 import type { Track } from '@/types/track'
 import type { Album } from '@/types/album'
@@ -30,6 +30,7 @@ import { notify } from '@/utils/toast'
 import { usePlayerStore } from '@/stores/playerStore'
 import { usePageLoading } from '@/hooks/usePageLoading'
 import { saveTrackOffline } from '@/services/offlineAudio'
+import { isDesktop } from '@/utils/platform'
 
 export function TrackDetailPage() {
   const { t } = useTranslation()
@@ -148,7 +149,7 @@ export function TrackDetailPage() {
   }
 
   const handleDownload = async () => {
-    if (!track || !isPremium) return
+    if (!track || !isPremium || !isDesktop()) return
     setDownloading(true)
     try {
       await saveTrackOffline(track)
@@ -262,13 +263,13 @@ export function TrackDetailPage() {
         {isPremium && (
           <button
             onClick={handleDownload}
-            disabled={downloading}
-            title="Save for offline"
-            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
-            aria-label="Save for offline"
+            disabled={downloading || !isDesktop()}
+            title={!isDesktop() ? 'Available in the app' : 'Save for offline'}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:text-secondary"
+            aria-label={!isDesktop() ? 'Available in the app' : 'Save for offline'}
           >
-            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
-            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Save for offline</span>
+            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
+            <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{!isDesktop() ? 'Available in the app' : 'Save for offline'}</span>
           </button>
         )}
 

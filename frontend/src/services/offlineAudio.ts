@@ -41,6 +41,9 @@ const COLLECTIONS_KEY = 'ns-offline-collections'
 const COVERS_KEY = 'ns-offline-covers'
 /** Desktop only: remote cover URL → absolute on-disk path, for deletion on prune. */
 const COVER_PATHS_KEY = 'ns-offline-cover-paths'
+/** Version 2 is the first build whose AES key survives a desktop-app restart. */
+const OFFLINE_CRYPTO_VERSION_KEY = 'ns-offline-crypto-version'
+const OFFLINE_CRYPTO_VERSION = '2'
 /** The owner tag for a song saved directly from its ⋯ menu. */
 export const INDIVIDUAL_OWNER = 'individual'
 /** Fired on the window whenever the saved set (tracks or collections) changes. */
@@ -63,6 +66,8 @@ export interface OfflineEntry {
   path?: string
   /** Desktop only: file is AES-GCM encrypted and served by the private native protocol. */
   encrypted?: boolean
+  /** Decoder-friendly media type captured when the file was downloaded. */
+  mime?: string
   /** Account that holds the offline licence for this local entry. */
   accountId?: string
 }
@@ -341,6 +346,51 @@ async function pruneCovers() {
   writeCoverPaths(nextPaths)
 }
 
+/**
+ * keyring v3 previously ran without its Windows credential-store feature, so it
+ * used a process-local mock key. After that process exited, every encrypted file
+ * it created became permanently undecryptable. Drop those stale index rows once
+ * so Download performs a real replacement using the now-persistent native key.
+ */
+function migrateBrokenDesktopEncryption(): void {
+  if (!isDesktop()) return
+  try {
+    if (localStorage.getItem(OFFLINE_CRYPTO_VERSION_KEY) === OFFLINE_CRYPTO_VERSION) return
+
+    const allEntries = readAllIndex()
+    const brokenEntries = allEntries.filter((entry) => entry.encrypted)
+    const remainingEntries = allEntries.filter((entry) => !entry.encrypted)
+    localStorage.setItem(INDEX_KEY, JSON.stringify(remainingEntries))
+
+    if (brokenEntries.length > 0) {
+      const remainingByAccount = new Map<string, Set<string>>()
+      for (const entry of remainingEntries) {
+        if (!entry.accountId) continue
+        const ids = remainingByAccount.get(entry.accountId) ?? new Set<string>()
+        ids.add(entry.id)
+        remainingByAccount.set(entry.accountId, ids)
+      }
+      const repairedCollections = readAllCollections().flatMap((collection) => {
+        const ids = collection.accountId ? remainingByAccount.get(collection.accountId) : undefined
+        const trackIds = ids ? collection.trackIds.filter((id) => ids.has(id)) : []
+        return trackIds.length > 0 ? [{ ...collection, trackIds }] : []
+      })
+      localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(repairedCollections))
+
+      for (const entry of brokenEntries) {
+        if (!entry.path) continue
+        void remove(entry.path, { baseDir: BaseDirectory.AppLocalData }).catch(() => {})
+      }
+    }
+
+    localStorage.setItem(OFFLINE_CRYPTO_VERSION_KEY, OFFLINE_CRYPTO_VERSION)
+  } catch {
+    // If storage is unavailable, leave the index untouched and retry next boot.
+  }
+}
+
+migrateBrokenDesktopEncryption()
+
 // Synchronous mirrors of the saved set so the audio engine can resolve the
 // playback src inline without an async lookup.
 let savedIds = new Set<string>(readIndex().map((e) => e.id))
@@ -544,7 +594,68 @@ export function resolvePlaybackSrc(track: Track): string {
 
 /** Content-Type → file extension for the saved-on-disk name. */
 /** Merge a new/updated track entry into the index, unioning its owners. */
-function upsertEntry(track: Track, bytes: number, path: string | undefined, owner: string, encrypted = false) {
+const offlineBlobUrls = new Map<string, { path: string; url: string }>()
+const MAX_OFFLINE_BLOB_URLS = 4
+
+/**
+ * Native IPC fallback for WebView2 builds that reject media from a custom
+ * protocol. Rust decrypts the file and returns a raw binary IPC response; the
+ * renderer exposes only a short-lived blob URL to the audio element.
+ */
+export async function loadOfflinePlaybackBlob(track: Track): Promise<string | null> {
+  if (!isDesktop() || !canUseOfflineAudio() || typeof URL?.createObjectURL !== 'function') return null
+  const entry = readIndex().find((item) => item.id === track.id)
+  if (!entry?.encrypted || !entry.path) return null
+
+  const cached = offlineBlobUrls.get(track.id)
+  if (cached?.path === entry.path) {
+    // Refresh insertion order so active/recent decks remain in the tiny LRU.
+    offlineBlobUrls.delete(track.id)
+    offlineBlobUrls.set(track.id, cached)
+    return cached.url
+  }
+
+  try {
+    const raw = await invoke<ArrayBuffer | Uint8Array | number[]>('read_offline_audio', { path: entry.path })
+    let view: Uint8Array
+    if (raw instanceof ArrayBuffer) {
+      view = new Uint8Array(raw)
+    } else if (ArrayBuffer.isView(raw)) {
+      view = new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength)
+    } else {
+      view = new Uint8Array(raw)
+    }
+    if (view.byteLength === 0) return null
+
+    // Copy to an owned ArrayBuffer so Blob never retains an IPC/shared backing store.
+    const owned = new Uint8Array(view.byteLength)
+    owned.set(view)
+    const url = URL.createObjectURL(new Blob([owned.buffer], {
+      type: entry.mime || audioMimeFor('', entry.audioUrl),
+    }))
+    if (cached) URL.revokeObjectURL(cached.url)
+    offlineBlobUrls.set(track.id, { path: entry.path, url })
+
+    while (offlineBlobUrls.size > MAX_OFFLINE_BLOB_URLS) {
+      const oldest = offlineBlobUrls.entries().next().value as [string, { path: string; url: string }] | undefined
+      if (!oldest) break
+      offlineBlobUrls.delete(oldest[0])
+      URL.revokeObjectURL(oldest[1].url)
+    }
+    return url
+  } catch {
+    return null
+  }
+}
+
+function upsertEntry(
+  track: Track,
+  bytes: number,
+  path: string | undefined,
+  owner: string,
+  encrypted = false,
+  mime?: string,
+) {
   const entries = readIndex()
   const existing = entries.find((e) => e.id === track.id)
   const owners = new Set(existing?.owners ?? [])
@@ -561,6 +672,7 @@ function upsertEntry(track: Track, bytes: number, path: string | undefined, owne
     owners: [...owners],
     path: path ?? existing?.path,
     encrypted: encrypted || existing?.encrypted,
+    mime: mime || existing?.mime,
   }
   writeIndex([...entries.filter((e) => e.id !== track.id), next])
 }
@@ -611,6 +723,18 @@ async function detachOwner(id: string, owner: string) {
 
 // ── Backend downloads (write the bytes; ownership handled by callers) ─────────
 
+function audioMimeFor(contentType: string, url: string): string {
+  const headerMime = contentType.split(';')[0]?.trim().toLowerCase() ?? ''
+  if (headerMime.startsWith('audio/')) return headerMime
+  const path = url.split(/[?#]/, 1)[0]?.toLowerCase() ?? ''
+  if (path.endsWith('.m4a') || path.endsWith('.mp4') || path.endsWith('.aac')) return 'audio/mp4'
+  if (path.endsWith('.ogg') || path.endsWith('.oga')) return 'audio/ogg'
+  if (path.endsWith('.wav')) return 'audio/wav'
+  if (path.endsWith('.flac')) return 'audio/flac'
+  if (path.endsWith('.webm')) return 'audio/webm'
+  return 'audio/mpeg'
+}
+
 async function downloadTrackTauri(track: Track, owner: string): Promise<void> {
   const res = await fetch(track.audioUrl, { credentials: 'omit' })
   if (!res.ok) throw new Error(`Download failed (${res.status}).`)
@@ -620,12 +744,13 @@ async function downloadTrackTauri(track: Track, owner: string): Promise<void> {
   const accountId = currentOfflineAccountId()
   if (!accountId) throw new Error('Sign in with Premium to save music for offline listening.')
   const rel = `${OFFLINE_DIR}/${accountId}-${track.id}.nsa`
+  const mime = audioMimeFor(res.headers.get('Content-Type') || '', track.audioUrl)
   await invoke('save_offline_audio', {
     path: rel,
-    mime: res.headers.get('Content-Type') || 'audio/mpeg',
+    mime,
     bytes,
   })
-  upsertEntry(track, bytes.byteLength, rel, owner, true)
+  upsertEntry(track, bytes.byteLength, rel, owner, true, mime)
 }
 
 async function downloadTrackCache(track: Track, owner: string): Promise<void> {
@@ -648,7 +773,7 @@ async function downloadTrackCache(track: Track, owner: string): Promise<void> {
       },
     }),
   )
-  upsertEntry(track, blob.size, undefined, owner)
+  upsertEntry(track, blob.size, undefined, owner, false, audioMimeFor(blob.type, track.audioUrl))
 }
 
 /** Save one track under an owner. If already on disk, just attaches the owner. */

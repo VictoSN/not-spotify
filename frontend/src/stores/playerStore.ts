@@ -178,6 +178,8 @@ function loadAdConfig() {
   adService.getSettings().then((s) => { adConfig = s }).catch(() => { })
 }
 
+const trackDurationSeconds = (track: Track) => track.durationMs > 0 ? track.durationMs / 1000 : 0
+
 /** Commit an advance to `next`, pushing the outgoing track onto history. */
 function commitAdvance(next: Track, nextIndex: number) {
   const s = usePlayerStore.getState()
@@ -186,6 +188,7 @@ function commitAdvance(next: Track, nextIndex: number) {
     currentTrack: next,
     queueIndex: nextIndex,
     currentTime: 0,
+    duration: trackDurationSeconds(next),
     isPlaying: true,
     history: newHistory,
   })
@@ -446,6 +449,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       history: newHistory,
       isPlaying: true,
       currentTime: 0,
+      duration: trackDurationSeconds(track),
     })
     recordPlay(track.id)
     // Standalone song → fill Up Next with this artist's recommendations.
@@ -505,6 +509,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       history: newHistory,
       isPlaying: true,
       currentTime: 0,
+      duration: trackDurationSeconds(track),
     })
     recordPlay(track.id)
     // Record the *context* (playlist/album/artist/…) into local play history so
@@ -619,13 +624,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (history.length > 0) {
       const prev = history[history.length - 1]
       const prevIndex = queue.findIndex((t) => t.id === prev.id)
-      set({ currentTrack: prev, queueIndex: prevIndex >= 0 ? prevIndex : queueIndex - 1, currentTime: 0, isPlaying: true, history: history.slice(0, -1) })
+      set({ currentTrack: prev, queueIndex: prevIndex >= 0 ? prevIndex : queueIndex - 1, currentTime: 0, duration: trackDurationSeconds(prev), isPlaying: true, history: history.slice(0, -1) })
       recordPlay(prev.id)
       return
     }
     if (queueIndex > 0) {
       const prev = queue[queueIndex - 1]
-      set({ currentTrack: prev, queueIndex: queueIndex - 1, currentTime: 0, isPlaying: true })
+      set({ currentTrack: prev, queueIndex: queueIndex - 1, currentTime: 0, duration: trackDurationSeconds(prev), isPlaying: true })
       recordPlay(prev.id)
     }
   },
@@ -667,7 +672,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     if (!track) return
     // An explicit queue (playlist/album) cancels any pending standalone rec fill.
     standaloneFillToken++
-    set({ playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, videoCurrentTime: 0, videoDuration: 0, queue: tracks, queueIndex: startIndex, currentTrack: track, currentContextType: null, currentContextId: null, recommendedIds: new Set(), isPlaying: true, currentTime: 0 })
+    set({ playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, videoCurrentTime: 0, videoDuration: 0, queue: tracks, queueIndex: startIndex, currentTrack: track, currentContextType: null, currentContextId: null, recommendedIds: new Set(), isPlaying: true, currentTime: 0, duration: trackDurationSeconds(track) })
     recordPlay(track.id)
   },
 
@@ -680,7 +685,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // against a queue that's no longer active.
       if (!s.currentTrack) {
         recordPlay(track.id, null)
-        return { playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0, currentContextType: null, currentContextId: null }
+        return { playbackMode: 'audio', currentVideo: null, isVideoPlaying: false, currentTrack: track, queue: [track], queueIndex: 0, isPlaying: true, currentTime: 0, duration: trackDurationSeconds(track), currentContextType: null, currentContextId: null }
       }
       const newQueue = [...s.queue]
       newQueue.splice(s.queueIndex + 1, 0, track)

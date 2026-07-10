@@ -144,6 +144,17 @@ fn save_offline_audio(
     fs::write(target, encrypted).map_err(|error| error.to_string())
 }
 
+/// IPC fallback for WebView media stacks that cannot decode the custom protocol.
+/// The response is raw bytes (not a JSON number array), so even large tracks cross
+/// the native boundary without the serialization overhead of `Vec<u8>`.
+#[tauri::command]
+fn read_offline_audio(app: AppHandle, path: String) -> Result<tauri::ipc::Response, String> {
+    let source = safe_offline_path(&app, &path)?;
+    let encrypted = fs::read(source).map_err(|error| error.to_string())?;
+    let (_, audio) = decrypt_offline_audio(&encrypted)?;
+    Ok(tauri::ipc::Response::new(audio))
+}
+
 // Build + show a Windows toast directly. Lets us render the sender's avatar as a
 // circular app-logo (the high-level notification plugin can't show images on
 // Windows). `icon` is a path to a local image file (see cacheIconForTauri on the
@@ -283,7 +294,11 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![notify_native, save_offline_audio])
+        .invoke_handler(tauri::generate_handler![
+            notify_native,
+            save_offline_audio,
+            read_offline_audio
+        ])
         .setup(|app| {
             // Force-strip the native window chrome at runtime so we always render
             // the in-app titlebar (WindowControls). Belt-and-suspenders alongside

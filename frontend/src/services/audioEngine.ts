@@ -1,6 +1,10 @@
 import Hls from 'hls.js'
 import { usePlayerStore } from '@/stores/playerStore'
-import { resolvePlaybackSrc, updateOfflineDuration } from '@/services/offlineAudio'
+import {
+  loadOfflinePlaybackBlob,
+  resolvePlaybackSrc,
+  updateOfflineDuration,
+} from '@/services/offlineAudio'
 import {
   EQUALIZER_BANDS,
   EQUALIZER_EVENT,
@@ -192,6 +196,9 @@ class AudioEngine {
    *  this tab stays silent even while the player store thinks it's playing. */
   private connectActive = true
   private preloadedId: string | null = null
+  private sourceTracks: [Track | null, Track | null] = [null, null]
+  /** 0=local/custom source, 1=decrypted blob fallback, 2=network fallback. */
+  private sourceRecoveryStage: [0 | 1 | 2, 0 | 1 | 2] = [0, 0]
   private unsubscribe: (() => void) | null = null
   private mediaSessionTrackId: string | null = null
   private onPrefChange: () => void
@@ -242,9 +249,53 @@ class AudioEngine {
       const track = usePlayerStore.getState().currentTrack
       if (track) updateOfflineDuration(track.id, deck.duration)
     })
-    deck.addEventListener('error', () => {
-      if (i === this.active) usePlayerStore.getState().pause()
-    })
+    deck.addEventListener('error', () => void this.recoverSource(i))
+  }
+
+  /**
+   * A saved track normally streams through the encrypted native protocol. If a
+   * WebView rejects that source, retry with raw decrypted bytes from native IPC;
+   * if that also fails while online, fall back once to the catalogue URL. This
+   * prevents one stale/corrupt download from blocking normal online playback.
+   */
+  private async recoverSource(index: 0 | 1) {
+    const track = this.sourceTracks[index]
+    const failedSrc = this.srcs[index]
+    if (!track || !failedSrc) {
+      if (index === this.active) usePlayerStore.getState().pause()
+      return
+    }
+
+    if (this.sourceRecoveryStage[index] === 0 && failedSrc !== track.audioUrl) {
+      this.sourceRecoveryStage[index] = 1
+      const blobSrc = await loadOfflinePlaybackBlob(track)
+      // Ignore a late fallback if the user skipped while native IPC was working.
+      if (this.sourceTracks[index]?.id !== track.id || this.srcs[index] !== failedSrc) return
+      if (blobSrc) {
+        this.loadSource(index, blobSrc, track, true)
+        if (index === this.active && usePlayerStore.getState().isPlaying && this.connectActive) {
+          this.playDeck(this.decks[index])
+        }
+        return
+      }
+    }
+
+    const mayUseNetwork = typeof navigator === 'undefined' || navigator.onLine !== false
+    if (
+      this.sourceRecoveryStage[index] < 2 &&
+      mayUseNetwork &&
+      !!track.audioUrl &&
+      this.srcs[index] !== track.audioUrl
+    ) {
+      this.sourceRecoveryStage[index] = 2
+      this.loadSource(index, track.audioUrl, track, true)
+      if (index === this.active && usePlayerStore.getState().isPlaying && this.connectActive) {
+        this.playDeck(this.decks[index])
+      }
+      return
+    }
+
+    if (index === this.active) usePlayerStore.getState().pause()
   }
 
   private ensureAudioGraph() {
@@ -340,8 +391,10 @@ class AudioEngine {
    * browser plays HLS natively, e.g. Safari); everything else uses the plain
    * native path, byte-for-byte the previous behaviour. Records this.srcs[index].
    */
-  private loadSource(index: number, src: string) {
+  private loadSource(index: 0 | 1, src: string, track: Track, preserveRecovery = false) {
     const deck = this.decks[index]
+    this.sourceTracks[index] = track
+    if (!preserveRecovery) this.sourceRecoveryStage[index] = 0
     this.destroyHls(index)
     const nativeHls = deck.canPlayType('application/vnd.apple.mpegurl') !== ''
     if (isHlsSource(src) && !nativeHls && Hls.isSupported()) {
@@ -487,7 +540,7 @@ class AudioEngine {
     const src = resolvePlaybackSrc(next)
     if (this.srcs[this.idleIndex] !== src) {
       idle.volume = 0
-      this.loadSource(this.idleIndex, src)
+      this.loadSource(this.idleIndex, src, next)
     }
     this.preloadedId = next.id
   }
@@ -536,7 +589,7 @@ class AudioEngine {
 
     // Reuse the pre-buffered deck when it already holds this src (gapless); else load.
     if (this.srcs[newIndex] !== src) {
-      this.loadSource(newIndex, src)
+      this.loadSource(newIndex, src, track)
     }
     const safeStart = Number.isFinite(startAt) ? Math.max(0, startAt) : 0
     try {
@@ -575,6 +628,8 @@ class AudioEngine {
       deck.src = ''
       this.srcs[i] = ''
     })
+    this.sourceTracks = [null, null]
+    this.sourceRecoveryStage = [0, 0]
     this.crossfading = false
     this.preloadedId = null
   }

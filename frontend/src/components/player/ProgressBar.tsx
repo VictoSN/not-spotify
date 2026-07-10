@@ -4,12 +4,13 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { formatSeconds } from '@/utils/formatTime'
 
 export function ProgressBar() {
-  const { playbackMode, currentTime, duration, videoCurrentTime, videoDuration, seek } = usePlayerStore()
+  const { playbackMode, currentTrack, currentTime, duration, videoCurrentTime, videoDuration, seek } = usePlayerStore()
   const [dragging, setDragging] = useState(false)
   const [dragValue, setDragValue] = useState(0)
 
   const activeTime = playbackMode === 'video' ? videoCurrentTime : currentTime
-  const activeDuration = playbackMode === 'video' ? videoDuration : duration
+  const knownTrackDuration = currentTrack?.durationMs ? currentTrack.durationMs / 1000 : 0
+  const activeDuration = playbackMode === 'video' ? videoDuration : (duration > 0 ? duration : knownTrackDuration)
   const display = dragging ? dragValue : activeTime
   const max = activeDuration > 0 ? activeDuration : 1
 

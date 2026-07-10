@@ -23,7 +23,7 @@ Follow **[Getting Started](#-getting-started)** below to run the same app on you
 
 ## 📊 Project Status & Features
 
-**The remaining-work checklist and roadmap live in [todo.md](todo.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
+This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
 
 **What works today (highlights):**
 - **Playback:** full player, queue + premium drag-reorder, **crossfade + gapless**, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
@@ -37,7 +37,7 @@ Follow **[Getting Started](#-getting-started)** below to run the same app on you
 
 - **Desktop:** optional **Tauri** wrapper (`frontend/src-tauri`) that loads the same frontend in a native window — see [Desktop app (Tauri)](#desktop-app-tauri-optional).
 
-**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views) and a deeper unit-test suite. *(The storage move to AWS S3 is done — it's the live backend; see [Storage Backends](#storage-backends-s3--local).)* See **[todo.md](todo.md)** for the full checklist.
+**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views) and a deeper unit-test suite. *(The storage move to AWS S3 is done — it's the live backend; see [Storage Backends](#storage-backends-s3--local).)*
 
 ### Run everything at once (quickest start)
 

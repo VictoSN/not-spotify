@@ -250,6 +250,147 @@ public class StripeBillingService
     public Task<JsonElement> FetchPriceAsync(string priceId, CancellationToken ct = default)
         => GetJsonAsync($"prices/{Uri.EscapeDataString(priceId)}", ct);
 
+    // Lists a customer's subscriptions and returns the one that best represents
+    // their current entitlement: an active/trialing/past_due subscription if any,
+    // otherwise the most recently created. Returns null when the customer has none.
+    // Used to reconcile Premium on the checkout-success redirect without waiting
+    // for the asynchronous webhook (which may not even be configured).
+    public async Task<JsonElement?> GetLatestSubscriptionAsync(string customerId, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(customerId)) return null;
+
+        var root = await GetJsonAsync(
+            $"subscriptions?customer={Uri.EscapeDataString(customerId)}&status=all&limit=100", ct);
+        if (!root.TryGetProperty("data", out var data) ||
+            data.ValueKind != JsonValueKind.Array ||
+            data.GetArrayLength() == 0)
+            return null;
+
+        JsonElement? best = null;
+        long bestRank = long.MinValue;
+        foreach (var sub in data.EnumerateArray())
+        {
+            var created = SubGetLong(sub, "created") ?? 0;
+            // Premium-granting statuses outrank everything; within a rank, newest wins.
+            var rank = (IsPremiumSubscriptionStatus(SubGetString(sub, "status")) ? 10_000_000_000L : 0L) + created;
+            if (best is null || rank > bestRank)
+            {
+                best = sub;
+                bestRank = rank;
+            }
+        }
+        return best;
+    }
+
+    // Applies a Stripe subscription object to the local user, mirroring the state
+    // the billing webhook records. Shared by the webhook and the on-demand sync so
+    // both grant/downgrade Premium identically.
+    public void ApplySubscriptionToUser(ApplicationUser user, JsonElement subscription)
+    {
+        var status = SubGetString(subscription, "status");
+
+        user.StripeSubscriptionId = SubGetString(subscription, "id") ?? user.StripeSubscriptionId;
+        user.StripeCustomerId = SubGetString(subscription, "customer") ?? user.StripeCustomerId;
+        user.StripeSubscriptionStatus = status;
+        user.StripeBillingInterval = SubscriptionInterval(subscription);
+        user.StripeCurrentPeriodEnd = SubGetUnixTime(subscription, "current_period_end");
+        user.StripeCancelAtPeriodEnd = SubGetBool(subscription, "cancel_at_period_end") ?? false;
+        user.Plan = IsPremiumSubscriptionStatus(status) ? "premium" : "free";
+
+        // Record which tier this subscription is on so we know the seat allowance.
+        // Prefer the subscription metadata, fall back to resolving the price id.
+        if (string.Equals(user.Plan, "premium", StringComparison.OrdinalIgnoreCase))
+        {
+            user.PlanTier = SubMetadataValue(subscription, "tier")
+                ?? PlanForPriceId(SubscriptionPriceId(subscription))?.Tier
+                ?? "individual";
+        }
+        else
+        {
+            user.PlanTier = "individual";
+        }
+    }
+
+    public static bool IsPremiumSubscriptionStatus(string? status)
+        => status is "active" or "trialing" or "past_due";
+
+    private string? SubscriptionInterval(JsonElement subscription)
+    {
+        var item = FirstSubscriptionItem(subscription);
+        if (item is null) return null;
+
+        var interval = SubGetNestedString(item.Value, "price", "recurring", "interval");
+        if (interval == "month") return "monthly";
+        if (interval == "year") return "yearly";
+
+        var priceId = SubGetNestedString(item.Value, "price", "id");
+        if (!string.IsNullOrWhiteSpace(priceId))
+        {
+            if (priceId == Options.MonthlyPriceId) return "monthly";
+            if (priceId == Options.YearlyPriceId) return "yearly";
+        }
+        return null;
+    }
+
+    private static string? SubscriptionPriceId(JsonElement subscription)
+    {
+        var item = FirstSubscriptionItem(subscription);
+        return item is null ? null : SubGetNestedString(item.Value, "price", "id");
+    }
+
+    private static JsonElement? FirstSubscriptionItem(JsonElement subscription)
+    {
+        if (subscription.TryGetProperty("items", out var items) &&
+            items.TryGetProperty("data", out var data) &&
+            data.ValueKind == JsonValueKind.Array &&
+            data.GetArrayLength() > 0)
+            return data[0];
+        return null;
+    }
+
+    private static string? SubGetString(JsonElement obj, string property)
+        => obj.TryGetProperty(property, out var value) ? SubStringValue(value) : null;
+
+    private static string? SubGetNestedString(JsonElement obj, params string[] path)
+    {
+        var current = obj;
+        foreach (var segment in path)
+        {
+            if (!current.TryGetProperty(segment, out current)) return null;
+        }
+        return SubStringValue(current);
+    }
+
+    private static string? SubStringValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString(),
+        JsonValueKind.Number => value.GetRawText(),
+        JsonValueKind.Object when value.TryGetProperty("id", out var id) => SubStringValue(id),
+        _ => null,
+    };
+
+    private static bool? SubGetBool(JsonElement obj, string property)
+    {
+        if (!obj.TryGetProperty(property, out var value)) return null;
+        return value.ValueKind == JsonValueKind.True ? true
+             : value.ValueKind == JsonValueKind.False ? false
+             : null;
+    }
+
+    private static long? SubGetLong(JsonElement obj, string property)
+        => obj.TryGetProperty(property, out var value) && value.TryGetInt64(out var result) ? result : null;
+
+    private static DateTime? SubGetUnixTime(JsonElement obj, string property)
+    {
+        var seconds = SubGetLong(obj, property);
+        return seconds is null ? null : DateTimeOffset.FromUnixTimeSeconds(seconds.Value).UtcDateTime;
+    }
+
+    private static string? SubMetadataValue(JsonElement obj, string key)
+        => obj.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object
+            ? SubGetString(metadata, key)
+            : null;
+
     private async Task<JsonElement> PostFormAsync(string path, IEnumerable<KeyValuePair<string, string>> fields, CancellationToken ct)
     {
         EnsureConfigured();

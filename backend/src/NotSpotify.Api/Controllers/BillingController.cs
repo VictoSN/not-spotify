@@ -105,6 +105,47 @@ public partial class BillingController : ControllerBase
         }
     }
 
+    // Reconciles the user's plan straight from Stripe. Called by the client when
+    // it returns from a completed checkout so Premium is granted immediately even
+    // if the asynchronous webhook is unconfigured or delayed. Best-effort: any
+    // Stripe error leaves the stored state untouched.
+    [HttpPost("sync")]
+    [Authorize]
+    public async Task<ActionResult<BillingSubscriptionDto>> Sync(CancellationToken ct = default)
+    {
+        var me = CurrentUserId();
+        if (me is null) return Unauthorized();
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == me, ct);
+        if (user is null) return NotFound();
+
+        if (_stripe.HasSecretKey && !string.IsNullOrWhiteSpace(user.StripeCustomerId))
+        {
+            try
+            {
+                var subscription = await _stripe.GetLatestSubscriptionAsync(user.StripeCustomerId, ct);
+                if (subscription is not null)
+                {
+                    _stripe.ApplySubscriptionToUser(user, subscription.Value);
+                    await _db.SaveChangesAsync(ct);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // Keep the stored state; the webhook (or a later sync) can still reconcile.
+            }
+        }
+
+        return Ok(new BillingSubscriptionDto(
+            user.Plan,
+            user.PlanTier,
+            user.StripeSubscriptionStatus,
+            user.StripeBillingInterval,
+            user.StripeCurrentPeriodEnd,
+            user.StripeCancelAtPeriodEnd
+        ));
+    }
+
     [HttpDelete("subscription")]
     [Authorize]
     public async Task<IActionResult> CancelSubscription(CancellationToken ct = default)

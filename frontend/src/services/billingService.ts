@@ -42,6 +42,13 @@ export const billingService = {
     return res.data
   },
 
+  // Reconciles the plan directly from Stripe (used on the checkout-success
+  // redirect so Premium activates without waiting on the webhook).
+  async syncSubscription(): Promise<BillingSubscription> {
+    const res = await api.post<BillingSubscription>('/billing/sync')
+    return res.data
+  },
+
   async createCheckoutSession(plan: PlanKey): Promise<string> {
     const res = await api.post<{ url: string }>('/billing/checkout-session', { plan })
     return res.data.url

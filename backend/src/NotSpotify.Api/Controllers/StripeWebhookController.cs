@@ -96,7 +96,7 @@ public class StripeWebhookController : ControllerBase
         if (!string.IsNullOrWhiteSpace(subscriptionId))
         {
             var subscription = await _stripe.FetchSubscriptionAsync(subscriptionId, ct);
-            ApplySubscription(user, subscription);
+            _stripe.ApplySubscriptionToUser(user, subscription);
         }
     }
 
@@ -105,7 +105,7 @@ public class StripeWebhookController : ControllerBase
         var user = await FindUserFromSubscriptionAsync(subscription, ct);
         if (user is null) return;
 
-        ApplySubscription(user, subscription);
+        _stripe.ApplySubscriptionToUser(user, subscription);
 
         // If this subscription lapsed, release any shared seats so members don't
         // keep Premium after the owner's plan ended.
@@ -164,45 +164,6 @@ public class StripeWebhookController : ControllerBase
             : await _db.Users.FirstOrDefaultAsync(u => u.StripeCustomerId == customerId, ct);
     }
 
-    private void ApplySubscription(ApplicationUser user, JsonElement subscription)
-    {
-        var status = GetString(subscription, "status");
-
-        user.StripeSubscriptionId = GetString(subscription, "id") ?? user.StripeSubscriptionId;
-        user.StripeCustomerId = GetString(subscription, "customer") ?? user.StripeCustomerId;
-        user.StripeSubscriptionStatus = status;
-        user.StripeBillingInterval = GetSubscriptionInterval(subscription);
-        user.StripeCurrentPeriodEnd = GetUnixTime(subscription, "current_period_end");
-        user.StripeCancelAtPeriodEnd = GetBool(subscription, "cancel_at_period_end") ?? false;
-        user.Plan = IsPremiumStatus(status) ? "premium" : "free";
-
-        // Record which tier this subscription is on so we know the seat allowance.
-        // Prefer the subscription metadata, fall back to resolving the price id.
-        if (string.Equals(user.Plan, "premium", StringComparison.OrdinalIgnoreCase))
-        {
-            var tier = MetadataValue(subscription, "tier")
-                ?? _stripe.PlanForPriceId(GetSubscriptionPriceId(subscription))?.Tier
-                ?? "individual";
-            user.PlanTier = tier;
-        }
-        else
-        {
-            user.PlanTier = "individual";
-        }
-    }
-
-    private static string? GetSubscriptionPriceId(JsonElement subscription)
-    {
-        if (subscription.TryGetProperty("items", out var items) &&
-            items.TryGetProperty("data", out var data) &&
-            data.ValueKind == JsonValueKind.Array &&
-            data.GetArrayLength() > 0)
-        {
-            return GetNestedString(data[0], "price", "id");
-        }
-        return null;
-    }
-
     private bool VerifySignature(string payload, string signatureHeader)
     {
         var secret = _stripe.Options.WebhookSecret;
@@ -239,31 +200,6 @@ public class StripeWebhookController : ControllerBase
             CryptographicOperations.FixedTimeEquals(expectedBytes, Encoding.UTF8.GetBytes(sig.ToLowerInvariant())));
     }
 
-    private string? GetSubscriptionInterval(JsonElement subscription)
-    {
-        if (subscription.TryGetProperty("items", out var items) &&
-            items.TryGetProperty("data", out var data) &&
-            data.ValueKind == JsonValueKind.Array &&
-            data.GetArrayLength() > 0)
-        {
-            var item = data[0];
-            var interval = GetNestedString(item, "price", "recurring", "interval");
-            if (interval == "month") return "monthly";
-            if (interval == "year") return "yearly";
-
-            var priceId = GetNestedString(item, "price", "id");
-            if (!string.IsNullOrWhiteSpace(priceId))
-            {
-                if (priceId == _stripe.Options.MonthlyPriceId) return "monthly";
-                if (priceId == _stripe.Options.YearlyPriceId) return "yearly";
-            }
-        }
-
-        return null;
-    }
-
-    private static bool IsPremiumStatus(string? status) => status is "active" or "trialing" or "past_due";
-
     private static string? MetadataValue(JsonElement obj, string key)
     {
         if (!obj.TryGetProperty("metadata", out var metadata) || metadata.ValueKind != JsonValueKind.Object)
@@ -298,21 +234,5 @@ public class StripeWebhookController : ControllerBase
             JsonValueKind.Object when value.TryGetProperty("id", out var id) => StringValue(id),
             _ => null,
         };
-    }
-
-    private static bool? GetBool(JsonElement obj, string property)
-    {
-        if (!obj.TryGetProperty(property, out var value)) return null;
-        return value.ValueKind == JsonValueKind.True ? true : value.ValueKind == JsonValueKind.False ? false : null;
-    }
-
-    private static DateTime? GetUnixTime(JsonElement obj, string property)
-    {
-        if (!obj.TryGetProperty(property, out var value) || value.ValueKind != JsonValueKind.Number)
-            return null;
-
-        return value.TryGetInt64(out var seconds)
-            ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime
-            : null;
     }
 }

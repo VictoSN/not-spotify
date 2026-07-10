@@ -8,6 +8,7 @@ import { billingService, type BillingPlan, type BillingSubscription } from '@/se
 import { planService, type PlanOverview } from '@/services/planService'
 import { useAuthStore } from '@/stores/authStore'
 import { cn } from '@/utils/cn'
+import { PremiumSuccessCelebration } from '@/components/premium/PremiumSuccessCelebration'
 
 const TIER_LABEL: Record<string, string> = {
   individual: 'Premium Individual',
@@ -247,13 +248,17 @@ export function PremiumPage() {
   useDocumentTitle('Premium')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, refreshToken } = useAuthStore()
   const [plans, setPlans] = useState<BillingPlan[]>([])
   const [subscription, setSubscription] = useState<BillingSubscription | null>(null)
   const [planOverview, setPlanOverview] = useState<PlanOverview | null>(null)
   const [busyPlan, setBusyPlan] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [plansFocused, setPlansFocused] = useState(false)
+  const [syncState, setSyncState] = useState<'idle' | 'syncing' | 'pending' | 'done'>('idle')
+  const [celebration, setCelebration] = useState<{ open: boolean; label: string }>({ open: false, label: '' })
+
+  const checkoutStatus = searchParams.get('checkout')
 
   useEffect(() => {
     billingService.getPlans().then(setPlans).catch(() => setPlans([]))
@@ -264,6 +269,48 @@ export function PremiumPage() {
     billingService.getSubscription().then(setSubscription).catch(() => setSubscription(null))
     planService.getOverview().then(setPlanOverview).catch(() => setPlanOverview(null))
   }, [isAuthenticated])
+
+  // On return from a completed Stripe checkout, reconcile the plan directly from
+  // Stripe (independent of the webhook) so Premium activates right away, then show
+  // the celebration. Stripe can take a beat to finalize, so we retry briefly.
+  useEffect(() => {
+    if (checkoutStatus !== 'success' || !isAuthenticated) return
+    let cancelled = false
+
+    const confirm = async () => {
+      setSyncState('syncing')
+      let synced: BillingSubscription | null = null
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        try {
+          synced = await billingService.syncSubscription()
+        } catch {
+          synced = null
+        }
+        if (synced?.plan === 'premium') break
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+      }
+      if (cancelled) return
+
+      if (synced) setSubscription(synced)
+      // Refresh the auth user so the rest of the app (audio engine, gating) sees Premium.
+      try { await refreshToken() } catch { /* non-fatal */ }
+      planService.getOverview().then(setPlanOverview).catch(() => {})
+
+      if (synced?.plan === 'premium') {
+        setCelebration({ open: true, label: planTypeLabel(true, null, synced, synced.interval) })
+        setSyncState('done')
+      } else {
+        setSyncState('pending')
+      }
+      // Strip ?checkout=success so a refresh doesn't replay the flow.
+      navigate('/premium', { replace: true })
+    }
+
+    void confirm()
+    return () => {
+      cancelled = true
+    }
+  }, [checkoutStatus, isAuthenticated, navigate, refreshToken])
 
   const checkout = async (plan: BillingPlan['plan']) => {
     if (!isAuthenticated) {
@@ -303,7 +350,6 @@ export function PremiumPage() {
     window.setTimeout(() => setPlansFocused(false), 900)
   }
 
-  const status = searchParams.get('checkout')
   const hasMissingBillingConfig = plans.some((plan) => !plan.isConfigured)
   const isPremium = subscription?.plan === 'premium' || user?.plan === 'premium'
   const currentPlanDetails = isPremium
@@ -368,12 +414,18 @@ export function PremiumPage() {
 
       <div className="px-6">
         {/* Notices */}
-        {status === 'success' && (
-          <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-accent/40 bg-accent-dim/30 px-4 py-3 text-sm font-semibold text-primary">
-            Checkout completed. Your subscription will update once Stripe confirms the webhook.
+        {syncState === 'syncing' && (
+          <div className="mx-auto mt-6 flex max-w-3xl items-center gap-2 rounded-lg border border-accent/40 bg-accent-dim/30 px-4 py-3 text-sm font-semibold text-primary">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            Confirming your purchase…
           </div>
         )}
-        {status === 'cancelled' && (
+        {syncState === 'pending' && (
+          <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-accent/40 bg-accent-dim/30 px-4 py-3 text-sm font-semibold text-primary">
+            Payment received. Your Premium is being activated — refresh in a moment if it hasn't appeared.
+          </div>
+        )}
+        {checkoutStatus === 'cancelled' && (
           <div className="mx-auto mt-6 max-w-3xl rounded-lg border border-secondary/20 bg-surface px-4 py-3 text-sm font-semibold text-secondary">
             Checkout was cancelled.
           </div>
@@ -560,6 +612,12 @@ export function PremiumPage() {
 
         {error && <p className="mx-auto mt-6 max-w-5xl text-sm font-semibold text-red-400">{error}</p>}
       </div>
+
+      <PremiumSuccessCelebration
+        open={celebration.open}
+        planLabel={celebration.label}
+        onClose={() => setCelebration((prev) => ({ ...prev, open: false }))}
+      />
     </div>
   )
 }

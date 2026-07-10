@@ -28,8 +28,15 @@ if ($LASTEXITCODE -ne 0 -or -not $serverVersion) { Write-Host "ABORT: Docker Des
 Write-Host "Docker engine OK (server $serverVersion)"
 
 Write-Host "== 1/6 ECR login ==" -ForegroundColor Cyan
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $REGISTRY
+# Don't pipe `get-login-password | docker login` directly: PowerShell 5.1 re-encodes
+# native-to-native pipeline text and mangles the token, so ECR rejects it with a
+# 400. Capture the token first, then hand it to docker via -p. It's a short-lived
+# ECR token on the user's own machine; clear it right after.
+$ecrPassword = (aws ecr get-login-password --region $REGION)
+Assert-LastExit "ECR get-login-password"
+docker login --username AWS --password $ecrPassword $REGISTRY
 Assert-LastExit "ECR login"
+$ecrPassword = $null
 
 Write-Host "== 2/6 docker build ==" -ForegroundColor Cyan
 docker build -t $IMAGE backend/src/NotSpotify.Api

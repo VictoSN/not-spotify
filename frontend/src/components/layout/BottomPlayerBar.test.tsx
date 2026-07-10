@@ -113,6 +113,9 @@ describe('BottomPlayerBar mobile swipe dismissal', () => {
     act(() => usePlayerStore.setState({ currentTime: 42 }))
     expect(screen.queryByTestId('mobile-mini-player')).not.toBeInTheDocument()
 
+    fireEvent.click(screen.getByTestId('mobile-mini-player-restore'))
+    expect(screen.getByTestId('mobile-mini-player')).toBeInTheDocument()
+
     act(() => usePlayerStore.setState({ currentTrack: track('two') }))
     expect(screen.getByTestId('mobile-mini-player')).toBeInTheDocument()
     expect(screen.getByText('Track two')).toBeInTheDocument()

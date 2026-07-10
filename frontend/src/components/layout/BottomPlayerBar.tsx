@@ -323,7 +323,27 @@ export function BottomPlayerBar() {
 
   // â”€â”€ Mobile mini-player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isMobile) {
-    if (!hasMedia || dismissedMediaKey === activeMediaKey) return null
+    if (!hasMedia) return null
+
+    // A swipe hides the large mini-player for the current item, but playback
+    // continues. Keep a short, deliberate restore pill above mobile navigation
+    // so it can never become unreachable until the next track starts.
+    if (dismissedMediaKey === activeMediaKey) {
+      return (
+        <div className="shrink-0 px-2 pb-2">
+          <button
+            type="button"
+            data-testid="mobile-mini-player-restore"
+            onClick={() => setDismissedMediaKey(null)}
+            className="flex h-9 w-full items-center justify-center gap-2 rounded-full bg-surface px-4 text-xs font-bold text-secondary shadow-md ring-1 ring-white/10 transition-colors hover:text-primary active:scale-[0.98]"
+            aria-label={`Show player for ${activeTitle ?? 'current track'}`}
+          >
+            <span aria-hidden className="text-base leading-none">‹</span>
+            <span>Show player</span>
+          </button>
+        </div>
+      )
+    }
     const mobileSwipeOpacity = Math.max(0, 1 - mobileSwipeX / Math.max(240, window.innerWidth * 0.9))
     return (
       // Floating rounded card: sits inset from the screen edges with a gap above

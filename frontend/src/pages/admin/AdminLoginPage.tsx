@@ -15,6 +15,7 @@ import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
+import { isDesktop } from '@/utils/platform'
 
 interface FormValues {
   email: string
@@ -48,6 +49,8 @@ export function AdminLoginPage() {
   }, [isAuthenticated, isAdmin, from, navigate])
 
   useEffect(() => {
+    // reCAPTCHA can't render inside Tauri's embedded webview — desktop skips it.
+    if (isDesktop()) return
     let active = true
     authService.captchaConfig()
       .then((config) => { if (active) setCaptcha(config) })

@@ -68,12 +68,20 @@ public class AuthController : ControllerBase
     /// <summary>Whether the SPA should render the reCAPTCHA widget on login/signup, and with which site key.</summary>
     [HttpGet("captcha")]
     public ActionResult<CaptchaConfigResponse> CaptchaConfig()
-        => Ok(new CaptchaConfigResponse(_captcha.IsEnabled, _captcha.IsEnabled ? _captcha.SiteKey : null));
+    {
+        // reCAPTCHA can't run in Tauri's embedded webview — tell the desktop shell to skip it.
+        if (IsDesktopClient())
+            return Ok(new CaptchaConfigResponse(false, null));
+        return Ok(new CaptchaConfigResponse(_captcha.IsEnabled, _captcha.IsEnabled ? _captcha.SiteKey : null));
+    }
+
+    private bool IsDesktopClient()
+        => string.Equals(Request.Headers["X-Client-Kind"], "desktop", StringComparison.OrdinalIgnoreCase);
 
     [HttpPost("signup")]
     public async Task<ActionResult<SignupStartResponse>> Signup([FromBody] SignupRequest req)
     {
-        if (!await VerifyCaptchaAsync(req.CaptchaToken))
+        if (!IsDesktopClient() && !await VerifyCaptchaAsync(req.CaptchaToken))
             return BadRequest(new { message = "CAPTCHA verification failed. Please try again." });
 
         var email = req.Email.Trim().ToLowerInvariant();
@@ -196,7 +204,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest req)
     {
-        if (!await VerifyCaptchaAsync(req.CaptchaToken))
+        if (!IsDesktopClient() && !await VerifyCaptchaAsync(req.CaptchaToken))
             return BadRequest(new { message = "CAPTCHA verification failed. Please try again." });
 
         var user = await _users.FindByEmailAsync(req.Email);

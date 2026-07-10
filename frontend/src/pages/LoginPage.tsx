@@ -10,6 +10,7 @@ import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useTranslation } from '@/i18n/useTranslation'
 import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
+import { isDesktop } from '@/utils/platform'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
   const params = new URLSearchParams({
@@ -50,6 +51,8 @@ export function LoginPage() {
   }, [isAuthenticated, user, navigate])
 
   useEffect(() => {
+    // reCAPTCHA can't render inside Tauri's embedded webview — desktop skips it.
+    if (isDesktop()) return
     let active = true
     authService.captchaConfig()
       .then((config) => { if (active) setCaptcha(config) })

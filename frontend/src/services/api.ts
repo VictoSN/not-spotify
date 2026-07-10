@@ -15,6 +15,9 @@ api.interceptors.request.use((config) => {
   // Dynamic import avoids circular dependency; store is resolved at call time
   const token = (window as { __authToken?: string }).__authToken
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // Marks desktop-shell requests so the backend can skip web-only gates
+  // (reCAPTCHA doesn't work inside Tauri's embedded webview).
+  if (isDesktop()) config.headers['X-Client-Kind'] = 'desktop'
   return config
 })
 

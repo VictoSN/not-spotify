@@ -42,7 +42,6 @@ const NP_KEY = 'ns-nowplaying-width'
 const NP_DEFAULT = 320
 const NP_MIN = 280
 const NP_MAX = 460
-const NP_WIDE_THRESHOLD = NP_MAX - 8
 
 function getInitialNpWidth(): number {
   if (typeof window === 'undefined') return NP_DEFAULT
@@ -200,12 +199,10 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
       window.removeEventListener('mouseup', onUp)
     }
   }, [dragging])
-  const isWide = isNowPlayingExpanded || width >= NP_WIDE_THRESHOLD
   const showLargeInlineActions = width >= 380
   const toggleWide = () => {
     if (isNowPlayingExpanded) {
       setNowPlayingExpanded(false)
-      setWidth(NP_DEFAULT)
     } else {
       setNowPlayingExpanded(true)
     }
@@ -402,11 +399,11 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
             <button
               onClick={toggleWide}
               className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-              aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+              aria-label={isNowPlayingExpanded ? t('np.shrinkPanel') : t('np.expandPanel')}
             >
-              {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+              {isNowPlayingExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
               <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
-                {isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+                {isNowPlayingExpanded ? t('np.shrinkPanel') : t('np.expandPanel')}
               </span>
             </button>
             <button
@@ -863,11 +860,11 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
           <button
             onClick={toggleWide}
             className="spotify-tooltip-anchor relative rounded-full p-1.5 text-secondary transition-all hover:scale-110 hover:bg-elevated hover:text-primary active:scale-95"
-            aria-label={isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+            aria-label={isNowPlayingExpanded ? t('np.shrinkPanel') : t('np.expandPanel')}
           >
-            {isWide ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
+            {isNowPlayingExpanded ? <DiagonalCollapseIcon /> : <DiagonalExpandIcon />}
             <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-right">
-              {isWide ? t('np.shrinkPanel') : t('np.expandPanel')}
+              {isNowPlayingExpanded ? t('np.shrinkPanel') : t('np.expandPanel')}
             </span>
           </button>
         </div>

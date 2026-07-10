@@ -413,6 +413,13 @@ body,
     border-color 0.2s ease;
 }
 
+/* Edge/WebView2 adds its own password-reveal control. The login form already
+   has an accessible, themed toggle, so suppress the duplicate browser button. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 /* Default scrollbar: keep it quiet everywhere — transparent track, faint thumb.
    The richer Spotify-style scrollbar below is opt-in via `.spotify-scrollbar`.
    NOTE: we deliberately set NEITHER `scrollbar-width` NOR `scrollbar-color` on

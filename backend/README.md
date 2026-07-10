@@ -16,7 +16,9 @@ Install once per machine:
 
 ## First-time setup
 
-### 1. Create the dev database and app user
+> **Which database?** The live app runs on **AWS RDS (PostgreSQL)**, and the team shares one instance for day-to-day dev — in that case you **don't install PostgreSQL locally**; you just get the connection string from a teammate (or the RDS endpoint) and skip straight to [step 2](#2-store-your-local-secrets). The steps below (installing PostgreSQL + creating a local `notspotify_app` user/DB) are only for running a fully self-contained local database on your own machine. Either way, **the schema is created automatically on startup** — see [step 3](#3-database-schema-auto-applied-on-startup).
+
+### 1. (Local DB only) Create the dev database and app user
 
 In **pgAdmin** (connect as `postgres` superuser):
 
@@ -89,18 +91,11 @@ You can generate a JWT signing key with PowerShell:
 [Convert]::ToBase64String((1..48 | % { Get-Random -Max 256 }))
 ```
 
-### 3. Apply the database schema
+### 3. Database schema (auto-applied on startup)
 
-```powershell
-cd backend/src/NotSpotify.Api
-dotnet ef database update
-```
+**You don't need to run any migration command.** On boot, `Program.cs` calls `MigrateAsync()` to apply all EF Core migrations, then runs idempotent `CREATE TABLE / COLUMN IF NOT EXISTS` guards for the newest schema. Starting the API in [step 4](#4-run-the-api) is enough to create every table — on a brand-new local DB *or* a fresh AWS RDS.
 
-This runs the EF Core migrations and creates all the tables. If `dotnet ef` is not found, install it once globally:
-
-```powershell
-dotnet tool install --global dotnet-ef --version 8.*
-```
+> ⚠️ **Do not `dotnet ef migrations add`.** This project patches newer tables/columns with idempotent raw SQL in `Program.cs`; regenerating migrations produces a broken full-schema diff. If you genuinely need a schema change, add an idempotent raw-SQL guard rather than a new migration.
 
 ### 4. Run the API
 
@@ -154,9 +149,8 @@ backend/
 
 | Task | Command |
 |---|---|
-| Add a new migration | `dotnet ef migrations add <Name>` |
-| Apply pending migrations | `dotnet ef database update` |
-| Roll back last migration | `dotnet ef database update <PreviousMigrationName>` |
+| Apply schema | (automatic on `dotnet run` — see [step 3](#3-database-schema-auto-applied-on-startup)) |
+| Change the schema | Add an idempotent raw-SQL guard in `Program.cs` — **not** `dotnet ef migrations add` |
 | List saved secrets | `dotnet user-secrets list` |
 | Remove a saved secret | `dotnet user-secrets remove "Key:Path"` |
 
@@ -199,9 +193,9 @@ Copy the printed `whsec_...` value into `Stripe:WebhookSecret`, restart the API,
 
 ## Media storage
 
-The app has a storage abstraction (`IStorageService`) so media (audio, cover art, avatars) is served the same way locally and on AWS — only the backing implementation changes.
+The app has a storage abstraction (`IStorageService`) so media (audio, cover art, avatars) is served the same way locally and on AWS — only the backing implementation changes. The provider is chosen at startup by **priority: S3 → Local**, and printed to the console (`[Storage] Using …`). **The live deployment uses AWS S3**; local disk is the zero-config fallback when no S3 config is present.
 
-### Local dev (today)
+### Local disk (fallback when S3 isn't configured)
 
 `LocalStorageService` serves files out of `backend/src/NotSpotify.Api/wwwroot/uploads/`:
 
@@ -234,11 +228,14 @@ If `*Key` is set, the API resolves it via `IStorageService`. Otherwise it falls 
    ```
 3. `GET /tracks/{id}` now returns `audioUrl = https://localhost:7080/uploads/audio/my-song.mp3`.
 
-### S3 Storage (cloud)
+### S3 Storage (cloud — the live default)
 
-`S3StorageService` handles all cloud media storage through AWS S3 (or any S3-compatible store). Enable it by setting `S3Storage:BucketName` in user secrets. Files can be served via presigned URLs or public bucket URLs depending on configuration.
+`S3StorageService` handles all cloud media storage through AWS S3 (or any S3-compatible store). Enable it by setting `S3Storage:BucketName` in user secrets (setting it flips the provider to S3 on the next `dotnet run`). Files can be served via presigned URLs or public bucket URLs depending on configuration. Full walkthrough: [`../docs/aws-s3-setup.md`](../docs/aws-s3-setup.md).
+
+## Deployment
+
+The backend is containerized (`src/NotSpotify.Api/Dockerfile`) and deployed to **AWS ECS behind an ALB** (`https://api.not-spotify.lol`) — see [`deploy-backend.ps1`](deploy-backend.ps1). An Elastic Beanstalk path also exists (`deploy-eb.ps1`).
 
 ## What's not built yet
 
-- **Dockerfile + deployment**
-- **CI/CD pipeline**
+- **CI/CD pipeline** (deploys are run manually via the scripts above)

@@ -2,11 +2,28 @@
 
 Definitely not Spotify, developed using Cloud Computing. A premium music streaming web application with an ASP.NET Core Web API backend and React + TypeScript + Vite frontend.
 
+## Two ways to use this
+
+### ▶️ Just want to try it? — use the live deployment (no setup)
+
+Open **<https://not-spotify.lol>** in your browser and log in with a seed account:
+
+| Email | Password |
+|---|---|
+| `alex@example.com` | `Password123!` |
+| `testing1@example.com` | `Testing1` |
+
+That's the fully deployed app — frontend on **S3 + CloudFront**, API (`https://api.not-spotify.lol`) on **ECS + ALB**, database on **AWS RDS (PostgreSQL)**, and media on **S3**. Nothing to install.
+
+### 🛠️ Want to run it from source? — local setup
+
+Follow **[Getting Started](#-getting-started)** below to run the same app on your machine (or **[Run everything at once](#run-everything-at-once-quickest-start)** for the one-command start).
+
 ---
 
 ## 📊 Project Status & Features
 
-**The remaining-work checklist and roadmap live in [TODO.md](TODO.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
+**The remaining-work checklist and roadmap live in [todo.md](todo.md)** (finish features → storage → unit testing → finalization). This README covers what the project *is* and how to run it; architecture notes for new contributors are in the [Architecture & Conventions](#architecture--conventions) section below.
 
 **What works today (highlights):**
 - **Playback:** full player, queue + premium drag-reorder, **crossfade + gapless**, PiP + OS media keys, sleep timer, playback speed, play-next, autoplay, keyboard shortcuts (`?` for help), star ratings, voice search.
@@ -20,7 +37,7 @@ Definitely not Spotify, developed using Cloud Computing. A premium music streami
 
 - **Desktop:** optional **Tauri** wrapper (`frontend/src-tauri`) that loads the same frontend in a native window — see [Desktop app (Tauri)](#desktop-app-tauri-optional).
 
-**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views), the storage move (R2 → S3), and a deeper unit-test suite. See **[TODO.md](TODO.md)** for the full checklist.
+**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views) and a deeper unit-test suite. *(The storage move to AWS S3 is done — it's the live backend; see [Storage Backends](#storage-backends-s3--local).)* See **[todo.md](todo.md)** for the full checklist.
 
 ### Run everything at once (quickest start)
 
@@ -148,7 +165,7 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 | testing1 | `testing1@example.com` | `Testing1` | User |
 | testing2 | `testing2@example.com` | `Testing2` | User |
 
-> These are seeded accounts that already exist in the shared database. Do not change their passwords or you will break the shortcuts for your teammates.
+> All three are created automatically by `DbSeeder` on backend startup — so they work even against a brand-new empty database (e.g. a fresh AWS RDS). Their passwords are kept at the documented defaults on every boot; don't change them or you'll break the shortcuts for your teammates.
 
 ---
 

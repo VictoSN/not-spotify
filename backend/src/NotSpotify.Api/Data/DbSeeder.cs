@@ -65,6 +65,42 @@ public static class DbSeeder
             await users.ResetPasswordAsync(demoUser, resetToken, "Password123!");
         }
 
+        // Plain (free-tier, non-admin) accounts backing the login page's dev
+        // shortcuts. Idempotent, and keeps their passwords at the documented
+        // defaults so the shortcuts also work on a brand-new database.
+        var testUsers = new[]
+        {
+            (Key: "user-testing1", Email: "testing1@example.com", Name: "Testing One", Password: "Testing1"),
+            (Key: "user-testing2", Email: "testing2@example.com", Name: "Testing Two", Password: "Testing2"),
+        };
+        foreach (var t in testUsers)
+        {
+            var u = await users.FindByEmailAsync(t.Email);
+            if (u is null)
+            {
+                u = new ApplicationUser
+                {
+                    Id = G(t.Key),
+                    UserName = t.Email,
+                    Email = t.Email,
+                    Name = t.Name,
+                    AvatarUrl = $"https://picsum.photos/seed/{t.Key}/100/100",
+                    Plan = "free",
+                    Country = "US",
+                    CreatedAt = new DateTime(2022, 1, 10, 0, 0, 0, DateTimeKind.Utc),
+                    EmailConfirmed = true,
+                };
+                var r = await users.CreateAsync(u, t.Password);
+                if (!r.Succeeded)
+                    throw new InvalidOperationException($"Seed user {t.Email} creation failed: " + string.Join(", ", r.Errors.Select(e => e.Description)));
+            }
+            else if (!await users.CheckPasswordAsync(u, t.Password))
+            {
+                var token = await users.GeneratePasswordResetTokenAsync(u);
+                await users.ResetPasswordAsync(u, token, t.Password);
+            }
+        }
+
         if (await db.Artists.AnyAsync()) return;
 
         // Genres

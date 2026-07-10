@@ -86,15 +86,24 @@ foreach ($p in @("taskDefinitionArn","revision","status","requiresAttributes","c
   $td.PSObject.Properties.Remove($p) | Out-Null
 }
 $json = $td | ConvertTo-Json -Depth 30
-[System.IO.File]::WriteAllText("$PWD\newtd.json", $json)   # UTF-8 without BOM
+# Write the rendered task definition OUTSIDE the repo. It embeds every task-def
+# env var (Stripe secret key, Google OAuth id/secret), so it must never live in
+# the working tree where it could be committed. Use a unique temp file and always
+# clean it up, even on error.
+$tdFile = Join-Path $env:TEMP ("notspotify-td-" + [Guid]::NewGuid().ToString("N") + ".json")
+$tdUri  = "file://" + ($tdFile -replace '\\', '/')
+try {
+  [System.IO.File]::WriteAllText($tdFile, $json)   # UTF-8 without BOM
 
-Write-Host "== 5/6 register new revision ==" -ForegroundColor Cyan
-$newArn = (aws ecs register-task-definition --region $REGION --cli-input-json "file://newtd.json" --query "taskDefinition.taskDefinitionArn" --output text)
-Write-Host "Registered: $newArn"
+  Write-Host "== 5/6 register new revision ==" -ForegroundColor Cyan
+  $newArn = (aws ecs register-task-definition --region $REGION --cli-input-json $tdUri --query "taskDefinition.taskDefinitionArn" --output text)
+  Write-Host "Registered: $newArn"
 
-Write-Host "== 6/6 update service + wait for stable ==" -ForegroundColor Cyan
-aws ecs update-service --region $REGION --cluster $CLUSTER --service $SERVICE --task-definition $newArn | Out-Null
-aws ecs wait services-stable --region $REGION --cluster $CLUSTER --services $SERVICE
-
-Remove-Item "$PWD\newtd.json" -ErrorAction SilentlyContinue
+  Write-Host "== 6/6 update service + wait for stable ==" -ForegroundColor Cyan
+  aws ecs update-service --region $REGION --cluster $CLUSTER --service $SERVICE --task-definition $newArn | Out-Null
+  aws ecs wait services-stable --region $REGION --cluster $CLUSTER --services $SERVICE
+}
+finally {
+  Remove-Item $tdFile -ErrorAction SilentlyContinue
+}
 Write-Host "DONE. Backend now running: $IMAGE" -ForegroundColor Green

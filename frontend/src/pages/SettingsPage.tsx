@@ -754,7 +754,11 @@ export function SettingsPage() {
         <Row
           label="NotSpotify"
           sub="React, ASP.NET Core, and Tauri desktop shell."
-          control={<span className="text-sm font-semibold text-secondary">{__APP_VERSION__}</span>}
+          control={
+            <span className="text-sm font-semibold text-secondary">
+              {typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__}
+            </span>
+          }
         />
       </Section>,
   ]

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -44,6 +44,11 @@ export function AppShell() {
   // pane, which spawns an outer scrollbar that clashes with the thread's own
   // scroll. Drop it on this route so the chat fills the frame exactly.
   const isMessagesRoute = location.pathname === '/messages'
+  // Mobile browsers only retract their address bar for document scrolling.
+  // Regular pages therefore let the document own vertical scroll; Messages
+  // keeps its app-like fixed viewport because its list and thread scroll
+  // independently.
+  const useDocumentScroll = isMobile && !isMessagesRoute
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const offlineMode = useAuthStore((s) => s.offlineMode)
   const hasCoordinatedPageLoad =
@@ -115,14 +120,46 @@ export function AppShell() {
   // header tint (the TopBar picks up the page hue once you scroll past the hero).
   const setHeaderScrolled = useHueStore((s) => s.setHeaderScrolled)
   const mainScrollRef = useRef<HTMLDivElement>(null)
+  const mobileDockRef = useRef<HTMLDivElement>(null)
   const scrolledRef = useRef(false)
-  const handleMainScroll = () => {
-    const next = (mainScrollRef.current?.scrollTop ?? 0) > 8
+  const handleMainScroll = useCallback(() => {
+    const next = (useDocumentScroll ? window.scrollY : (mainScrollRef.current?.scrollTop ?? 0)) > 8
     if (next !== scrolledRef.current) {
       scrolledRef.current = next
       setHeaderScrolled(next)
     }
-  }
+  }, [setHeaderScrolled, useDocumentScroll])
+
+  useEffect(() => {
+    if (!useDocumentScroll) return
+    handleMainScroll()
+    window.addEventListener('scroll', handleMainScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleMainScroll)
+  }, [handleMainScroll, useDocumentScroll])
+
+  // The mobile dock can grow when a mini-player, Jam, or ad appears. Mirror its
+  // live height into the document content padding so the last row is never
+  // hidden behind the fixed controls.
+  useLayoutEffect(() => {
+    if (!useDocumentScroll) return
+    const dock = mobileDockRef.current
+    const content = mainScrollRef.current
+    if (!dock || !content) return
+
+    const syncDockHeight = () => {
+      content.style.setProperty('--mobile-dock-height', `${Math.ceil(dock.getBoundingClientRect().height)}px`)
+    }
+    syncDockHeight()
+
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncDockHeight)
+    observer?.observe(dock)
+    window.addEventListener('resize', syncDockHeight)
+    return () => {
+      observer?.disconnect()
+      window.removeEventListener('resize', syncDockHeight)
+      content.style.removeProperty('--mobile-dock-height')
+    }
+  }, [useDocumentScroll])
   // Reset the tint whenever the route changes so a new page starts un-tinted
   // (the scroll container is shared and keeps its position across navigations).
   useEffect(() => {
@@ -183,7 +220,7 @@ export function AppShell() {
   }, [currentTrackId, isAuthenticated, isPlaying])
 
   return (
-    <div className="flex h-full flex-col bg-base text-primary">
+    <div className={cn('flex flex-col bg-base text-primary', useDocumentScroll ? 'min-h-dvh' : 'h-full')}>
       <TopBar />
 
       {/* Middle row: floating rounded cards on the black base gutter. The top gutter is
@@ -192,8 +229,9 @@ export function AppShell() {
           it and makes the centered search bar look like it floats too high. */}
       <div
         className={cn(
-          'flex flex-1 min-h-0 overflow-hidden transition-[gap] duration-300 ease-out',
-          isMobile ? 'p-0 gap-0' : cn(
+          'flex min-h-0 transition-[gap] duration-300 ease-out',
+          useDocumentScroll ? 'flex-auto overflow-visible p-0 gap-0' : 'flex-1 overflow-hidden',
+          isMobile ? (!useDocumentScroll && 'p-0 gap-0') : cn(
             'pb-2 pl-2 pt-0',
             isHomeRoute ? 'pr-0' : 'pr-2',
             nowPlayingExpandedVisible ? 'gap-0' : 'gap-2.5',
@@ -207,7 +245,8 @@ export function AppShell() {
             into it (and reclaim it on minimize) — unmounting here would jump the layout. */}
         <main
           className={cn(
-            'relative min-w-0 bg-page overflow-hidden flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+            'relative min-w-0 bg-page flex flex-col transition-[flex-basis,flex-grow,opacity,transform] duration-300 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+            useDocumentScroll ? 'overflow-visible' : 'overflow-hidden',
             isMobile ? 'rounded-none' : 'rounded-xl',
             nowPlayingExpandedVisible || libraryExpanded
               ? 'pointer-events-none flex-none basis-0 translate-x-3 opacity-0'
@@ -222,7 +261,14 @@ export function AppShell() {
           <div
             ref={mainScrollRef}
             onScroll={handleMainScroll}
-            className={`scrollbar-hide flex-1 min-h-0 overflow-y-auto overflow-x-clip ${karaokeVisible ? 'hidden' : ''}`}
+            className={cn(
+              'scrollbar-hide overflow-x-clip',
+              useDocumentScroll ? 'block overflow-y-visible' : 'flex-1 min-h-0 overflow-y-auto',
+              karaokeVisible && 'hidden',
+            )}
+            style={useDocumentScroll ? {
+              paddingBottom: 'var(--mobile-dock-height, calc(3.5rem + env(safe-area-inset-bottom)))',
+            } : undefined}
           >
             <Outlet context={{ setPageLoading, setPageScrollTarget } satisfies AppShellOutletContext} />
             {/* Global footer — sits at the bottom of every routed page's scroll
@@ -234,7 +280,7 @@ export function AppShell() {
           {/* Chat keeps its touch-scrollable thread/list panes but intentionally has
               no visible rail on phones. The app-wide overlay thumb is useful for
               long document pages, but reads as a duplicate scrollbar in mobile chat. */}
-          {!karaokeVisible && !(isMobile && isMessagesRoute) && (
+          {!karaokeVisible && !useDocumentScroll && !(isMobile && isMessagesRoute) && (
             <OverlayScrollbar
               scrollRef={mainScrollRef}
               scrollTarget={isMobile && isMessagesRoute ? pageScrollTarget : null}
@@ -258,10 +304,15 @@ export function AppShell() {
         )}
       </div>
 
-      {isAuthenticated && <JamBar />}
-      {isAuthenticated && <PromoPlayer />}
-      {isAuthenticated && <BottomPlayerBar />}
-      {isMobile && <MobileNav />}
+      <div
+        ref={mobileDockRef}
+        className={useDocumentScroll ? 'fixed inset-x-0 bottom-0 z-[70] bg-base' : 'contents'}
+      >
+        {isAuthenticated && <JamBar />}
+        {isAuthenticated && <PromoPlayer />}
+        {isAuthenticated && <BottomPlayerBar />}
+        {isMobile && <MobileNav />}
+      </div>
       {isMobile && isAuthenticated && <MobileNowPlayingSheet />}
       {isAuthenticated && playbackMode !== 'video' && <PictureInPicturePlayer />}
       <AuthPromptModal />

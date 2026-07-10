@@ -55,10 +55,11 @@ backend/test/**/obj/
 .npm-cache/
 .dotnet-home/
 frontend/.vite/
-.claude/settings.local.json
-.claude/worktrees/
-# Stray Claude agent skill docs must not live in project source
-**/src/**/.claude/
+# AI-assistant / agent tooling — never part of the project source
+.claude/
+.agents/
+**/.claude/
+**/.agents/
 *.dump
 
 # Local music library staged for one-off import (not source)

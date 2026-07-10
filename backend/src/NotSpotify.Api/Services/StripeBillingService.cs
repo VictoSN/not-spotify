@@ -416,9 +416,11 @@ public class StripeBillingService
         var body = await res.Content.ReadAsStringAsync(ct);
         if (!res.IsSuccessStatusCode)
         {
-            var (message, code) = ExtractStripeError(body);
+            var (message, code, parameter) = ExtractStripeError(body);
             if (res.StatusCode == System.Net.HttpStatusCode.NotFound || code == "resource_missing")
-                throw new StripeResourceMissingException(message ?? res.ReasonPhrase ?? "Stripe resource not found.");
+                throw new StripeResourceMissingException(
+                    message ?? res.ReasonPhrase ?? "Stripe resource not found.",
+                    parameter);
             throw new InvalidOperationException($"Stripe request failed ({(int)res.StatusCode}): {message ?? res.ReasonPhrase}");
         }
 
@@ -432,7 +434,7 @@ public class StripeBillingService
             throw new InvalidOperationException("Stripe secret key is not configured.");
     }
 
-    private static (string? Message, string? Code) ExtractStripeError(string body)
+    private static (string? Message, string? Code, string? Parameter) ExtractStripeError(string body)
     {
         try
         {
@@ -440,11 +442,12 @@ public class StripeBillingService
             var error = doc.RootElement.GetProperty("error");
             var message = error.TryGetProperty("message", out var m) ? m.GetString() : null;
             var code = error.TryGetProperty("code", out var c) ? c.GetString() : null;
-            return (message, code);
+            var parameter = error.TryGetProperty("param", out var p) ? p.GetString() : null;
+            return (message, code, parameter);
         }
         catch
         {
-            return (null, null);
+            return (null, null, null);
         }
     }
 
@@ -456,5 +459,12 @@ public class StripeBillingService
 // calls can treat "already gone" as success instead of blocking the caller.
 public sealed class StripeResourceMissingException : InvalidOperationException
 {
-    public StripeResourceMissingException(string message) : base(message) { }
+    public StripeResourceMissingException(string message, string? parameter = null) : base(message)
+        => Parameter = parameter;
+
+    public string? Parameter { get; }
+
+    public bool IsMissingCustomer
+        => string.Equals(Parameter, "customer", StringComparison.OrdinalIgnoreCase)
+            || Message.StartsWith("No such customer", StringComparison.OrdinalIgnoreCase);
 }

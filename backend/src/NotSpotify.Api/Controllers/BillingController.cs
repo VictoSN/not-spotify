@@ -103,6 +103,10 @@ public partial class BillingController : ControllerBase
                     await _db.SaveChangesAsync(ct);
                 }
             }
+            catch (StripeResourceMissingException ex) when (ex.IsMissingCustomer)
+            {
+                await ResetStaleStripeCustomerAsync(user, ct);
+            }
             catch (InvalidOperationException)
             {
                 // Don't block checkout on a transient Stripe read error.
@@ -126,13 +130,51 @@ public partial class BillingController : ControllerBase
                 await _db.SaveChangesAsync(ct);
             }
 
-            var url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
+            string url;
+            try
+            {
+                url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
+            }
+            catch (StripeResourceMissingException ex) when (ex.IsMissingCustomer)
+            {
+                // The customer may have been deleted after reconciliation, or the
+                // pre-check may have failed transiently. Rotate once and retry with
+                // a customer that belongs to the currently configured Stripe account.
+                await ResetStaleStripeCustomerAsync(user, ct);
+                user.StripeCustomerId = await _stripe.CreateCustomerAsync(user, ct);
+                await _db.SaveChangesAsync(ct);
+                url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
+            }
             return Ok(new BillingRedirectDto(url));
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+    }
+
+    private async Task ResetStaleStripeCustomerAsync(ApplicationUser user, CancellationToken ct)
+    {
+        // A customer id from a deleted customer or another Stripe environment can
+        // no longer represent a real subscription in the configured account.
+        // Clear the coupled Stripe state before assigning the replacement id.
+        user.StripeCustomerId = null;
+        user.StripeSubscriptionId = null;
+        user.StripeSubscriptionStatus = null;
+        user.StripeBillingInterval = null;
+        user.StripeCurrentPeriodEnd = null;
+        user.StripeCancelAtPeriodEnd = false;
+
+        // Preserve Premium inherited from a Duo/Family owner. An account whose
+        // own Stripe customer vanished no longer has an owner subscription.
+        if (user.PlanOwnerId is null)
+        {
+            await PlanSeats.ReleaseAllForOwnerAsync(_db, user.Id, ct);
+            user.Plan = "free";
+            user.PlanTier = "individual";
+        }
+
+        await _db.SaveChangesAsync(ct);
     }
 
     // Reconciles the user's plan straight from Stripe. Called by the client when

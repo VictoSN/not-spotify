@@ -90,13 +90,25 @@ public partial class BillingController : ControllerBase
 
         try
         {
-            if (string.IsNullOrWhiteSpace(user.StripeCustomerId))
+            await EnsureStripeCustomerAsync(user, ct);
+
+            string url;
+            try
             {
+                url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
+            }
+            catch (StripeResourceMissingException ex) when (StripeCustomerMissing(ex, user.StripeCustomerId))
+            {
+                // The stored customer id points at a customer Stripe no longer
+                // knows about — typically because the secret key was rotated to a
+                // different account or the test dataset was wiped. Recreate the
+                // customer once under the current key and retry so the user isn't
+                // permanently stranded on a ghost id.
                 user.StripeCustomerId = await _stripe.CreateCustomerAsync(user, ct);
                 await _db.SaveChangesAsync(ct);
+                url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
             }
 
-            var url = await _stripe.CreateCheckoutSessionAsync(user, priceId, plan, ct);
             return Ok(new BillingRedirectDto(url));
         }
         catch (InvalidOperationException ex)
@@ -155,7 +167,20 @@ public partial class BillingController : ControllerBase
 
         try
         {
-            var url = await _stripe.CreatePortalSessionAsync(user.StripeCustomerId, ct);
+            string url;
+            try
+            {
+                url = await _stripe.CreatePortalSessionAsync(user.StripeCustomerId, ct);
+            }
+            catch (StripeResourceMissingException ex) when (StripeCustomerMissing(ex, user.StripeCustomerId))
+            {
+                // Same ghost-customer recovery as checkout: the stored id no longer
+                // exists under the current key, so recreate and retry.
+                user.StripeCustomerId = await _stripe.CreateCustomerAsync(user, ct);
+                await _db.SaveChangesAsync(ct);
+                url = await _stripe.CreatePortalSessionAsync(user.StripeCustomerId, ct);
+            }
+
             return Ok(new BillingRedirectDto(url));
         }
         catch (InvalidOperationException ex)
@@ -163,6 +188,22 @@ public partial class BillingController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    // Creates a Stripe customer for the user if one isn't recorded yet.
+    private async Task EnsureStripeCustomerAsync(ApplicationUser user, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(user.StripeCustomerId)) return;
+        user.StripeCustomerId = await _stripe.CreateCustomerAsync(user, ct);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // True when a resource_missing error is about this user's stored customer id
+    // (Stripe echoes the id in "No such customer: 'cus_...'"). Distinguishes a
+    // stale/foreign customer from an unrelated missing resource such as a price,
+    // so we only recreate the customer when that's actually what's missing.
+    private static bool StripeCustomerMissing(StripeResourceMissingException ex, string? customerId)
+        => !string.IsNullOrWhiteSpace(customerId)
+           && ex.Message.Contains(customerId, StringComparison.Ordinal);
 
     private async Task<BillingPlanDto> BuildPlanAsync(
         StripeBillingService.PlanInfo info,

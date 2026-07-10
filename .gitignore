@@ -15,6 +15,7 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+local-dev-user-secrets.csv
 
 # Dependencies (restored via `npm install` from the committed lockfiles)
 node_modules/

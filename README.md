@@ -204,7 +204,7 @@ All three endpoints are gated: the backend checks `user.Plan == "premium"` and r
 - **`playerStore.play()`** — when `isFreeUser()` is true and the queue has more than one track, the queue is shuffled immediately and playback starts from a random position rather than the tapped song.
 - **`playerStore.toggleShuffle()`** — no-op for free users; `shuffleEnabled` is always forced to `true`.
 - **`playerStore.cycleRepeat()`** — no-op for free users; `repeatMode` stays `'off'`.
-- **`ShuffleRepeatControls`** — shuffle button is visually locked (disabled, accent-coloured with tooltip). Repeat button links to `/premium` with a tooltip explaining the restriction.
+- **`PlayerControls`** — for free users the shuffle button is visually locked (disabled, accent-coloured with tooltip) and the repeat button links to `/premium` with a tooltip explaining the restriction.
 
 ### Cancelling a subscription
 

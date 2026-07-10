@@ -236,7 +236,7 @@ export function AlbumDetailPage() {
             aria-label={!isDesktop() ? 'Available in the app' : downloading ? t('common.downloading') : 'Save for offline'}
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:text-secondary"
           >
-            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
+            <ArrowDownCircleIcon className="h-7 w-7 stroke-[2.4]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
               {!isDesktop() ? 'Available in the app' : downloading ? t('common.downloading') : 'Save for offline'}
             </span>
@@ -248,7 +248,7 @@ export function AlbumDetailPage() {
             aria-label={t('detail.downloadPremiumTitle')}
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-accent active:scale-95"
           >
-            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
+            <ArrowDownCircleIcon className="h-7 w-7 stroke-[2.4]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{t('common.download')} - {t('common.premium')}</span>
           </Link>
         )}

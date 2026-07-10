@@ -268,7 +268,7 @@ export function TrackDetailPage() {
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:text-secondary"
             aria-label={!isDesktop() ? 'Available in the app' : 'Save for offline'}
           >
-            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
+            <ArrowDownCircleIcon className="h-7 w-7 stroke-[2.4]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">{!isDesktop() ? 'Available in the app' : 'Save for offline'}</span>
           </button>
         )}

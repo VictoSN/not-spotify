@@ -111,7 +111,7 @@ export const EpisodeMenu = forwardRef<EpisodeMenuHandle, EpisodeMenuProps>(funct
                   ? 'Remove download'
                   : 'Download'}
               trailing={offline.desktopOnly
-                ? <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">Desktop</span>
+                ? <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wide text-accent">App</span>
                 : undefined}
               onClick={() => { if (offline.desktopOnly) return; void offline.toggle(); close() }}
             />

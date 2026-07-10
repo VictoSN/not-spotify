@@ -13,7 +13,7 @@ import {
   PlusCircleIcon,
   XMarkIcon,
   UserPlusIcon,
-  ArrowDownTrayIcon,
+  ArrowDownCircleIcon,
   SparklesIcon,
   PaperAirplaneIcon,
 } from '@heroicons/react/24/outline'
@@ -27,6 +27,7 @@ import {
   offlineCollectionToPlaylist,
   saveCollectionOffline,
 } from '@/services/offlineAudio'
+import { isDesktop } from '@/utils/platform'
 import { collaboratorService } from '@/services/collaboratorService'
 import { trackService } from '@/services/trackService'
 import { usePlayContextGate } from '@/hooks/usePlaybackGate'
@@ -293,7 +294,7 @@ export function PlaylistDetailPage() {
   }
 
   const handleDownload = async () => {
-    if (!playlist) return
+    if (!playlist || !isDesktop()) return
     setDownloading(true)
     try {
       await saveCollectionOffline(
@@ -723,14 +724,14 @@ export function PlaylistDetailPage() {
         {isPremium ? (
           <button
             onClick={handleDownload}
-            disabled={downloading}
-            title="Save for offline"
-            aria-label={downloading ? 'Downloading' : 'Save for offline'}
-            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:opacity-50"
+            disabled={downloading || !isDesktop()}
+            title={!isDesktop() ? 'Available in the app' : 'Save for offline'}
+            aria-label={!isDesktop() ? 'Available in the app' : downloading ? 'Downloading' : 'Save for offline'}
+            className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-primary active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 disabled:hover:text-secondary"
           >
-            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">
-              {downloading ? 'Downloading...' : 'Save for offline'}
+              {!isDesktop() ? 'Available in the app' : downloading ? 'Downloading...' : 'Save for offline'}
             </span>
           </button>
         ) : (
@@ -740,7 +741,7 @@ export function PlaylistDetailPage() {
             aria-label="Download is a Premium feature"
             className="spotify-tooltip-anchor relative flex h-11 w-11 items-center justify-center rounded-full text-secondary transition-all hover:scale-110 hover:text-accent active:scale-95"
           >
-            <ArrowDownTrayIcon className="h-6 w-6 stroke-[2.5]" />
+            <ArrowDownCircleIcon className="h-6 w-6 stroke-[2.5]" />
             <span className="spotify-tooltip spotify-tooltip-top spotify-tooltip-center">Download - Premium</span>
           </button>
         )}

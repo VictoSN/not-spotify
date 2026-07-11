@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
@@ -167,12 +168,27 @@ builder.Services.AddRateLimiter(options =>
             cancellationToken);
     };
 
+    // Credential-guessing surface (login, signup, password reset): keep strict.
     options.AddPolicy("auth", httpContext =>
         RateLimitPartition.GetFixedWindowLimiter(
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true,
+            }));
+
+    // Session upkeep (refresh, me, captcha/provider config): every open tab burns these
+    // on load, so they must not share the strict login budget — otherwise a handful of
+    // tabs can starve /auth/login into 429 and lock the user out.
+    options.AddPolicy("auth-session", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
                 AutoReplenishment = true,
@@ -311,7 +327,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// Behind the load balancer every request's RemoteIpAddress is the LB's private IP, which
+// collapses all users into a single per-"IP" rate-limit bucket. Honour X-Forwarded-For /
+// X-Forwarded-Proto from the immediate upstream hop instead. KnownNetworks/KnownProxies
+// must be cleared because the LB's address isn't in the default (loopback-only) trust list;
+// the container port is not directly internet-reachable, so the one hop is trustworthy.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {

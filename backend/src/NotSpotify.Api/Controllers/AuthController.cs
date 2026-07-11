@@ -67,6 +67,7 @@ public class AuthController : ControllerBase
 
     /// <summary>Whether the SPA should render the reCAPTCHA widget on login/signup, and with which site key.</summary>
     [HttpGet("captcha")]
+    [EnableRateLimiting("auth-session")]
     public ActionResult<CaptchaConfigResponse> CaptchaConfig()
     {
         // reCAPTCHA can't run in Tauri's embedded webview — tell the desktop shell to skip it.
@@ -217,7 +218,13 @@ public class AuthController : ControllerBase
         return Ok(await IssueTokensAsync(user));
     }
 
+    /// <summary>How long an already-rotated refresh token may still be redeemed. Covers the
+    /// reload-abort race: the server rotates but the browser never commits the new cookie,
+    /// so its next refresh presents the old one. Reuse outside this window still fails.</summary>
+    private static readonly TimeSpan RefreshRotationGrace = TimeSpan.FromSeconds(60);
+
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth-session")]
     public async Task<ActionResult<AccessTokenResponse>> Refresh()
     {
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var raw) || string.IsNullOrEmpty(raw))
@@ -228,15 +235,38 @@ public class AuthController : ControllerBase
             .Include(t => t.User)
             .FirstOrDefaultAsync(t => t.TokenHash == hash);
 
-        if (existing is null || !existing.IsActive)
+        // Only clear the cookie when the token doesn't exist at all (bogus or purged).
+        // Never on a merely revoked/expired token: all tabs share this cookie, so a slow
+        // 401 response landing after another tab refreshed or logged in would clobber
+        // that tab's fresh cookie and kill the new session too.
+        if (existing is null)
         {
-            Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/auth" });
+            DeleteRefreshCookie();
             return Unauthorized();
         }
 
+        var now = DateTime.UtcNow;
+        var active = existing.RevokedAt is null && now < existing.ExpiresAt;
+
+        // Grace window: the token was rotated moments ago, but this client never saw the
+        // replacement cookie (a reload aborted the response mid-flight) or lost a race
+        // against a sibling tab sharing the cookie jar. Issue a fresh sibling session
+        // instead of logging the whole browser out; the winner's token stays untouched.
+        var withinRotationGrace = !active
+            && existing.RevokedAt is not null
+            && existing.ReplacedByTokenHash is not null
+            && now - existing.RevokedAt.Value < RefreshRotationGrace
+            && now < existing.ExpiresAt;
+
+        if (!active && !withinRotationGrace)
+            return Unauthorized();
+
         var (newRaw, newHash, expiresAt) = _tokens.CreateRefreshToken();
-        existing.RevokedAt = DateTime.UtcNow;
-        existing.ReplacedByTokenHash = newHash;
+        if (active)
+        {
+            existing.RevokedAt = now;
+            existing.ReplacedByTokenHash = newHash;
+        }
 
         _db.RefreshTokens.Add(new RefreshToken
         {
@@ -284,12 +314,13 @@ public class AuthController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        Response.Cookies.Delete(RefreshCookieName);
+        DeleteRefreshCookie();
         return NoContent();
     }
 
     [HttpGet("me")]
     [Authorize]
+    [EnableRateLimiting("auth-session")]
     public async Task<ActionResult<UserDto>> Me()
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -381,6 +412,7 @@ public class AuthController : ControllerBase
     // ── External login (Google OAuth, manual code flow — no extra NuGet package) ──
 
     [HttpGet("external/providers")]
+    [EnableRateLimiting("auth-session")]
     public async Task<ActionResult<ExternalProvidersResponse>> ExternalProviders()
         => Ok(await GetExternalProvidersAsync());
 
@@ -805,6 +837,20 @@ public class AuthController : ControllerBase
             Secure = true,
             SameSite = SameSiteMode.None,
             Expires = expiresAt,
+            Path = "/auth",
+        });
+    }
+
+    private void DeleteRefreshCookie()
+    {
+        // The delete must repeat the Set's attributes (Path above all) — a deletion
+        // cookie with a different path targets a *different* cookie, and the browser
+        // keeps the original.
+        Response.Cookies.Delete(RefreshCookieName, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
             Path = "/auth",
         });
     }

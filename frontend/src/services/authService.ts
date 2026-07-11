@@ -1,5 +1,5 @@
 import type { User } from '@/types/user'
-import { api } from './api'
+import { api, refreshAccessToken } from './api'
 
 interface LoginPayload { email: string; password: string; captchaToken?: string | null }
 interface SignupPayload { name: string; email: string; password: string; captchaToken?: string | null }
@@ -54,9 +54,8 @@ export const authService = {
 
   async refresh(): Promise<AuthTokens> {
     // Backend /auth/refresh returns only { accessToken }; fetch user via /auth/me.
-    const refreshRes = await api.post<{ accessToken: string }>('/auth/refresh')
-    const accessToken = refreshRes.data.accessToken
-    ;(window as { __authToken?: string }).__authToken = accessToken
+    // refreshAccessToken serializes the rotation across tabs (see api.ts).
+    const accessToken = await refreshAccessToken()
     const meRes = await api.get<User>('/auth/me')
     return { accessToken, user: meRes.data }
   },

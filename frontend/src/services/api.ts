@@ -21,6 +21,30 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// The backend rotates the refresh cookie on every /auth/refresh (single-use tokens),
+// and that cookie is shared by every tab of the origin. Two overlapping refreshes race:
+// the loser presents an already-rotated token and gets a 401. The Web Locks API gives a
+// browser-wide (cross-tab) mutex, so each refresh sees the cookie its predecessor set.
+const AUTH_REFRESH_LOCK = 'ns-auth-refresh'
+
+async function postRefresh(): Promise<string> {
+  const res = await axios.post<{ accessToken: string }>(
+    `${import.meta.env.VITE_API_URL}/auth/refresh`,
+    {},
+    { withCredentials: true, timeout: 10_000 },
+  )
+  return res.data.accessToken
+}
+
+export async function refreshAccessToken(): Promise<string> {
+  const token =
+    typeof navigator !== 'undefined' && navigator.locks
+      ? await navigator.locks.request(AUTH_REFRESH_LOCK, postRefresh)
+      : await postRefresh()
+  ;(window as { __authToken?: string }).__authToken = token
+  return token
+}
+
 // On 401 attempt a token refresh, then retry once
 let isRefreshing = false
 let queue: Array<(token: string) => void> = []
@@ -65,13 +89,7 @@ api.interceptors.response.use(
     isRefreshing = true
 
     try {
-      const res = await axios.post<{ accessToken: string }>(
-        `${import.meta.env.VITE_API_URL}/auth/refresh`,
-        {},
-        { withCredentials: true, timeout: 10_000 },
-      )
-      const newToken = res.data.accessToken
-      ;(window as { __authToken?: string }).__authToken = newToken
+      const newToken = await refreshAccessToken()
       useAuthStore.setState({ accessToken: newToken })
       queue.forEach((cb) => cb(newToken))
       queue = []

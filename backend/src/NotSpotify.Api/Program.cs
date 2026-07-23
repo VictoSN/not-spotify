@@ -88,6 +88,13 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()
     ?? throw new InvalidOperationException("Missing Jwt configuration section.");
 builder.Services.AddSingleton(jwt);
 
+// Chat bodies are encrypted before EF writes them to PostgreSQL. Keep this key
+// out of appsettings and source control; production supplies
+// ChatEncryption__KeyBase64 through its secret/environment configuration.
+var chatEncryption = new ChatMessageEncryption(
+    builder.Configuration["ChatEncryption:KeyBase64"] ?? string.Empty);
+builder.Services.AddSingleton<IChatMessageEncryption>(chatEncryption);
+
 builder.Services.AddDbContext<AppDbContext>(opt =>
 {
     // Postgres session-mode pooler is capped at 15 connections shared across all team members.
@@ -355,6 +362,7 @@ if (app.Environment.IsDevelopment())
 
 if (!app.Environment.IsDevelopment())
 {
+    app.UseHsts();
     app.UseHttpsRedirection();
 }
 var staticContentTypes = new FileExtensionContentTypeProvider();
@@ -1128,6 +1136,10 @@ using (var scope = app.Services.CreateScope())
         CREATE UNIQUE INDEX IF NOT EXISTS ""IX_PromoCodeRedemptions_UserId_Code""
             ON ""PromoCodeRedemptions""(""UserId"", ""Code"");
     ");
+
+    var encryptedLegacyMessages = await ChatMessageEncryptionBackfill.RunAsync(db);
+    if (encryptedLegacyMessages > 0)
+        Console.WriteLine($"[ChatEncryption] Encrypted {encryptedLegacyMessages} legacy message row(s).");
 
     await DbSeeder.SeedAsync(scope.ServiceProvider);
     await RepairKnownInstrumentalLyricsAsync(db);

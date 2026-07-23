@@ -205,8 +205,8 @@ public class PresenceHub : Hub
         if (!await AreFriends(me, userId))
             throw new HubException("You can only message friends.");
 
-        // E2E note: with encryption enabled, `body` would arrive as ciphertext
-        // and the server would store it without ever seeing the plaintext.
+        // AppDbContext encrypts Body with AES-256-GCM as it is written. The API
+        // still sees plaintext, so this is encryption at rest rather than E2E.
         var message = new ChatMessage
         {
             SenderId = me,
@@ -231,12 +231,13 @@ public class PresenceHub : Hub
         var sender = await _db.Users.FindAsync(me);
         var senderName = sender?.Name ?? "Someone";
         var senderAvatar = sender is null ? null : _mapper.ToRef(sender).AvatarUrl;
-        var preview = body.Length > 80 ? body[..77] + "…" : body;
         await _notifications.NotifyAsync(
             userId,
             "chat_message",
             $"{senderName} sent you a message",
-            body: preview,
+            // Do not duplicate chat plaintext into the Notifications table or
+            // closed-app push payloads; recipients open Messages to read it.
+            body: "Open Messages to read it.",
             linkUrl: $"/messages?u={me}",
             imageUrl: senderAvatar);
 

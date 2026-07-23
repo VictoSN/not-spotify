@@ -15,8 +15,9 @@ public class ChatMessage
     public ApplicationUser Recipient { get; set; } = null!;
 
     /// <summary>
-    /// Plaintext message body. NOTE: not encrypted yet — see the commented
-    /// end-to-end encryption reference below for the planned design.
+    /// Plaintext inside the API process. EF Core transparently converts this to
+    /// a versioned AES-256-GCM envelope when writing the database column and
+    /// decrypts it when reading.
     /// </summary>
     public string Body { get; set; } = string.Empty;
 
@@ -28,7 +29,7 @@ public class ChatMessage
     /// <summary>Set when the recipient opens the conversation (read receipt).</summary>
     public DateTime? ReadAt { get; set; }
 
-    // ── End-to-end encryption (NOT IMPLEMENTED YET — reference for later) ──────
+    // ── End-to-end encryption (NOT IMPLEMENTED — reference for later) ─────────
     //
     // When E2E encryption is enabled, `Body` is no longer stored. Instead the
     // client encrypts the plaintext with a per-conversation key and we persist

@@ -3,10 +3,11 @@
  * END-TO-END CHAT ENCRYPTION — REFERENCE IMPLEMENTATION (NOT ACTIVE YET)
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * Chat currently sends/stores PLAINTEXT. This file documents the planned
- * design (WhatsApp-style, simplified) so it can be implemented later without
- * re-deriving the cryptography. Everything below is intentionally commented
- * out; the matching server-side columns are sketched in
+ * Chat currently does not use END-TO-END encryption. HTTPS/WSS protects bodies
+ * in transit, and the API uses AES-256-GCM encryption at rest in PostgreSQL.
+ * The API can still read plaintext. This file documents a possible future E2E
+ * design (WhatsApp-style, simplified). Everything below is intentionally
+ * commented out; the matching server-side shape is sketched in
  * backend Models/ChatMessage.cs.
  *
  * Design (ECDH + AES-GCM via the browser WebCrypto API — no extra npm needed):

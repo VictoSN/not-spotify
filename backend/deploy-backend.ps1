@@ -67,6 +67,32 @@ if ($env:RESEND_API_KEY) {
   Write-Host "NOTE: RESEND_API_KEY not set in this shell; task def env preserved as-is." -ForegroundColor Yellow
 }
 
+# Chat messages cannot be decrypted if this key is lost or rotated accidentally.
+# Supply CHAT_ENCRYPTION_KEY_BASE64 for the first encrypted-chat deployment; once
+# present, later task-definition clones preserve ChatEncryption__KeyBase64.
+if ($env:CHAT_ENCRYPTION_KEY_BASE64) {
+  $envList = [System.Collections.Generic.List[object]]::new()
+  $found = $false
+  foreach ($e in $td.containerDefinitions[0].environment) {
+    if ($e.name -eq "ChatEncryption__KeyBase64") {
+      $e.value = $env:CHAT_ENCRYPTION_KEY_BASE64
+      $found = $true
+    }
+    $envList.Add($e)
+  }
+  if (-not $found) {
+    $envList.Add([pscustomobject]@{
+      name = "ChatEncryption__KeyBase64"
+      value = $env:CHAT_ENCRYPTION_KEY_BASE64
+    })
+  }
+  $td.containerDefinitions[0].environment = $envList.ToArray()
+  Write-Host "Injected ChatEncryption__KeyBase64 into task def." -ForegroundColor Green
+} elseif (-not ($td.containerDefinitions[0].environment | Where-Object { $_.name -eq "ChatEncryption__KeyBase64" })) {
+  Write-Host "ABORT: set CHAT_ENCRYPTION_KEY_BASE64 for the first encrypted-chat deployment." -ForegroundColor Red
+  exit 1
+}
+
 # Toggle Cors:AllowLocalhostDev so `tauri dev` / Vite dev on localhost:5173 can hit
 # the deployed API (see Program.cs). Set CORS_ALLOW_LOCALHOST_DEV=true|false in the
 # shell before deploying to flip it; leave it unset to preserve the current value.

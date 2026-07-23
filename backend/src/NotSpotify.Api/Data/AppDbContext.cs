@@ -1,13 +1,22 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NotSpotify.Api.Models;
+using NotSpotify.Api.Services;
 
 namespace NotSpotify.Api.Data;
 
 public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly IChatMessageEncryption _chatEncryption;
+
+    public AppDbContext(
+        DbContextOptions<AppDbContext> options,
+        IChatMessageEncryption chatEncryption) : base(options)
+    {
+        _chatEncryption = chatEncryption;
+    }
 
     public DbSet<Artist> Artists => Set<Artist>();
     public DbSet<Album> Albums => Set<Album>();
@@ -400,7 +409,16 @@ public class AppDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid
                 .HasForeignKey(x => x.RecipientId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            e.Property(x => x.Body).HasMaxLength(4000);
+            var encryptedBodyConverter = new ValueConverter<string, string>(
+                body => _chatEncryption.Encrypt(body),
+                stored => _chatEncryption.Decrypt(stored));
+
+            // The API still enforces 4,000 plaintext characters. Ciphertext and
+            // Base64 expansion vary with UTF-8 byte length, so the provider value
+            // uses PostgreSQL text instead of a fragile fixed character bound.
+            e.Property(x => x.Body)
+                .HasConversion(encryptedBodyConverter)
+                .HasColumnType("text");
 
             // Thread query: "messages between A and B, newest first".
             e.HasIndex(x => new { x.SenderId, x.RecipientId, x.SentAt });

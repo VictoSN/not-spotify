@@ -85,7 +85,7 @@ public class ChatControllerTests
         Assert.Equal(friend, notification.UserId);
         Assert.Equal("chat_message", notification.Type);
         Assert.Equal("Someone sent you a message", notification.Title);
-        Assert.Equal("hey there", notification.Body);
+        Assert.Equal("Open Messages to read it.", notification.Body);
         Assert.Equal($"/messages?u={me}", notification.LinkUrl);
 
         // A "ChatMessage" push went to both the recipient and the sender's own group.

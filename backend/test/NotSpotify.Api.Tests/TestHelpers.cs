@@ -26,6 +26,10 @@ namespace NotSpotify.Api.Tests;
 /// </summary>
 internal static class TestHelpers
 {
+    private static readonly IChatMessageEncryption ChatEncryption =
+        new ChatMessageEncryption(Convert.ToBase64String(
+            Enumerable.Range(1, 32).Select(i => (byte)i).ToArray()));
+
     /// <summary>
     /// A fresh, uniquely-named InMemory AppDbContext (isolated per test). Pass an explicit
     /// <paramref name="name"/> to open a second, independently-tracked context over the same
@@ -39,7 +43,7 @@ internal static class TestHelpers
             .UseInMemoryDatabase(name ?? $"test-{Guid.NewGuid()}")
             .EnableSensitiveDataLogging()
             .Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, ChatEncryption);
     }
 
     /// <summary>A stub storage service whose public/audio URLs are derived from the key.</summary>

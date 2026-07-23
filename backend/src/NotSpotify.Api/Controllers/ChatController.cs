@@ -18,9 +18,9 @@ namespace NotSpotify.Api.Controllers;
 /// the same way WhatsApp fetches backlog over HTTP but sends live traffic over
 /// its socket.
 ///
-/// SECURITY NOTE — messages are stored in PLAINTEXT for now. The end-to-end
-/// encryption design is sketched (commented out) in Models/ChatMessage.cs and
-/// frontend src/utils/chatEncryption.ts for later implementation.
+/// SECURITY NOTE — HTTPS/WSS protects messages in transit. Message bodies are
+/// encrypted at rest with authenticated AES-256-GCM by AppDbContext. This is
+/// server-side encryption, not end-to-end encryption.
 /// </summary>
 [ApiController]
 [Route("chat")]

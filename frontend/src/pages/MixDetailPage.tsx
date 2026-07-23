@@ -77,7 +77,11 @@ export function MixDetailPage() {
               className="absolute inset-x-0 bottom-0 px-3 py-2"
               style={{ background: `linear-gradient(to top, ${accent}f2, ${accent}00)` }}
             >
-              <p className="text-xs font-black uppercase tracking-wide text-white drop-shadow">{mix.subtitle}</p>
+              {/* Black, not white, and not theme-dependent: this label sits on a gradient
+                  of the mix's accent colour, which is bright in both themes (yellow
+                  #e8f31d, lime #c9f24a). White gave ~1.1:1 contrast on those. Matches the
+                  same label on MixTile, which was already text-black. */}
+              <p className="text-xs font-black uppercase tracking-wide text-black">{mix.subtitle}</p>
             </div>
           </div>
           <div className="min-w-0 pb-2">

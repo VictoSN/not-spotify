@@ -88,7 +88,13 @@ export function MixTile({ mix, flush = false, boldTitle = false }: MixTileProps)
           <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex items-end justify-between gap-2 px-1">
             <span
               data-testid="daily-mix-thumbnail-label"
-              className="rounded-[2px] px-1 py-0.5 text-sm font-black leading-none tracking-[-0.04em] text-black sm:text-base"
+              // NOT sm:text-base: `--color-base` in the @theme block turns `.text-base`
+              // into a COLOR utility (color: var(--c-base)) that beats text-black, so
+              // this label rendered in the page background colour - black in dark mode
+              // (which hid it) and near-white #e9edeb in light mode.
+              // The `length:` hint is required. Plain `text-[1rem]` is ambiguous between
+              // a colour and a size here, and Tailwind silently emits NO rule for it.
+              className="rounded-[2px] px-1 py-0.5 text-sm font-black leading-none tracking-[-0.04em] text-black sm:text-[length:1rem]"
               style={{ backgroundColor: accent }}
             >
               {thumbnailLabel}

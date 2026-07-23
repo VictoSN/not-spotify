@@ -17,6 +17,16 @@
  */
 @theme inline {
   /* Backgrounds */
+  /* !! `--color-base` SHADOWS TAILWIND'S `text-base` FONT-SIZE UTILITY !!
+     Declaring a colour named `base` makes Tailwind emit `.text-base{color:var(--c-base)}`
+     INSTEAD of `font-size:1rem`. So every `text-base` in the app silently sets the text
+     to the page background colour and no size: invisible-ish #e9edeb in light mode, black
+     in dark mode (which hid the bug for months - see MixTile's Daily Mix label).
+     `.text-base` also beats default-palette colours like `text-black`/`text-white`.
+     Until this token is renamed (e.g. to `--color-canvas`, which would mean updating the
+     ~35 `bg-base`/`ring-base` usages), use `text-[1rem]` when you want the SIZE.
+     `base` is the only token here that collides - Tailwind's size scale is
+     xs/sm/base/lg/xl, and none of the other names appear in it. */
   --color-base: var(--c-base);
   --color-page: var(--c-page);
   --color-surface: var(--c-surface);

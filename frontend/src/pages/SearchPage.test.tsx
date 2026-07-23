@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
@@ -200,5 +200,67 @@ describe('SearchPage result helpers', () => {
     expect(screen.getByText('Hidden Line')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Save to library' })).toHaveLength(3)
     expect(screen.getByRole('button', { name: 'Follow' })).toBeInTheDocument()
+  })
+
+  it('links the artist name in a result subtitle to the artist page', () => {
+    renderRows([
+      { kind: 'track', id: track.id, item: track },
+      { kind: 'album', id: album.id, item: album },
+      { kind: 'musicVideo', id: video.id, item: video },
+    ])
+
+    // One link per row subtitle, all pointing at the artist rather than the row's
+    // own destination (track/album/video page).
+    const links = screen.getAllByRole('link', { name: artist.name })
+    expect(links).toHaveLength(3)
+    for (const link of links) expect(link).toHaveAttribute('href', `/artist/${artist.id}`)
+  })
+
+  it('does not let the artist link hijack the row drag', () => {
+    // The row is draggable; a bare <a> is natively draggable too and would otherwise
+    // start its own drag carrying just a URL.
+    renderRows([{ kind: 'track', id: track.id, item: track }])
+
+    expect(screen.getByRole('link', { name: artist.name })).toHaveAttribute('draggable', 'false')
+  })
+
+  it('makes result rows draggable with the shared content MIME types', () => {
+    const cases: Array<{ row: SearchRow; mime: string; id: string }> = [
+      { row: { kind: 'track', id: track.id, item: track }, mime: 'application/x-notspotify-track', id: track.id },
+      { row: { kind: 'artist', id: artist.id, item: artist }, mime: 'application/x-notspotify-artist', id: artist.id },
+      { row: { kind: 'album', id: album.id, item: album }, mime: 'application/x-notspotify-album', id: album.id },
+      { row: { kind: 'musicVideo', id: video.id, item: video }, mime: 'application/x-notspotify-video', id: video.id },
+    ]
+
+    for (const { row, mime, id } of cases) {
+      const { unmount } = renderRows([row])
+      const el = screen.getAllByRole('button')[0]
+      expect(el).toHaveAttribute('draggable', 'true')
+
+      const data: Record<string, string> = {}
+      fireEvent.dragStart(el, {
+        dataTransfer: {
+          setData: (type: string, value: string) => { data[type] = value },
+          setDragImage: () => {},
+          effectAllowed: '',
+        },
+      })
+
+      // Same payload shape the cards use, so existing drop targets need no changes.
+      expect(data[mime]).toBe(id)
+      expect(data['text/plain']).toBeTruthy()
+      unmount()
+    }
+  })
+
+  it('leaves playlists and profiles undraggable (nothing accepts them as a drop)', () => {
+    renderRows([
+      { kind: 'playlist', id: playlist.id, item: playlist },
+      { kind: 'profile', id: profile.id, item: profile },
+    ])
+
+    for (const el of screen.getAllByRole('button')) {
+      expect(el).not.toHaveAttribute('draggable', 'true')
+    }
   })
 })

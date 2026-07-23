@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   MagnifyingGlassIcon,
   MicrophoneIcon,
@@ -30,8 +30,21 @@ import type { UserSearchResult } from '@/types/friend'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
+import { useDragStore } from '@/stores/dragStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
+import {
+  ALBUM_DND_MIME,
+  ARTIST_DND_MIME,
+  PODCAST_DND_MIME,
+  TRACK_DND_MIME,
+  VIDEO_DND_MIME,
+  setAlbumDragImage,
+  setArtistDragImage,
+  setPodcastDragImage,
+  setTrackDragImage,
+  setVideoDragImage,
+} from '@/utils/trackDnd'
 import { usePlaybackGate, usePlayContextGate } from '@/hooks/usePlaybackGate'
 import { Spinner } from '@/components/ui/Spinner'
 import { BrowseCategoryGrid, BrowseFilterPills, type BrowseFilter } from '@/components/common/BrowseCategoryGrid'
@@ -590,11 +603,13 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
   const presentation = getSongRowPresentation(row, actions.t)
   const searchRow = songToSearchRow(row)
   const isPlaying = actions.isRowPlaying(searchRow)
+  const dragProps = useSearchRowDrag(searchRow)
 
   return (
     <div
       role="button"
       tabIndex={0}
+      {...dragProps}
       onClick={() => navigate(presentation.path)}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
@@ -755,17 +770,90 @@ function GenreResultsGrid({ genres }: { genres: Genre[] }) {
   )
 }
 
+/**
+ * Drag props for a search row, so results can be dropped onto playlists/the queue like
+ * results anywhere else in the app. Reuses the shared MIME types, drag-pill images and
+ * drag store from `utils/trackDnd` + `stores/dragStore` — same contract every drop
+ * target already understands, so nothing on the receiving side needed changing.
+ *
+ * Playlists and profiles are omitted deliberately: there is no MIME type for them, which
+ * is to say nothing in the app accepts them as a drop.
+ */
+function useSearchRowDrag(row: SearchRow): React.HTMLAttributes<HTMLDivElement> & { draggable?: boolean } {
+  const setDraggedTrack = useDragStore((s) => s.setDraggedTrack)
+  const setDraggedArtist = useDragStore((s) => s.setDraggedArtist)
+  const setDraggedAlbum = useDragStore((s) => s.setDraggedAlbum)
+  const setDraggedVideo = useDragStore((s) => s.setDraggedVideo)
+  const setDraggedPodcast = useDragStore((s) => s.setDraggedPodcast)
+
+  if (row.kind === 'playlist' || row.kind === 'profile') return {}
+
+  // Each branch mirrors the corresponding card: custom MIME carries the id, text/plain is
+  // set too because some browsers refuse to start a drag without it, and the full object
+  // goes into the drag store so drop targets can act on it synchronously.
+  const start = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.effectAllowed = 'copy'
+    switch (row.kind) {
+      case 'track':
+      case 'lyrics':
+        e.dataTransfer.setData(TRACK_DND_MIME, row.item.id)
+        e.dataTransfer.setData('text/plain', `${row.item.title} · ${row.item.artist.name}`)
+        setTrackDragImage(e, row.item)
+        setDraggedTrack(row.item)
+        break
+      case 'artist':
+        e.dataTransfer.setData(ARTIST_DND_MIME, row.item.id)
+        e.dataTransfer.setData('text/plain', row.item.name)
+        setArtistDragImage(e, row.item)
+        setDraggedArtist(row.item)
+        break
+      case 'album':
+        e.dataTransfer.setData(ALBUM_DND_MIME, row.item.id)
+        e.dataTransfer.setData('text/plain', row.item.title)
+        setAlbumDragImage(e, row.item)
+        setDraggedAlbum(row.item)
+        break
+      case 'musicVideo':
+        e.dataTransfer.setData(VIDEO_DND_MIME, row.item.id)
+        e.dataTransfer.setData('text/plain', row.item.title)
+        setVideoDragImage(e, row.item)
+        setDraggedVideo(row.item)
+        break
+      case 'podcast':
+        e.dataTransfer.setData(PODCAST_DND_MIME, row.item.id)
+        e.dataTransfer.setData('text/plain', row.item.title)
+        setPodcastDragImage(e, row.item)
+        setDraggedPodcast(row.item)
+        break
+    }
+    e.currentTarget.style.opacity = '0.4'
+  }
+
+  const end = (e: React.DragEvent<HTMLDivElement>) => {
+    setDraggedTrack(null)
+    setDraggedArtist(null)
+    setDraggedAlbum(null)
+    setDraggedVideo(null)
+    setDraggedPodcast(null)
+    e.currentTarget.style.opacity = ''
+  }
+
+  return { draggable: true, onDragStart: start, onDragEnd: end }
+}
+
 export function SearchResultRow({ row, compact = false }: { row: SearchRow; compact?: boolean }) {
   const navigate = useNavigate()
   const actions = useSearchActions()
   const presentation = getRowPresentation(row, actions.t)
   const isPlaying = actions.isRowPlaying(row)
   const isPlayable = row.kind !== 'playlist' && row.kind !== 'podcast' && row.kind !== 'profile'
+  const dragProps = useSearchRowDrag(row)
 
   return (
     <div
       role="button"
       tabIndex={0}
+      {...dragProps}
       onClick={() => navigate(presentation.path)}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
@@ -1144,7 +1232,11 @@ function getSongRowPresentation(row: SongTableRow, t: (key: string, vars?: Recor
   if (row.kind === 'musicVideo') {
     return {
       title: row.item.title,
-      subtitle: t('search.row.videoBy', { artist: row.item.artist.name }),
+      subtitle: templateWithNode(
+        t('search.row.videoBy'),
+        'artist',
+        <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />,
+      ),
       album: row.item.title,
       imageUrl: row.item.thumbnailUrl,
       fallback: <FilmIcon className="h-full w-full p-2.5 text-secondary" />,
@@ -1156,8 +1248,12 @@ function getSongRowPresentation(row: SongTableRow, t: (key: string, vars?: Recor
   return {
     title: row.item.title,
     subtitle: row.kind === 'lyrics'
-      ? t('search.row.lyricsBy', { artist: row.item.artist.name })
-      : row.item.artist.name,
+      ? templateWithNode(
+          t('search.row.lyricsBy'),
+          'artist',
+          <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />,
+        )
+      : <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />,
     album: row.item.album.title,
     imageUrl: row.item.album.coverUrl,
     fallback: <MusicalNoteIcon className="h-full w-full p-2.5 text-secondary" />,
@@ -1282,6 +1378,42 @@ function getTopResultPresentation(result: TopSearchResult, query: string) {
   }
 }
 
+/**
+ * Artist name inside a result row's subtitle. Same shape as the artist link in TrackRow:
+ * `stopPropagation` so it doesn't also trigger the row's own navigation, and
+ * `draggable={false}` so grabbing the text drags the row (a link is natively draggable
+ * and would otherwise hijack the row's drag with a plain URL payload).
+ */
+function RowArtistLink({ id, name }: { id: string; name: string }) {
+  return (
+    <Link
+      to={`/artist/${id}`}
+      draggable={false}
+      onClick={(event) => event.stopPropagation()}
+      className="hover:text-primary hover:underline"
+    >
+      {name}
+    </Link>
+  )
+}
+
+/**
+ * Renders a translation template with one `{placeholder}` replaced by a node instead of
+ * a string. Calling `t(key)` with no vars returns the template with its placeholder
+ * intact, so the subtitle can stay fully translatable while the artist part becomes a
+ * link — no duplicated copy, and word order still follows each language's own template.
+ */
+function templateWithNode(template: string, token: string, node: ReactNode): ReactNode {
+  const [before = '', after = ''] = template.split(`{${token}}`)
+  return (
+    <>
+      {before}
+      {node}
+      {after}
+    </>
+  )
+}
+
 function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<string, string | number>) => string) {
   if (row.kind === 'track' || row.kind === 'lyrics') {
     return {
@@ -1289,9 +1421,11 @@ function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<strin
       subtitle: (
         <>
           {row.item.explicit && <span className="mr-1 rounded bg-secondary px-1 text-[9px] font-normal text-page">E</span>}
-          {row.kind === 'lyrics'
-            ? t('search.row.lyricsBy', { artist: row.item.artist.name })
-            : t('search.row.songBy', { artist: row.item.artist.name })}
+          {templateWithNode(
+            t(row.kind === 'lyrics' ? 'search.row.lyricsBy' : 'search.row.songBy'),
+            'artist',
+            <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />,
+          )}
         </>
       ),
       imageUrl: row.item.album.coverUrl,
@@ -1322,7 +1456,13 @@ function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<strin
   if (row.kind === 'album') {
     return {
       title: row.item.title,
-      subtitle: `${row.item.type === 'single' ? t('search.type.single') : t('search.type.album')} • ${row.item.artist.name}`,
+      subtitle: (
+        <>
+          {row.item.type === 'single' ? t('search.type.single') : t('search.type.album')}
+          {' • '}
+          <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />
+        </>
+      ),
       imageUrl: row.item.coverUrl,
       fallback: <MusicalNoteIcon className="h-5 w-5 text-secondary" />,
       rounded: 'rounded',
@@ -1346,7 +1486,11 @@ function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<strin
   if (row.kind === 'musicVideo') {
     return {
       title: row.item.title,
-      subtitle: t('search.row.videoBy', { artist: row.item.artist.name }),
+      subtitle: templateWithNode(
+        t('search.row.videoBy'),
+        'artist',
+        <RowArtistLink id={row.item.artist.id} name={row.item.artist.name} />,
+      ),
       imageUrl: row.item.thumbnailUrl,
       fallback: <FilmIcon className="h-5 w-5 text-secondary" />,
       rounded: 'rounded',

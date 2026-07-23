@@ -69,6 +69,21 @@ public class ChatMessageEncryptionTests
     }
 
     [Fact]
+    public void Decrypt_UsesPreviousKeyDuringRotation()
+    {
+        var previous = NewEncryption(1);
+        var activeKey = Convert.ToBase64String(
+            Enumerable.Range(0, 32).Select(i => (byte)(i + 99)).ToArray());
+        var previousKey = Convert.ToBase64String(
+            Enumerable.Range(0, 32).Select(i => (byte)(i + 1)).ToArray());
+        var rotating = new ChatMessageEncryption(activeKey, previousKey);
+
+        Assert.True(rotating.HasPreviousKey);
+        Assert.Equal("survives rotation", rotating.Decrypt(previous.Encrypt("survives rotation")));
+        Assert.Equal("new key", rotating.Decrypt(rotating.Encrypt("new key")));
+    }
+
+    [Fact]
     public async Task AppDbContext_MapsChatBodyToEncryptedProviderValue()
     {
         await using var db = TestHelpers.NewDb();

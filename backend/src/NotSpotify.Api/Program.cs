@@ -92,7 +92,8 @@ builder.Services.AddSingleton(jwt);
 // out of appsettings and source control; production supplies
 // ChatEncryption__KeyBase64 through its secret/environment configuration.
 var chatEncryption = new ChatMessageEncryption(
-    builder.Configuration["ChatEncryption:KeyBase64"] ?? string.Empty);
+    builder.Configuration["ChatEncryption:KeyBase64"] ?? string.Empty,
+    builder.Configuration["ChatEncryption:PreviousKeyBase64"]);
 builder.Services.AddSingleton<IChatMessageEncryption>(chatEncryption);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
@@ -1137,7 +1138,7 @@ using (var scope = app.Services.CreateScope())
             ON ""PromoCodeRedemptions""(""UserId"", ""Code"");
     ");
 
-    var encryptedLegacyMessages = await ChatMessageEncryptionBackfill.RunAsync(db);
+    var encryptedLegacyMessages = await ChatMessageEncryptionBackfill.RunAsync(db, chatEncryption);
     if (encryptedLegacyMessages > 0)
         Console.WriteLine($"[ChatEncryption] Encrypted {encryptedLegacyMessages} legacy message row(s).");
 

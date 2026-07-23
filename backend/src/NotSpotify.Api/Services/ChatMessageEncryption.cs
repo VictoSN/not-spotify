@@ -11,6 +11,7 @@ namespace NotSpotify.Api.Services;
 /// </summary>
 public interface IChatMessageEncryption
 {
+    bool HasPreviousKey { get; }
     string Encrypt(string plaintext);
     string Decrypt(string storedValue);
     bool IsEncrypted(string storedValue);
@@ -22,32 +23,17 @@ public sealed class ChatMessageEncryption : IChatMessageEncryption
     private const int NonceSize = 12;
     private const int TagSize = 16;
     private readonly byte[] _key;
+    private readonly byte[]? _previousKey;
 
-    public ChatMessageEncryption(string keyBase64)
+    public ChatMessageEncryption(string keyBase64, string? previousKeyBase64 = null)
     {
-        if (string.IsNullOrWhiteSpace(keyBase64))
-        {
-            throw new InvalidOperationException(
-                "ChatEncryption:KeyBase64 is required. Generate 32 random bytes, " +
-                "encode them as Base64, and provide the value through secrets or an environment variable.");
-        }
-
-        try
-        {
-            _key = Convert.FromBase64String(keyBase64);
-        }
-        catch (FormatException exception)
-        {
-            throw new InvalidOperationException(
-                "ChatEncryption:KeyBase64 must be a valid Base64 value.", exception);
-        }
-
-        if (_key.Length != 32)
-        {
-            throw new InvalidOperationException(
-                "ChatEncryption:KeyBase64 must decode to exactly 32 bytes for AES-256-GCM.");
-        }
+        _key = ParseKey(keyBase64, "ChatEncryption:KeyBase64");
+        _previousKey = string.IsNullOrWhiteSpace(previousKeyBase64)
+            ? null
+            : ParseKey(previousKeyBase64, "ChatEncryption:PreviousKeyBase64");
     }
+
+    public bool HasPreviousKey => _previousKey is not null;
 
     public bool IsEncrypted(string storedValue) =>
         storedValue.StartsWith(Prefix, StringComparison.Ordinal);
@@ -101,11 +87,51 @@ public sealed class ChatMessageEncryption : IChatMessageEncryption
         var ciphertext = envelope.AsSpan(NonceSize + TagSize);
         var plaintext = new byte[ciphertext.Length];
 
-        using (var aes = new AesGcm(_key, TagSize))
+        try
         {
-            aes.Decrypt(nonce, ciphertext, tag, plaintext);
+            DecryptWithKey(_key, nonce, ciphertext, tag, plaintext);
+        }
+        catch (AuthenticationTagMismatchException) when (_previousKey is not null)
+        {
+            DecryptWithKey(_previousKey, nonce, ciphertext, tag, plaintext);
         }
 
         return Encoding.UTF8.GetString(plaintext);
+    }
+
+    private static byte[] ParseKey(string keyBase64, string settingName)
+    {
+        if (string.IsNullOrWhiteSpace(keyBase64))
+        {
+            throw new InvalidOperationException(
+                $"{settingName} is required. Generate 32 random bytes, encode them as Base64, " +
+                "and provide the value through secrets or an environment variable.");
+        }
+
+        byte[] key;
+        try
+        {
+            key = Convert.FromBase64String(keyBase64);
+        }
+        catch (FormatException exception)
+        {
+            throw new InvalidOperationException($"{settingName} must be a valid Base64 value.", exception);
+        }
+
+        if (key.Length != 32)
+            throw new InvalidOperationException($"{settingName} must decode to exactly 32 bytes for AES-256-GCM.");
+
+        return key;
+    }
+
+    private static void DecryptWithKey(
+        byte[] key,
+        ReadOnlySpan<byte> nonce,
+        ReadOnlySpan<byte> ciphertext,
+        ReadOnlySpan<byte> tag,
+        Span<byte> plaintext)
+    {
+        using var aes = new AesGcm(key, TagSize);
+        aes.Decrypt(nonce, ciphertext, tag, plaintext);
     }
 }

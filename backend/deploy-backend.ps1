@@ -93,6 +93,29 @@ if ($env:CHAT_ENCRYPTION_KEY_BASE64) {
   exit 1
 }
 
+# Optional one-deployment fallback used to rotate an encryption key without
+# making rows written by the old key unreadable. The app rewrites all messages
+# with the active key during startup; remove this setting after that rollout.
+if ($env:CHAT_ENCRYPTION_PREVIOUS_KEY_BASE64) {
+  $envList = [System.Collections.Generic.List[object]]::new()
+  $found = $false
+  foreach ($e in $td.containerDefinitions[0].environment) {
+    if ($e.name -eq "ChatEncryption__PreviousKeyBase64") {
+      $e.value = $env:CHAT_ENCRYPTION_PREVIOUS_KEY_BASE64
+      $found = $true
+    }
+    $envList.Add($e)
+  }
+  if (-not $found) {
+    $envList.Add([pscustomobject]@{
+      name = "ChatEncryption__PreviousKeyBase64"
+      value = $env:CHAT_ENCRYPTION_PREVIOUS_KEY_BASE64
+    })
+  }
+  $td.containerDefinitions[0].environment = $envList.ToArray()
+  Write-Host "Injected temporary ChatEncryption__PreviousKeyBase64 into task def." -ForegroundColor Green
+}
+
 # Toggle Cors:AllowLocalhostDev so `tauri dev` / Vite dev on localhost:5173 can hit
 # the deployed API (see Program.cs). Set CORS_ALLOW_LOCALHOST_DEV=true|false in the
 # shell before deploying to flip it; leave it unset to preserve the current value.

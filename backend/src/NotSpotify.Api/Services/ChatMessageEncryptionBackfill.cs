@@ -8,6 +8,7 @@ public static class ChatMessageEncryptionBackfill
 {
     public static async Task<int> RunAsync(
         AppDbContext db,
+        IChatMessageEncryption encryption,
         CancellationToken cancellationToken = default)
     {
         if (!db.Database.IsRelational())
@@ -15,12 +16,15 @@ public static class ChatMessageEncryptionBackfill
 
         // Query the provider value directly. Materializing ChatMessage entities
         // would already decrypt Body, making legacy and encrypted rows look alike.
-        var legacyIds = await db.Database.SqlQueryRaw<Guid>(
-                """
-                SELECT "Id" AS "Value"
-                FROM "ChatMessages"
-                WHERE "Body" NOT LIKE 'enc:v1:%'
-                """)
+        var sql = encryption.HasPreviousKey
+            ? "SELECT \"Id\" AS \"Value\" FROM \"ChatMessages\""
+            : """
+              SELECT "Id" AS "Value"
+              FROM "ChatMessages"
+              WHERE "Body" NOT LIKE 'enc:v1:%'
+              """;
+
+        var legacyIds = await db.Database.SqlQueryRaw<Guid>(sql)
             .ToListAsync(cancellationToken);
 
         if (legacyIds.Count == 0)

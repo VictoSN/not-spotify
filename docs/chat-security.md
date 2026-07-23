@@ -36,6 +36,10 @@ dotnet user-secrets set "ChatEncryption:KeyBase64" "<BASE64_KEY>"
 Do not commit the key. Back it up in the project's secret manager: losing or
 replacing it makes existing encrypted chat history unreadable.
 
+For controlled rotation, set `ChatEncryption__PreviousKeyBase64` for one
+deployment. The service can read the previous key while rewriting every message
+with the active key during startup. Remove the previous key after that rollout.
+
 Stored values begin with `enc:v1:` to support future format migrations. At
 startup, `ChatMessageEncryptionBackfill` finds historical plaintext rows and
 rewrites them through the encrypted EF converter.

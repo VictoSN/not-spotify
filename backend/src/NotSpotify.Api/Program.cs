@@ -61,8 +61,12 @@ if (args.Contains("ensure-s3-cors"))
 
     try
     {
-        await new S3StorageService(Microsoft.Extensions.Options.Options.Create(s3Opt)).EnsureBrowserCorsAsync();
-        Console.WriteLine($"[S3 CORS] Applied GET/HEAD CORS (AllowedOrigins=*) to bucket '{s3Opt.BucketName}'. Gradients will work once URLs refresh.");
+        // Reuse the API's own allow-list for the upload rule so the two can't drift.
+        var uploadOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        await new S3StorageService(Microsoft.Extensions.Options.Options.Create(s3Opt))
+            .EnsureBrowserCorsAsync(uploadOrigins);
+        Console.WriteLine($"[S3 CORS] Applied GET/HEAD (AllowedOrigins=*) + POST/PUT upload CORS to bucket '{s3Opt.BucketName}'.");
+        Console.WriteLine($"[S3 CORS] Upload origins: {string.Join(", ", uploadOrigins ?? ["(defaults)"])}");
     }
     catch (Exception ex)
     {

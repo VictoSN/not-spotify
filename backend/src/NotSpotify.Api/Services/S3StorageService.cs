@@ -80,10 +80,29 @@ public class S3StorageService : IStorageService
     /// (node-vibrant draws the image to a &lt;canvas&gt; and reads its pixels) to drive the
     /// Spotify-style gradient hues. That canvas read is blocked by the same-origin policy
     /// unless the image response carries <c>Access-Control-Allow-Origin</c> — without this
-    /// the gradients silently fall back to grey on every page. Idempotent (PUT overwrites).
+    /// the gradients silently fall back to grey on every page.
+    /// <para>
+    /// It also allows the browser to POST a file directly to the bucket using a presigned
+    /// POST from the uploads Lambda (docs/aws-lambda-setup.md). Without that second rule
+    /// the preflight fails and every direct upload dies before a byte is sent.
+    /// </para>
+    /// <para>
+    /// Idempotent, but note <c>PutCORSConfiguration</c> REPLACES the bucket's entire
+    /// configuration — any rule added by hand in the console is wiped the next time this
+    /// runs. Add rules here, not there.
+    /// </para>
     /// </summary>
-    public async Task EnsureBrowserCorsAsync(CancellationToken ct = default)
+    /// <param name="uploadOrigins">
+    /// Origins allowed to POST an upload. Unlike the read rule this cannot be "*": the
+    /// presigned POST carries a policy and signature, so it is scoped to the real app
+    /// origins. Falls back to the production web origins when nothing is passed.
+    /// </param>
+    public async Task EnsureBrowserCorsAsync(IEnumerable<string>? uploadOrigins = null, CancellationToken ct = default)
     {
+        var origins = (uploadOrigins ?? []).Where(o => !string.IsNullOrWhiteSpace(o)).Distinct().ToList();
+        if (origins.Count == 0)
+            origins = ["https://not-spotify.lol", "https://www.not-spotify.lol", "http://localhost:5173"];
+
         await _s3.PutCORSConfigurationAsync(new PutCORSConfigurationRequest
         {
             BucketName = _opt.BucketName,
@@ -99,6 +118,25 @@ public class S3StorageService : IStorageService
                         AllowedMethods = ["GET", "HEAD"],
                         AllowedOrigins = ["*"],
                         AllowedHeaders = ["*"],
+                        // Range headers must stay exposed: premium offline audio fetches
+                        // tracks from JS and reads these to drive Range-aware playback.
+                        // They are not CORS-safelisted, so dropping them here silently
+                        // breaks seeking/offline download while ordinary playback (which
+                        // the <audio> element handles natively) keeps working.
+                        ExposeHeaders = ["Content-Length", "Content-Range", "Accept-Ranges", "ETag"],
+                        MaxAgeSeconds = 3600,
+                    },
+                    new CORSRule
+                    {
+                        // Direct-to-S3 personal uploads. POST is the presigned-POST form
+                        // submit; PUT is here so switching to a presigned PUT later doesn't
+                        // need another CORS round-trip through an admin.
+                        AllowedMethods = ["POST", "PUT"],
+                        AllowedOrigins = origins,
+                        AllowedHeaders = ["*"],
+                        // The browser needs to read ETag/Location off the response to know
+                        // the object landed; they are not CORS-safelisted by default.
+                        ExposeHeaders = ["ETag", "Location"],
                         MaxAgeSeconds = 3600,
                     },
                 ],
@@ -129,6 +167,25 @@ public class S3StorageService : IStorageService
             await res.ResponseStream.CopyToAsync(ms, ct);
             return ms.ToArray();
         }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<long?> GetSizeAsync(string key, CancellationToken ct = default)
+    {
+        try
+        {
+            var res = await _s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+            {
+                BucketName = _opt.BucketName,
+                Key = Normalize(key),
+            }, ct);
+            return res.ContentLength;
+        }
+        // A HEAD on a missing key returns a bare 404 with no error code, so the usual
+        // ex.ErrorCode == "NoSuchKey" check never fires here — match on the status only.
         catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             return null;

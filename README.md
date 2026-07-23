@@ -13,7 +13,7 @@ Open **<https://not-spotify.lol>** in your browser and log in with a seed accoun
 | `alex@example.com` | `Password123!` |
 | `testing1@example.com` | `Testing1` |
 
-That's the fully deployed app — frontend on **S3 + CloudFront**, API (`https://api.not-spotify.lol`) on **ECS + ALB**, database on **AWS RDS (PostgreSQL)**, and media on **S3**. Nothing to install.
+That's the fully deployed app — frontend on **S3 + CloudFront**, API (`https://api.not-spotify.lol`) on **ECS + ALB**, database on **AWS RDS (PostgreSQL)**, media on **S3**, and direct-to-S3 uploads brokered by **Lambda + API Gateway**. Nothing to install.
 
 ### 🛠️ Want to run it from source? — local setup
 
@@ -62,7 +62,7 @@ Ensure you have the following installed:
 * [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 * [Node.js (LTS)](https://nodejs.org/)
 
-> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md).)*
+> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md). Direct-to-S3 uploads → Lambda + API Gateway: [`docs/aws-lambda-setup.md`](docs/aws-lambda-setup.md).)*
 
 ---
 
@@ -532,7 +532,12 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
   Program.cs    DI, JWT, rate limiter, storage selection, MigrateAsync + defensive CREATE TABLE IF NOT EXISTS guards
 /frontend/src
   /components (player, cards, ui, layout, profile, friends, settings, common) /pages /services (api.ts + per-domain) /stores (Zustand) /router /types /hooks /utils
+/serverless
+  /uploads-presign  lambda_function.py (+ offline tests) — the only code outside the monolith
+  deploy-lambda.ps1 one-shot: IAM role + Lambda + HTTP API Gateway
 ```
+
+**One request path skips the monolith:** personal uploads no longer stream through the container. The browser asks a **Python Lambda behind API Gateway** for a presigned S3 POST, uploads the file **straight to S3**, then calls `POST /me/uploads/complete` so the API can verify it with `HeadObject` and write the row — [`docs/aws-lambda-setup.md`](docs/aws-lambda-setup.md). Set `VITE_UPLOADS_API_URL` to enable it; blank falls back to the original multipart `POST /me/uploads`, so the app runs either way.
 
 **Naming:** C# PascalCase (EF columns quoted `"Title"` in raw SQL) · TS camelCase vars / PascalCase components+types · API routes kebab-case · storage keys `audio/{guid}.ext`, `covers/{guid}.ext`, `avatars/{userId}/{guid}.ext`.
 
@@ -544,6 +549,7 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
 - **Toasts:** `notify.{success,error,info}` (`utils/toast.ts`). **Confirms:** `useConfirm()` hook — no native `confirm()`.
 - **Rate limiting:** `auth` (20/min/IP) on `AuthController`; `chat-send` (20/10s/user) on `ChatController.Send` → JSON 429 + `Retry-After`.
 - **Downloads:** `AudioDownloadService` only; frontend calls `trackService.download()`, never links `audioUrl`.
+- **S3 bucket CORS is code, not console.** `dotnet run -- ensure-s3-cors` calls `PutCORSConfiguration`, which **replaces the bucket's whole config** — a rule added by hand in the console disappears the next time anyone runs it. Add rules to `S3StorageService.EnsureBrowserCorsAsync`. The direct-upload path needs the `POST` rule there or its preflight fails.
 - **Two social graphs:** `Friendships` = bidirectional + acceptance (FriendsController); `UserFollows` = one-way, no acceptance (UsersController).
 
 > **Shared DB:** the whole team writes to one Postgres instance. Coordinate destructive changes; prefer throwaway data. EF migrations auto-apply on backend startup.

@@ -15,4 +15,12 @@ public interface IStorageService
     /// reachable from the server itself.
     /// </summary>
     Task<byte[]?> ReadAsync(string key, CancellationToken ct = default);
+
+    /// <summary>
+    /// Size in bytes of a stored object, or null if it doesn't exist. Cheap: a HEAD on
+    /// remote storage, not a download. Used to confirm an object the *client* uploaded
+    /// (via a presigned URL) really landed before a DB row is created for it — never
+    /// trust the browser's word that an upload succeeded.
+    /// </summary>
+    Task<long?> GetSizeAsync(string key, CancellationToken ct = default);
 }

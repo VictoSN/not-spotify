@@ -17,6 +17,10 @@ Thumbs.db
 .env.*.local
 local-dev-user-secrets.csv
 
+# Python bytecode from running the Lambda's offline tests
+__pycache__/
+*.pyc
+
 # Dependencies (restored via `npm install` from the committed lockfiles)
 node_modules/
 frontend/public/app-preview.svg

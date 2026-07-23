@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpTrayIcon, TrashIcon, PlayIcon, PauseIcon, MusicalNoteIcon } from '@heroicons/react/24/solid'
 import type { UserUpload } from '@/types/upload'
 import { uploadToTrack } from '@/types/upload'
-import { uploadService, readAudioDuration } from '@/services/uploadService'
+import { uploadService, readAudioDuration, isDirectUploadEnabled } from '@/services/uploadService'
 import { usePlayerStore } from '@/stores/playerStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -18,6 +18,8 @@ export function UploadsPage() {
   const [uploads, setUploads] = useState<UserUpload[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  // Percent for the file currently transferring; null when nothing is in flight.
+  const [progress, setProgress] = useState<number | null>(null)
 
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
@@ -36,18 +38,22 @@ export function UploadsPage() {
   const onFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return
     setBusy(true)
+    setProgress(0)
     try {
       for (const file of Array.from(files)) {
         const durationMs = await readAudioDuration(file)
-        const created = await uploadService.upload(file, { durationMs })
+        const created = await uploadService.upload(file, { durationMs, onProgress: setProgress })
         setUploads((prev) => [created, ...prev])
       }
       notify.success(files.length === 1 ? 'Uploaded.' : `Uploaded ${files.length} files.`)
     } catch (err) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-      notify.error(msg ?? 'Upload failed.')
+      // Two error shapes now: axios wraps the API's body, while a direct-to-S3 failure
+      // throws a plain Error whose message is already written for the user.
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      notify.error(apiMsg ?? (err as Error)?.message ?? 'Upload failed.')
     } finally {
       setBusy(false)
+      setProgress(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }
@@ -84,9 +90,23 @@ export function UploadsPage() {
         />
         <Button onClick={() => fileRef.current?.click()} disabled={busy}>
           {busy ? <Spinner size="sm" /> : <ArrowUpTrayIcon className="h-4 w-4" />}
-          {busy ? 'Uploading…' : 'Upload audio'}
+          {busy ? (progress === null ? 'Uploading…' : `Uploading… ${progress}%`) : 'Upload audio'}
         </Button>
-        <p className="mt-2 text-xs text-secondary">MP3, M4A, WAV, FLAC, OGG, Opus · up to 50 MB each</p>
+        {busy && progress !== null && (
+          <div
+            className="mx-auto mt-3 h-1 w-full max-w-xs overflow-hidden rounded-full bg-elevated"
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Upload progress"
+          >
+            <div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${progress}%` }} />
+          </div>
+        )}
+        <p className="mt-2 text-xs text-secondary">
+          MP3, M4A, WAV, FLAC, OGG, Opus · up to {isDirectUploadEnabled() ? '100' : '50'} MB each
+        </p>
       </div>
 
       {loading ? (

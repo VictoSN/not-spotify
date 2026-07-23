@@ -1,7 +1,7 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildSearchRows,
   buildSongRows,
@@ -20,6 +20,21 @@ import type { MusicVideo } from '@/types/musicVideo'
 import type { PodcastSummary } from '@/types/podcast'
 import type { UserSearchResult } from '@/types/friend'
 import type { Genre } from '@/types/genre'
+
+// The row context menus pull in useIsMobile + Headless UI, neither of which jsdom
+// provides an implementation for. Same stubs as TrackRowMenu.test.tsx.
+class ResizeObserverStub { observe() {} unobserve() {} disconnect() {} }
+vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+vi.stubGlobal('matchMedia', (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+}))
 
 const artist: Artist = {
   id: 'artist-1',
@@ -251,6 +266,34 @@ describe('SearchPage result helpers', () => {
       expect(data['text/plain']).toBeTruthy()
       unmount()
     }
+  })
+
+  it('opens a context menu on right-click for each content kind', () => {
+    const cases: Array<{ row: SearchRow; item: string }> = [
+      { row: { kind: 'track', id: track.id, item: track }, item: 'Add to queue' },
+      { row: { kind: 'artist', id: artist.id, item: artist }, item: 'Go to artist' },
+      { row: { kind: 'album', id: album.id, item: album }, item: 'Go to album' },
+    ]
+
+    for (const { row } of cases) {
+      const { unmount } = renderRows([row])
+      const el = screen.getAllByRole('button')[0]
+
+      // Nothing open until the row is right-clicked.
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      fireEvent.contextMenu(el)
+      expect(screen.getByRole('menu')).toBeInTheDocument()
+
+      unmount()
+    }
+  })
+
+  it('leaves profiles without a menu (the app has no profile menu to reuse)', () => {
+    renderRows([{ kind: 'profile', id: profile.id, item: profile }])
+
+    fireEvent.contextMenu(screen.getAllByRole('button')[0])
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
   it('leaves playlists and profiles undraggable (nothing accepts them as a drop)', () => {

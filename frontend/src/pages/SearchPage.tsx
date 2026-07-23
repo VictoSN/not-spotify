@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   MagnifyingGlassIcon,
@@ -31,6 +31,13 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useDragStore } from '@/stores/dragStore'
+import { AlbumMenu } from '@/components/cards/AlbumMenu'
+import { ArtistMenu } from '@/components/cards/ArtistMenu'
+import { PlaylistRowMenu } from '@/components/cards/PlaylistRowMenu'
+import { PodcastMenu } from '@/components/cards/PodcastMenu'
+import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
+import { VideoMenu } from '@/components/cards/VideoMenu'
+import { openMenuAtPointer, type PointerMenuHandle } from '@/utils/contextMenu'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import {
@@ -604,6 +611,7 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
   const searchRow = songToSearchRow(row)
   const isPlaying = actions.isRowPlaying(searchRow)
   const dragProps = useSearchRowDrag(searchRow)
+  const menuRef = useRef<PointerMenuHandle>(null)
 
   return (
     <div
@@ -611,13 +619,14 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
       tabIndex={0}
       {...dragProps}
       onClick={() => navigate(presentation.path)}
+      onContextMenu={(event) => openMenuAtPointer(event, menuRef)}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
         if (event.target !== event.currentTarget) return
         event.preventDefault()
         navigate(presentation.path)
       }}
-      className="group grid grid-cols-[44px_minmax(0,1fr)_64px] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_64px] items-center rounded-md px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
+      className="group grid grid-cols-[44px_minmax(0,1fr)_92px] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(220px,0.85fr)_44px_92px] items-center rounded-md px-3 py-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
     >
       <span className="text-center text-base font-normal text-secondary group-hover:hidden">{index}</span>
       <button
@@ -647,7 +656,10 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
 
       <span className="hidden min-w-0 truncate text-sm text-secondary md:block">{presentation.album}</span>
       <span className="hidden justify-self-center text-sm text-secondary md:block">{formatMs(presentation.durationMs)}</span>
-      <span className="justify-self-end">{actions.renderRowAction(searchRow)}</span>
+      <span className="flex items-center justify-end gap-1 justify-self-end">
+        {actions.renderRowAction(searchRow)}
+        <SearchRowMenu row={searchRow} ref={menuRef} />
+      </span>
     </div>
   )
 }
@@ -771,6 +783,34 @@ function GenreResultsGrid({ genres }: { genres: Genre[] }) {
 }
 
 /**
+ * The right-click / hover menu for a result row. Every menu in the app already exposes
+ * the same `forwardRef<PointerMenuHandle, { <entity> }>` shape, so this only picks the
+ * right one per row kind — the actions themselves (add to queue, add to playlist, go to
+ * artist, share, …) all come from the existing menus.
+ *
+ * Profiles are omitted: there is no profile menu in the app to reuse.
+ */
+const SearchRowMenu = forwardRef<PointerMenuHandle, { row: SearchRow }>(function SearchRowMenu({ row }, ref) {
+  switch (row.kind) {
+    case 'track':
+    case 'lyrics':
+      return <TrackRowMenu track={row.item} ref={ref} />
+    case 'artist':
+      return <ArtistMenu artist={row.item} ref={ref} />
+    case 'album':
+      return <AlbumMenu album={row.item} ref={ref} />
+    case 'musicVideo':
+      return <VideoMenu video={row.item} ref={ref} />
+    case 'podcast':
+      return <PodcastMenu podcast={row.item} ref={ref} />
+    case 'playlist':
+      return <PlaylistRowMenu playlist={row.item} ref={ref} />
+    default:
+      return null
+  }
+})
+
+/**
  * Drag props for a search row, so results can be dropped onto playlists/the queue like
  * results anywhere else in the app. Reuses the shared MIME types, drag-pill images and
  * drag store from `utils/trackDnd` + `stores/dragStore` — same contract every drop
@@ -848,6 +888,7 @@ export function SearchResultRow({ row, compact = false }: { row: SearchRow; comp
   const isPlaying = actions.isRowPlaying(row)
   const isPlayable = row.kind !== 'playlist' && row.kind !== 'podcast' && row.kind !== 'profile'
   const dragProps = useSearchRowDrag(row)
+  const menuRef = useRef<PointerMenuHandle>(null)
 
   return (
     <div
@@ -855,6 +896,7 @@ export function SearchResultRow({ row, compact = false }: { row: SearchRow; comp
       tabIndex={0}
       {...dragProps}
       onClick={() => navigate(presentation.path)}
+      onContextMenu={(event) => openMenuAtPointer(event, menuRef)}
       onKeyDown={(event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
         if (event.target !== event.currentTarget) return
@@ -862,7 +904,7 @@ export function SearchResultRow({ row, compact = false }: { row: SearchRow; comp
         navigate(presentation.path)
       }}
       className={cn(
-        'group grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-3 rounded-md px-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none',
+        'group grid w-full grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] items-center gap-3 rounded-md px-2 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none',
         compact ? 'py-1.5' : 'py-2',
       )}
     >
@@ -900,6 +942,10 @@ export function SearchResultRow({ row, compact = false }: { row: SearchRow; comp
       </span>
 
       {actions.renderRowAction(row)}
+
+      {/* Hidden until hover (the menu's own default) — right-click opens it anywhere
+          on the row via the ref above. */}
+      <SearchRowMenu row={row} ref={menuRef} />
     </div>
   )
 }

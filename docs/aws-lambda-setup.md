@@ -135,6 +135,9 @@ correct behaviour, but easy to mistake for the Lambda not working.
 | HTTP API | `serverless-upload-api`, id `dg607y4cpj` |
 | Endpoint | `https://dg607y4cpj.execute-api.ap-southeast-1.amazonaws.com` |
 | Routes | `GET /health`, `POST /presign` — `$default` stage, auto-deploy, 10 rps / burst 20 |
+| Bucket CORS | 2 rules: read (`GET/HEAD`, `*`, Range headers exposed) + upload (`POST/PUT`, app origins) |
+| Backend | ECS task def `default-not-spotify-api-f33c:34` — carries `POST /me/uploads/complete` |
+| Frontend | `VITE_UPLOADS_API_URL` set; bundle `index-CsrN1eCY.js` live on CloudFront `E27J84V5MFALHE` |
 
 > The API had to be **recreated**: the one built in the console (`hwd4oafzj9`) had been
 > deleted, leaving only an orphaned `lambda:InvokeFunction` statement pointing at it. The

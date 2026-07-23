@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildSearchRows,
@@ -167,6 +167,23 @@ function renderRows(rows: SearchRow[]) {
   )
 }
 
+/** Renders rows alongside a live readout of the router path, for navigation assertions. */
+function CurrentPath() {
+  const location = useLocation()
+  return <span data-testid="path">{location.pathname}</span>
+}
+
+function renderRowsWithPath(rows: SearchRow[]) {
+  return render(
+    <MemoryRouter initialEntries={['/search']}>
+      <CurrentPath />
+      {rows.map((row) => (
+        <SearchResultRow key={`${row.kind}-${row.id}`} row={row} />
+      ))}
+    </MemoryRouter>,
+  )
+}
+
 describe('SearchPage result helpers', () => {
   beforeEach(() => {
     useLibraryStore.setState({
@@ -286,6 +303,20 @@ describe('SearchPage result helpers', () => {
 
       unmount()
     }
+  })
+
+  it('right-click opens the menu without navigating to the row', () => {
+    // Regression: the menu opens by programmatically clicking a MenuButton portaled to
+    // <body>, and React bubbles synthetic events up the REACT tree, not the DOM one. So
+    // that open-click reached the row's onClick and navigated to the track page instead
+    // of showing the menu. The row's actions cell must stop propagation.
+    renderRowsWithPath([{ kind: 'track', id: track.id, item: track }])
+    expect(screen.getByTestId('path')).toHaveTextContent('/search')
+
+    fireEvent.contextMenu(screen.getAllByRole('button')[0])
+
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    expect(screen.getByTestId('path')).toHaveTextContent('/search')
   })
 
   it('leaves profiles without a menu (the app has no profile menu to reuse)', () => {

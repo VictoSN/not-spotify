@@ -656,7 +656,12 @@ function SongTableResultRow({ row, index }: { row: SongTableRow; index: number }
 
       <span className="hidden min-w-0 truncate text-sm text-secondary md:block">{presentation.album}</span>
       <span className="hidden justify-self-center text-sm text-secondary md:block">{formatMs(presentation.durationMs)}</span>
-      <span className="flex items-center justify-end gap-1 justify-self-end">
+      {/* onClick guard: see the note in SearchResultRow — the menu's portaled trigger
+          bubbles its open-click through the React tree into this row's navigation. */}
+      <span
+        className="flex items-center justify-end gap-1 justify-self-end"
+        onClick={(event) => event.stopPropagation()}
+      >
         {actions.renderRowAction(searchRow)}
         <SearchRowMenu row={searchRow} ref={menuRef} />
       </span>
@@ -944,8 +949,15 @@ export function SearchResultRow({ row, compact = false }: { row: SearchRow; comp
       {actions.renderRowAction(row)}
 
       {/* Hidden until hover (the menu's own default) — right-click opens it anywhere
-          on the row via the ref above. */}
-      <SearchRowMenu row={row} ref={menuRef} />
+          on the row via the ref above.
+          stopPropagation is load-bearing: `openAt` opens the menu by programmatically
+          clicking a MenuButton that is portaled to <body>, and React bubbles synthetic
+          events through the React tree rather than the DOM one. Without this the open
+          click reaches the row's own onClick and navigates away instead of showing the
+          menu. Same guard TrackRow puts around its actions block. */}
+      <span onClick={(event) => event.stopPropagation()}>
+        <SearchRowMenu row={row} ref={menuRef} />
+      </span>
     </div>
   )
 }

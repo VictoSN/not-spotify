@@ -10,9 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:desktop": "node src-tauri/icons/generate-icons.mjs && tsc -b && vite build --mode production",
+    "build:desktop": "tsc -b && vite build --mode production",
     "tauri": "tauri",
-    "tauri:dev": "node src-tauri/icons/generate-icons.mjs && tauri dev",
+    "tauri:dev": "tauri dev",
     "tauri:build": "tauri build && node scripts/stage-tauri-installers.mjs"
   },
   "dependencies": {

@@ -32,7 +32,7 @@ interface AuthState {
   signup: (name: string, email: string, password: string, captchaToken?: string | null) => Promise<SignupStartResult>
   verifySignup: (email: string, code: string) => Promise<void>
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>
-  logout: () => Promise<void>
+  logout: (options?: { reload?: boolean }) => Promise<void>
   refreshToken: (options?: { preserveOffline?: boolean }) => Promise<void>
   clearError: () => void
   hydrateFromCookie: () => Promise<void>
@@ -101,13 +101,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, accessToken, isAuthenticated: true, offlineMode: false })
   },
 
-  logout: async () => {
+  logout: async (options) => {
     // Clear auth state immediately so UI re-renders (sidebar empties) before the API call.
     ;(window as { __authToken?: string }).__authToken = undefined
     clearCachedUser()
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false, offlineMode: false })
     try { await authService.logout() } catch { /* ignore */ }
-    window.location.reload()
+    // The default full reload is the simplest reset for the normal "Log out" button.
+    // Callers that need to keep the SPA alive and control the next navigation (e.g. the
+    // account-handoff "Switch account" flow) pass reload:false.
+    if (options?.reload !== false) window.location.reload()
   },
 
   refreshToken: async (options) => {

@@ -23,6 +23,8 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { meService, type RecentSearch } from '@/services/meService'
 import { subdomainUrl } from '@/config/subdomains'
+import { isDesktop } from '@/utils/platform'
+import { buildHandoffPath } from '@/utils/accountHandoff'
 import { searchService, type SearchResults } from '@/services/searchService'
 import { artistService } from '@/services/artistService'
 import { trackService } from '@/services/trackService'
@@ -92,6 +94,13 @@ export function TopBar() {
   const currentQuery = searchParams.get('q') ?? ''
   const isArtist = user?.roles?.includes('Artist') ?? false
   const isAdmin = user?.roles?.includes('Admin') ?? false
+
+  // In the desktop app these menu items open in the SYSTEM browser, which may be signed
+  // into a different account. Route them through the handoff interstitial, carrying a
+  // non-secret hint (expected id + masked email) so the browser can offer to switch
+  // accounts. In a normal browser the session is shared, so link directly.
+  const externalHref = (sub: string, dest: string) =>
+    isDesktop() ? subdomainUrl(sub, buildHandoffPath(dest, user)) : subdomainUrl(sub, dest)
   const isBrowse = location.pathname === '/search' && currentQuery.trim().length === 0
 
   const [showMenu, setShowMenu] = useState(false)
@@ -821,7 +830,7 @@ export function TopBar() {
             <div className="fixed inset-0 z-[990]" onClick={() => setShowMenu(false)} />
             <div className="absolute right-0 top-full z-[1000] mt-2 max-h-[calc(100vh-5rem)] w-80 overflow-hidden rounded-md border border-secondary/10 bg-elevated py-2 shadow-2xl">
               <a
-                href={subdomainUrl('account', '/account')}
+                href={externalHref('account', '/account')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -831,7 +840,7 @@ export function TopBar() {
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </a>
               <a
-                href={subdomainUrl('account', '/account/family')}
+                href={externalHref('account', '/account/family')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -855,7 +864,7 @@ export function TopBar() {
                 {t('topbar.recents')}
               </Link>
               <a
-                href={subdomainUrl('support', '/support')}
+                href={externalHref('support', '/support')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}
@@ -865,7 +874,7 @@ export function TopBar() {
                 <ArrowTopRightOnSquareIcon className={userMenuArrowClass} />
               </a>
               <a
-                href={subdomainUrl('download', '/download/windows')}
+                href={externalHref('download', '/download/windows')}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setShowMenu(false)}

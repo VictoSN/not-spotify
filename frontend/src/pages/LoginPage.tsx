@@ -11,6 +11,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { isDesktop } from '@/utils/platform'
+import { isSafeReturnPath } from '@/utils/accountHandoff'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
   const params = new URLSearchParams({
@@ -47,8 +48,15 @@ export function LoginPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return
+    // Honour a validated ?next= (used by the account-handoff round-trip). It is checked
+    // against an internal allow-list, so it cannot be turned into an open redirect.
+    const next = params.get('next')
+    if (isSafeReturnPath(next)) {
+      navigate(next, { replace: true })
+      return
+    }
     navigate(user?.roles.includes('Admin') ? '/admin/dashboard' : '/', { replace: true })
-  }, [isAuthenticated, user, navigate])
+  }, [isAuthenticated, user, navigate, params])
 
   useEffect(() => {
     // reCAPTCHA can't render inside Tauri's embedded webview — desktop skips it.

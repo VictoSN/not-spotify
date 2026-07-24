@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/components/common/ProtectedRoute'
 import { AdminRoute } from '@/components/common/AdminRoute'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { LoginPage } from '@/pages/LoginPage'
+import { AccountHandoffPage } from '@/pages/AccountHandoffPage'
 import { SignupPage } from '@/pages/SignupPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
@@ -117,6 +118,8 @@ export const router = createBrowserRouter([
   // be dropped into an <iframe> on any external page.
   { path: '/embed/track/:id', element: <EmbedTrackPage /> },
   { path: '/login', element: <LoginPage /> },
+  // Desktop -> browser account handoff interstitial (see utils/accountHandoff).
+  { path: '/handoff', element: <AccountHandoffPage /> },
   { path: '/signup', element: <SignupPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/reset-password', element: <ResetPasswordPage /> },

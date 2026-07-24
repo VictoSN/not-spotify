@@ -1,41 +1,35 @@
 // Downloads the PWA icons from the deployed frontend bucket before each Tauri
 // build, so repository source contains no binary icon assets.
+import { execFileSync } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const FRONTEND_ASSET_BASE_URL = 'https://not-spotify.lol/icons'
+const FRONTEND_ASSET_BASE_URL =
+  'https://api.not-spotify.lol/storage/app-assets/frontend/public/icons'
 
 async function downloadIcon(name) {
   const response = await fetch(`${FRONTEND_ASSET_BASE_URL}/${name}`)
   if (!response.ok) {
     throw new Error(`Could not download ${name}: ${response.status} ${response.statusText}`)
   }
-  return Buffer.from(await response.arrayBuffer())
+  const icon = Buffer.from(await response.arrayBuffer())
+  const pngSignature = '89504e470d0a1a0a'
+  if (icon.subarray(0, 8).toString('hex') !== pngSignature) {
+    throw new Error(`Could not download ${name}: response was not a PNG image`)
+  }
+  return icon
 }
 
-// icon.png is the master PNG for the Tauri bundler.
-writeFileSync(join(here, 'icon.png'), await downloadIcon('icon-512.png'))
-
-// icon.ico wraps the 192px PNG in a single-image ICO container.
-const png = await downloadIcon('icon-192.png')
-const size = 192
-
-const ICONDIR = Buffer.alloc(6)
-ICONDIR.writeUInt16LE(0, 0)
-ICONDIR.writeUInt16LE(1, 2)
-ICONDIR.writeUInt16LE(1, 4)
-
-const ICONDIRENTRY = Buffer.alloc(16)
-ICONDIRENTRY.writeUInt8(size, 0)
-ICONDIRENTRY.writeUInt8(size, 1)
-ICONDIRENTRY.writeUInt8(0, 2)
-ICONDIRENTRY.writeUInt8(0, 3)
-ICONDIRENTRY.writeUInt16LE(1, 4)
-ICONDIRENTRY.writeUInt16LE(32, 6)
-ICONDIRENTRY.writeUInt32LE(png.length, 8)
-ICONDIRENTRY.writeUInt32LE(6 + 16, 12)
-
-writeFileSync(join(here, 'icon.ico'), Buffer.concat([ICONDIR, ICONDIRENTRY, png]))
-console.log('Downloaded PWA icons and generated Tauri icon.png and icon.ico')
+// Keep the generated desktop icons local and out of Git. Tauri's icon command
+// creates a real Windows ICO; manually embedding a PNG in an ICO breaks older
+// Windows resource compilers.
+const sourcePng = join(here, 'icon.png')
+writeFileSync(sourcePng, await downloadIcon('icon-512.png'))
+execFileSync('npx', ['tauri', 'icon', sourcePng], {
+  cwd: join(here, '..', '..'),
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+})
+console.log('Downloaded the PWA icon from S3 and generated local Tauri icons')

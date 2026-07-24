@@ -1,5 +1,13 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import {
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from 'react'
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { toast } from 'sonner'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import {
   MagnifyingGlassIcon,
@@ -22,7 +30,7 @@ import { useChatStore } from '@/stores/chatStore'
 import { useLibraryStore } from '@/stores/libraryStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import { meService, type RecentSearch } from '@/services/meService'
-import { subdomainUrl } from '@/config/subdomains'
+import { publicSubdomainUrl, subdomainUrl } from '@/config/subdomains'
 import { isDesktop } from '@/utils/platform'
 import { buildHandoffPath } from '@/utils/accountHandoff'
 import { searchService, type SearchResults } from '@/services/searchService'
@@ -100,7 +108,19 @@ export function TopBar() {
   // non-secret hint (expected id + masked email) so the browser can offer to switch
   // accounts. In a normal browser the session is shared, so link directly.
   const externalHref = (sub: string, dest: string) =>
-    isDesktop() ? subdomainUrl(sub, buildHandoffPath(dest, user)) : subdomainUrl(sub, dest)
+    isDesktop()
+      ? publicSubdomainUrl(sub, buildHandoffPath(dest, user))
+      : subdomainUrl(sub, dest)
+  const handleExternalClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    setShowMenu(false)
+    if (!isDesktop()) return
+
+    event.preventDefault()
+    const href = event.currentTarget.href
+    void openUrl(href).catch(() => {
+      toast.error('Could not open your browser. Please try again.')
+    })
+  }
   const isBrowse = location.pathname === '/search' && currentQuery.trim().length === 0
 
   const [showMenu, setShowMenu] = useState(false)
@@ -833,7 +853,7 @@ export function TopBar() {
                 href={externalHref('account', '/account')}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setShowMenu(false)}
+                onClick={handleExternalClick}
                 className={userMenuItemClass}
               >
                 {t('topbar.account')}
@@ -843,7 +863,7 @@ export function TopBar() {
                 href={externalHref('account', '/account/family')}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setShowMenu(false)}
+                onClick={handleExternalClick}
                 className={userMenuItemClass}
               >
                 {t('topbar.familyPlan')}
@@ -867,7 +887,7 @@ export function TopBar() {
                 href={externalHref('support', '/support')}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setShowMenu(false)}
+                onClick={handleExternalClick}
                 className={userMenuItemClass}
               >
                 {t('topbar.support')}
@@ -877,7 +897,7 @@ export function TopBar() {
                 href={externalHref('download', '/download/windows')}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setShowMenu(false)}
+                onClick={handleExternalClick}
                 className={userMenuItemClass}
               >
                 {t('topbar.download')}

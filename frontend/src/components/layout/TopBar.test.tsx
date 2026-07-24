@@ -1,12 +1,17 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TopBar } from './TopBar'
 import { useAuthStore } from '@/stores/authStore'
 import { useLocaleStore } from '@/stores/localeStore'
 import { usePlayerStore } from '@/stores/playerStore'
 import type { User } from '@/types/user'
+
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: vi.fn().mockResolvedValue(undefined),
+}))
 
 const premiumUser: User = {
   id: 'premium-user',
@@ -27,6 +32,9 @@ const premiumUser: User = {
 
 describe('TopBar navigation', () => {
   beforeEach(() => {
+    Reflect.deleteProperty(window, '__TAURI_INTERNALS__')
+    Reflect.deleteProperty(window, '__TAURI__')
+    vi.mocked(openUrl).mockClear()
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false })
     useLocaleStore.setState({ language: 'en' })
     usePlayerStore.setState({ isKaraokeOpen: true })
@@ -109,5 +117,48 @@ describe('TopBar navigation', () => {
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noopener noreferrer')
     }
+  })
+
+  it('opens desktop account destinations in the system browser', () => {
+    Object.defineProperty(window, '__TAURI_INTERNALS__', {
+      configurable: true,
+      value: {},
+    })
+    useAuthStore.setState({ user: premiumUser, isAuthenticated: true })
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TopBar />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'User menu' }))
+
+    const account = screen.getByRole('link', { name: 'Account' })
+    const family = screen.getByRole('link', { name: 'Set up your Family plan' })
+    const support = screen.getByRole('link', { name: 'Support' })
+    const download = screen.getByRole('link', { name: 'Download' })
+
+    expect(account).toHaveAttribute(
+      'href',
+      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount',
+    )
+    expect(family).toHaveAttribute(
+      'href',
+      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount%2Ffamily',
+    )
+    expect(support).toHaveAttribute(
+      'href',
+      'https://support.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fsupport',
+    )
+    expect(download).toHaveAttribute(
+      'href',
+      'https://download.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fdownload%2Fwindows',
+    )
+
+    fireEvent.click(account)
+
+    expect(openUrl).toHaveBeenCalledOnce()
+    expect(openUrl).toHaveBeenCalledWith(account.getAttribute('href'))
   })
 })

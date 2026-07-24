@@ -64,7 +64,14 @@ export function LibraryPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importing, setImporting] = useState(false)
   const [importMsg, setImportMsg] = useState<string | null>(null)
-  const [smartOpen, setSmartOpen] = useState(false)
+  // Open the smart-playlist builder straight away when arriving from the sidebar's
+  // "Smart playlist" create action (/library?smart=1), then drop the param so a refresh
+  // or back-navigation doesn't force it open again.
+  const [smartOpen, setSmartOpen] = useState(() => searchParams.get('smart') === '1')
+  useEffect(() => {
+    if (searchParams.get('smart') !== '1') return
+    setSearchParams((prev) => { prev.delete('smart'); return prev }, { replace: true })
+  }, [searchParams, setSearchParams])
   const [smartName, setSmartName] = useState('My smart playlist')
   const [smartGenre, setSmartGenre] = useState('')
   const [smartRating, setSmartRating] = useState('')

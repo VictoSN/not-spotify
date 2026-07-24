@@ -26,6 +26,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useAuthPromptStore } from '@/stores/authPromptStore'
 import { useUiStore } from '@/stores/uiStore'
 import { useTranslation } from '@/i18n/useTranslation'
+import { SmartShuffleIcon } from '@/components/icons/SmartShuffleIcon'
 import { recordPlay, getPlayHistory, PLAY_HISTORY_EVENT } from '@/utils/playHistory'
 import type { Track } from '@/types/track'
 import type { Artist } from '@/types/artist'
@@ -833,6 +834,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
     setRenameValue(folder.name)
   }
 
+  // Smart-playlist creation lives on the Library page (rule builder). The sidebar's
+  // create menu is the primary create surface, so it opens that builder directly.
+  const handleCreateSmartPlaylist = () => {
+    if (!isAuthenticated) {
+      openAuthPrompt({ title: t('sidebar.auth.createPromptTitle') })
+      return
+    }
+    navigate('/library?smart=1')
+  }
+
   const openLibraryCreateContextMenu = (event: React.MouseEvent) => {
     event.preventDefault()
     setCreateMenuOpen(false)
@@ -1562,6 +1573,15 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               <button
                 onClick={() => {
                   closeCreateMenu()
+                  handleCreateSmartPlaylist()
+                }}
+                className="group flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
+              >
+                <SmartShuffleIcon className="h-4 w-4 shrink-0 text-secondary transition-colors group-hover:text-accent" /> {t('sidebar.smartPlaylist')}
+              </button>
+              <button
+                onClick={() => {
+                  closeCreateMenu()
                   handleCreateFolder()
                 }}
                 className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-surface"
@@ -1683,6 +1703,16 @@ export function Sidebar({ takeoverHidden = false }: SidebarProps) {
               className={CONTEXT_MENU_ITEM_CLASS}
             >
               <MusicalNoteIcon className="h-4 w-4 shrink-0 text-secondary" /> {t('sidebar.createPlaylist')}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => {
+                setBlankCreateMenu(null)
+                handleCreateSmartPlaylist()
+              }}
+              className={cn(CONTEXT_MENU_ITEM_CLASS, 'group')}
+            >
+              <SmartShuffleIcon className="h-4 w-4 shrink-0 text-secondary transition-colors group-hover:text-accent" /> {t('sidebar.smartPlaylist')}
             </button>
             <button
               role="menuitem"

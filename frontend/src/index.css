@@ -1705,3 +1705,24 @@ html[data-theme="light"] .premium-plan-title-student {
     display: none;
   }
 }
+
+/* Smart-playlist glyph: a gentle sparkle twinkle when its menu row is hovered.
+   transform-box:fill-box scopes the transform-origin to the sparkle's own bounds so it
+   scales in place rather than around the SVG's (0,0). */
+.smart-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 200ms ease, opacity 200ms ease;
+}
+.group:hover .smart-sparkle,
+.group:focus-visible .smart-sparkle {
+  animation: smart-sparkle-twinkle 900ms ease-in-out infinite;
+}
+@keyframes smart-sparkle-twinkle {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
+  50%      { transform: scale(1.28) rotate(18deg); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .group:hover .smart-sparkle,
+  .group:focus-visible .smart-sparkle { animation: none; }
+}

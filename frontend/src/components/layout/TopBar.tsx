@@ -888,6 +888,13 @@ export function TopBar() {
               >
                 {theme === 'dark' ? t('topbar.lightMode') : t('topbar.darkMode')}
               </button>
+              <Link
+                to="/uploads"
+                onClick={() => setShowMenu(false)}
+                className={userMenuItemClass}
+              >
+                {t('topbar.uploads')}
+              </Link>
 
               <div className="my-1 border-t border-secondary/10" />
 

@@ -5,6 +5,7 @@ import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
 import {
   QueueListIcon,
   MinusCircleIcon,
+  PlusCircleIcon,
   PencilIcon,
   MusicalNoteIcon,
   FolderPlusIcon,
@@ -14,7 +15,6 @@ import {
   UserPlusIcon,
   ChevronRightIcon,
   CheckIcon,
-  UserCircleIcon,
   XCircleIcon,
   EllipsisHorizontalIcon,
   PlusIcon,
@@ -110,6 +110,8 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
     // page we offer "Add to profile" instead, and hide the folder/pin actions.
     const isInLibrary = isOwner || savedPlaylists.some((p) => p.id === playlist.id)
     const isPrivate = (playlist.visibility ?? (playlist.isPublic ? 'public' : 'private')) === 'private'
+    // "On profile" == public visibility (friends/private are not on the public profile).
+    const isOnProfile = (playlist.visibility ?? (playlist.isPublic ? 'public' : 'private')) === 'public'
     const currentFolderId = folderOfItem(folders, itemKey)
 
     // Pointer-anchored open/close/reopen behaviour shared with every other menu.
@@ -146,7 +148,8 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
       notify.success(`Added ${tracks.length} song${tracks.length === 1 ? '' : 's'} to queue`)
     }
 
-    const handleAddToProfile = async () => {
+    // Library = the saved-playlists shelf (this is what "save a public playlist" does).
+    const handleAddToLibrary = async () => {
       try {
         await savePlaylist(playlist)
         notify.success('Saved to Your Library')
@@ -155,12 +158,32 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
       }
     }
 
-    const handleRemoveFromProfile = async () => {
+    const handleRemoveFromLibrary = async () => {
       try {
         await unsavePlaylist(playlist.id)
         notify.success('Removed from your library')
       } catch {
         notify.error("Couldn't remove playlist")
+      }
+    }
+
+    // Profile presence = whether the playlist is public. Making it public shows it on
+    // your public profile; private/friends hides it. Only the owner controls this.
+    const handleAddToProfile = async () => {
+      try {
+        await setPlaylistVisibility(playlist.id, 'public')
+        notify.success('Added to your profile')
+      } catch {
+        notify.error("Couldn't add to profile")
+      }
+    }
+
+    const handleRemoveFromProfile = async () => {
+      try {
+        await setPlaylistVisibility(playlist.id, 'private')
+        notify.success('Removed from your profile')
+      } catch {
+        notify.error("Couldn't remove from profile")
       }
     }
 
@@ -258,19 +281,40 @@ export const PlaylistRowMenu = forwardRef<PlaylistRowMenuHandle, PlaylistRowMenu
                     Add to queue
                   </button>
                 </MenuItem>
-                <MenuItem>
-                  {isInLibrary ? (
-                    <button type="button" onClick={(e) => { stop(e); void handleRemoveFromProfile(); close() }} className={itemClass}>
-                      <MinusCircleIcon className="h-4 w-4" />
-                      Remove from profile
-                    </button>
-                  ) : (
-                    <button type="button" onClick={(e) => { stop(e); void handleAddToProfile(); close() }} className={itemClass}>
-                      <UserCircleIcon className="h-4 w-4" />
-                      Add to profile
-                    </button>
-                  )}
-                </MenuItem>
+                {/* Library shelf: only for playlists you don't own (saving a public
+                    playlist adds it to your library). Owned playlists are always in
+                    your library, so they get the profile toggle instead. */}
+                {!isOwner && (
+                  <MenuItem>
+                    {isInLibrary ? (
+                      <button type="button" onClick={(e) => { stop(e); void handleRemoveFromLibrary(); close() }} className={itemClass}>
+                        <MinusCircleIcon className="h-4 w-4" />
+                        Remove from Library
+                      </button>
+                    ) : (
+                      <button type="button" onClick={(e) => { stop(e); void handleAddToLibrary(); close() }} className={itemClass}>
+                        <PlusCircleIcon className="h-4 w-4" />
+                        Add to Library
+                      </button>
+                    )}
+                  </MenuItem>
+                )}
+                {/* Profile presence = public visibility. Only the owner can change it. */}
+                {isOwner && (
+                  <MenuItem>
+                    {isOnProfile ? (
+                      <button type="button" onClick={(e) => { stop(e); void handleRemoveFromProfile(); close() }} className={itemClass}>
+                        <MinusCircleIcon className="h-4 w-4" />
+                        Remove from profile
+                      </button>
+                    ) : (
+                      <button type="button" onClick={(e) => { stop(e); void handleAddToProfile(); close() }} className={itemClass}>
+                        <PlusCircleIcon className="h-4 w-4" />
+                        Add to profile
+                      </button>
+                    )}
+                  </MenuItem>
+                )}
 
                 {isOwner && (
                   <>

@@ -30,6 +30,7 @@ import { TrackCard } from '@/components/cards/TrackCard'
 import { TrackRowMenu } from '@/components/cards/TrackRowMenu'
 import { ArtistBioDialog } from '@/components/common/ArtistBioDialog'
 import { NowPlayingLyrics } from '@/components/player/NowPlayingLyrics'
+import { TrackArtwork } from '@/components/player/TrackArtwork'
 import { Spinner } from '@/components/ui/Spinner'
 import { formatNumber } from '@/utils/formatNumber'
 import { useDominantColor } from '@/hooks/useDominantColor'
@@ -373,11 +374,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
           aria-label={t('np.expand')}
         >
           {currentTrack && (
-            <img
-              src={currentTrack.album.coverUrl}
-              alt={currentTrack.album.title}
-              className="h-10 w-10 rounded object-cover opacity-80 shadow-lg"
-            />
+            <TrackArtwork track={currentTrack} className="h-10 w-10 rounded object-cover opacity-80 shadow-lg" />
           )}
           <ChevronLeftIcon className="h-5 w-5" />
           <span className="spotify-tooltip spotify-tooltip-middle spotify-tooltip-side-right">
@@ -602,11 +599,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                   className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
                 />
               ) : (
-                <img
-                  src={currentTrack.album.coverUrl}
-                  alt={currentTrack.album.title}
-                  className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
-                />
+                <TrackArtwork track={currentTrack} className="aspect-square w-full rounded-lg object-cover shadow-[0_24px_80px_rgba(0,0,0,0.45)]" />
               )}
             </div>
           </section>
@@ -719,7 +712,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                       </div>
                       {upNext.slice(0, 3).map((track) => (
                         <div key={track.id} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-elevated/50">
-                          {track.isPrivateUpload ? <div className="h-12 w-12 rounded overflow-hidden"><img src={track.album.coverUrl} alt="" className="h-full w-full object-cover" /></div> : <Link to={`/track/${track.id}`} className="h-12 w-12 shrink-0 rounded overflow-hidden"><img src={track.album.coverUrl} alt="" className="h-full w-full object-cover" /></Link>}
+                          {track.isPrivateUpload ? <div className="h-12 w-12 rounded overflow-hidden"><TrackArtwork track={track} className="h-full w-full object-cover" /></div> : <Link to={`/track/${track.id}`} className="h-12 w-12 shrink-0 rounded overflow-hidden"><TrackArtwork track={track} className="h-full w-full object-cover" /></Link>}
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-primary">{track.title}</p>
                             <p className="mt-0.5 truncate text-sm text-secondary">{track.artist.name}</p>
@@ -914,7 +907,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                 isNowPlayingExpanded ? 'w-[min(36rem,58vh,62vw)] max-w-full' : 'w-full',
               )}
             >
-              <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="aspect-square w-full rounded-lg object-cover shadow-lg" />
+              <TrackArtwork track={currentTrack} className="aspect-square w-full rounded-lg object-cover shadow-lg" />
             </div>
           ) : (
             <Link
@@ -925,11 +918,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
               )}
               aria-label={`Open ${currentTrack.album.title}`}
             >
-              <img
-                src={currentTrack.album.coverUrl}
-                alt={currentTrack.album.title}
-                className="aspect-square w-full rounded-lg object-cover shadow-lg transition-transform duration-200 group-hover/np-album:scale-[1.015]"
-              />
+              <TrackArtwork track={currentTrack} className="aspect-square w-full rounded-lg object-cover shadow-lg transition-transform duration-200 group-hover/np-album:scale-[1.015]" />
             </Link>
           ))}
           <div className={cn(

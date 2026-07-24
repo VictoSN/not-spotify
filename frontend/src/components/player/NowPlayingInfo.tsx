@@ -4,6 +4,7 @@ import { useLibraryStore } from '@/stores/libraryStore'
 import { useTranslation } from '@/i18n/useTranslation'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { StarRating } from './StarRating'
+import { TrackArtwork } from './TrackArtwork'
 
 export function NowPlayingInfo() {
   const { t } = useTranslation()
@@ -64,11 +65,7 @@ export function NowPlayingInfo() {
 
   return (
     <div className="flex items-center gap-3 w-56">
-      <img
-        src={currentTrack.album.coverUrl}
-        alt={currentTrack.album.title}
-        className="w-14 h-14 rounded object-cover flex-shrink-0"
-      />
+      <div className="w-14 h-14 rounded overflow-hidden flex-shrink-0"><TrackArtwork track={currentTrack} className="w-full h-full object-cover" /></div>
       <div className="min-w-0 flex-1">
         {isPrivateUpload ? (
           <>

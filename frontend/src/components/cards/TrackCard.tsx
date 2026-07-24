@@ -10,6 +10,7 @@ import { usePlaybackGate } from '@/hooks/usePlaybackGate'
 import { formatMs } from '@/utils/formatTime'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
 import { TrackRowMenu, type TrackRowMenuHandle } from './TrackRowMenu'
+import { TrackArtwork } from '@/components/player/TrackArtwork'
 import { useDragStore } from '@/stores/dragStore'
 import { TRACK_DND_MIME, setTrackDragImage } from '@/utils/trackDnd'
 import { openMenuAtPointer } from '@/utils/contextMenu'
@@ -73,7 +74,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
       }}
     >
       <div className="relative w-10 h-10 flex-shrink-0 rounded overflow-hidden">
-        <img src={track.album.coverUrl} alt={track.album.title} draggable={false} className="w-full h-full object-cover" />
+        <TrackArtwork track={track} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           {isTrackSurfaceActive && isPlaying ? (
             <PauseIcon className="w-5 h-5 text-white" />

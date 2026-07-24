@@ -34,6 +34,7 @@ import { useDominantColor } from '@/hooks/useDominantColor'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useTranslation } from '@/i18n/useTranslation'
 import { cn } from '@/utils/cn'
+import { TrackArtwork } from '@/components/player/TrackArtwork'
 
 const RATES = [1, 1.25, 1.5, 2, 0.75]
 const TIMER_OPTIONS = [15, 30, 45, 60]
@@ -427,7 +428,9 @@ export function BottomPlayerBar() {
             role="button"
             aria-label={t('player.openNowPlaying')}
           >
-          {activeImage ? (
+          {currentTrack && !isVideoMode ? (
+            <TrackArtwork track={currentTrack} alt={activeImageAlt ?? ''} className="w-10 h-10 rounded-md object-cover flex-shrink-0 shadow-lg" />
+          ) : activeImage ? (
             <img
               src={activeImage}
               alt={activeImageAlt ?? ''}

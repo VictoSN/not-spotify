@@ -10,6 +10,7 @@ import { useDominantColor, withAlpha } from '@/hooks/useDominantColor'
 import { TrackCard } from '@/components/cards/TrackCard'
 import { NowPlayingLyrics } from './NowPlayingLyrics'
 import { AnimatedLikeIcon } from '@/components/common/AnimatedLikeIcon'
+import { TrackArtwork } from './TrackArtwork'
 
 export function MobileNowPlayingSheet() {
   const { currentTrack, isMobileNowPlayingOpen, setMobileNowPlayingOpen, queue, queueIndex } = usePlayerStore()
@@ -67,7 +68,7 @@ export function MobileNowPlayingSheet() {
         {/* Album art */}
         <div className="flex justify-center mb-8 mt-4">
           {isPrivateUpload ? (
-            <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl shadow-2xl object-cover" />
+            <TrackArtwork track={currentTrack} className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl shadow-2xl object-cover" />
           ) : (
           <Link to={`/album/${currentTrack.album.id}`} onClick={closeNowPlaying}>
             <img

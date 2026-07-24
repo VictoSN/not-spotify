@@ -3,6 +3,7 @@ import { ArrowDownCircleIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react
 import { useInstallApp } from '@/hooks/useInstallApp'
 import { useTranslation } from '@/i18n/useTranslation'
 import { notify } from '@/utils/toast'
+import { isDesktop } from '@/utils/platform'
 import { cn } from '@/utils/cn'
 
 /**
@@ -14,7 +15,9 @@ export function InstallAppButton({ className }: { className?: string }) {
   const { isStandalone } = useInstallApp()
   const { t } = useTranslation()
 
-  if (isStandalone) return null
+  // Nothing to install when we ARE the installed app: the Tauri desktop shell (and an
+  // installed PWA) is already the app, so an "Install app" entry there is nonsense.
+  if (isStandalone || isDesktop()) return null
 
   return (
     <Link to="/install-app" className={cn('inline-flex items-center gap-2', className)}>
@@ -29,7 +32,7 @@ export function InstallAppMenuItem({ className, label, onSelect }: { className?:
   const { isStandalone, promptInstall } = useInstallApp()
   const { t } = useTranslation()
 
-  if (isStandalone) return null
+  if (isStandalone || isDesktop()) return null
 
   const handleClick = async () => {
     onSelect?.()

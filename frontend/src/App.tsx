@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { RouterProvider } from 'react-router-dom'
 import { router } from '@/router'
 import { useAuthStore } from '@/stores/authStore'
+import { usePlayerStore } from '@/stores/playerStore'
 import { InstallPrompt } from '@/components/common/InstallPrompt'
 import { AppToaster } from '@/components/ui/AppToaster'
 import { ConfirmProvider } from '@/components/common/ConfirmDialog'
@@ -13,11 +14,22 @@ import { Spinner } from '@/components/ui/Spinner'
 export default function App() {
   const hydrateFromCookie = useAuthStore((s) => s.hydrateFromCookie)
   const isInitializing = useAuthStore((s) => s.isInitializing)
+  const refreshRestoredPlayback = usePlayerStore((s) => s.refreshRestoredPlayback)
+  const [isPlaybackRestored, setIsPlaybackRestored] = useState(false)
   useAppZoomShortcuts()
 
   useEffect(() => {
     hydrateFromCookie()
   }, [hydrateFromCookie])
+
+  useEffect(() => {
+    if (isInitializing) return
+    let cancelled = false
+    void refreshRestoredPlayback().finally(() => {
+      if (!cancelled) setIsPlaybackRestored(true)
+    })
+    return () => { cancelled = true }
+  }, [isInitializing, refreshRestoredPlayback])
 
   useEffect(() => {
     startNotificationLoop()
@@ -61,7 +73,7 @@ export default function App() {
 
   // Hold the first paint until the cookie session is resolved, so a logged-in
   // refresh never flashes the logged-out chrome (and protected routes don't bounce).
-  if (isInitializing) {
+  if (isInitializing || !isPlaybackRestored) {
     return (
       <div className="flex h-full items-center justify-center bg-base text-primary">
         <div className="flex flex-col items-center gap-4">

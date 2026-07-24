@@ -4,6 +4,8 @@ import type { Ad } from '@/types/ad'
 import type { MusicVideo } from '@/types/musicVideo'
 import { trackService } from '@/services/trackService'
 import { adService } from '@/services/adService'
+import { uploadService } from '@/services/uploadService'
+import { uploadToTrack } from '@/types/upload'
 import { useAuthStore } from './authStore'
 import { useLibraryStore } from './libraryStore'
 import { recordPlay as recordContextPlay } from '@/utils/playHistory'
@@ -44,23 +46,37 @@ function recordPlay(trackId: string, contextOverride?: PlayContext | null) {
   trackService.recordPlay(trackId, context).catch(() => { })
 }
 
+type PersistedTrackRef = {
+  id: string
+  isPrivateUpload?: boolean
+}
+
 type PersistedPlaybackState = {
-  version: 1
+  version: 2
   savedAt: number
-  currentTrack: Track
+  currentTrack: PersistedTrackRef
   currentTime: number
   duration: number
   wasPlaying: boolean
-  queue: Track[]
+  queue: PersistedTrackRef[]
   queueIndex: number
   currentContextType: PlayContextType | null
   currentContextId: string | null
   recommendedIds: string[]
-  history: Track[]
+  history: PersistedTrackRef[]
   isNowPlayingOpen: boolean
   isNowPlayingCollapsed: boolean
   isNowPlayingExpanded: boolean
 }
+
+type LegacyPersistedPlaybackState = Omit<PersistedPlaybackState, 'version' | 'currentTrack' | 'queue' | 'history'> & {
+  version: 1
+  currentTrack: Track
+  queue: Track[]
+  history: Track[]
+}
+
+type StoredPlaybackState = PersistedPlaybackState | LegacyPersistedPlaybackState
 
 const isBrowser = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 
@@ -70,15 +86,59 @@ function isPersistableTrack(value: unknown): value is Track {
   return typeof maybe.id === 'string' && typeof maybe.title === 'string' && typeof maybe.audioUrl === 'string'
 }
 
+function isPersistedTrackRef(value: unknown): value is PersistedTrackRef {
+  if (!value || typeof value !== 'object') return false
+  const maybe = value as Partial<PersistedTrackRef>
+  return typeof maybe.id === 'string'
+}
+
+function persistedTrackRef(track: Track): PersistedTrackRef {
+  return {
+    id: track.id,
+    ...(track.isPrivateUpload ? { isPrivateUpload: true } : {}),
+  }
+}
+
+// A v2 snapshot deliberately does not retain metadata or signed media URLs. This
+// placeholder exists only until App refreshes it from the API before mounting the
+// player UI, so it can never be rendered or handed to the audio engine.
+function unresolvedTrack(ref: PersistedTrackRef): Track {
+  return {
+    id: ref.id,
+    title: '',
+    durationMs: 0,
+    audioUrl: '',
+    previewUrl: null,
+    trackNumber: 1,
+    discNumber: 1,
+    explicit: false,
+    playCount: 0,
+    ratingCount: 0,
+    averageRating: 0,
+    artist: { id: ref.id, name: '', imageUrl: null },
+    album: { id: ref.id, title: '', coverUrl: '', releaseDate: '', type: 'album' },
+    genres: [],
+    createdAt: '',
+    ...(ref.isPrivateUpload ? { isPrivateUpload: true } : {}),
+  }
+}
+
 function readPersistedPlaybackState(): Partial<PlayerState> {
   if (!isBrowser()) return {}
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(PLAYBACK_STATE_KEY) ?? 'null') as Partial<PersistedPlaybackState> | null
-    if (!parsed || parsed.version !== 1 || !isPersistableTrack(parsed.currentTrack)) return {}
+    const parsed = JSON.parse(window.localStorage.getItem(PLAYBACK_STATE_KEY) ?? 'null') as Partial<StoredPlaybackState> | null
+    if (!parsed || (parsed.version !== 1 && parsed.version !== 2) || !isPersistedTrackRef(parsed.currentTrack)) return {}
 
-    const queue = Array.isArray(parsed.queue) ? parsed.queue.filter(isPersistableTrack) : []
+    // Version 1 contained full Track objects. Treat them as refs while reading so
+    // their expired URLs never reach a rendered player; the next write upgrades it.
+    const queueRefs = Array.isArray(parsed.queue) ? parsed.queue.filter(isPersistedTrackRef) : []
+    const queue = parsed.version === 1
+      ? queueRefs.filter(isPersistableTrack)
+      : queueRefs.map(unresolvedTrack)
     const queueIndex = typeof parsed.queueIndex === 'number' ? parsed.queueIndex : -1
-    const currentTrack = parsed.currentTrack
+    const currentTrack = parsed.version === 1
+      ? parsed.currentTrack as Track
+      : unresolvedTrack(parsed.currentTrack)
     const queueHasCurrent = queue.some((track) => track.id === currentTrack.id)
     const restoredQueue = queueHasCurrent ? queue : [currentTrack, ...queue]
     const restoredIndex = queueHasCurrent
@@ -94,7 +154,9 @@ function readPersistedPlaybackState(): Partial<PlayerState> {
     return {
       playbackMode: 'audio',
       currentTrack,
-      isPlaying: parsed.wasPlaying === true,
+      // Browsers generally block autoplay after a reload. Restore the place, but
+      // leave the refreshed song paused for an explicit Play press.
+      isPlaying: false,
       currentTime,
       duration,
       queue: restoredQueue,
@@ -102,7 +164,11 @@ function readPersistedPlaybackState(): Partial<PlayerState> {
       currentContextType: parsed.currentContextType ?? null,
       currentContextId: parsed.currentContextId ?? null,
       recommendedIds: new Set(Array.isArray(parsed.recommendedIds) ? parsed.recommendedIds : []),
-      history: Array.isArray(parsed.history) ? parsed.history.filter(isPersistableTrack).slice(-50) : [],
+      history: Array.isArray(parsed.history)
+        ? (parsed.version === 1
+          ? parsed.history.filter(isPersistableTrack)
+          : parsed.history.filter(isPersistedTrackRef).map(unresolvedTrack)).slice(-50)
+        : [],
       isNowPlayingOpen: parsed.isNowPlayingOpen !== false,
       isNowPlayingCollapsed: parsed.isNowPlayingCollapsed === true,
       isNowPlayingExpanded: parsed.isNowPlayingExpanded === true,
@@ -121,18 +187,18 @@ function persistPlaybackState(state: PlayerState) {
     }
 
     const payload: PersistedPlaybackState = {
-      version: 1,
+      version: 2,
       savedAt: Date.now(),
-      currentTrack: state.currentTrack,
+      currentTrack: persistedTrackRef(state.currentTrack),
       currentTime: state.currentTime,
       duration: state.duration,
       wasPlaying: state.isPlaying,
-      queue: state.queue,
+      queue: state.queue.map(persistedTrackRef),
       queueIndex: state.queueIndex,
       currentContextType: state.currentContextType,
       currentContextId: state.currentContextId,
       recommendedIds: Array.from(state.recommendedIds),
-      history: state.history,
+      history: state.history.map(persistedTrackRef),
       isNowPlayingOpen: state.isNowPlayingOpen,
       isNowPlayingCollapsed: state.isNowPlayingCollapsed,
       isNowPlayingExpanded: state.isNowPlayingExpanded,
@@ -343,6 +409,8 @@ interface PlayerState {
   currentAd: Ad | null
 
   play: (track: Track, queue?: Track[]) => void
+  /** Replace restored id-only snapshots with current records and fresh signed URLs. */
+  refreshRestoredPlayback: () => Promise<void>
   playVideo: (video: MusicVideo, queue?: MusicVideo[]) => void
   /** Start a queue from a known context (album/playlist/artist/liked) so the
    *  matching play buttons reflect the playing state. */
@@ -421,6 +489,83 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     pendingAfterAd = null
     set({ currentAd: null })
     if (p) commitAdvance(p.track, p.index)
+  },
+
+  refreshRestoredPlayback: async () => {
+    const snapshot = get()
+    if (snapshot.playbackMode !== 'audio' || !snapshot.currentTrack) return
+
+    const references = [snapshot.currentTrack, ...snapshot.queue, ...snapshot.history]
+    const uniqueReferences = Array.from(
+      new Map(references.map((track) => [track.id, track])).values(),
+    )
+    const refreshed = new Map<string, Track>()
+
+    // Public records and personal uploads are intentionally separate API resources.
+    // Try the catalogue first for legacy snapshots that predate isPrivateUpload, then
+    // fill any misses from the authenticated uploads endpoint.
+    const publicResults = await Promise.all(uniqueReferences.map(async (track) => {
+      if (track.isPrivateUpload) return null
+      try {
+        return await trackService.getById(track.id)
+      } catch {
+        return null
+      }
+    }))
+    for (const track of publicResults) {
+      if (track) refreshed.set(track.id, track)
+    }
+
+    const unresolved = uniqueReferences.filter((track) => !refreshed.has(track.id))
+    if (unresolved.length > 0) {
+      try {
+        const uploads = await uploadService.list()
+        for (const upload of uploads) {
+          if (unresolved.some((track) => track.id === upload.id)) {
+            refreshed.set(upload.id, uploadToTrack(upload))
+          }
+        }
+      } catch {
+        // A deleted track or unavailable uploads list simply falls out of the queue.
+      }
+    }
+
+    const currentTrack = refreshed.get(snapshot.currentTrack.id)
+    const queue = snapshot.queue
+      .map((track) => refreshed.get(track.id))
+      .filter((track): track is Track => track !== undefined)
+    const history = snapshot.history
+      .map((track) => refreshed.get(track.id))
+      .filter((track): track is Track => track !== undefined)
+
+    // Do not overwrite a song the user picked while the refresh requests were in flight.
+    if (get().currentTrack?.id !== snapshot.currentTrack.id) return
+
+    if (!currentTrack) {
+      set({
+        currentTrack: null,
+        queue: [],
+        queueIndex: -1,
+        history,
+        currentTime: 0,
+        duration: 0,
+        isPlaying: false,
+      })
+      return
+    }
+
+    const restoredQueue = queue.some((track) => track.id === currentTrack.id)
+      ? queue
+      : [currentTrack, ...queue]
+    const queueIndex = restoredQueue.findIndex((track) => track.id === currentTrack.id)
+    set({
+      currentTrack,
+      queue: restoredQueue,
+      queueIndex,
+      history,
+      duration: currentTrack.durationMs > 0 ? currentTrack.durationMs / 1000 : snapshot.duration,
+      isPlaying: false,
+    })
   },
 
   play: (track, queue) => {

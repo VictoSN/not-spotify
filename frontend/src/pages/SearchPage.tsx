@@ -1387,7 +1387,7 @@ function getPersonGridPresentation(row: SearchRow, t: (key: string, vars?: Recor
       subtitle: t('search.type.profile'),
       imageUrl: row.item.avatarUrl,
       fallback: <UserCircleIcon className="h-full w-full text-secondary" />,
-      path: `/users/${row.item.id}`,
+      path: `/user/${row.item.id}`,
     }
   }
 
@@ -1575,7 +1575,7 @@ function getRowPresentation(row: SearchRow, t: (key: string, vars?: Record<strin
     imageUrl: row.item.avatarUrl,
     fallback: <UserCircleIcon className="h-6 w-6 text-secondary" />,
     rounded: 'rounded-full',
-    path: `/users/${row.item.id}`,
+    path: `/user/${row.item.id}`,
     badge: t('search.type.profile'),
   }
 }

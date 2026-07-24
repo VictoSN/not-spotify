@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -109,7 +110,14 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     if (!cs.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
         cs += ";Maximum Pool Size=5";
     opt.UseNpgsql(cs);
+    // Trace EF queries as X-Ray subsegments so PostgreSQL appears on the service map.
+    opt.AddInterceptors(new XRayDbCommandInterceptor());
 });
+
+// Trace every outbound HttpClient call (Stripe, Ticketmaster, Google OAuth, reCAPTCHA,
+// Resend, lyrics providers, …) so each external host appears on the X-Ray service map.
+// One filter covers all IHttpClientFactory clients; see XRayHttpTracingHandler.
+builder.Services.AddSingleton<IHttpMessageHandlerBuilderFilter, XRayHttpMessageHandlerBuilderFilter>();
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(opt =>

@@ -209,8 +209,9 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
   }
   const scrollToCredits = () => creditsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
-  const artistId = currentTrack?.artist.id
-  const albumId = currentTrack?.album.id
+  const isPrivateUpload = !!currentTrack?.isPrivateUpload
+  const artistId = isPrivateUpload ? undefined : currentTrack?.artist.id
+  const albumId = isPrivateUpload ? undefined : currentTrack?.album.id
 
   useEffect(() => {
     setArtistBioOpen(false)
@@ -425,6 +426,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
   }
 
   const isLiked = likedTrackIds.has(currentTrack.id)
+  const privateUpload = !!currentTrack.isPrivateUpload
   const toggleLike = () => (isLiked ? unlikeTrack(currentTrack.id) : likeTrack(currentTrack))
   const shareCurrentTrack = async () => {
     const result = await shareLink(`/track/${currentTrack.id}`, {
@@ -498,12 +500,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
             className="sticky top-0 z-30 flex items-center justify-between gap-5 px-5 py-4 transition-colors duration-200"
             style={{ backgroundColor: `color-mix(in srgb, var(--c-page) ${Math.min(82, heroProgress * 95)}%, transparent)` }}
           >
-            <Link
-              to={`/album/${currentTrack.album.id}`}
-              className="min-w-0 truncate text-base font-bold text-primary hover:underline"
-            >
-              {currentTrack.album.title}
-            </Link>
+            {privateUpload ? <span className="min-w-0 truncate text-base font-bold text-primary">{currentTrack.album.title}</span> : <Link to={`/album/${currentTrack.album.id}`} className="min-w-0 truncate text-base font-bold text-primary hover:underline">{currentTrack.album.title}</Link>}
 
             {/* Compact Spotify-style control cluster: artwork / canvas / artist
                 toggles · divider · shared three-dot menu · exit fullscreen. */}
@@ -721,13 +718,13 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                         </Link>
                       </div>
                       {upNext.slice(0, 3).map((track) => (
-                        <Link key={track.id} to={`/track/${track.id}`} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-elevated/50">
-                          <img src={track.album.coverUrl} alt="" className="h-12 w-12 rounded object-cover" />
+                        <div key={track.id} className="flex items-center gap-3 rounded-md p-2 transition-colors hover:bg-elevated/50">
+                          {track.isPrivateUpload ? <div className="h-12 w-12 rounded overflow-hidden"><img src={track.album.coverUrl} alt="" className="h-full w-full object-cover" /></div> : <Link to={`/track/${track.id}`} className="h-12 w-12 shrink-0 rounded overflow-hidden"><img src={track.album.coverUrl} alt="" className="h-full w-full object-cover" /></Link>}
                           <div className="min-w-0">
                             <p className="truncate text-sm font-bold text-primary">{track.title}</p>
                             <p className="mt-0.5 truncate text-sm text-secondary">{track.artist.name}</p>
                           </div>
-                        </Link>
+                        </div>
                       ))}
                     </section>
                   )}
@@ -744,9 +741,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                     <div className="space-y-5">
                       <div className="flex items-center justify-between gap-4">
                         <div className="min-w-0">
-                          <Link to={`/artist/${currentTrack.artist.id}`} className="block truncate text-base font-bold text-primary hover:underline">
-                            {currentTrack.artist.name}
-                          </Link>
+                          {privateUpload ? <p className="block truncate text-base font-bold text-primary">{currentTrack.artist.name}</p> : <Link to={`/artist/${currentTrack.artist.id}`} className="block truncate text-base font-bold text-primary hover:underline">{currentTrack.artist.name}</Link>}
                           <p className="mt-1 text-sm font-semibold text-secondary">{t('np.mainArtist')}</p>
                         </div>
                         {artist && (
@@ -841,12 +836,7 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
             <CollapseIcon className="h-6 w-6" />
             <span className="spotify-tooltip spotify-tooltip-bottom spotify-tooltip-left">{t('np.collapse')}</span>
           </button>
-          <Link
-            to={`/album/${currentTrack.album.id}`}
-            className="min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 hover:underline group-hover/now-playing-panel:pl-9"
-          >
-            {currentTrack.album.title}
-          </Link>
+          {privateUpload ? <span className="min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 group-hover/now-playing-panel:pl-9">{currentTrack.album.title}</span> : <Link to={`/album/${currentTrack.album.id}`} className="min-w-0 truncate pl-0 text-base font-bold text-primary transition-all duration-200 hover:underline group-hover/now-playing-panel:pl-9">{currentTrack.album.title}</Link>}
         </div>
         <div className="invisible flex shrink-0 items-center gap-2 opacity-0 transition-opacity duration-200 group-hover/now-playing-panel:visible group-hover/now-playing-panel:opacity-100">
           <TrackRowMenu
@@ -917,7 +907,16 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
           'group/np-album px-4 pb-4',
           isNowPlayingExpanded && 'flex min-h-[calc(100vh-13rem)] flex-col items-center justify-center px-8 pb-12 pt-16',
         )}>
-          {!video && (
+          {!video && (privateUpload ? (
+            <div
+              className={cn(
+                'block overflow-hidden rounded-lg',
+                isNowPlayingExpanded ? 'w-[min(36rem,58vh,62vw)] max-w-full' : 'w-full',
+              )}
+            >
+              <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="aspect-square w-full rounded-lg object-cover shadow-lg" />
+            </div>
+          ) : (
             <Link
               to={`/album/${currentTrack.album.id}`}
               className={cn(
@@ -932,28 +931,14 @@ export function NowPlayingPanel({ offlineOnly = false }: NowPlayingPanelProps = 
                 className="aspect-square w-full rounded-lg object-cover shadow-lg transition-transform duration-200 group-hover/np-album:scale-[1.015]"
               />
             </Link>
-          )}
+          ))}
           <div className={cn(
             'flex items-start justify-between gap-2',
             video ? 'mt-3' : 'mt-4',
             isNowPlayingExpanded && 'w-[min(36rem,58vh,62vw)] max-w-full',
           )}>
             <div className="min-w-0">
-              <Link
-                to={`/album/${currentTrack.album.id}`}
-                className={cn(
-                  'block truncate text-xl font-bold text-primary hover:underline',
-                  video && 'hover:text-primary',
-                )}
-              >
-                {currentTrack.title}
-              </Link>
-              <Link
-                to={`/artist/${currentTrack.artist.id}`}
-                className="block text-sm text-secondary truncate hover:text-primary hover:underline"
-              >
-                {currentTrack.artist.name}
-              </Link>
+              {privateUpload ? <><p className="block truncate text-xl font-bold text-primary">{currentTrack.title}</p><p className="block text-sm text-secondary truncate">{currentTrack.artist.name}</p></> : <><Link to={`/album/${currentTrack.album.id}`} className={cn('block truncate text-xl font-bold text-primary hover:underline', video && 'hover:text-primary')}>{currentTrack.title}</Link><Link to={`/artist/${currentTrack.artist.id}`} className="block text-sm text-secondary truncate hover:text-primary hover:underline">{currentTrack.artist.name}</Link></>}
             </div>
             <div className={cn('flex shrink-0 items-center', showLargeInlineActions ? '-space-x-0.5' : '-space-x-1')}>
               <button

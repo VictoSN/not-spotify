@@ -53,6 +53,7 @@ export function NowPlayingInfo() {
   // Podcast episodes adapt to the Track shape but their "artist"/"album" ids are
   // the show id — route both to the show page instead of a non-existent artist.
   const isEpisode = !!currentTrack.podcastId
+  const isPrivateUpload = !!currentTrack.isPrivateUpload
   const titleTo = isEpisode ? `/podcasts/${currentTrack.podcastId}` : `/album/${currentTrack.album.id}`
   const creatorTo = isEpisode ? `/podcasts/${currentTrack.podcastId}` : `/artist/${currentTrack.artist.id}`
 
@@ -69,18 +70,17 @@ export function NowPlayingInfo() {
         className="w-14 h-14 rounded object-cover flex-shrink-0"
       />
       <div className="min-w-0 flex-1">
-        <Link
-          to={titleTo}
-          className="text-sm font-medium text-primary hover:underline truncate block leading-tight"
-        >
-          {currentTrack.title}
-        </Link>
-        <Link
-          to={creatorTo}
-          className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight"
-        >
-          {currentTrack.artist.name}
-        </Link>
+        {isPrivateUpload ? (
+          <>
+            <p className="text-sm font-medium text-primary truncate leading-tight">{currentTrack.title}</p>
+            <p className="text-xs text-secondary truncate leading-tight">{currentTrack.artist.name}</p>
+          </>
+        ) : (
+          <>
+            <Link to={titleTo} className="text-sm font-medium text-primary hover:underline truncate block leading-tight">{currentTrack.title}</Link>
+            <Link to={creatorTo} className="text-xs text-secondary hover:text-primary hover:underline truncate block leading-tight">{currentTrack.artist.name}</Link>
+          </>
+        )}
         <div className="mt-1 hidden md:block">
           <StarRating track={currentTrack} />
         </div>

@@ -24,6 +24,9 @@ export interface Track {
    *  Lets the player/menus route the "creator" link to the show page instead of a
    *  non-existent /artist/{id} (podcast authors aren't artist entities). */
   podcastId?: string
+  /** A personal locker item, not a public catalogue track. Player surfaces must not
+   * link its synthetic artist and album ids to public routes. */
+  isPrivateUpload?: boolean
   status?: 'approved' | 'pending' | 'rejected'
   reviewNote?: string | null
   lyrics?: string | null

@@ -29,6 +29,7 @@ export function TrackCard({ track, queue }: TrackCardProps) {
   const isCurrent = currentTrack?.id === track.id
   const isTrackSurfaceActive = isCurrent && currentContextType == null
   const isLiked = likedTrackIds.has(track.id)
+  const isPrivateUpload = !!track.isPrivateUpload
   const menuTriggerRef = useRef<TrackRowMenuHandle>(null)
 
   const handlePlay = (e: React.MouseEvent) => {
@@ -83,14 +84,10 @@ export function TrackCard({ track, queue }: TrackCardProps) {
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-sm font-normal truncate ${isTrackSurfaceActive ? 'text-accent' : 'text-primary'}`}>
-          <Link to={`/track/${track.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">
-            {track.title}
-          </Link>
+          {isPrivateUpload ? track.title : <Link to={`/track/${track.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">{track.title}</Link>}
         </p>
         <p className="text-xs text-secondary truncate">
-          <Link to={`/artist/${track.artist.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">
-            {track.artist.name}
-          </Link>
+          {isPrivateUpload ? track.artist.name : <Link to={`/artist/${track.artist.id}`} draggable={false} onClick={(e) => e.stopPropagation()} className="hover:underline">{track.artist.name}</Link>}
         </p>
       </div>
       <div

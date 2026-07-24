@@ -18,6 +18,7 @@ export function MobileNowPlayingSheet() {
 
   const heroColor = useDominantColor(currentTrack?.album.coverUrl)
   const isLiked = currentTrack ? likedTrackIds.has(currentTrack.id) : false
+  const isPrivateUpload = !!currentTrack?.isPrivateUpload
 
   const toggleLike = () => {
     if (!currentTrack || !isAuthenticated) return
@@ -65,6 +66,9 @@ export function MobileNowPlayingSheet() {
       <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col overflow-y-auto px-6 pb-6">
         {/* Album art */}
         <div className="flex justify-center mb-8 mt-4">
+          {isPrivateUpload ? (
+            <img src={currentTrack.album.coverUrl} alt={currentTrack.album.title} className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl shadow-2xl object-cover" />
+          ) : (
           <Link to={`/album/${currentTrack.album.id}`} onClick={closeNowPlaying}>
             <img
               src={currentTrack.album.coverUrl}
@@ -72,25 +76,17 @@ export function MobileNowPlayingSheet() {
               className="w-64 h-64 sm:w-72 sm:h-72 rounded-xl shadow-2xl object-cover"
             />
           </Link>
+          )}
         </div>
 
         {/* Track info + like */}
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="min-w-0 flex-1">
-            <Link
-              to={`/album/${currentTrack.album.id}`}
-              onClick={closeNowPlaying}
-              className="block text-2xl font-black text-primary truncate hover:underline"
-            >
-              {currentTrack.title}
-            </Link>
-            <Link
-              to={`/artist/${currentTrack.artist.id}`}
-              onClick={closeNowPlaying}
-              className="block text-base text-secondary truncate hover:text-primary hover:underline mt-0.5"
-            >
-              {currentTrack.artist.name}
-            </Link>
+            {isPrivateUpload ? (
+              <><p className="block text-2xl font-black text-primary truncate">{currentTrack.title}</p><p className="block text-base text-secondary truncate mt-0.5">{currentTrack.artist.name}</p></>
+            ) : (
+              <><Link to={`/album/${currentTrack.album.id}`} onClick={closeNowPlaying} className="block text-2xl font-black text-primary truncate hover:underline">{currentTrack.title}</Link><Link to={`/artist/${currentTrack.artist.id}`} onClick={closeNowPlaying} className="block text-base text-secondary truncate hover:text-primary hover:underline mt-0.5">{currentTrack.artist.name}</Link></>
+            )}
           </div>
           <button
             onClick={toggleLike}

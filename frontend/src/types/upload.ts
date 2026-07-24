@@ -5,6 +5,7 @@ export interface UserUpload {
   title: string
   artist: string | null
   audioUrl: string
+  coverUrl: string | null
   durationMs: number
   createdAt: string
 }
@@ -24,7 +25,7 @@ export function uploadToTrack(u: UserUpload, queueAlbumTitle = 'Your uploads'): 
     ratingCount: 0,
     averageRating: 0,
     artist: { id: u.id, name: u.artist ?? 'You', imageUrl: null },
-    album: { id: u.id, title: queueAlbumTitle, coverUrl: '', releaseDate: u.createdAt.slice(0, 10), type: 'album' },
+    album: { id: u.id, title: queueAlbumTitle, coverUrl: u.coverUrl ?? '', releaseDate: u.createdAt.slice(0, 10), type: 'album' },
     genres: [],
     createdAt: u.createdAt,
   }

@@ -813,6 +813,7 @@ using (var scope = app.Services.CreateScope())
         );
         CREATE INDEX IF NOT EXISTS ""IX_UserUploads_UserId_CreatedAt""
             ON ""UserUploads""(""UserId"", ""CreatedAt"");
+        ALTER TABLE ""UserUploads"" ADD COLUMN IF NOT EXISTS ""CoverKey"" text NULL;
     ");
 
     // Music videos (same idempotent guard pattern). One-time-seeds a few videos

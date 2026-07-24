@@ -22,6 +22,10 @@ public class MeUploadsController : ControllerBase
     {
         ".mp3", ".m4a", ".aac", ".wav", ".ogg", ".oga", ".opus", ".flac", ".webm",
     };
+    private static readonly HashSet<string> AllowedImageExts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".jpg", ".jpeg", ".png", ".webp",
+    };
 
     /// <summary>
     /// Ceiling for a presigned (direct-to-S3) upload. Keep in step with the uploads
@@ -174,15 +178,49 @@ public class MeUploadsController : ControllerBase
         {
             try { await _storage.DeleteAsync(upload.AudioKey, ct); } catch { /* object may already be gone */ }
         }
+        if (!string.IsNullOrEmpty(upload.CoverKey))
+        {
+            try { await _storage.DeleteAsync(upload.CoverKey, ct); } catch { /* object may already be gone */ }
+        }
         _db.UserUploads.Remove(upload);
         await _db.SaveChangesAsync(ct);
         return NoContent();
     }
 
+    /// <summary>Sets optional artwork for one of the caller's private uploads.</summary>
+    [HttpPost("{id:guid}/cover")]
+    [RequestSizeLimit(5_000_000)]
+    public async Task<ActionResult<UserUploadDto>> UploadCover(Guid id, [FromForm] UploadCoverForm form, CancellationToken ct = default)
+    {
+        if (Me() is not Guid uid) return Unauthorized();
+        var upload = await _db.UserUploads.FirstOrDefaultAsync(u => u.Id == id && u.UserId == uid, ct);
+        if (upload is null) return NotFound();
+
+        var file = form.File;
+        if (file is null || file.Length == 0) return BadRequest(new { message = "No cover image provided." });
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedImageExts.Contains(ext))
+            return BadRequest(new { message = "Unsupported cover type. Use JPG, PNG, or WebP." });
+
+        var oldKey = upload.CoverKey;
+        var key = $"covers/uploads/{uid}/{upload.Id}/{Guid.NewGuid()}{ext}";
+        await using var stream = file.OpenReadStream();
+        await _storage.UploadAsync(key, stream, file.ContentType ?? "application/octet-stream", ct);
+
+        upload.CoverKey = key;
+        await _db.SaveChangesAsync(ct);
+        if (!string.IsNullOrEmpty(oldKey))
+        {
+            try { await _storage.DeleteAsync(oldKey, ct); } catch { /* best effort */ }
+        }
+        return Ok(await ToDtoAsync(upload, ct));
+    }
+
     private async Task<UserUploadDto> ToDtoAsync(UserUpload u, CancellationToken ct)
     {
         var audioUrl = u.AudioKey is not null ? await _storage.GetAudioUrlAsync(u.AudioKey, ct) : u.AudioUrl;
-        return new UserUploadDto(u.Id, u.Title, u.Artist, audioUrl, u.DurationMs, u.CreatedAt);
+        var coverUrl = u.CoverKey is not null ? _storage.GetPublicUrl(u.CoverKey) : null;
+        return new UserUploadDto(u.Id, u.Title, u.Artist, audioUrl, coverUrl, u.DurationMs, u.CreatedAt);
     }
 }
 
@@ -196,4 +234,9 @@ public class UploadAudioForm
     public string? Title { get; set; }
     public string? Artist { get; set; }
     public long? DurationMs { get; set; }
+}
+
+public class UploadCoverForm
+{
+    public IFormFile? File { get; set; }
 }

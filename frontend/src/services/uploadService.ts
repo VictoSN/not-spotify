@@ -190,4 +190,13 @@ export const uploadService = {
   async remove(id: string): Promise<void> {
     await api.delete(`/me/uploads/${id}`)
   },
+
+  async uploadCover(id: string, file: File): Promise<UserUpload> {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await api.post<UserUpload>(`/me/uploads/${id}/cover`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+    return res.data
+  },
 }

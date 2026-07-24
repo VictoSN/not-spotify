@@ -20,6 +20,8 @@ public class UserUpload
     public string AudioUrl { get; set; } = string.Empty;
     public string? AudioKey { get; set; }
 
+    public string? CoverKey { get; set; }
+
     public long DurationMs { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

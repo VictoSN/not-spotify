@@ -347,6 +347,7 @@ public record UserUploadDto(
     string Title,
     string? Artist,
     string AudioUrl,
+    string? CoverUrl,
     long DurationMs,
     DateTime CreatedAt
 );

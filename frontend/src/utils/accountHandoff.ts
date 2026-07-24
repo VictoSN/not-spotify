@@ -4,15 +4,17 @@
  * The Tauri desktop app and the system browser keep completely separate sessions.
  * When the desktop app (signed in as B) opens a page like /account in the browser,
  * the browser may be signed in as a different account (A). We never move JWTs, refresh
- * tokens, passwords or cookies through the URL — the app passes only a NON-SECRET hint
- * (the expected user id and a masked email) plus the intended destination, and the web
- * app resolves the mismatch with an explicit, user-driven interstitial (see
- * AccountHandoffPage).
+ * tokens, passwords or cookies through the URL. The request query contains only a
+ * NON-SECRET hint (the expected user id and a masked email) plus the intended
+ * destination. For convenience, the full login email may be carried in the URL
+ * fragment: fragments stay in the browser and are not sent in HTTP requests or CDN
+ * logs. The web app removes it from the address bar as soon as it prefills LoginPage.
  *
  * Everything here is pure and framework-free so it can be unit-tested directly.
  */
 
 export const HANDOFF_PATH = '/handoff'
+const HANDOFF_EMAIL_FRAGMENT_PARAM = 'email'
 
 /** Query-parameter names carried on the handoff URL. All values are non-secret. */
 export const HANDOFF_PARAMS = {
@@ -41,11 +43,40 @@ const ALLOWED_RETURN_PREFIXES = [
 
 export const DEFAULT_RETURN_PATH = '/'
 
+function validPrefillEmail(value: string | null | undefined): string | null {
+  const raw = value ?? ''
+  const hasControlCharacter = [...raw].some((character) => {
+    const code = character.charCodeAt(0)
+    return code < 32 || code === 127
+  })
+  const email = raw.trim()
+  if (
+    !email ||
+    email.length > 254 ||
+    hasControlCharacter
+  ) return null
+  const at = email.indexOf('@')
+  if (at <= 0 || at !== email.lastIndexOf('@') || at === email.length - 1) return null
+  return email
+}
+
+/** Build a client-only fragment containing the account email for LoginPage. */
+export function buildHandoffEmailFragment(email: string | null | undefined): string {
+  const valid = validPrefillEmail(email)
+  if (!valid) return ''
+  return `#${new URLSearchParams({ [HANDOFF_EMAIL_FRAGMENT_PARAM]: valid }).toString()}`
+}
+
+/** Read and validate the email prefill carried in a handoff URL fragment. */
+export function parseHandoffEmailFragment(hash: string | null | undefined): string | null {
+  if (!hash) return null
+  const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : hash)
+  return validPrefillEmail(params.get(HANDOFF_EMAIL_FRAGMENT_PARAM))
+}
+
 /**
  * Mask an email for display: keep the first character and the domain, hide the rest of
- * the local part. Returns a neutral label when the input is missing or malformed, so we
- * never accidentally render a raw address. The masking happens on the desktop side too,
- * so a full address is never placed in a URL in the first place.
+ * the local part. Returns a neutral label when the input is missing or malformed.
  */
 export function maskEmail(email: string | null | undefined): string {
   if (!email || typeof email !== 'string') return 'another account'
@@ -90,9 +121,9 @@ export function safeReturnPath(path: string | null | undefined): string {
 }
 
 /**
- * Build the handoff path the desktop app opens in the browser. Carries the expected
- * account id and a masked email hint only — no secrets. `dest` is where the browser
- * should land once the account is confirmed.
+ * Build the handoff path the desktop app opens in the browser. The request query carries
+ * only the expected account id and masked hint. The full email is placed after `#`, where
+ * it remains client-side, so LoginPage can prefill it without exposing it to server logs.
  */
 export function buildHandoffPath(dest: string, user: { id: string; email: string } | null | undefined): string {
   const params = new URLSearchParams()
@@ -101,7 +132,7 @@ export function buildHandoffPath(dest: string, user: { id: string; email: string
     params.set(HANDOFF_PARAMS.hint, maskEmail(user.email))
   }
   params.set(HANDOFF_PARAMS.next, dest)
-  return `${HANDOFF_PATH}?${params.toString()}`
+  return `${HANDOFF_PATH}?${params.toString()}${buildHandoffEmailFragment(user?.email)}`
 }
 
 export interface HandoffHint {

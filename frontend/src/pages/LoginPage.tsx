@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { CaptchaWidget, type CaptchaWidgetHandle } from '@/components/auth/CaptchaWidget'
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons'
@@ -11,7 +11,7 @@ import { useTranslation } from '@/i18n/useTranslation'
 import { authService, type CaptchaConfig } from '@/services/authService'
 import { useAuthStore } from '@/stores/authStore'
 import { isDesktop } from '@/utils/platform'
-import { isSafeReturnPath } from '@/utils/accountHandoff'
+import { isSafeReturnPath, parseHandoffEmailFragment } from '@/utils/accountHandoff'
 
 const externalAuthUrl = (provider: 'google' | 'facebook') => {
   const params = new URLSearchParams({
@@ -35,9 +35,19 @@ export function LoginPage() {
   const { t } = useTranslation()
   useDocumentTitle(t('auth.login'))
   const navigate = useNavigate()
+  const location = useLocation()
   const [params] = useSearchParams()
   const { login, hydrateFromCookie, isLoading, error, isAuthenticated, user, clearError } = useAuthStore()
-  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>()
+  const prefilledEmail = useMemo(
+    () => parseHandoffEmailFragment(location.hash),
+    [location.hash],
+  )
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+    defaultValues: {
+      email: prefilledEmail ?? '',
+      password: '',
+    },
+  })
   const [socialNotice, setSocialNotice] = useState<string | null>(null)
   const [showPw, setShowPw] = useState(false)
   const [googleEnabled, setGoogleEnabled] = useState(false)
@@ -45,6 +55,16 @@ export function LoginPage() {
   const [captcha, setCaptcha] = useState<CaptchaConfig | null>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const captchaRef = useRef<CaptchaWidgetHandle>(null)
+
+  useEffect(() => {
+    if (!prefilledEmail || !location.hash) return
+    // The fragment was never sent to the server; remove it from browser history too
+    // once React Hook Form has copied the email into its own form state.
+    navigate(
+      { pathname: location.pathname, search: location.search, hash: '' },
+      { replace: true },
+    )
+  }, [prefilledEmail, location.hash, location.pathname, location.search, navigate])
 
   useEffect(() => {
     if (!isAuthenticated) return

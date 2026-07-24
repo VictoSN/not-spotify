@@ -50,7 +50,7 @@ function renderAt(url: string) {
 
 function LocationProbe() {
   const loc = useLocation()
-  return <div data-testid="location">{loc.pathname + loc.search}</div>
+  return <div data-testid="location">{loc.pathname + loc.search + loc.hash}</div>
 }
 
 describe('AccountHandoffPage', () => {
@@ -108,11 +108,14 @@ describe('AccountHandoffPage', () => {
 
   it('"Switch account" logs out only the browser and routes to login', async () => {
     setAuth({ isAuthenticated: true, user: userA })
-    renderAt('/handoff?acct=account-b&hint=x&next=%2Faccount')
+    renderAt('/handoff?acct=account-b&hint=x&next=%2Faccount#email=bob%40example.com')
     fireEvent.click(screen.getByRole('button', { name: 'Switch account' }))
     await waitFor(() => {
       expect(logoutMock).toHaveBeenCalledWith({ reload: false })
-      expect(screen.getByTestId('location').textContent).toContain('/login')
+      const location = screen.getByTestId('location').textContent ?? ''
+      expect(location).toContain('/login')
+      expect(location).toContain('#email=bob%40example.com')
+      expect(location.split('#')[0]).not.toContain('bob%40example.com')
     })
   })
 

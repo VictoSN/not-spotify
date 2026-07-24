@@ -3,6 +3,7 @@ import {
   buildHandoffPath,
   isSafeReturnPath,
   maskEmail,
+  parseHandoffEmailFragment,
   parseHandoffHint,
   safeReturnPath,
 } from './accountHandoff'
@@ -63,15 +64,16 @@ describe('safeReturnPath', () => {
 })
 
 describe('buildHandoffPath', () => {
-  it('includes the expected account id and a MASKED email only', () => {
+  it('keeps the full email out of the request query and carries it in the client-only fragment', () => {
     const path = buildHandoffPath('/account', { id: 'user-b-id', email: 'bob@example.com' })
-    const q = new URLSearchParams(path.split('?')[1])
+    const url = new URL(path, 'https://account.not-spotify.lol')
+    const q = url.searchParams
     expect(path.startsWith('/handoff?')).toBe(true)
     expect(q.get('acct')).toBe('user-b-id')
     expect(q.get('next')).toBe('/account')
-    // never the raw email
-    expect(path).not.toContain('bob@example.com')
+    expect(url.search).not.toContain('bob%40example.com')
     expect(q.get('hint')).toBe('b••@example.com')
+    expect(parseHandoffEmailFragment(url.hash)).toBe('bob@example.com')
   })
   it('omits the account hint when there is no user', () => {
     const path = buildHandoffPath('/support', null)
@@ -79,6 +81,18 @@ describe('buildHandoffPath', () => {
     expect(q.get('acct')).toBeNull()
     expect(q.get('hint')).toBeNull()
     expect(q.get('next')).toBe('/support')
+  })
+})
+
+describe('parseHandoffEmailFragment', () => {
+  it('reads a valid email from a fragment', () => {
+    expect(parseHandoffEmailFragment('#email=listener%40example.com')).toBe('listener@example.com')
+  })
+
+  it('rejects malformed or suspicious values', () => {
+    expect(parseHandoffEmailFragment('#email=not-an-email')).toBeNull()
+    expect(parseHandoffEmailFragment('#email=%0Auser%40example.com')).toBeNull()
+    expect(parseHandoffEmailFragment('')).toBeNull()
   })
 })
 

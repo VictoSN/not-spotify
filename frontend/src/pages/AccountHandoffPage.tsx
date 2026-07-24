@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { SpotifyMark } from '@/components/common/SpotifyMark'
 import { Spinner } from '@/components/ui/Spinner'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useAuthStore } from '@/stores/authStore'
-import { HANDOFF_PATH, maskEmail, parseHandoffHint } from '@/utils/accountHandoff'
+import {
+  buildHandoffEmailFragment,
+  HANDOFF_PATH,
+  maskEmail,
+  parseHandoffEmailFragment,
+  parseHandoffHint,
+} from '@/utils/accountHandoff'
 
 /**
  * Interstitial for the desktop -> browser account handoff (see utils/accountHandoff).
@@ -19,12 +25,17 @@ import { HANDOFF_PATH, maskEmail, parseHandoffHint } from '@/utils/accountHandof
  */
 export function AccountHandoffPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [params] = useSearchParams()
   const user = useAuthStore((s) => s.user)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const isInitializing = useAuthStore((s) => s.isInitializing)
 
   const { account: expected, hint, next } = useMemo(() => parseHandoffHint(params), [params])
+  const prefillEmail = useMemo(
+    () => parseHandoffEmailFragment(location.hash),
+    [location.hash],
+  )
 
   const [switching, setSwitching] = useState(false)
   const [switchError, setSwitchError] = useState<string | null>(null)
@@ -33,6 +44,9 @@ export function AccountHandoffPage() {
   // account is re-checked after signing in — this is what makes "switch account"
   // loop-safe instead of dropping the user straight onto the destination.
   const handoffReturn = `${HANDOFF_PATH}?${params.toString()}`
+  const loginPath =
+    `/login?next=${encodeURIComponent(handoffReturn)}` +
+    buildHandoffEmailFragment(prefillEmail)
 
   const matches = isAuthenticated && !!user && (!expected || user.id === expected)
   const unauthenticated = !isInitializing && !isAuthenticated
@@ -46,9 +60,9 @@ export function AccountHandoffPage() {
     if (matches) {
       navigate(next, { replace: true })
     } else if (unauthenticated) {
-      navigate(`/login?next=${encodeURIComponent(handoffReturn)}`, { replace: true })
+      navigate(loginPath, { replace: true })
     }
-  }, [isInitializing, switching, matches, unauthenticated, next, handoffReturn, navigate])
+  }, [isInitializing, switching, matches, unauthenticated, next, loginPath, navigate])
 
   const onSwitch = async () => {
     setSwitching(true)
@@ -57,7 +71,7 @@ export function AccountHandoffPage() {
       // Reuse the store's logout, but keep the SPA alive (no full reload) so we control
       // the redirect. Only the BROWSER session is cleared — the desktop app is untouched.
       await useAuthStore.getState().logout({ reload: false })
-      navigate(`/login?next=${encodeURIComponent(handoffReturn)}`, { replace: true })
+      navigate(loginPath, { replace: true })
     } catch {
       setSwitching(false)
       setSwitchError('We could not sign out of this browser. Check your connection and try again.')

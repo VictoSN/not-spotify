@@ -141,19 +141,19 @@ describe('TopBar navigation', () => {
 
     expect(account).toHaveAttribute(
       'href',
-      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount',
+      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount#email=premium%40example.com',
     )
     expect(family).toHaveAttribute(
       'href',
-      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount%2Ffamily',
+      'https://account.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Faccount%2Ffamily#email=premium%40example.com',
     )
     expect(support).toHaveAttribute(
       'href',
-      'https://support.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fsupport',
+      'https://support.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fsupport#email=premium%40example.com',
     )
     expect(download).toHaveAttribute(
       'href',
-      'https://download.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fdownload%2Fwindows',
+      'https://download.not-spotify.lol/handoff?acct=premium-user&hint=p%E2%80%A2%E2%80%A2%E2%80%A2%E2%80%A2%40example.com&next=%2Fdownload%2Fwindows#email=premium%40example.com',
     )
 
     fireEvent.click(account)

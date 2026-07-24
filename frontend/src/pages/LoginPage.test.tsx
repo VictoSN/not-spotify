@@ -22,9 +22,9 @@ const authenticatedUser = (roles: string[]) => ({
   roles,
 })
 
-function renderLogin() {
+function renderLogin(initialEntry = '/login') {
   return render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<div>music home</div>} />
@@ -60,5 +60,12 @@ describe('LoginPage post-login routing', () => {
     renderLogin()
 
     expect(await screen.findByText('music home')).toBeInTheDocument()
+  })
+
+  it('prefills only the email from an account handoff fragment', () => {
+    renderLogin('/login?next=%2Fhandoff%3Facct%3Daccount-b#email=bob%40example.com')
+
+    expect(screen.getByRole('textbox')).toHaveValue('bob@example.com')
+    expect(document.querySelector('input[type="password"]')).toHaveValue('')
   })
 })

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpTrayIcon, TrashIcon, PlayIcon, PauseIcon, MusicalNoteIcon } from '@heroicons/react/24/solid'
+import { ArrowUpTrayIcon, PlayIcon, PauseIcon, MusicalNoteIcon } from '@heroicons/react/24/solid'
 import type { UserUpload } from '@/types/upload'
 import { uploadToTrack } from '@/types/upload'
 import { uploadService, readAudioDuration, isDirectUploadEnabled } from '@/services/uploadService'
@@ -7,16 +7,51 @@ import { usePlayerStore } from '@/stores/playerStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { PlaylistCover } from '@/components/cards/PlaylistCover'
+import { PrivateUploadMenu } from '@/components/cards/PrivateUploadMenu'
 import { useConfirm } from '@/hooks/useConfirm'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { notify } from '@/utils/toast'
 import { formatMs } from '@/utils/formatTime'
+import { openMenuAtPointer, type PointerMenuHandle } from '@/utils/contextMenu'
+
+function UploadRow({
+  upload,
+  queue,
+  isCurrent,
+  isPlaying,
+  onPlay,
+  onChangeCover,
+  onDelete,
+}: {
+  upload: UserUpload
+  queue: ReturnType<typeof uploadToTrack>[]
+  isCurrent: boolean
+  isPlaying: boolean
+  onPlay: () => void
+  onChangeCover: (upload: UserUpload) => void
+  onDelete: (upload: UserUpload) => void
+}) {
+  const menuRef = useRef<PointerMenuHandle>(null)
+  return (
+    <li
+      className="group flex items-center gap-3 py-3"
+      onContextMenu={(event) => openMenuAtPointer(event, menuRef)}
+    >
+      <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-elevated"><PlaylistCover coverUrl={upload.coverUrl} name={upload.title} /></div>
+      <button type="button" onClick={onPlay} aria-label={isPlaying ? `Pause ${upload.title}` : `Play ${upload.title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-page transition-transform hover:scale-105">{isPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4 translate-x-[1px]" />}</button>
+      <div className="min-w-0 flex-1"><div className={`truncate font-semibold ${isCurrent ? 'text-accent' : 'text-primary'}`}>{upload.title}</div><div className="truncate text-xs text-secondary">{upload.artist ?? 'You'}</div></div>
+      {upload.durationMs > 0 && <span className="shrink-0 text-xs text-secondary">{formatMs(upload.durationMs)}</span>}
+      <PrivateUploadMenu ref={menuRef} upload={upload} queue={queue} onChangeCover={onChangeCover} onDelete={onDelete} />
+    </li>
+  )
+}
 
 export function UploadsPage() {
   const confirm = useConfirm()
   useDocumentTitle('Your uploads')
   const fileRef = useRef<HTMLInputElement | null>(null)
   const coverRef = useRef<HTMLInputElement | null>(null)
+  const existingCoverRef = useRef<HTMLInputElement | null>(null)
   const [uploads, setUploads] = useState<UserUpload[]>([])
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -24,6 +59,7 @@ export function UploadsPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<number | null>(null)
+  const [coverTarget, setCoverTarget] = useState<UserUpload | null>(null)
 
   const currentTrack = usePlayerStore((s) => s.currentTrack)
   const isPlaying = usePlayerStore((s) => s.isPlaying)
@@ -56,7 +92,18 @@ export function UploadsPage() {
       })
       // Covers are deliberately handled by the authenticated API, not the audio Lambda:
       // the file is small and this keeps the Lambda limited to its direct-to-S3 audio role.
-      if (coverFile) created = await uploadService.uploadCover(created.id, coverFile)
+      if (coverFile) {
+        try {
+          created = await uploadService.uploadCover(created.id, coverFile)
+        } catch (err) {
+          // The audio row is already committed before its optional cover request.
+          // Keep it visible and give the owner a retry path instead of making it look lost.
+          setUploads((prev) => [created, ...prev])
+          const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+          notify.error(apiMsg ?? 'Audio uploaded, but the cover could not be added. Use its menu to try again.')
+          return
+        }
+      }
       setUploads((prev) => [created, ...prev])
       setAudioFile(null)
       setCoverFile(null)
@@ -70,6 +117,28 @@ export function UploadsPage() {
       setProgress(null)
       if (fileRef.current) fileRef.current.value = ''
       if (coverRef.current) coverRef.current.value = ''
+    }
+  }
+
+  const chooseExistingCover = (upload: UserUpload) => {
+    setCoverTarget(upload)
+    existingCoverRef.current?.click()
+  }
+
+  const updateExistingCover = async (files: FileList | null) => {
+    const file = files?.[0]
+    const target = coverTarget
+    if (!file || !target) return
+    try {
+      const updated = await uploadService.uploadCover(target.id, file)
+      setUploads((prev) => prev.map((upload) => upload.id === updated.id ? updated : upload))
+      notify.success('Cover updated.')
+    } catch (err) {
+      const apiMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      notify.error(apiMsg ?? 'Could not upload the cover.')
+    } finally {
+      setCoverTarget(null)
+      if (existingCoverRef.current) existingCoverRef.current.value = ''
     }
   }
 
@@ -95,6 +164,7 @@ export function UploadsPage() {
         <MusicalNoteIcon className="mx-auto mb-2 h-8 w-8 text-secondary/60" />
         <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={(e) => chooseAudio(e.target.files)} />
         <input ref={coverRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)} />
+        <input ref={existingCoverRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => void updateExistingCover(e.target.files)} />
         <div className="mx-auto max-w-md space-y-3 text-left">
           <div className="flex items-center justify-between gap-3 rounded-md bg-page/50 px-3 py-2 text-sm">
             <span className="truncate text-secondary">{audioFile?.name ?? 'No audio selected'}</span>
@@ -126,13 +196,16 @@ export function UploadsPage() {
           {uploads.map((u) => {
             const isCurrent = currentTrack?.id === u.id
             const isThisPlaying = isCurrent && isPlaying
-            return <li key={u.id} className="flex items-center gap-3 py-3">
-              <div className="h-12 w-12 shrink-0 overflow-hidden rounded bg-elevated"><PlaylistCover coverUrl={u.coverUrl} name={u.title} /></div>
-              <button type="button" onClick={() => (isCurrent ? togglePlayPause() : play(uploadToTrack(u), queue))} aria-label={isThisPlaying ? `Pause ${u.title}` : `Play ${u.title}`} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-page transition-transform hover:scale-105">{isThisPlaying ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4 translate-x-[1px]" />}</button>
-              <div className="min-w-0 flex-1"><div className={`truncate font-semibold ${isCurrent ? 'text-accent' : 'text-primary'}`}>{u.title}</div><div className="truncate text-xs text-secondary">{u.artist ?? 'You'}</div></div>
-              {u.durationMs > 0 && <span className="shrink-0 text-xs text-secondary">{formatMs(u.durationMs)}</span>}
-              <button type="button" onClick={() => remove(u)} aria-label={`Delete ${u.title}`} className="shrink-0 rounded-full p-2 text-secondary transition-colors hover:bg-elevated hover:text-red-400"><TrashIcon className="h-4 w-4" /></button>
-            </li>
+            return <UploadRow
+              key={u.id}
+              upload={u}
+              queue={queue}
+              isCurrent={isCurrent}
+              isPlaying={isThisPlaying}
+              onPlay={() => (isCurrent ? togglePlayPause() : play(uploadToTrack(u), queue))}
+              onChangeCover={chooseExistingCover}
+              onDelete={remove}
+            />
           })}
         </ul>
       )}

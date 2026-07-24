@@ -50,6 +50,85 @@ Write-Host "== 4/6 clone live task def, swap image ==" -ForegroundColor Cyan
 $td = (aws ecs describe-task-definition --region $REGION --task-definition $FAMILY --query "taskDefinition" | ConvertFrom-Json)
 $td.containerDefinitions[0].image = $IMAGE
 
+# X-Ray: trace incoming HTTP requests and outbound HttpClient calls from the API.
+# The app writes UDP segments to this sidecar over the task-local network namespace.
+$xrayContainerName = "xray-daemon"
+$appContainer = $td.containerDefinitions[0]
+$xrayAddress = "127.0.0.1:2000"
+$envList = [System.Collections.Generic.List[object]]::new()
+$xrayAddressFound = $false
+foreach ($e in $appContainer.environment) {
+  if ($e.name -eq "AWS_XRAY_DAEMON_ADDRESS") { $e.value = $xrayAddress; $xrayAddressFound = $true }
+  $envList.Add($e)
+}
+if (-not $xrayAddressFound) { $envList.Add([pscustomobject]@{ name = "AWS_XRAY_DAEMON_ADDRESS"; value = $xrayAddress }) }
+$appContainer.environment = $envList.ToArray()
+
+$dependsOn = [System.Collections.Generic.List[object]]::new()
+foreach ($dependency in @($appContainer.dependsOn)) {
+  # The app container may have NO dependsOn at all, in which case the wrapped
+  # array yields a single $null element — skip it so we don't add a null entry.
+  if ($dependency -and $dependency.containerName -ne $xrayContainerName) { $dependsOn.Add($dependency) }
+}
+$dependsOn.Add([pscustomobject]@{ containerName = $xrayContainerName; condition = "START" })
+# Use Add-Member -Force: a container with no existing 'dependsOn' property can't be
+# assigned to with `$obj.dependsOn = ...` (PowerShell throws on a missing property).
+$appContainer | Add-Member -NotePropertyName dependsOn -NotePropertyValue $dependsOn.ToArray() -Force
+
+# Carve room for the sidecar. This task def gives the single app container 100% of
+# the task-level CPU and memory, so ECS rejects any extra container. Shave a small
+# slice off the app container's *soft* memory reservation (its hard `memory` limit is
+# untouched, so the app's actual available RAM is unchanged) and leave the sidecar
+# without a reserved CPU share (container CPU is optional; it draws from task slack).
+$taskMemInt = 0
+if ([int]::TryParse([string]$td.memory, [ref]$taskMemInt) -and $taskMemInt -gt 0) {
+  $appReserve = $taskMemInt - 256
+  if ($appContainer.PSObject.Properties.Name -contains 'memoryReservation' -and
+      $appContainer.memoryReservation -gt $appReserve) {
+    $appContainer.memoryReservation = $appReserve
+    Write-Host "Lowered app container memoryReservation to $appReserve MiB to fit the xray sidecar (hard limit unchanged)." -ForegroundColor Yellow
+  }
+}
+
+# Send the sidecar's logs to the log group the APP container already uses, rather than
+# a new /ecs/not-spotify-xray group. The ECS execution role can write to the existing
+# group but lacks logs:CreateLogGroup, so "awslogs-create-group: true" on a new group
+# fails task startup with AccessDeniedException. Reusing the app's group needs no IAM
+# change; a distinct stream prefix ("xray") keeps the sidecar's streams separate.
+$appLog = $appContainer.logConfiguration
+$xrayLogConfig = [pscustomobject]@{
+  logDriver = "awslogs"
+  options = [pscustomobject]@{
+    "awslogs-group" = $appLog.options."awslogs-group"
+    "awslogs-region" = $appLog.options."awslogs-region"
+    "awslogs-stream-prefix" = "xray"
+  }
+}
+
+$xrayContainer = [pscustomobject]@{
+  name = $xrayContainerName
+  image = "public.ecr.aws/xray/aws-xray-daemon:3.x"
+  memoryReservation = 128
+  essential = $false
+  environment = @([pscustomobject]@{ name = "AWS_REGION"; value = $REGION })
+  portMappings = @([pscustomobject]@{ containerPort = 2000; protocol = "udp" })
+  logConfiguration = $xrayLogConfig
+}
+
+# Always replace any existing sidecar (drop it, then re-add) so a re-run fixes a bad
+# definition from an earlier revision instead of leaving the stale one in place.
+$td.containerDefinitions = @(@($td.containerDefinitions | Where-Object { $_.name -ne $xrayContainerName }) + $xrayContainer)
+
+# The daemon uses the task role to submit segments. This AWS-managed policy is
+# limited to the X-Ray write APIs, and is safe to attach repeatedly.
+if (-not $td.taskRoleArn) {
+  Write-Host "ABORT: the ECS task definition has no task role; create one, then grant it AWSXRayDaemonWriteAccess." -ForegroundColor Red
+  exit 1
+}
+$taskRoleName = ($td.taskRoleArn -split "/")[-1]
+aws iam attach-role-policy --role-name $taskRoleName --policy-arn "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+Assert-LastExit "grant X-Ray write permission to ECS task role"
+
 # Upsert the Resend API key from the local RESEND_API_KEY env var so the secret
 # stays out of git. Once set on the task def, later deploys preserve it (this
 # clone carries all existing env vars forward), so you only need it the first time.

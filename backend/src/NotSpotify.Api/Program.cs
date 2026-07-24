@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
+using Amazon.XRay.Recorder.Handlers.AwsSdk;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -17,6 +18,10 @@ using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Capture calls through the AWS SDK (S3, for example) as X-Ray subsegments.
+// The ECS deployment adds the X-Ray daemon sidecar that receives these segments.
+AWSSDKHandler.RegisterXRayForAllServices();
 
 // Load user-secrets explicitly so credentials work regardless of ASPNETCORE_ENVIRONMENT.
 // By default user-secrets only load in Development; this makes them load always.
@@ -354,6 +359,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 var app = builder.Build();
 
 app.UseForwardedHeaders();
+app.UseXRay("not-spotify-api");
 
 if (app.Environment.IsDevelopment())
 {

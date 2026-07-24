@@ -337,7 +337,7 @@ public sealed class OpenSearchService
 
     private async Task SearchTracksAsync(string query, SearchIds result, CancellationToken ct)
     {
-        // Popularity blend: text relevance × log10(2 + playCount). Unplayed tracks keep a
+        // Popularity blend: text relevance × log2(playCount + 1). Unplayed tracks keep a
         // small constant factor (≈0.3) instead of zeroing out; a well-played track earns a
         // single-digit multiplier — enough to win ambiguous/short queries without letting
         // popularity drown out a precise title match.

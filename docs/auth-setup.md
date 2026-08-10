@@ -56,7 +56,7 @@ Uses the **same `Email:Smtp:*` settings as registration verification** (see the 
 
 ## 3. Google login (OAuth) — implemented, gated until you add credentials
 
-Implemented as a **manual OAuth 2.0 code flow over `HttpClient`** (no extra NuGet package, no build risk). It's **disabled until `Authentication:Google:ClientId` + `ClientSecret` are set** — the login page checks `GET /auth/external/providers` and only lights up the Google button when configured. Facebook/Apple remain "not available" (they need far more setup).
+Implemented as a **manual OAuth 2.0 code flow over `HttpClient`** (no extra NuGet package, no build risk). It's available only when `Authentication:Google:ClientId` + `ClientSecret` are set and the provider is enabled under **Admin → Dev Tools → Social login providers**. The login page checks `GET /auth/external/providers` before showing the button. Facebook/Apple remain unavailable until separately configured.
 
 ### Flow
 1. Google button → `GET /auth/external/google` → sets a short-lived CSRF `state` cookie, redirects to Google.
@@ -65,26 +65,25 @@ Implemented as a **manual OAuth 2.0 code flow over `HttpClient`** (no extra NuGe
 4. Backend sets the `rt` refresh cookie and redirects to `${FrontendUrl}/?oauth=google`. The SPA's normal hydrate-from-cookie flow then logs the user in — **no access-token handoff in the URL**.
 
 ### Setup (Google Cloud Console)
-1. <https://console.cloud.google.com> → create/select a project → **APIs & Services → Credentials**.
-2. Configure the **OAuth consent screen** (External, add your email as a test user).
-3. **Create credentials → OAuth client ID → Web application.**
-4. **Authorized redirect URI** — must match exactly:
+1. Open the [Google Auth Platform Audience page](https://console.cloud.google.com/auth/audience), select the project, and set **User type** to **External**. For local testing, keep the publishing status as **Testing** and add your Google account as a test user. If Google has locked the audience as Internal, create a new Google Cloud project and configure that project as External.
+2. Open [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials) and choose **Create credentials → OAuth client ID → Web application**.
+3. **Authorized redirect URI** — must match exactly:
    ```
    https://localhost:7045/auth/external/google/callback
    ```
-   (For a deployed API, add `https://<your-api-host>/auth/external/google/callback` too.)
-5. Copy the **Client ID** and **Client secret**.
+4. Copy the **Client ID** and **Client secret** immediately after creating the client. Google may only show the full secret once.
 
 ### Backend user-secrets (from `backend/src/NotSpotify.Api`)
 ```powershell
 dotnet user-secrets set "Authentication:Google:ClientId" "xxxx.apps.googleusercontent.com"
-dotnet user-secrets set "Authentication:Google:ClientSecret" "GOCSPX-xxxx"
-# Optional — only if your callback host differs from the request host (e.g. behind a proxy):
-dotnet user-secrets set "Authentication:Google:RedirectUri" "https://your-api-host/auth/external/google/callback"
+dotnet user-secrets set "Authentication:Google:ClientSecret" "<google-client-secret>"
+dotnet user-secrets set "Authentication:Google:RedirectUri" "https://localhost:7045/auth/external/google/callback"
 # Optional — single fallback frontend URL:
 dotnet user-secrets set "App:FrontendUrl" "http://localhost:5173"
 ```
-Restart the backend. The Google button activates automatically.
+Restart the backend, sign in as `alex@example.com`, and enable Google under **Admin → Dev Tools → Social login providers** after the provider reports **credentials configured**.
+
+If Google redirects back but the token request returns HTTP `401`, the client ID and client secret do not belong to the same OAuth client. Create or rotate the secret in Google Cloud and update the user-secret, then restart the backend.
 
 ### Multiple client ports
 The login buttons pass their current `window.location.origin` as `returnUrl`, and the backend only accepts it if it is allowlisted. Add every web/desktop dev origin you use to `App:FrontendUrls` or `Cors:AllowedOrigins`.
@@ -115,22 +114,20 @@ Facebook uses the same hosted-provider pattern as Google: the app redirects to M
    ```
    https://localhost:7045/auth/external/facebook/callback
    ```
-   For production, also add `https://<your-api-host>/auth/external/facebook/callback`.
 4. Request/use the `email` and `public_profile` permissions. Facebook accounts that do not expose an email cannot be auto-registered by this app.
 
 ### Backend user-secrets (from `backend/src/NotSpotify.Api`)
 ```powershell
 dotnet user-secrets set "Authentication:Facebook:AppId" "your-facebook-app-id"
 dotnet user-secrets set "Authentication:Facebook:AppSecret" "your-facebook-app-secret"
-# Optional — only if your callback host differs from the request host:
-dotnet user-secrets set "Authentication:Facebook:RedirectUri" "https://your-api-host/auth/external/facebook/callback"
+dotnet user-secrets set "Authentication:Facebook:RedirectUri" "https://localhost:7045/auth/external/facebook/callback"
 ```
 
 Restart the backend, then enable Facebook in Admin → Dev Tools → Social login providers. The Facebook button only appears when both credentials and the admin toggle are enabled.
 
 ### Notes
 - The `state` cookie and `rt` cookie use `SameSite=None; Secure`, so OAuth works across the api↔frontend origin hop (matches the existing refresh-cookie setup). HTTPS is required (you already trust the dev cert).
-- Cross-origin cookie note: if you deploy api and frontend on different subdomains, set the `rt` cookie `Domain=.<domain>` (see [`support-aws-roadmap.md`](support-aws-roadmap.md) Part 2).
+- The local frontend and API both use HTTPS-compatible localhost origins; trust the local development certificate before testing OAuth.
 - To add another provider (e.g. GitHub), copy the two Google actions, swap the authorize/token/userinfo URLs, and add a flag to `ExternalProvidersResponse`.
 
 ---

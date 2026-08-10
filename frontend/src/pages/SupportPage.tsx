@@ -1011,7 +1011,7 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
           'Try another track to see whether one source file is failing or all playback is failing.',
           'Sign out and back in if every track fails after login.',
           'For personal uploads, confirm the file type is mp3, m4a, aac, wav, ogg, oga, opus, flac, or webm and under 50 MB.',
-          'If S3-backed media fails, check bucket CORS and whether presigned URLs are expiring too quickly.',
+          'If Supabase-backed media fails, check the storage bucket, its public access setting, and CORS.',
         ],
       },
       {
@@ -2400,7 +2400,7 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
         ],
         bullets: [
           'Free users receive a 403 for track downloads.',
-          'A storage fetch failure means the object key, bucket, CORS, or presigned URL path needs checking.',
+          'A storage fetch failure means the object key, bucket, or CORS configuration needs checking.',
           'For PWA offline audio, make sure the browser has enough storage and the track has loaded successfully once.',
         ],
       },
@@ -2722,7 +2722,7 @@ const ARTICLE_DETAILS: Record<string, Partial<ArticleDetail>> = {
     blocks: [
       {
         paragraphs: [
-          'Your uploads is a private, owner-only audio locker. Uploaded files are separate from the public catalogue: other users cannot search, follow, comment on, or download them through catalogue pages.',
+          'Your uploads is an owner-scoped audio locker in the app. Uploaded files are separate from the public catalogue: other users cannot search, follow, comment on, or download them through catalogue pages.',
         ],
       },
       {
@@ -3285,10 +3285,10 @@ function buildDefaultArticleBlocks(articleRef: ArticleRef, group: HelpGroup, sec
           bullets: [
             'Check output device, browser autoplay rules, and muted tabs.',
             'If cover gradients are grey, storage image CORS may be missing.',
-            'If S3 presigned URLs are enabled, expired links require a fresh API response.',
+            'If a storage URL is stale, refresh the page so the API can return the current media URL.',
           ],
         },
-        supportMinimumBlock(['Browser and OS.', 'Track or upload title.', 'Whether audio, images, or both fail.', 'Storage backend: local or S3 if known.']),
+        supportMinimumBlock(['Browser and OS.', 'Track or upload title.', 'Whether audio, images, or both fail.', 'Whether Supabase Storage is reachable.']),
       ]
     }
 
@@ -3299,7 +3299,7 @@ function buildDefaultArticleBlocks(articleRef: ArticleRef, group: HelpGroup, sec
         ],
         bullets: [
           'Personal uploads accept mp3, m4a, aac, wav, ogg, oga, opus, flac, and webm up to 50 MB.',
-          'Catalogue audio can be stored by key in S3-compatible storage or as an external URL.',
+          'Catalogue audio can be stored by key in Supabase Storage or as an external URL.',
           'The storage proxy can stream images by key when a bucket is not public.',
         ],
       },

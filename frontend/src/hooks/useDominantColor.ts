@@ -271,7 +271,7 @@ export async function getDominantColor(url: string): Promise<string | null> {
     try {
       // Load via an explicit CORS fetch → blob URL instead of handing the remote
       // URL straight to node-vibrant. The cover is also rendered by a plain <img>,
-      // which sends no Origin header, so S3 caches that copy WITHOUT an
+       // which sends no Origin header, so the storage service caches that copy WITHOUT an
       // Access-Control-Allow-Origin header. Chrome then serves that cached non-CORS
       // copy to node-vibrant's crossOrigin request and rejects the canvas read
       // ("No 'Access-Control-Allow-Origin' header is present") even though the bucket

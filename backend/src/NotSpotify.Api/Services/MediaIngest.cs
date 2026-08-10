@@ -10,10 +10,10 @@ namespace NotSpotify.Api.Services;
 
 /// <summary>
 /// One-off bulk ingest CLI. Reads the repo-root <c>Music Videos/</c> and
-/// <c>Podcast/</c> folders, uploads each media file to the configured S3 bucket
+/// <c>Podcast/</c> folders, uploads each media file to the configured Supabase bucket
 /// (under <c>videos/{guid}.ext</c> / <c>audio/{guid}.ext</c>) and inserts the
 /// matching <see cref="MusicVideo"/> / <see cref="Podcast"/> + <see cref="Episode"/>
-/// rows into the database — i.e. "push to S3 + RDS" in one pass.
+/// rows into the database in one pass.
 ///
 /// Run from <c>backend/src/NotSpotify.Api</c>:
 /// <code>
@@ -33,13 +33,18 @@ public static class MediaIngest
     {
         var dryRun = args.Contains("--dry-run");
 
-        var sec = config.GetSection("S3Storage");
-        if (string.IsNullOrWhiteSpace(sec["BucketName"]))
+        var sec = config.GetSection("SupabaseStorage");
+        var options = sec.Get<SupabaseStorageOptions>();
+        if (options is null ||
+            string.IsNullOrWhiteSpace(options.ProjectUrl) ||
+            string.IsNullOrWhiteSpace(options.BucketName) ||
+            string.IsNullOrWhiteSpace(options.ServiceRoleKey))
         {
-            Console.WriteLine("[Ingest] No 'S3Storage:BucketName' configured — set it in user-secrets. Aborting.");
+            Console.WriteLine("[Ingest] Supabase Storage is not configured — set it in user-secrets. Aborting.");
             return;
         }
-        var storage = new S3StorageService(Options.Create(sec.Get<S3StorageOptions>()!));
+        using var http = new HttpClient();
+        var storage = new SupabaseStorageService(Options.Create(options), http);
 
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(o => o.UseNpgsql(config.GetConnectionString("Postgres")));
@@ -56,7 +61,7 @@ public static class MediaIngest
         Console.WriteLine($"[Ingest] repo root: {repoRoot}");
         Console.WriteLine($"[Ingest] ffprobe:   {ffprobe ?? "NOT FOUND (durations will be 0)"}");
         Console.WriteLine($"[Ingest] ffmpeg:    {ffmpeg ?? "NOT FOUND (thumbnails skipped)"}");
-        Console.WriteLine($"[Ingest] bucket:    {sec["BucketName"]}{(dryRun ? "   (DRY RUN)" : "")}");
+        Console.WriteLine($"[Ingest] bucket:    {options.BucketName}{(dryRun ? "   (DRY RUN)" : "")}");
         Console.WriteLine();
 
         if (args.Contains("--remove-placeholders"))
@@ -95,7 +100,7 @@ public static class MediaIngest
 
     // Exact titles of the seeded demo music videos the user asked to remove
     // (Arctic Monkeys "Brianstorm"/"Teddy Picker" + Vaundy "踊り子"/"怪獣の花唄").
-    // They point at external sample footage, so there is no S3 object of their own.
+    // They point at external sample footage, so there is no stored object of their own.
     private static readonly string[] PlaceholderVideoTitles =
     {
         "Brianstorm (Official Video)",
@@ -112,7 +117,7 @@ public static class MediaIngest
         foreach (var t in videos) Console.WriteLine($"[Clean]   - {t}");
 
         // Seeded demo podcasts by "NS Studios"; their episodes reuse real tracks'
-        // audio keys, so we only delete the DB rows (never the shared S3 objects).
+        // audio keys, so we only delete the DB rows (never the shared media objects).
         var pods = await db.Podcasts
             .Where(p => p.Author == "NS Studios" &&
                         (p.Title == "The Not Spotify Show" || p.Title == "Indie Spotlight"))
@@ -132,7 +137,7 @@ public static class MediaIngest
     // ---- Advertisements -----------------------------------------------------
 
     /// <summary>One creative per file in the Advertisement/ folder. Uploads the
-    /// audio to S3, inserts an active <see cref="Advertisement"/>, and points each
+    /// audio to storage, inserts an active <see cref="Advertisement"/>, and points each
     /// at a landing page by filename keyword. Then deactivates the seeded
     /// "Go Premium" house placeholders so the free tier serves only these.</summary>
     private static async Task IngestAdsAsync(

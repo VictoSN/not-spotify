@@ -1,7 +1,7 @@
 import { assetUrl } from './assets'
 
 /**
- * Circular Std — Spotify's typeface — is served from S3 (app-assets/) through the
+ * Circular Std — Spotify's typeface — is served from Supabase Storage (app-assets/) through the
  * storage proxy, not bundled into the JS/CSS. The binaries are proprietary and stay
  * out of git (frontend/src/assets/fonts is .gitignored); `dotnet run -- upload-app-assets`
  * pushes them to the bucket.

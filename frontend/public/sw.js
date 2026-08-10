@@ -147,7 +147,7 @@ async function staleWhileRevalidate(request) {
   const network = fetch(request)
     .then((response) => {
       // Cache same-origin OK responses and cross-origin opaque ones (e.g. cover
-      // art from S3) so artwork survives offline.
+      // art from Supabase Storage) so artwork survives offline.
       if (response && (response.ok || response.type === 'opaque')) {
         cache.put(request, response.clone()).catch(() => {})
       }

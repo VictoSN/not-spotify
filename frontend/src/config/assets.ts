@@ -1,5 +1,5 @@
 const DEFAULT_ASSET_BASE_URL =
-  'https://api.not-spotify.lol/storage/app-assets'
+  'https://localhost:7045/storage/app-assets'
 
 const configuredBaseUrl = (
   import.meta.env.VITE_ASSET_BASE_URL ||

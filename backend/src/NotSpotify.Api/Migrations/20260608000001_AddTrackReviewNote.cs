@@ -1,10 +1,14 @@
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using NotSpotify.Api.Data;
 
 #nullable disable
 
 namespace NotSpotify.Api.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260608000001_AddTrackReviewNote")]
     public partial class AddTrackReviewNote : Migration
     {
         /// <inheritdoc />

@@ -1,11 +1,15 @@
 using System;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using NotSpotify.Api.Data;
 
 #nullable disable
 
 namespace NotSpotify.Api.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(AppDbContext))]
+    [Migration("20260607200000_AddAlbumStatus")]
     public partial class AddAlbumStatus : Migration
     {
         /// <inheritdoc />

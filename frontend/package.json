@@ -13,7 +13,7 @@
     "build:desktop": "tsc -b && vite build --mode production",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build && node scripts/stage-tauri-installers.mjs"
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@fontsource-variable/montserrat": "^5.2.8",

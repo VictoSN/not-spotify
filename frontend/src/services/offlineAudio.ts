@@ -264,7 +264,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
  * `cache: 'reload'` + `mode: 'cors'` is required either way: a plain <img> already
  * loaded this cover, so the browser holds an *opaque* (no-CORS) copy. Reusing it
  * yields an unreadable opaque response (res.ok === false). Forcing a fresh CORS
- * request makes CloudFront return our-origin ACAO so the bytes are readable.
+ * request makes Supabase Storage return CORS headers so the bytes are readable.
  * (Same fix as useDominantColor — see dominant-color CORS cache notes.)
  */
 async function cacheCover(coverUrl?: string | null): Promise<void> {
@@ -786,7 +786,7 @@ async function saveTrackWithOwner(track: Track, owner: string): Promise<void> {
     return
   }
   // Fetch the complete file (no Range) so we hold a full, readable body. Requires
-  // CORS to be allowed on the media host (S3 bucket CORS / static audio).
+  // CORS to be allowed on the Supabase Storage media host.
   return isDesktop() ? downloadTrackTauri(track, owner) : downloadTrackCache(track, owner)
 }
 

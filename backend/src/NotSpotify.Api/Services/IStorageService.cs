@@ -18,9 +18,7 @@ public interface IStorageService
 
     /// <summary>
     /// Size in bytes of a stored object, or null if it doesn't exist. Cheap: a HEAD on
-    /// remote storage, not a download. Used to confirm an object the *client* uploaded
-    /// (via a presigned URL) really landed before a DB row is created for it — never
-    /// trust the browser's word that an upload succeeded.
+    /// remote storage, not a download. Used by upload validation and maintenance tools.
     /// </summary>
     Task<long?> GetSizeAsync(string key, CancellationToken ct = default);
 }

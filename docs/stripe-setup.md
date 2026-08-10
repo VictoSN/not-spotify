@@ -90,7 +90,7 @@ After the webhook lands, the account becomes Premium.
 
 ## Sharing across the team (one Stripe account)
 
-Same model as the AWS keys — **share one test account's keys, don't export anything:**
+Same model as the other local secrets — **share one test account's keys, don't export anything:**
 
 - **Share once:** `Stripe:SecretKey` (or a restricted key) + the price IDs (`MonthlyPriceId`, `YearlyPriceId`, Duo/Family/Student). Everyone sets them in their own user-secrets.
 - **Per-developer:** `Stripe:WebhookSecret` (from each person's own `stripe listen`). `SuccessUrl`/`CancelUrl` are localhost — same for all.

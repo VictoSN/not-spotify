@@ -8,11 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.*" />
-    <PackageReference Include="AWSXRayRecorder.Handlers.AspNetCore" Version="2.*" />
-    <PackageReference Include="AWSXRayRecorder.Handlers.AwsSdk" Version="2.*" />
     <PackageReference Include="OpenSearch.Client" Version="1.8.*" />
-    <PackageReference Include="OpenSearch.Net.Auth.AwsSigV4" Version="1.8.*" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.*" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.*" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.*" />

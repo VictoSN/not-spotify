@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowUpTrayIcon, PlayIcon, PauseIcon, MusicalNoteIcon } from '@heroicons/react/24/solid'
 import type { UserUpload } from '@/types/upload'
 import { uploadToTrack } from '@/types/upload'
-import { uploadService, readAudioDuration, isDirectUploadEnabled } from '@/services/uploadService'
+import { uploadService, readAudioDuration } from '@/services/uploadService'
 import { usePlayerStore } from '@/stores/playerStore'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
@@ -90,8 +90,6 @@ export function UploadsPage() {
         durationMs,
         onProgress: setProgress,
       })
-      // Covers are deliberately handled by the authenticated API, not the audio Lambda:
-      // the file is small and this keeps the Lambda limited to its direct-to-S3 audio role.
       if (coverFile) {
         try {
           created = await uploadService.uploadCover(created.id, coverFile)
@@ -157,7 +155,7 @@ export function UploadsPage() {
     <div className="mx-auto max-w-3xl px-6 py-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-primary">Your uploads</h1>
-        <p className="mt-1 text-sm text-secondary">A private locker for your own audio — only you can see or play these.</p>
+        <p className="mt-1 text-sm text-secondary">Your own audio, kept out of the public catalogue and visible in the app only to you.</p>
       </div>
 
       <div className="mb-6 rounded-lg border border-dashed border-elevated/60 bg-surface p-6">
@@ -186,7 +184,7 @@ export function UploadsPage() {
           </div>
         </div>
         {busy && progress !== null && <div className="mx-auto mt-3 h-1 w-full max-w-xs overflow-hidden rounded-full bg-elevated" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label="Upload progress"><div className="h-full rounded-full bg-accent transition-[width] duration-200" style={{ width: `${progress}%` }} /></div>}
-        <p className="mt-3 text-center text-xs text-secondary">MP3, M4A, WAV, FLAC, OGG, Opus · up to {isDirectUploadEnabled() ? '100' : '50'} MB. Covers: JPG, PNG, or WebP, up to 5 MB.</p>
+        <p className="mt-3 text-center text-xs text-secondary">MP3, M4A, WAV, FLAC, OGG, Opus · up to 50 MB. Covers: JPG, PNG, or WebP, up to 5 MB.</p>
       </div>
 
       {loading ? <div className="flex justify-center py-16"><Spinner size="lg" /></div> : uploads.length === 0 ? (

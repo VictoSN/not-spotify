@@ -4,7 +4,6 @@ A roadmap for turning `/support` ([`SupportPage.tsx`](../frontend/src/pages/Supp
 
 Companion docs:
 - [`support-page-roadmap.md`](support-page-roadmap.md) — ticket flow, feedback capture, article CMS (the *system* around support).
-- [`support-aws-roadmap.md`](support-aws-roadmap.md) — `support.<domain>`, AWS topology, basic-search dropdown.
 
 **This doc = the *content* and *article UX*.** It is the big one.
 
@@ -161,13 +160,13 @@ The brief: *"add it to the support for user to follow the guide to add checkmark
 - [x] Keyboard-accessible (`role="checkbox"` button; Space/Enter toggle); no native `confirm()`.
 
 ### First guides to convert (high-traffic, all real)
-- [x] **"Music won't play"** - converted to an interactive checklist covering connection, volume, alternate track, re-login, upload file rules, and S3/CORS checks. *(done 2026-06-24)*
+- [x] **"Music won't play"** - converted to an interactive checklist covering connection, volume, alternate track, re-login, upload file rules, and Supabase/CORS checks. *(done 2026-06-24)*
 - [x] **"Upgrade to Premium"** - `not-spotify-premium` now has an interactive upgrade checklist. *(done 2026-06-24)*
 - [x] **"Cancel Premium"** - `how-to-cancel-premium-plans` now has an interactive cancel checklist. *(done 2026-06-24)*
 - [x] **"Invite a Family/Duo member"** - invite/accept flow converted to an interactive checklist. *(done 2026-06-24)*
 - [ ] **"Upload your own audio"** — `/uploads` → pick file (allowed types/size) → it appears in your private locker. ✅
 - [x] **"Make a smart playlist"** - smart-rule creation flow added as an interactive checklist. *(done 2026-06-24)*
-- [ ] **"Fix grey cover gradients / media won't load (S3)"** — admin-facing: check bucket CORS, presigned-URL expiry. ✅
+- [ ] **"Fix grey cover gradients / media won't load (Supabase)"** — admin-facing: check bucket public access and CORS. ✅
 
 ---
 

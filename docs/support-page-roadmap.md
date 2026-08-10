@@ -1,8 +1,8 @@
 # Support Page Roadmap
 
-> **Companion docs:** [`support-aws-roadmap.md`](support-aws-roadmap.md) covers the `support.<domain>` subdomain question, AWS topology (RDS/S3/SignalR), and the Spotify-style "basic search" dropdown. [`support-content-roadmap.md`](support-content-roadmap.md) covers the article *content* — auditing placeholders vs. real features, the interactive follow-along checklists, and "Download your data". This doc stays on the *system* around support (tickets, feedback capture, article CMS).
+> **Companion doc:** [`support-content-roadmap.md`](support-content-roadmap.md) covers the article *content* — auditing placeholders vs. real features, the interactive follow-along checklists, and "Download your data". This doc stays on the *system* around support (tickets, feedback capture, article CMS).
 
-This is a practical roadmap for turning `/support` from a polished static support surface into a useful Not Spotify help center. The ideas below are based on what the current backend actually supports: auth, profile/avatar uploads, Stripe billing, plan seats, S3-compatible storage, playlists, search, playback, uploads, and admin/artist workflows.
+This is a practical roadmap for turning `/support` from a polished static support surface into a useful Not Spotify help center. The ideas below are based on what the current backend actually supports: auth, profile/avatar uploads, Stripe billing, plan seats, Supabase Storage, playlists, search, playback, uploads, and admin/artist workflows.
 
 ## Current State
 
@@ -87,8 +87,8 @@ Suggested articles:
 - Avatar upload failed
 - Playlist cover upload failed
 - Cropping image shows a black screen
-- S3 media does not load
-- S3 image colors are grey
+- Supabase media does not load
+- Supabase image colors are grey
 - Premium checkout unavailable
 - Stripe billing portal unavailable
 - Upload audio failed
@@ -106,7 +106,7 @@ These should mention exact backend constraints:
 - Shared plans: invite by email, accepted member gets Premium through plan owner linkage.
 - Search: tracks/artists/albums/public playlists, plus lyric phrase search for queries of at least 3 characters.
 - Downloads: Premium required, except admins and managing artists.
-- Storage: S3-compatible storage can use public URLs or presigned URLs; image CORS matters for color extraction.
+- Storage: Supabase Storage uses public object URLs in this branch; image CORS matters for color extraction.
 
 ### 5. Context-aware help links inside errors
 
@@ -132,13 +132,13 @@ Checks:
 - Database connected
 - Storage provider configured
 - Stripe configured
-- S3 CORS configured for images/audio
+- Supabase Storage bucket configured for images/audio
 
 Scope carefully:
 - Public users should only see simple green/yellow/red status.
 - Admins can see detailed diagnostics and missing configuration.
 
-This helps because the project uses RDS, S3, Stripe, and local dev services.
+This helps because the project uses Supabase, Stripe, and local dev services.
 
 ## Medium Value Additions
 
@@ -286,6 +286,6 @@ Keep each wizard simple:
 - Admins can see what users searched for but could not find.
 - Billing support clearly distinguishes app state from Stripe state.
 - Upload support clearly states accepted file types and size limits.
-- Storage support mentions S3/CORS/presigned URL behavior.
+- Storage support mentions Supabase Storage and CORS behavior.
 - Privacy/support copy never asks users to send passwords, tokens, full card numbers, or secrets.
 

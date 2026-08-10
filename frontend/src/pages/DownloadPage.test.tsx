@@ -128,7 +128,7 @@ describe('DownloadPage (bug #34)', () => {
     const shot = screen.getByRole('img', { name: /Not Spotify desktop app/i })
     expect(shot).toHaveAttribute(
       'src',
-      'https://api.not-spotify.lol/storage/app-assets/frontend/public/app-preview.svg',
+      'https://localhost:7045/storage/app-assets/frontend/public/app-preview.svg',
     )
     // A content image exposed to screen readers — the old mockup was aria-hidden.
     expect(shot).not.toHaveAttribute('aria-hidden')

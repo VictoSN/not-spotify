@@ -6,7 +6,7 @@
 // cross to another host, so those items use a plain <a href={subdomainUrl(...)}>.
 //
 // `path` is BOTH the route appended to the subdomain AND the same-origin fallback:
-// on localhost, the raw S3 website endpoint, or an IP, there are no subdomains, so
+// on localhost, a raw storage endpoint, or an IP, there are no subdomains, so
 // we return the relative path and the link just opens that route in a new tab.
 const PUBLIC_BASE_DOMAIN = 'not-spotify.lol'
 
@@ -17,7 +17,7 @@ export function subdomainUrl(sub: string, path: string): string {
     host === 'localhost' ||
     host.endsWith('.localhost') ||
     /^\d+\.\d+\.\d+\.\d+$/.test(host) ||
-    host.endsWith('.amazonaws.com')
+    host.endsWith('.supabase.co')
   if (isBareHost) return path
 
   const labels = host.split('.')

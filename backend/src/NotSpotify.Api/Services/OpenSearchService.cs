@@ -1,16 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using NotSpotify.Api.Data;
 using OpenSearch.Client;
-using OpenSearch.Net;
-using OpenSearch.Net.Auth.AwsSigV4;
 
 namespace NotSpotify.Api.Services;
 
 public sealed class OpenSearchOptions
 {
     public string Endpoint { get; set; } = string.Empty;
-    public string Region { get; set; } = "us-east-1";
-    public bool UseAwsSigV4 { get; set; } = true;
 }
 
 // Lightweight documents — only what ES needs to rank results + the ID for Postgres lookup.
@@ -93,24 +89,7 @@ public sealed class OpenSearchService
             return;
         }
 
-        ConnectionSettings settings;
-        if (options.UseAwsSigV4)
-        {
-            var pool = new SingleNodeConnectionPool(new Uri(options.Endpoint));
-            // Uses the default AWS credential chain: env vars → IAM role → profile.
-            // NOTE: the single-string ctor overload is (service, …) NOT (region, …) —
-            // passing the region there signs requests for a service named after the
-            // region and the domain rejects everything with 403. Resolve the region
-            // explicitly; the service code stays the default "es".
-            var awsConnection = new AwsSigV4HttpConnection(Amazon.RegionEndpoint.GetBySystemName(options.Region));
-            settings = new ConnectionSettings(pool, awsConnection);
-        }
-        else
-        {
-            settings = new ConnectionSettings(new Uri(options.Endpoint));
-        }
-
-        _client = new OpenSearchClient(settings);
+        _client = new OpenSearchClient(new ConnectionSettings(new Uri(options.Endpoint)));
     }
 
     // ── Index lifecycle ───────────────────────────────────────────────────────

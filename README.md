@@ -1,25 +1,14 @@
 # 🎵 not-spotify
 
-Definitely not Spotify, developed using Cloud Computing. A premium music streaming web application with an ASP.NET Core Web API backend and React + TypeScript + Vite frontend.
+Definitely not Spotify, a Supabase-backed local music streaming web application with an ASP.NET Core Web API backend and React + TypeScript + Vite frontend.
 
 ![not-spotify](notspotify.png)
 
-## Two ways to use this
-
-### ▶️ Just want to try it? — use the live deployment (no setup)
-
-Open **<https://not-spotify.lol>** in your browser and log in with a seed account:
-
-| Email | Password |
-|---|---|
-| `alex@example.com` | `Password123!` |
-| `testing1@example.com` | `Testing1` |
-
-That's the fully deployed app — frontend on **S3 + CloudFront**, API (`https://api.not-spotify.lol`) on **ECS + ALB**, database on **AWS RDS (PostgreSQL)**, media on **S3**, and direct-to-S3 uploads brokered by **Lambda + API Gateway**. Nothing to install.
-
-### 🛠️ Want to run it from source? — local setup
+## Run Locally
 
 Follow **[Getting Started](#-getting-started)** below to run the same app on your machine (or **[Run everything at once](#run-everything-at-once-quickest-start)** for the one-command start).
+
+> This branch runs the frontend and backend on localhost and uses Supabase PostgreSQL plus Supabase Storage. See [`docs/supabase-local-setup.md`](docs/supabase-local-setup.md).
 
 ---
 
@@ -35,11 +24,11 @@ This README covers what the project *is* and how to run it; architecture notes f
 - **Lyrics:** karaoke synced lyrics (highlight + auto-scroll + click-to-seek).
 - **Personalization:** light/dark, dynamic cover-art theming, personal listening stats (mini-Wrapped), live language selector (en/es/fr across Settings, shell navigation, Home, Search, and Library).
 - **Artist/Admin:** artist dashboard (uploads, edits, resubmissions), application→review flow, admin CRUD + approval queue + audit history, dedicated `/admin/login`; **RBAC** — a master-admin tier that grants/revokes admin, with a `PendingAction` approval queue (a regular admin's grant/revoke enqueues for master sign-off) and Team & Approvals admin pages.
-- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page); **podcasts** (`/podcasts` catalogue + show pages, episodes play through the same audio engine as tracks); **personal uploads locker** (`/uploads` — upload your own audio to a private, owner-only locker and play it); **music videos** (`/videos` catalogue + watch pages with a `<video>` player that pauses audio playback); **audio ads engine** (free tier hears a house ad every N tracks via a separate non-skippable ad player; premium is genuinely ad-free; admin ad CRUD + weighted/targeted serving).
+- **Platform:** installable **PWA** with offline app shell + premium **offline audio** (Range-aware playback); **embeddable iframe mini-player** (`/embed/track/:id`, copy-embed-code from any track page); **podcasts** (`/podcasts` catalogue + show pages, episodes play through the same audio engine as tracks); **personal uploads locker** (`/uploads` — upload your own audio outside the public catalogue and play it); **music videos** (`/videos` catalogue + watch pages with a `<video>` player that pauses audio playback); **audio ads engine** (free tier hears a house ad every N tracks via a separate non-skippable ad player; premium is genuinely ad-free; admin ad CRUD + weighted/targeted serving).
 
 - **Desktop:** optional **Tauri** wrapper (`frontend/src-tauri`) that loads the same frontend in a native window — see [Desktop app (Tauri)](#desktop-app-tauri-optional).
 
-**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views) and a deeper unit-test suite. *(The storage move to AWS S3 is done — it's the live backend; see [Storage Backends](#storage-backends-s3--local).)*
+**Being worked on next:** remaining i18n coverage (player/detail/profile/admin views) and a deeper unit-test suite.
 
 ### Run everything at once (quickest start)
 
@@ -70,7 +59,7 @@ Ensure you have the following installed:
 * [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 * [Node.js (LTS)](https://nodejs.org/)
 
-> **Database:** You do **not** need PostgreSQL installed locally. The team uses a shared Postgres instance — ask a teammate for the connection password (do not commit it to git). See step 2 below. *(Moving the DB to **AWS RDS** for the submission? It's just a connection-string swap — see [`docs/aws-rds-setup.md`](docs/aws-rds-setup.md). Storage → S3: [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md). Direct-to-S3 uploads → Lambda + API Gateway: [`docs/aws-lambda-setup.md`](docs/aws-lambda-setup.md).)*
+> **Database and media:** This branch uses Supabase PostgreSQL and Supabase Storage. You do not need PostgreSQL installed locally. See [`docs/supabase-local-setup.md`](docs/supabase-local-setup.md).
 
 ---
 
@@ -81,12 +70,15 @@ Ensure you have the following installed:
    cd backend/src/NotSpotify.Api
    ```
 
-2. Configure your database connection and JWT secret via **dotnet user-secrets** (these stay on your machine, outside the repo):
+2. Configure your Supabase database, storage, and JWT secret via **dotnet user-secrets** (these stay on your machine, outside the repo):
    ```bash
-   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=<your-db-host>;Port=5432;Database=postgres;Username=<user>;Password=<password>;SSL Mode=Require;Trust Server Certificate=true"
+   dotnet user-secrets set "ConnectionStrings:Postgres" "Host=<session-pooler-host>;Port=5432;Database=postgres;Username=<session-pooler-user>;Password=<database-password>;SSL Mode=Require;Trust Server Certificate=true"
    dotnet user-secrets set "Jwt:SigningKey" "a-very-long-random-string-at-least-32-chars-long"
+   dotnet user-secrets set "SupabaseStorage:ProjectUrl" "https://msounbcyosxzypmewacy.supabase.co"
+   dotnet user-secrets set "SupabaseStorage:BucketName" "not-spotify-media"
+   dotnet user-secrets set "SupabaseStorage:ServiceRoleKey" "sb_secret_your_server_only_key"
    ```
-   Replace the placeholder values with your team's shared database credentials.
+   Replace the placeholder values with your Supabase credentials. Use the **Session pooler** connection details from Supabase on port `5432`; the direct `db.<project-ref>.supabase.co` endpoint may be IPv6-only. Create a public `not-spotify-media` bucket first. Use a Supabase `sb_secret_...` key or legacy `service_role` key, never the `sb_publishable_...` key.
 
    Verify the secrets were saved:
    ```bash
@@ -102,11 +94,11 @@ Ensure you have the following installed:
    ```bash
    dotnet run
    ```
-   On first run, EF Core auto-applies all migrations and `DbSeeder` populates artists/albums/tracks/playlists/genres + the demo admin user. No manual `dotnet ef database update` needed — the schema and seed data already exist in the shared database.
+    On first run, EF Core auto-applies all migrations and `DbSeeder` populates artists/albums/tracks/playlists/genres + the demo admin user. No manual `dotnet ef database update` is needed; the schema and seed data are created in your Supabase project.
 
    *The API will compile and run on **`https://localhost:7045`** (and Swagger UI will be available at [https://localhost:7045/swagger](https://localhost:7045/swagger)).*
 
-> **Heads up — shared database.** Everyone on the team writes to the same tables. If you delete a track, your teammate sees it gone. For destructive testing, do it in a transaction you can roll back, or coordinate in the team chat first.
+> **Heads up — Supabase data.** This branch writes to your Supabase project. For destructive testing, use a throwaway project or coordinate before deleting catalogue data.
 
 ---
 
@@ -141,6 +133,30 @@ Ensure you have the following installed:
 
 ---
 
+### Optional: Google Login
+
+Google login needs an **External** Google Auth Platform audience, a Web OAuth client, and matching local user-secrets.
+
+1. Open the [Google Auth Platform Audience page](https://console.cloud.google.com/auth/audience) and set **User type** to **External**. For local testing, keep the publishing status as **Testing** and add your Google account as a test user.
+2. Open [Google Cloud Credentials](https://console.cloud.google.com/apis/credentials), create an **OAuth client ID** for a **Web application**, and add this exact redirect URI:
+   ```text
+   https://localhost:7045/auth/external/google/callback
+   ```
+3. Save the client ID and client secret locally:
+   ```powershell
+   cd backend/src/NotSpotify.Api
+   dotnet user-secrets set "Authentication:Google:ClientId" "<client-id>.apps.googleusercontent.com"
+   dotnet user-secrets set "Authentication:Google:ClientSecret" "<google-client-secret>"
+   dotnet user-secrets set "Authentication:Google:RedirectUri" "https://localhost:7045/auth/external/google/callback"
+   ```
+4. Restart the backend, sign in as `alex@example.com`, and open **Admin → Dev Tools → Social login providers**. Enable Google after the row reports **credentials configured**.
+
+The frontend checks `GET /auth/external/providers`, so the Google button appears only when credentials are configured and the provider is enabled. Do not use a Supabase key for Google OAuth.
+
+See [`docs/auth-setup.md`](docs/auth-setup.md) for the OAuth flow and troubleshooting notes.
+
+---
+
 ### Desktop app (Tauri, optional)
 
 The same React frontend can run as a native desktop window via [Tauri](https://tauri.app) v2. The wrapper lives in [`frontend/src-tauri`](frontend/src-tauri) and embeds the **already-built `dist/`** — it adds no second copy of the UI and no web server, just a native window around the PWA.
@@ -153,11 +169,11 @@ The same React frontend can run as a native desktop window via [Tauri](https://t
 **Run it (from `frontend/`):**
 ```bash
 npm run tauri:dev     # launches the Vite dev server + a native window (hot reload)
-npm run tauri:build   # builds production installers and stages them in the backend's public downloads folder
+npm run tauri:build   # builds a local production installer
 ```
 
-- **It talks to the same backend.** `tauri:dev` loads `http://localhost:5173` and uses `.env.development`; `tauri:build` runs `npm run build:desktop` in production mode so downloadable installers use the deployed API from `.env.production`. The desktop app is a client, not a server.
-- **Public downloads:** `/download` serves the staged Windows EXE/MSI through the backend/CloudFront origin and offers the installable PWA on macOS, Linux, iOS, and Android. See [`docs/installer-release.md`](docs/installer-release.md) for the release and optional S3 workflow.
+- **It talks to the same local backend.** `tauri:dev` loads `http://localhost:5173` and uses `.env.development`; `tauri:build` uses the localhost API from `.env.production`. The desktop app is a client, not a server.
+- **Downloads:** `/download` offers the local installable PWA and any desktop artifacts produced by Tauri.
 - **Icons** are derived from the PWA icons by [`src-tauri/icons/generate-icons.mjs`](frontend/src-tauri/icons/generate-icons.mjs) (re-run with `node generate-icons.mjs` if the source art changes).
 - `src-tauri/target/` is git-ignored; `Cargo.lock` is committed (this is an application crate).
 
@@ -173,7 +189,7 @@ The login page shows **Dev shortcuts** buttons (visible only in `npm run dev` mo
 | testing1 | `testing1@example.com` | `Testing1` | User |
 | testing2 | `testing2@example.com` | `Testing2` | User |
 
-> All three are created automatically by `DbSeeder` on backend startup — so they work even against a brand-new empty database (e.g. a fresh AWS RDS). Their passwords are kept at the documented defaults on every boot; don't change them or you'll break the shortcuts for your teammates.
+> All three are created automatically by `DbSeeder` on backend startup — so they work even against a brand-new empty Supabase database. Their passwords are kept at the documented defaults on every boot; don't change them or you'll break the shortcuts for your teammates.
 
 ---
 
@@ -360,40 +376,22 @@ After checkout, the account changes to Premium only after the webhook reaches `/
 
 ---
 
-## Storage Backends (S3 / Local)
+## Supabase Storage
 
-All media (audio, cover art, avatars, personal uploads) goes through `IStorageService`. The backend picks a provider at startup by **priority: S3 → Local**, each keyed off its own config being present — so switching providers is a user-secrets change, not a code change. The active provider is printed to the console on boot (`[Storage] Using …`).
+The `feature/supabase-local` branch sends all audio, cover art, avatars, personal uploads, and app assets through `IStorageService` to a public Supabase Storage bucket. The active provider is printed at startup as `[Storage] Using Supabase Storage: ...`.
 
-### AWS S3 (the submission target)
+Create a public bucket named `not-spotify-media`, then configure the backend with the project URL, bucket name, and server-only `sb_secret_...` or legacy `service_role` key. The full setup is in [`docs/supabase-local-setup.md`](docs/supabase-local-setup.md).
 
-> 📖 **Full click-by-click walkthrough (incl. AWS Academy Learner Lab):** [`docs/aws-s3-setup.md`](docs/aws-s3-setup.md). The summary below is the gist.
+Personal uploads stream through the local ASP.NET API and are written to Supabase Storage.
 
-`S3StorageService` is provider-agnostic: it targets **AWS S3** by default, but the same class drives any S3-compatible store (Cloudflare R2, Backblaze B2, MinIO) by setting `ServiceUrl`.
+The optional Circular font files are gitignored. If they are present locally, upload them and the public app assets with:
 
-**1. Create the AWS resources** (in your student account):
-- An S3 bucket, e.g. `not-spotify-media`, in a region near you (e.g. `ap-southeast-1`).
-- An IAM user with programmatic access and a policy allowing `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:ListBucket` on that bucket. (If you later deploy on EC2, attach a role instead and leave the keys unset — the adapter falls back to the AWS default credential chain.)
-
-**2. Add a bucket CORS policy** so the browser can stream/decode audio:
-```json
-[{ "AllowedOrigins": ["http://localhost:5173"], "AllowedMethods": ["GET", "HEAD"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3000 }]
-```
-(Required for `<audio>` playback *and* the audio-recognition feature, which fetches + decodes catalogue audio client-side.)
-
-**3. Set backend user-secrets** (from `backend/src/NotSpotify.Api`):
 ```powershell
-dotnet user-secrets set "S3Storage:BucketName" "not-spotify-media"
-dotnet user-secrets set "S3Storage:Region" "ap-southeast-1"
-dotnet user-secrets set "S3Storage:AccessKeyId" "AKIA..."
-dotnet user-secrets set "S3Storage:SecretAccessKey" "..."
+cd backend/src/NotSpotify.Api
+dotnet run -- upload-app-assets
 ```
-Setting `S3Storage:BucketName` flips the provider to S3 on the next `dotnet run`. Optional keys: `SessionToken` (**required for temporary creds like AWS Academy Learner Lab**), `ServiceUrl` (point at R2/B2 instead of AWS), `ForcePathStyle` (`true` for most non-AWS S3), `UsePresignedUrls` (`true` default = private bucket + 12 h presigned GET URLs; `false` = plain public-object URLs, which then need a public-read bucket policy), `PresignedUrlExpiryMinutes`.
 
-Then verify playback, album/playlist ZIP downloads, and the uploads locker.
-
-### Local Storage
-
-Local disk (`wwwroot/uploads`) is the fallback when S3 is not configured — handy for fully offline dev.
+If the font files are absent, the frontend falls back to Montserrat.
 
 ---
 
@@ -528,7 +526,7 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
 
 ## Architecture & Conventions
 
-**Stack:** React 18 + TS + Vite + Zustand + React Router + Tailwind (custom CSS vars: `text-primary`, `bg-surface`, `bg-elevated`, `text-accent`; `bg-primary`/`text-page` for filled CTAs) + Heroicons · ASP.NET Core 8 + EF Core 8 · PostgreSQL (`MigrateAsync()` runs on startup) · ASP.NET Identity + JWT (access+refresh; SignalR uses `?access_token=` on `/hubs/*`) · S3 Storage behind `IStorageService` (Local fallback) · lyrics via LRCLIB→Lyrics.ovh (no keys) · Stripe.
+**Stack:** React 18 + TS + Vite + Zustand + React Router + Tailwind (custom CSS vars: `text-primary`, `bg-surface`, `bg-elevated`, `text-accent`; `bg-primary`/`text-page` for filled CTAs) + Heroicons · ASP.NET Core 8 + EF Core 8 · Supabase PostgreSQL (`MigrateAsync()` runs on startup) · ASP.NET Identity + JWT (access+refresh; SignalR uses `?access_token=` on `/hubs/*`) · Supabase Storage behind `IStorageService` · lyrics via LRCLIB→Lyrics.ovh (no keys) · Stripe.
 
 **Folder structure:**
 ```
@@ -540,12 +538,9 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
   Program.cs    DI, JWT, rate limiter, storage selection, MigrateAsync + defensive CREATE TABLE IF NOT EXISTS guards
 /frontend/src
   /components (player, cards, ui, layout, profile, friends, settings, common) /pages /services (api.ts + per-domain) /stores (Zustand) /router /types /hooks /utils
-/serverless
-  /uploads-presign  lambda_function.py (+ offline tests) — the only code outside the monolith
-  deploy-lambda.ps1 one-shot: IAM role + Lambda + HTTP API Gateway
 ```
 
-**One request path skips the monolith:** personal uploads no longer stream through the container. The browser asks a **Python Lambda behind API Gateway** for a presigned S3 POST, uploads the file **straight to S3**, then calls `POST /me/uploads/complete` so the API can verify it with `HeadObject` and write the row — [`docs/aws-lambda-setup.md`](docs/aws-lambda-setup.md). Set `VITE_UPLOADS_API_URL` to enable it; blank falls back to the original multipart `POST /me/uploads`, so the app runs either way.
+**Personal uploads stay in the monolith:** the browser sends multipart data to `POST /me/uploads`, and the API writes the file to Supabase Storage before saving the database row. The frontend has no direct storage credentials or upload endpoint configuration.
 
 **Naming:** C# PascalCase (EF columns quoted `"Title"` in raw SQL) · TS camelCase vars / PascalCase components+types · API routes kebab-case · storage keys `audio/{guid}.ext`, `covers/{guid}.ext`, `avatars/{userId}/{guid}.ext`.
 
@@ -557,10 +552,10 @@ Smart playlists store a JSONB rule set in `Playlists.Rules` and resolve tracks d
 - **Toasts:** `notify.{success,error,info}` (`utils/toast.ts`). **Confirms:** `useConfirm()` hook — no native `confirm()`.
 - **Rate limiting:** `auth` (20/min/IP) on `AuthController`; `chat-send` (20/10s/user) on `ChatController.Send` → JSON 429 + `Retry-After`.
 - **Downloads:** `AudioDownloadService` only; frontend calls `trackService.download()`, never links `audioUrl`.
-- **S3 bucket CORS is code, not console.** `dotnet run -- ensure-s3-cors` calls `PutCORSConfiguration`, which **replaces the bucket's whole config** — a rule added by hand in the console disappears the next time anyone runs it. Add rules to `S3StorageService.EnsureBrowserCorsAsync`. The direct-upload path needs the `POST` rule there or its preflight fails.
+- **Supabase bucket access is configured in the dashboard.** The local branch uses a public `not-spotify-media` bucket so browser playback, image CORS, and offline caching work without a signed-upload service.
 - **Two social graphs:** `Friendships` = bidirectional + acceptance (FriendsController); `UserFollows` = one-way, no acceptance (UsersController).
 
-> **Shared DB:** the whole team writes to one Postgres instance. Coordinate destructive changes; prefer throwaway data. EF migrations auto-apply on backend startup.
+> **Supabase data:** this branch writes to your Supabase project. Coordinate destructive testing or use a throwaway project. EF migrations auto-apply on backend startup.
 
 ---
 

@@ -1,14 +1,12 @@
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
-using Amazon.XRay.Recorder.Handlers.AwsSdk;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -19,10 +17,6 @@ using NotSpotify.Api.Models;
 using NotSpotify.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Capture calls through the AWS SDK (S3, for example) as X-Ray subsegments.
-// The ECS deployment adds the X-Ray daemon sidecar that receives these segments.
-AWSSDKHandler.RegisterXRayForAllServices();
 
 // Load user-secrets explicitly so credentials work regardless of ASPNETCORE_ENVIRONMENT.
 // By default user-secrets only load in Development; this makes them load always.
@@ -35,55 +29,17 @@ builder.Configuration.AddEnvironmentVariables();
 
 Console.WriteLine($"[Env] ASPNETCORE_ENVIRONMENT = {builder.Environment.EnvironmentName}");
 
-// One-time storage migration CLI (`dotnet run -- migrate-storage [--dry-run]`):
-// copies every DB-referenced object between storage providers under the same keys.
-// Short-circuits before the web host so it needs no JWT/Stripe/etc. config.
-if (args.Contains("migrate-storage"))
-{
-    await StorageMigration.RunAsync(builder.Configuration, args);
-    return;
-}
-
 // One-off bulk ingest (`dotnet run -- ingest-media [--dry-run]`): uploads the
-// repo-root "Music Videos/" and "Podcast/" folders to S3 and inserts the matching
-// MusicVideo / Podcast + Episode rows. Short-circuits before the web host.
+// repo-root "Music Videos/" and "Podcast/" folders to Supabase Storage and inserts
+// the matching MusicVideo / Podcast + Episode rows. Short-circuits before the web host.
 if (args.Contains("ingest-media"))
 {
     await MediaIngest.RunAsync(builder.Configuration, args);
     return;
 }
 
-// One-time S3 CORS setup (`dotnet run -- ensure-s3-cors`): lets the browser read
-// bucket objects cross-origin so client-side dominant-colour extraction (the page
-// gradient hues) works. Needs s3:PutBucketCors on the bucket. Idempotent.
-if (args.Contains("ensure-s3-cors"))
-{
-    var s3Opt = builder.Configuration.GetSection("S3Storage").Get<S3StorageOptions>();
-    if (s3Opt is null || string.IsNullOrWhiteSpace(s3Opt.BucketName))
-    {
-        Console.WriteLine("[S3 CORS] No 'S3Storage:BucketName' configured — set it in user-secrets/appsettings. Aborting.");
-        return;
-    }
-
-    try
-    {
-        // Reuse the API's own allow-list for the upload rule so the two can't drift.
-        var uploadOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-        await new S3StorageService(Microsoft.Extensions.Options.Options.Create(s3Opt))
-            .EnsureBrowserCorsAsync(uploadOrigins);
-        Console.WriteLine($"[S3 CORS] Applied GET/HEAD (AllowedOrigins=*) + POST/PUT upload CORS to bucket '{s3Opt.BucketName}'.");
-        Console.WriteLine($"[S3 CORS] Upload origins: {string.Join(", ", uploadOrigins ?? ["(defaults)"])}");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"[S3 CORS] FAILED: {ex.Message}");
-        Console.WriteLine("[S3 CORS] If this is a permissions error, apply the CORS rule from the AWS console instead (S3 → bucket → Permissions → CORS).");
-    }
-    return;
-}
-
 // One-time app asset upload (`dotnet run -- upload-app-assets`): copies frontend
-// static media/fonts/icons to S3 under app-assets/ so the repo can stay source-only.
+// static media/fonts/icons to Supabase Storage under app-assets/.
 if (args.Contains("upload-app-assets"))
 {
     await UploadAppAssetsAsync(builder.Configuration);
@@ -104,20 +60,13 @@ builder.Services.AddSingleton<IChatMessageEncryption>(chatEncryption);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
 {
-    // Postgres session-mode pooler is capped at 15 connections shared across all team members.
+    // Supabase's session-mode pooler is capped at 15 connections on the shared plan.
     // Limiting the app-side pool prevents one running instance from consuming all slots.
     var cs = builder.Configuration.GetConnectionString("Postgres") ?? string.Empty;
     if (!cs.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase))
         cs += ";Maximum Pool Size=5";
     opt.UseNpgsql(cs);
-    // Trace EF queries as X-Ray subsegments so PostgreSQL appears on the service map.
-    opt.AddInterceptors(new XRayDbCommandInterceptor());
 });
-
-// Trace every outbound HttpClient call (Stripe, Ticketmaster, Google OAuth, reCAPTCHA,
-// Resend, lyrics providers, …) so each external host appears on the X-Ray service map.
-// One filter covers all IHttpClientFactory clients; see XRayHttpTracingHandler.
-builder.Services.AddSingleton<IHttpMessageHandlerBuilderFilter, XRayHttpMessageHandlerBuilderFilter>();
 
 builder.Services
     .AddIdentityCore<ApplicationUser>(opt =>
@@ -234,26 +183,25 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// Storage provider selection (priority: S3 → Local). Each keys off its
-// own config being present, so swapping is a user-secrets change, not a code change.
+// Supabase Storage is the only provider in this local branch. Fail fast when it is
+// not configured instead of silently writing media to a different backend.
 builder.Services.AddHttpClient();
-var s3Section = builder.Configuration.GetSection("S3Storage");
-var s3Bucket = s3Section["BucketName"];
-if (!string.IsNullOrWhiteSpace(s3Bucket))
+var supabaseSection = builder.Configuration.GetSection("SupabaseStorage");
+var supabaseStorage = supabaseSection.Get<SupabaseStorageOptions>();
+if (supabaseStorage is null ||
+    string.IsNullOrWhiteSpace(supabaseStorage.ProjectUrl) ||
+    string.IsNullOrWhiteSpace(supabaseStorage.BucketName) ||
+    string.IsNullOrWhiteSpace(supabaseStorage.ServiceRoleKey))
 {
-    builder.Services.Configure<S3StorageOptions>(s3Section);
-    builder.Services.AddSingleton<IStorageService, S3StorageService>();
-    var endpoint = string.IsNullOrWhiteSpace(s3Section["ServiceUrl"])
-        ? $"AWS {s3Section["Region"] ?? "us-east-1"}"
-        : s3Section["ServiceUrl"];
-    Console.WriteLine($"[Storage] Using S3: bucket {s3Bucket} (endpoint: {endpoint})");
+    throw new InvalidOperationException(
+        "Supabase Storage is not configured. Set SupabaseStorage:ProjectUrl, " +
+        "SupabaseStorage:BucketName, and SupabaseStorage:ServiceRoleKey in user-secrets.");
 }
-else
-{
-    builder.Services.Configure<LocalStorageOptions>(builder.Configuration.GetSection("LocalStorage"));
-    builder.Services.AddSingleton<IStorageService, LocalStorageService>();
-    Console.WriteLine("[Storage] Using LocalStorage (no S3 config — user-secrets not loaded?)");
-}
+
+builder.Services.Configure<SupabaseStorageOptions>(supabaseSection);
+builder.Services.AddHttpClient<SupabaseStorageService>();
+builder.Services.AddSingleton<IStorageService>(sp => sp.GetRequiredService<SupabaseStorageService>());
+Console.WriteLine($"[Storage] Using Supabase Storage: bucket {supabaseStorage.BucketName}");
 var openSearchOptions = builder.Configuration.GetSection("OpenSearch").Get<OpenSearchOptions>() ?? new OpenSearchOptions();
 builder.Services.AddSingleton(openSearchOptions);
 builder.Services.AddSingleton<OpenSearchService>();
@@ -284,24 +232,6 @@ var corsOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<s
     .Concat(new[] { "http://tauri.localhost", "https://tauri.localhost", "tauri://localhost" })
     .Distinct()
     .ToArray();
-
-// Allow local dev frontends (Vite web dev + `tauri dev`, which serves the webview
-// from localhost:5173) to reach the deployed cloud API. The production env-var
-// override for Cors:AllowedOrigins lists only the live web domains, so append the
-// dev origins here to guarantee they survive that override. Opt-in via
-// Cors:AllowLocalhostDev = "true" (set on the ECS task def) so prod isn't
-// permanently open to localhost — flip it off when you're done testing.
-if (builder.Configuration.GetValue<bool>("Cors:AllowLocalhostDev"))
-{
-    corsOrigins = corsOrigins
-        .Concat(new[]
-        {
-            "http://localhost:5173", "http://localhost:5174",
-            "http://127.0.0.1:5173", "http://127.0.0.1:5174",
-        })
-        .Distinct()
-        .ToArray();
-}
 
 // Optionally allow ANY https subdomain of a root domain (e.g. not-spotify.lol ->
 // account./support./download./www. + the apex) so new subdomains work without
@@ -367,7 +297,6 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 var app = builder.Build();
 
 app.UseForwardedHeaders();
-app.UseXRay("not-spotify-api");
 
 if (app.Environment.IsDevelopment())
 {
@@ -1501,10 +1430,13 @@ static async Task RepairKnownInstrumentalLyricsAsync(AppDbContext db)
 
 static async Task UploadAppAssetsAsync(IConfiguration config)
 {
-    var s3Opt = config.GetSection("S3Storage").Get<S3StorageOptions>();
-    if (s3Opt is null || string.IsNullOrWhiteSpace(s3Opt.BucketName))
+    var supabaseOpt = config.GetSection("SupabaseStorage").Get<SupabaseStorageOptions>();
+    if (supabaseOpt is null ||
+        string.IsNullOrWhiteSpace(supabaseOpt.ProjectUrl) ||
+        string.IsNullOrWhiteSpace(supabaseOpt.BucketName) ||
+        string.IsNullOrWhiteSpace(supabaseOpt.ServiceRoleKey))
     {
-        Console.WriteLine("[AppAssets] No 'S3Storage:BucketName' configured. Aborting.");
+        Console.WriteLine("[AppAssets] Supabase Storage is not configured. Aborting.");
         return;
     }
 
@@ -1527,7 +1459,8 @@ static async Task UploadAppAssetsAsync(IConfiguration config)
     contentTypes.Mappings[".woff"] = "font/woff";
     contentTypes.Mappings[".woff2"] = "font/woff2";
 
-    var storage = new S3StorageService(Options.Create(s3Opt));
+    using var http = new HttpClient();
+    var storage = new SupabaseStorageService(Options.Create(supabaseOpt), http);
     var uploaded = 0;
     foreach (var root in roots.Where(Directory.Exists))
     {
@@ -1547,5 +1480,5 @@ static async Task UploadAppAssetsAsync(IConfiguration config)
         }
     }
 
-    Console.WriteLine($"[AppAssets] Uploaded {uploaded} file(s) to bucket '{s3Opt.BucketName}'.");
+    Console.WriteLine($"[AppAssets] Uploaded {uploaded} file(s) to bucket '{supabaseOpt.BucketName}'.");
 }

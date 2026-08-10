@@ -13,12 +13,11 @@ namespace NotSpotify.Api.Services;
 /// One-off bulk catalogue importer (`dotnet run -- import-music [--path &lt;dir&gt;] [--dry-run]`).
 /// Walks a local "Artist - Album (Year)" folder tree of .m4a (+ optional .lrc) files and
 /// idempotently creates Artists / Albums / Tracks in the database, uploading audio and
-/// covers to the configured <see cref="IStorageService"/> (S3 in production). Track durations
+/// covers to the configured <see cref="IStorageService"/>. Track durations
 /// and waveform peaks come from ffmpeg/ffprobe; album covers + release dates come from the
 /// free iTunes Search API; genre + country are filled from a curated per-artist table.
 ///
-/// Mirrors the existing `migrate-storage` / `ensure-s3-cors` CLI commands in Program.cs:
-/// it runs after the host is built (so DI + migrations are ready) and then exits.
+/// It runs after the host is built (so DI + migrations are ready) and then exits.
 /// </summary>
 public static class MusicImporter
 {
@@ -74,8 +73,8 @@ public static class MusicImporter
         },
     };
 
-    // Audio formats the importer ingests. ffprobe + ffmpeg handle all of them, and S3 stores
-    // them with the right Content-Type so the browser <audio> element picks the right codec.
+    // Audio formats the importer ingests. ffprobe + ffmpeg handle all of them, and storage
+    // receives the right Content-Type so the browser <audio> element picks the right codec.
     private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
         { ".m4a", ".flac", ".mp3", ".ogg", ".opus", ".wav" };
 

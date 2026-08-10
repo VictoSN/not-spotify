@@ -2,6 +2,8 @@
 
 Definitely not Spotify, developed using Cloud Computing. A premium music streaming web application with an ASP.NET Core Web API backend and React + TypeScript + Vite frontend.
 
+![not-spotify](notspotify.png)
+
 ## Two ways to use this
 
 ### ▶️ Just want to try it? — use the live deployment (no setup)

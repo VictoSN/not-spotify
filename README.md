@@ -47,7 +47,13 @@ This README covers what the project *is* and how to run it; architecture notes f
 ```bash
 ./dev.sh
 ```
-That launches all three services in their own windows — backend (`https://localhost:7045`), Stripe webhook listener, and frontend (`http://localhost:5173`) — so you don't need three manual terminals. *(On plain Windows you can instead **double-click [`dev.cmd`](dev.cmd)**.)*
+That launches all three services in their own windows — backend (`https://localhost:7045`), Stripe webhook listener, and frontend (`http://localhost:5173`) — so you don't need three manual terminals.
+
+**On plain Windows** (no Git Bash), open **PowerShell** at the repo root and run:
+```powershell
+.\dev.cmd
+```
+or just **double-click [`dev.cmd`](dev.cmd)** in Explorer — same thing.
 
 - Requires .NET SDK, Node/npm, and (for the webhook window) the Stripe CLI on your PATH, with `stripe login` done once. **Not testing premium?** Just ignore/close the Stripe window — backend + frontend still run fine.
 - Prefer manual control, or first-time setup? Follow the step-by-step below.
